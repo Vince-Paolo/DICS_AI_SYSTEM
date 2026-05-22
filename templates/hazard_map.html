@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+
+{% block title %}Hazard Map | DICS AI{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" />
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-3 mb-4">
+            <div class="card sidebar-card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-4">
+                        <div class="badge bg-primary rounded-pill me-3 p-3"><i class="bi bi-globe2 fs-4"></i></div>
+                        <div>
+                            <h5 class="mb-0">DICS-AI</h5>
+                            <small class="text-muted">CALABARZON Region</small>
+                        </div>
+                    </div>
+                    <div class="list-group list-group-flush sidebar-menu">
+                        <a href="/dashboard" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-speedometer2 me-2"></i>Dashboard</span>
+                        </a>
+                        <a href="/hazard-map" class="list-group-item list-group-item-action active d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-pin-map me-2"></i>Hazard Map</span>
+                        </a>
+                        <a href="/alerts" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-exclamation-triangle me-2"></i>Active Alerts</span>
+                            <span class="badge bg-secondary rounded-pill">3</span>
+                        </a>
+                        <a href="/ics" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-clipboard-check me-2"></i>Incident Command</span>
+                            <span class="badge bg-secondary rounded-pill">4</span>
+                        </a>
+                        <a href="/protocols" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-file-earmark-text me-2"></i>Agency Coordination</span>
+                        </a>
+                        <a href="/ai-prediction" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-brain me-2"></i>AI Predictions</span>
+                        </a>
+                        <a href="/analytics" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-graph-up me-2"></i>Analytics</span>
+                        </a>
+                        <a href="/protocols" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-book me-2"></i>ICS Protocols</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-9">
+            <div class="row g-4 mb-4">
+                <div class="col-md-4">
+                    <div class="card card-custom h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center mb-3">
+                                <span class="badge bg-light text-primary rounded-circle p-3 me-3"><i class="bi bi-geo-alt-fill fs-5"></i></span>
+                                <div>
+                                    <small class="text-muted">Hazard Zones</small>
+                                    <h5 class="mb-0">12</h5>
+                                </div>
+                            </div>
+                            <p class="text-muted mb-0">Zones with recent alerts and risk classification.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card card-custom h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center mb-3">
+                                <span class="badge bg-light text-success rounded-circle p-3 me-3"><i class="bi bi-filter-circle fs-5"></i></span>
+                                <div>
+                                    <small class="text-muted">Filtered Views</small>
+                                    <h5 class="mb-0">3</h5>
+                                </div>
+                            </div>
+                            <p class="text-muted mb-0">Risk filters for high, moderate, and low zones.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card card-custom h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center mb-3">
+                                <span class="badge bg-light text-danger rounded-circle p-3 me-3"><i class="bi bi-exclamation-octagon-fill fs-5"></i></span>
+                                <div>
+                                    <small class="text-muted">Active Alerts</small>
+                                    <h5 class="mb-0">5</h5>
+                                </div>
+                            </div>
+                            <p class="text-muted mb-0">Critical locations needing immediate attention.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card card-custom mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h2 class="card-title mb-1">Hazard Map Viewer</h2>
+                            <p class="text-muted mb-0">Visualize location markers with risk filters and zone details.</p>
+                        </div>
+                        <button class="btn btn-outline-secondary btn-sm">Refresh Map</button>
+                    </div>
+                    <div class="row g-3 align-items-center mb-3">
+                        <div class="col-md-8">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                <input type="text" class="form-control" placeholder="Search hazard areas...">
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-md-end">
+                            <button id="allZones" class="btn btn-outline-primary btn-sm me-1 active">All Zones</button>
+                            <button id="highRisk" class="btn btn-outline-danger btn-sm me-1">High Risk</button>
+                            <button id="lowRisk" class="btn btn-outline-success btn-sm">Low Risk</button>
+                        </div>
+                    </div>
+                    <div id="map" class="rounded" style="height: 520px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+const map = L.map('map').setView([13.9411, 121.1622], 10);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap'
+}).addTo(map);
+
+const markers = [
+    {coords: [13.9411, 121.1622], label: 'Lipa City Flood Zone', level: 'High'},
+    {coords: [14.0537, 121.1585], label: 'Batangas River Flood Risk', level: 'Moderate'},
+    {coords: [13.9273, 121.0835], label: 'Landslide-prone Ridge', level: 'Low'}
+];
+
+const layerGroup = L.layerGroup().addTo(map);
+function renderMarkers(filter) {
+    layerGroup.clearLayers();
+    markers.forEach(item => {
+        if (filter === 'all' || (filter === 'high' && item.level === 'High') || (filter === 'low' && item.level === 'Low')) {
+            L.marker(item.coords)
+                .addTo(layerGroup)
+                .bindPopup(`<strong>${item.label}</strong><br/>Risk: ${item.level}`);
+        }
+    });
+}
+
+renderMarkers('all');
+
+const buttons = document.querySelectorAll('#allZones, #highRisk, #lowRisk');
+buttons.forEach(button => {
+    button.addEventListener('click', () => {
+        let filter = 'all';
+        if (button.id === 'highRisk') filter = 'high';
+        if (button.id === 'lowRisk') filter = 'low';
+        renderMarkers(filter);
+        buttons.forEach(btn => btn.classList.remove('active'));
+        button.classList.add('active');
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,307 @@
+{% extends 'base.html' %}
+
+{% block title %}AI Prediction Insights | DICS AI{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+            <div>
+                <h2 class="mb-1">AI Prediction Insights</h2>
+                <p class="text-muted mb-0">Simulated real-time disaster forecasting and predictive analytics for floods, earthquakes, and volcanic activity.</p>
+            </div>
+            <div class="text-end">
+                <span class="badge bg-success mb-2">Live data</span>
+                <div>Last refresh: <strong id="refreshTime">--:--:--</strong></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="card card-custom mb-4">
+            <div class="card-body">
+                <h5 class="card-title">About the AI-Based Multi-Hazard Prediction Engine</h5>
+                <p class="text-muted">Traditional disaster prediction systems rely heavily on historical data analysis and manual interpretation by experts. While these methods have been effective to some extent, they often lack real-time processing capabilities and may not be sufficient for rapidly changing environmental conditions. Recent advancements in Artificial Intelligence (AI) and Machine Learning (ML) have demonstrated strong potential in improving predictive accuracy by analyzing large-scale environmental datasets and identifying complex patterns that are not easily detected through conventional methods (UNDRR, 2023).</p>
+                <p class="mb-0">This platform integrates an AI-Based Multi-Hazard Prediction Engine with the Digital Incident Command System (DICS) to provide near real-time forecasts, automated alert generation, and actionable insights for response teams. The engine ingests sensor streams, seismic and weather feeds, and historical records to deliver continuously updated risk scores and confidence metrics.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card card-custom p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h6 class="text-uppercase text-muted mb-1">Active Models</h6>
+                    <h3 class="mb-0">4</h3>
+                </div>
+                <span class="badge bg-primary rounded-pill">AI</span>
+            </div>
+            <p class="text-muted mb-0">Predictive models currently generating forecasts across hazards.</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-custom p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h6 class="text-uppercase text-muted mb-1">Forecast Accuracy</h6>
+                    <h3 class="mb-0">91.5%</h3>
+                </div>
+                <span class="badge bg-success rounded-pill">Stable</span>
+            </div>
+            <p class="text-muted mb-0">Simulated accuracy from historical training data and model validation.</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-custom p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h6 class="text-uppercase text-muted mb-1">Predictions Today</h6>
+                    <h3 class="mb-0">2,673</h3>
+                </div>
+                <span class="badge bg-warning text-dark rounded-pill">Realtime</span>
+            </div>
+            <p class="text-muted mb-0">Total simulated disaster events forecasted by the module today.</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-custom p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h6 class="text-uppercase text-muted mb-1">Data Sources</h6>
+                    <h3 class="mb-0">70.7K</h3>
+                </div>
+                <span class="badge bg-secondary rounded-pill">Sensors</span>
+            </div>
+            <p class="text-muted mb-0">Environmental and historical records feeding the AI forecasting pipeline.</p>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-7">
+        <div class="card card-custom h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h5 class="card-title mb-1">Hazard Forecast Overview</h5>
+                        <p class="text-muted mb-0">Predictive occurrence rates across flood, earthquake, and volcanic categories.</p>
+                    </div>
+                    <span class="badge bg-info text-dark">Updated every 5 sec</span>
+                </div>
+                <canvas id="hazardChart" height="240"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card card-custom h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h5 class="card-title mb-1">Confidence Trend</h5>
+                        <p class="text-muted mb-0">Real-time prediction confidence for current hazard signals.</p>
+                    </div>
+                </div>
+                <canvas id="confidenceChart" height="240"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-7">
+        <div class="card card-custom">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Data Summary</h5>
+                <div class="table-responsive">
+                    <table class="table table-borderless mb-0">
+                        <tbody>
+                            <tr>
+                                <th>Flood sensor readings</th>
+                                <td>18,472</td>
+                            </tr>
+                            <tr>
+                                <th>Seismic events analyzed</th>
+                                <td>9,144</td>
+                            </tr>
+                            <tr>
+                                <th>Volcanic tremor samples</th>
+                                <td>12,856</td>
+                            </tr>
+                            <tr>
+                                <th>Weather station feeds</th>
+                                <td>25,300</td>
+                            </tr>
+                            <tr>
+                                <th>Model training window</th>
+                                <td>Last 30 days</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-5">
+        <div class="card card-custom h-100">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Real-time Forecast Feed</h5>
+                <div class="list-group" id="forecastFeed">
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <strong>Flood</strong>
+                                <div class="small text-muted">Risk: High</div>
+                            </div>
+                            <span class="badge bg-danger">82%</span>
+                        </div>
+                        <div class="small text-muted">Latest trigger from river sensor cluster 5.</div>
+                    </div>
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <strong>Earthquake</strong>
+                                <div class="small text-muted">Risk: Moderate</div>
+                            </div>
+                            <span class="badge bg-warning text-dark">64%</span>
+                        </div>
+                        <div class="small text-muted">Seismic activity rose near Mount Banahaw.</div>
+                    </div>
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <strong>Volcano</strong>
+                                <div class="small text-muted">Risk: Alert</div>
+                            </div>
+                            <span class="badge bg-danger">78%</span>
+                        </div>
+                        <div class="small text-muted">Tremor readings are trending upward at Taal.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const refreshTime = document.getElementById('refreshTime');
+const hazardCtx = document.getElementById('hazardChart');
+const confidenceCtx = document.getElementById('confidenceChart');
+const feed = document.getElementById('forecastFeed');
+
+const hazardData = {
+    labels: ['Flood', 'Earthquake', 'Volcano'],
+    datasets: [{
+        label: 'Predicted Occurrence %',
+        data: [72, 58, 65],
+        backgroundColor: ['#0d6efd', '#ffc107', '#dc3545'],
+        borderRadius: 8,
+        maxBarThickness: 40
+    }]
+};
+
+const hazardChart = new Chart(hazardCtx, {
+    type: 'bar',
+    data: hazardData,
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { display: false }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                max: 100,
+                ticks: { callback: value => value + '%' }
+            }
+        }
+    }
+});
+
+const confidenceData = {
+    labels: ['Now', '5m', '10m', '15m', '20m', '25m'],
+    datasets: [{
+        label: 'Confidence',
+        data: [91, 92, 90, 91, 93, 92],
+        borderColor: '#198754',
+        backgroundColor: 'rgba(25,135,84,0.15)',
+        tension: 0.35,
+        fill: true,
+        pointRadius: 3
+    }]
+};
+
+const confidenceChart = new Chart(confidenceCtx, {
+    type: 'line',
+    data: confidenceData,
+    options: {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: false,
+                min: 80,
+                max: 100,
+                ticks: { callback: value => value + '%' }
+            }
+        }
+    }
+});
+
+const realtimeEvents = [
+    { hazard: 'Flood', risk: 'High', score: 85, note: 'River sensor cluster 5 triggered.' },
+    { hazard: 'Earthquake', risk: 'Moderate', score: 66, note: 'Seismic tremors rising near fault line.' },
+    { hazard: 'Volcano', risk: 'Alert', score: 79, note: 'Tremor readings spiked at Taal.' },
+    { hazard: 'Flood', risk: 'Moderate', score: 72, note: 'Rainfall intensity increasing in lowlands.' },
+    { hazard: 'Earthquake', risk: 'High', score: 81, note: 'Multiple small quakes recorded in Laguna.' }
+];
+
+function updateRefreshTime() {
+    const now = new Date();
+    refreshTime.textContent = now.toLocaleTimeString();
+}
+
+function updateRealtimeData() {
+    const next = realtimeEvents[Math.floor(Math.random() * realtimeEvents.length)];
+    const newFeedItem = document.createElement('div');
+    newFeedItem.className = 'list-group-item';
+    newFeedItem.innerHTML = `
+        <div class="d-flex justify-content-between">
+            <div>
+                <strong>${next.hazard}</strong>
+                <div class="small text-muted">Risk: ${next.risk}</div>
+            </div>
+            <span class="badge ${next.score > 75 ? 'bg-danger' : next.score > 60 ? 'bg-warning text-dark' : 'bg-success'}">${next.score}%</span>
+        </div>
+        <div class="small text-muted">${next.note}</div>
+    `;
+    feed.prepend(newFeedItem);
+    while (feed.children.length > 5) {
+        feed.removeChild(feed.lastChild);
+    }
+
+    hazardChart.data.datasets[0].data = hazardChart.data.datasets[0].data.map(value => {
+        const delta = Math.round((Math.random() - 0.5) * 8);
+        return Math.min(100, Math.max(20, value + delta));
+    });
+    hazardChart.update();
+
+    confidenceChart.data.datasets[0].data.push(Math.min(100, Math.max(85, confidenceChart.data.datasets[0].data.slice(-1)[0] + (Math.random() * 4 - 2))));
+    if (confidenceChart.data.labels.length > 6) {
+        confidenceChart.data.labels.shift();
+        confidenceChart.data.datasets[0].data.shift();
+    }
+    const nextLabel = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    confidenceChart.data.labels.push(nextLabel);
+    confidenceChart.update();
+
+    updateRefreshTime();
+}
+
+updateRefreshTime();
+setInterval(updateRealtimeData, 5000);
+</script>
+{% endblock %}

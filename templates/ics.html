@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+
+{% block title %}ICS | DICS AI{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card card-custom">
+            <div class="card-body">
+                <h2 class="card-title">Incident Command System</h2>
+                <p class="text-muted">Track active incidents, response teams, and ongoing updates.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card card-custom">
+            <div class="card-body">
+                <h5>Incident Tracking</h5>
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Incident</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Flood Watch</td><td><span class="badge bg-warning">Ongoing</span></td></tr>
+                        <tr><td>Landslide Alert</td><td><span class="badge bg-danger">Active</span></td></tr>
+                        <tr><td>Storm Advisory</td><td><span class="badge bg-info">Monitoring</span></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card card-custom">
+            <div class="card-body">
+                <h5>Response Teams</h5>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item">Team Alpha: Evacuation support</li>
+                    <li class="list-group-item">Team Bravo: Medical response</li>
+                    <li class="list-group-item">Team Charlie: Web monitoring</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mt-1">
+    <div class="col-12">
+        <div class="card card-custom">
+            <div class="card-body">
+                <h5>Latest Updates</h5>
+                <div class="list-group">
+                    <div class="list-group-item">
+                        <strong>12:20 PM</strong> — Evacuation center opened for Lipa City residents.
+                    </div>
+                    <div class="list-group-item">
+                        <strong>11:45 AM</strong> — River level monitoring intensified in southern districts.
+                    </div>
+                    <div class="list-group-item">
+                        <strong>10:10 AM</strong> — Weather forecast updated for heavy rainfall.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

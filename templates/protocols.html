@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block title %}Protocols | DICS AI{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card card-custom">
+            <div class="card-body">
+                <h2 class="card-title">Emergency Protocols</h2>
+                <p class="text-muted">Clear communication and response steps for disaster scenarios.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card card-custom">
+            <div class="card-body">
+                <h5>Communication Protocol</h5>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item">Establish command post and incident logs.</li>
+                    <li class="list-group-item">Notify response teams and community leaders.</li>
+                    <li class="list-group-item">Send alerts through local channels and SMS.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card card-custom">
+            <div class="card-body">
+                <h5>Coordination Steps</h5>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item">Deploy evacuation and medical teams.</li>
+                    <li class="list-group-item">Monitor hazard sensors and update forecasts.</li>
+                    <li class="list-group-item">Maintain logs for all incident responses.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

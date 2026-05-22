@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard | DICS AI{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1>Dashboard</h1>
+                <p class="text-muted">Welcome back, {{ username }}{% if user_role %} ({{ user_role|capitalize }}){% endif %}.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="card card-custom p-3">
+            <h5>Total Predictions</h5>
+            <p class="display-6 mb-0">{{ total_incidents }}</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card card-custom p-3">
+            <h5>Active Alerts</h5>
+            <p class="display-6 mb-0">{{ alert_count }}</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card card-custom p-3">
+            <h5>Actions</h5>
+            <a href="/ai-prediction" class="btn btn-brand w-100 mb-2">New Prediction</a>
+            <a href="/hazard-map" class="btn btn-outline-secondary w-100 mb-2">View Hazard Map</a>
+            <a href="/analytics" class="btn btn-outline-secondary w-100">Open Analytics</a>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-12 mb-3">
+        <div class="d-flex justify-content-end mb-2">
+            <a href="/live-prediction" class="btn btn-danger me-2">Run Live Hazard Prediction</a>
+            <button onclick="location.reload()" class="btn btn-outline-secondary">Refresh Now</button>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card p-3 mb-3">
+            <h5>Live Weather Data</h5>
+            {% if weather_data %}
+            <p><strong>City:</strong> {{ weather_data.city }}</p>
+            <p><strong>Temperature:</strong> {{ weather_data.temperature }} °C</p>
+            <p><strong>Humidity:</strong> {{ weather_data.humidity }}%</p>
+            <p><strong>Rainfall:</strong> {{ weather_data.rainfall }} mm</p>
+            <p><strong>Wind Speed:</strong> {{ weather_data.wind_speed }}</p>
+            <p><strong>Condition:</strong> {{ weather_data.weather }}</p>
+            {% else %}
+            <p class="text-muted">Weather data unavailable.</p>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="card p-3 mb-3">
+            <h5>Recent Earthquakes</h5>
+            {% if earthquake_data %}
+                {% for quake in earthquake_data %}
+                    <div class="border p-2 mb-2">
+                        <p><strong>Magnitude:</strong> {{ quake.magnitude }}</p>
+                        <p><strong>Location:</strong> {{ quake.place }}</p>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p class="text-muted">No recent earthquake data.</p>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="card card-custom">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Recent Predictions</h5>
+                {% if incidents %}
+                <div class="table-responsive">
+                    <table class="table table-hover table-custom mb-0">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Hazard</th>
+                                <th>Level</th>
+                                <th>Score</th>
+                                <th>Alert</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for incident in incidents %}
+                                <tr>
+                                    <td>{{ incident.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>{{ incident.hazard_type|capitalize }}</td>
+                                    <td>{{ incident.level }}</td>
+                                    <td>{{ '%.1f'|format(incident.score) }}</td>
+                                    <td>{% if incident.alert %}<span class="badge bg-danger">Yes</span>{% else %}<span class="badge bg-success">No</span>{% endif %}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                    <p class="mb-0">No predictions yet. Start with the hazard prediction page.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card card-custom h-100">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Risk Trend</h5>
+                <canvas id="dashboardChart" height="220"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const ctx = document.getElementById('dashboardChart');
+new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: ['Flood', 'Landslide', 'Storm'],
+        datasets: [{
+            label: 'Recent Predictions',
+            data: [12, 8, 6],
+            backgroundColor: ['#0d6efd', '#198754', '#dc3545'],
+            borderRadius: 8,
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            y: { beginAtZero: true, max: 20 }
+        }
+    }
+});
+</script>
+<script>
+// Auto-refresh every 60 seconds to fetch live external data
+setTimeout(function(){
+    location.reload();
+}, 60000);
+</script>
+{% endblock %}
