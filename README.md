@@ -1,2 +1,0 @@
-# DICS_AI_SYSTEM
-tite
