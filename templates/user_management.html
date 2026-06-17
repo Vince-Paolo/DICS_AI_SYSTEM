@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+
+{% block title %}User Management | DICS AI{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card card-custom">
+            <div class="card-body">
+                <h2 class="card-title mb-3"><i class="bi bi-people-fill me-2"></i>User Management</h2>
+                
+                {% if users %}
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>{{ user.username }}</td>
+                            <td>{{ user.email }}</td>
+                            <td>{{ user.role }}</td>
+                            <td>
+                                {% if user.is_disabled %}
+                                    <span class="badge bg-secondary">Disabled</span>
+                                {% else %}
+                                    <span class="badge bg-success">Active</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p>No users found.</p>
+                {% endif %}
+                
+                <a href="/dashboard" class="btn btn-outline-secondary mt-3">Back to Dashboard</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

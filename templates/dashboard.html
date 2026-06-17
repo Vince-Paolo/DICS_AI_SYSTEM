@@ -1,0 +1,222 @@
+<!-- Generated at: 2024-01-15 03:37:00 -->
+{% extends 'base.html' %}
+
+{% block title %}Operational Center Console | DICS AI{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="p-3 bg-dark border border-secondary rounded d-flex align-items-center justify-content-between">
+            <div>
+                <h1 class="h4 mb-0 text-white font-monospace uppercase"><i class="bi bi-activity text-danger me-2"></i>System Console Matrix</h1>
+                <p class="text-muted small mb-0 font-monospace">Operator Interfere Active: <span class="text-info">{{ username }}</span></p>
+            </div>
+            <div class="spinner-grow text-success spinner-grow-sm" role="status"><span class="visually-hidden">Live Telemetry</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Cards Row -->
+<div class="row g-3 mb-4">
+    <!-- Total Active Alerts Card -->
+    <div class="col-md-6 col-lg-3">
+        <div class="card card-custom border-warning h-100">
+            <div class="card-body d-flex align-items-center justify-content-between" style="min-height: 120px;">
+                <div>
+                    <p class="text-muted small text-uppercase mb-1">Active Alerts</p>
+                    <h3 class="text-warning font-monospace fw-bold mb-0">{{ alert_count }}</h3>
+                </div>
+                <div class="fs-4 text-warning">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Total Incidents Card -->
+    <div class="col-md-6 col-lg-3">
+        <div class="card card-custom border-info h-100">
+            <div class="card-body d-flex align-items-center justify-content-between" style="min-height: 120px;">
+                <div>
+                    <p class="text-muted small text-uppercase mb-1">Total Incidents</p>
+                    <h3 class="text-info font-monospace fw-bold mb-0">{{ total_incidents }}</h3>
+                </div>
+                <div class="fs-4 text-info">
+                    <i class="bi bi-bar-chart-fill"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Latest Risk Score Card -->
+    <div class="col-md-6 col-lg-3">
+        <div class="card card-custom border-danger h-100">
+            <div class="card-body d-flex align-items-center justify-content-between" style="min-height: 120px;">
+                <div>
+                    <p class="text-muted small text-uppercase mb-1">Latest Risk Score</p>
+                    <h3 class="text-danger font-monospace fw-bold mb-0">{{ "%.0f"|format(latest_risk_score) }}%</h3>
+                </div>
+                <div class="fs-4 text-danger">
+                    <i class="bi bi-thermometer-high"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Latest Earthquake Magnitude Card -->
+    <div class="col-md-6 col-lg-3">
+        <div class="card card-custom border-secondary h-100">
+            <div class="card-body d-flex align-items-center justify-content-between" style="min-height: 120px;">
+                <div>
+                    <p class="text-muted small text-uppercase mb-1">Earthquake Magnitude</p>
+                    <h3 class="text-secondary font-monospace fw-bold mb-0">{{ "%.1f"|format(latest_earthquake_magnitude) }}</h3>
+                </div>
+                <div class="fs-4 text-secondary">
+                    <i class="bi bi-tsunami"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="card card-custom p-3 border-start border-4 border-info">
+            <small class="text-muted text-uppercase fw-bold font-monospace">Total Telemetry Sweeps</small>
+            <p class="display-6 my-2 font-monospace text-white fw-bold">{{ total_incidents }}</p>
+            <span class="small text-muted font-monospace"><i class="bi bi-arrow-repeat"></i> Processing Sensor Runs</span>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card card-custom p-3 border-start border-4 border-danger">
+            <small class="text-muted text-uppercase fw-bold font-monospace">Active Danger Advisories</small>
+            <p class="display-6 my-2 font-monospace text-danger fw-bold">{{ alert_count }}</p>
+            <span class="small text-muted font-monospace"><i class="bi bi-broadcast"></i> Syncing to Regional Nodes</span>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card card-custom p-3 border-start border-4 border-primary">
+            <small class="text-muted text-uppercase fw-bold font-monospace">System Commands</small>
+            <div class="mt-2 pt-1">
+                <a href="/ai-prediction" class="btn btn-brand w-100 mb-2 btn-sm"><i class="bi bi-calculator me-1"></i> Compute Risk Model</a>
+                <a href="/hazard-map" class="btn btn-outline-secondary border-secondary text-white w-100 btn-sm font-monospace"><i class="bi bi-geo me-1"></i> Inspect Radar Grid</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card card-custom h-100">
+            <div class="card-body">
+                <h5 class="card-title">Realtime Critical Inferences</h5>
+                {% if incidents %}
+                <div class="table-responsive">
+                    <table class="table table-custom align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Hazard Class</th>
+                                <th>Severity Risk Profile</th>
+                                <th>Confidence Vector</th>
+                                <th>Broadcast Warning</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for incident in incidents[:5] %}
+                                <tr class="font-monospace">
+                                    <td class="text-white fw-bold">{{ incident.hazard_type|upper }}</td>
+                                    <td>
+                                        {% if incident.level|lower == 'high' %}
+                                            <span class="badge badge-high px-2 py-1">CRITICAL</span>
+                                        {% elif incident.level|lower == 'moderate' %}
+                                            <span class="badge badge-mod px-2 py-1">ELEVATED</span>
+                                        {% else %}
+                                            <span class="badge badge-low px-2 py-1">NOMINAL</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-info font-monospace fw-bold">{{ '%.1f'|format(incident.score) }}%</td>
+                                    <td>
+                                        {% if incident.alert %}
+                                            <span class="text-danger fw-bold animate-pulse"><i class="bi bi-exclamation-octagon-fill me-1"></i>LIVE BROADCAST</span>
+                                        {% else %}
+                                            <span class="text-muted">Standby Monitor</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                    <p class="text-muted font-monospace p-3 small mb-0">No metrics collected. Process data fields to activate.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card card-custom h-100">
+            <div class="card-body">
+                <h5 class="card-title">Distribution Spread Matrix</h5>
+                <div class="pt-2">
+                    <canvas id="dashboardChart" height="220"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Fetch realtime data asynchronously (non-blocking)
+fetch('/api/realtime-data')
+    .then(response => response.json())
+    .then(data => {
+        console.log('Realtime data loaded:', data);
+        // Update weather display if available
+        if (data.weather) {
+            updateWeatherDisplay(data.weather);
+        }
+        // Update earthquake display if available
+        if (data.earthquakes && data.earthquakes.length > 0) {
+            updateEarthquakeDisplay(data.earthquakes);
+        }
+    })
+    .catch(error => console.log('Could not load realtime data:', error));
+
+function updateWeatherDisplay(weather) {
+    // Placeholder for weather display updates
+    console.log('Weather:', weather);
+}
+
+function updateEarthquakeDisplay(earthquakes) {
+    // Placeholder for earthquake display updates
+    console.log('Earthquakes:', earthquakes);
+}
+
+const ctx = document.getElementById('dashboardChart');
+new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: ['Flood Core', 'Landslide Vector', 'Storm System'],
+        datasets: [{
+            label: 'Incident Volume',
+            data: [12, 8, 6],
+            backgroundColor: ['#2563EB', '#F59E0B', '#EF4444'],
+            borderRadius: 4,
+            borderWidth: 0
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+            x: { grid: { display: false }, ticks: { color: '#9CA3AF', font: { family: 'monospace' } } },
+            y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9CA3AF', font: { family: 'monospace' } } }
+        }
+    }
+});
+</script>
+{% endblock %}
