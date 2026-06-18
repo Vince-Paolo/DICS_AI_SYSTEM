@@ -20,7 +20,7 @@
             <div class="menu-section-label sidebar-text-show">
                 <i class="bi bi-collection-play me-2"></i>Main
             </div>
-            
+
             <nav class="sidebar-nav">
                 <a href="/dashboard" class="sidebar-nav-link {{ 'active' if request.path == '/dashboard' else '' }}" data-tooltip="Dashboard">
                     <i class="bi bi-speedometer2"></i>
@@ -32,46 +32,59 @@
                     <span class="nav-text sidebar-text-show">Hazard Map</span>
                 </a>
 
-                {% if sidebar_variant == 'hazard' %}
-                    {% if session.role in ['admin', 'agency_coordinator'] %}
-                        <a href="/alerts" class="sidebar-nav-link {{ 'active' if request.path == '/alerts' else '' }}" data-tooltip="Active Alerts">
-                            <i class="bi bi-exclamation-triangle-fill"></i>
-                            <span class="nav-text sidebar-text-show">Active Alerts</span>
-                        </a>
+                {% if session.role in ['admin', 'agency_coordinator'] %}
+                {# ── ADMIN / AGENCY COORDINATOR LINKS ── #}
+                <a href="/alerts" class="sidebar-nav-link {{ 'active' if request.path == '/alerts' else '' }}" data-tooltip="Active Alerts">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <span class="nav-text sidebar-text-show">Active Alerts</span>
+                </a>
 
-                        <a href="/ics" class="sidebar-nav-link {{ 'active' if request.path == '/ics' else '' }}" data-tooltip="Incident Command">
-                            <i class="bi bi-clipboard-check"></i>
-                            <span class="nav-text sidebar-text-show">Incident Command</span>
-                        </a>
-                    {% endif %}
+                <a href="/incidents" class="sidebar-nav-link {{ 'active' if request.path == '/incidents' else '' }}" data-tooltip="Incident History">
+                    <i class="bi bi-clock-history"></i>
+                    <span class="nav-text sidebar-text-show">Incident History</span>
+                </a>
 
-                    <a href="/protocols" class="sidebar-nav-link {{ 'active' if request.path == '/protocols' else '' }}" data-tooltip="ICS Protocols">
-                        <i class="bi bi-file-text"></i>
-                        <span class="nav-text sidebar-text-show">ICS Protocols</span>
-                    </a>
+                <a href="/ics" class="sidebar-nav-link {{ 'active' if request.path == '/ics' else '' }}" data-tooltip="Incident Command">
+                    <i class="bi bi-clipboard-check"></i>
+                    <span class="nav-text sidebar-text-show">Incident Command</span>
+                </a>
+
+                <a href="/protocols" class="sidebar-nav-link {{ 'active' if request.path == '/protocols' else '' }}" data-tooltip="ICS Protocols">
+                    <i class="bi bi-file-text"></i>
+                    <span class="nav-text sidebar-text-show">ICS Protocols</span>
+                </a>
+
+                {% if session.role == 'admin' %}
+                <a href="/user-management" class="sidebar-nav-link {{ 'active' if request.path == '/user-management' else '' }}" data-tooltip="User Management">
+                    <i class="bi bi-people-fill"></i>
+                    <span class="nav-text sidebar-text-show">User Management</span>
+                </a>
+                {% endif %}
+
                 {% else %}
-                    <a href="/citizen-alerts" class="sidebar-nav-link {{ 'active' if request.path == '/citizen-alerts' else '' }}" data-tooltip="Emergency Alerts">
-                        <i class="bi bi-bell-fill"></i>
-                        <span class="nav-text sidebar-text-show">Emergency Alerts</span>
-                        {% if alert_count is defined %}
-                            <span class="badge bg-danger rounded-circle ms-2 sidebar-text-show">{{ alert_count }}</span>
-                        {% endif %}
-                    </a>
+                {# ── CITIZEN LINKS ── #}
+                <a href="/citizen-alerts" class="sidebar-nav-link {{ 'active' if request.path == '/citizen-alerts' else '' }}" data-tooltip="Emergency Alerts">
+                    <i class="bi bi-bell-fill"></i>
+                    <span class="nav-text sidebar-text-show">Emergency Alerts</span>
+                    {% if alert_count is defined and alert_count > 0 %}
+                        <span class="badge bg-danger rounded-circle ms-2 sidebar-text-show">{{ alert_count }}</span>
+                    {% endif %}
+                </a>
 
-                    <a href="/citizen-report" class="sidebar-nav-link {{ 'active' if request.path == '/citizen-report' else '' }}" data-tooltip="Report Incident">
-                        <i class="bi bi-plus-circle-fill"></i>
-                        <span class="nav-text sidebar-text-show">Report Incident</span>
-                    </a>
+                <a href="/citizen-report" class="sidebar-nav-link {{ 'active' if request.path == '/citizen-report' else '' }}" data-tooltip="Report Incident">
+                    <i class="bi bi-plus-circle-fill"></i>
+                    <span class="nav-text sidebar-text-show">Report Incident</span>
+                </a>
 
-                    <a href="/citizen-status" class="sidebar-nav-link {{ 'active' if request.path == '/citizen-status' else '' }}" data-tooltip="Status Tracking">
-                        <i class="bi bi-clock-history"></i>
-                        <span class="nav-text sidebar-text-show">Status Tracking</span>
-                    </a>
+                <a href="/citizen-status" class="sidebar-nav-link {{ 'active' if request.path == '/citizen-status' else '' }}" data-tooltip="Status Tracking">
+                    <i class="bi bi-clock-history"></i>
+                    <span class="nav-text sidebar-text-show">Status Tracking</span>
+                </a>
 
-                    <a href="/citizen-resources" class="sidebar-nav-link {{ 'active' if request.path == '/citizen-resources' else '' }}" data-tooltip="Resources">
-                        <i class="bi bi-info-circle-fill"></i>
-                        <span class="nav-text sidebar-text-show">Resources & Info</span>
-                    </a>
+                <a href="/citizen-resources" class="sidebar-nav-link {{ 'active' if request.path == '/citizen-resources' else '' }}" data-tooltip="Resources & Info">
+                    <i class="bi bi-info-circle-fill"></i>
+                    <span class="nav-text sidebar-text-show">Resources & Info</span>
+                </a>
                 {% endif %}
             </nav>
         </div>

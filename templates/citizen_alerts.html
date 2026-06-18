@@ -4,11 +4,12 @@
 
 {% block content %}
 <div class="container-fluid">
-    <div class="row mt-4">
+    <div class="row">
         <div class="col-12">
+
             <!-- Alert Stats -->
-            <div class="row g-3 mb-5">
-                <div class="col-md-6 col-xl-4">
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
                     <div class="stat-card card-gradient-danger h-100">
                         <div class="d-flex align-items-center justify-content-between">
                             <div>
@@ -16,13 +17,13 @@
                                 <div class="stat-value">{{ alert_count }}</div>
                                 <div class="stat-description">Currently active emergency alerts</div>
                             </div>
-                            <div class="icon-badge icon-badge-warning">
+                            <div class="icon-badge" style="background: rgba(239,68,68,0.15); color:#FCA5A5; border:1px solid rgba(239,68,68,0.3);">
                                 <i class="bi bi-exclamation-triangle-fill"></i>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-6 col-xl-4">
+                <div class="col-md-4">
                     <div class="stat-card card-gradient-warning h-100">
                         <div class="d-flex align-items-center justify-content-between">
                             <div>
@@ -36,7 +37,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-6 col-xl-4">
+                <div class="col-md-4">
                     <div class="stat-card card-gradient-primary h-100">
                         <div class="d-flex align-items-center justify-content-between">
                             <div>
@@ -52,11 +53,11 @@
                 </div>
             </div>
 
-            <!-- Alerts Section -->
+            <!-- Emergency Notifications -->
             <div class="card card-custom shadow-lg mb-4">
-                <div class="card-body">
+                <div class="card-body p-4">
                     <div class="section-header">
-                        <span class="section-header-icon"><i class="bi bi-bell"></i></span>
+                        <span class="section-header-icon"><i class="bi bi-bell-fill"></i></span>
                         <h4>Emergency Notifications</h4>
                         <div class="ms-auto">
                             <button class="btn btn-outline-primary btn-sm" onclick="location.reload()">
@@ -68,29 +69,46 @@
                     {% if alerts %}
                         <div class="vstack gap-3">
                             {% for alert in alerts %}
-                                <div class="alert-enhanced {% if alert.level|lower == 'high' %}alert-enhanced-danger{% elif alert.level|lower == 'moderate' %}alert-enhanced-warning{% else %}alert-enhanced-info{% endif %} p-4 mb-3" role="alert" aria-live="assertive">
-                                    <div class="d-flex justify-content-between align-items-start">
+                                <div style="padding: 1rem; border-radius: 8px;
+                                    {% if alert.level|lower == 'high' %}
+                                        background: rgba(239, 68, 68, 0.08); border-left: 3px solid #EF4444;
+                                    {% elif alert.level|lower == 'moderate' %}
+                                        background: rgba(245, 158, 11, 0.08); border-left: 3px solid #F59E0B;
+                                    {% else %}
+                                        background: rgba(59, 130, 246, 0.08); border-left: 3px solid #3B82F6;
+                                    {% endif %}"
+                                    role="alert" aria-live="assertive">
+                                    <div class="d-flex align-items-start justify-content-between gap-3">
                                         <div class="flex-grow-1">
                                             <div class="d-flex align-items-center gap-2 mb-2">
                                                 {% if alert.level|lower == 'high' %}
-                                                    <span class="badge badge-status-active" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.1)) !important; border-color: #EF4444 !important; color: #FCA5A5 !important;">
+                                                    <span style="padding: 0.35em 0.65em; background: rgba(239,68,68,0.2); color: #FCA5A5; border: 1px solid rgba(239,68,68,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">
                                                         <i class="bi bi-exclamation-octagon-fill me-1"></i>CRITICAL
                                                     </span>
                                                 {% elif alert.level|lower == 'moderate' %}
-                                                    <span class="badge badge-status-pending">
+                                                    <span style="padding: 0.35em 0.65em; background: rgba(245,158,11,0.2); color: #FCD34D; border: 1px solid rgba(245,158,11,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">
                                                         <i class="bi bi-exclamation-triangle-fill me-1"></i>WARNING
                                                     </span>
                                                 {% else %}
-                                                    <span class="badge badge-status-active">
+                                                    <span style="padding: 0.35em 0.65em; background: rgba(59,130,246,0.2); color: #93C5FD; border: 1px solid rgba(59,130,246,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">
                                                         <i class="bi bi-info-circle-fill me-1"></i>INFO
                                                     </span>
                                                 {% endif %}
-                                                <strong style="font-size: 1.05rem;">{{ alert.hazard_type|upper }}</strong>
+                                                <strong>
+                                                    {% if alert.hazard_type|lower == 'flood' %}🌊
+                                                    {% elif alert.hazard_type|lower == 'landslide' %}🏔️
+                                                    {% elif alert.hazard_type|lower == 'earthquake' %}📍
+                                                    {% elif alert.hazard_type|lower == 'storm' %}⛈️
+                                                    {% elif alert.hazard_type|lower == 'fire' %}🔥
+                                                    {% else %}⚠️
+                                                    {% endif %}
+                                                    {{ alert.hazard_type|upper }}
+                                                </strong>
                                             </div>
-                                            <p class="mb-2">{{ alert.message }}</p>
-                                            <div class="d-flex gap-3 align-items-center">
-                                                <small><i class="bi bi-clock me-1"></i>{{ alert.created_at.strftime('%b %d, %Y %I:%M %p') if alert.created_at else 'N/A' }}</small>
-                                                <small><i class="bi bi-percent me-1"></i>Risk Score: <strong>{{ "%.0f"|format(alert.score) }}%</strong></small>
+                                            <p class="mb-2 small">{{ alert.message }}</p>
+                                            <div class="d-flex gap-3 align-items-center flex-wrap">
+                                                <small class="text-muted"><i class="bi bi-clock me-1"></i>{{ alert.created_at.strftime('%b %d, %Y %I:%M %p') if alert.created_at else 'N/A' }}</small>
+                                                <small class="text-muted"><i class="bi bi-speedometer2 me-1"></i>Risk Score: <strong class="text-info">{{ "%.0f"|format(alert.score) }}%</strong></small>
                                             </div>
                                         </div>
                                     </div>
@@ -98,20 +116,20 @@
                             {% endfor %}
                         </div>
                     {% else %}
-                        <div class="alert alert-enhanced alert-enhanced-info text-center py-5 mb-0" role="alert" aria-live="assertive">
+                        <div class="text-center py-5">
                             <div style="font-size: 2.5rem; margin-bottom: 1rem;">✓</div>
                             <h5 class="mb-2">No Active Alerts</h5>
-                            <p class="mb-0">No active emergency alerts at this time. Stay safe and vigilant.</p>
+                            <p class="text-muted mb-0">No active emergency alerts at this time. Stay safe and vigilant.</p>
                         </div>
                     {% endif %}
                 </div>
             </div>
 
             <!-- Guidelines Section -->
-            <div class="row g-3 citizen-highlight-row">
-                <div class="col-md-6 col-xl-5">
+            <div class="row g-3">
+                <div class="col-md-6">
                     <div class="card card-custom card-gradient-primary h-100">
-                        <div class="card-body d-flex flex-column">
+                        <div class="card-body p-4">
                             <div class="d-flex align-items-center gap-2 mb-3">
                                 <div class="icon-badge icon-badge-primary">
                                     <i class="bi bi-info-circle"></i>
@@ -119,49 +137,50 @@
                                 <h5 class="mb-0">Alert Severity Levels</h5>
                             </div>
                             <div class="vstack gap-3">
-                                <div class="mb-3 p-2 rounded" style="background: rgba(239, 68, 68, 0.08); border-left: 3px solid #EF4444;">
-                                    <strong style="color: #FCA5A5;">🔴 HIGH (Critical):</strong>
-                                    <p class="small mb-0 mt-1">Immediate threat to life. Evacuate now if ordered by authorities.</p>
+                                <div style="padding: 1rem; background: rgba(239, 68, 68, 0.08); border-radius: 8px; border-left: 3px solid #EF4444;">
+                                    <h6 class="mb-1" style="color: #FCA5A5;"><i class="bi bi-exclamation-octagon-fill me-2"></i>HIGH — Critical</h6>
+                                    <p class="small text-muted mb-0">Immediate threat to life. Evacuate now if ordered by authorities.</p>
                                 </div>
-                                <div class="mb-3 p-2 rounded" style="background: rgba(245, 158, 11, 0.08); border-left: 3px solid #F59E0B;">
-                                    <strong style="color: #FCD34D;">🟡 MODERATE (Warning):</strong>
-                                    <p class="small mb-0 mt-1">Significant danger present. Prepare for potential evacuation.</p>
+                                <div style="padding: 1rem; background: rgba(245, 158, 11, 0.08); border-radius: 8px; border-left: 3px solid #F59E0B;">
+                                    <h6 class="mb-1" style="color: #FCD34D;"><i class="bi bi-exclamation-triangle-fill me-2"></i>MODERATE — Warning</h6>
+                                    <p class="small text-muted mb-0">Significant danger present. Prepare for potential evacuation.</p>
                                 </div>
-                                <div class="p-2 rounded" style="background: rgba(59, 130, 246, 0.08); border-left: 3px solid #3B82F6;">
-                                    <strong style="color: #93C5FD;">🟢 LOW (Info):</strong>
-                                    <p class="small mb-0 mt-1">Manageable risk level. Stay alert and monitor situation.</p>
+                                <div style="padding: 1rem; background: rgba(59, 130, 246, 0.08); border-radius: 8px; border-left: 3px solid #3B82F6;">
+                                    <h6 class="mb-1" style="color: #93C5FD;"><i class="bi bi-info-circle-fill me-2"></i>LOW — Info</h6>
+                                    <p class="small text-muted mb-0">Manageable risk level. Stay alert and monitor the situation.</p>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-6 col-xl-5">
+                <div class="col-md-6">
                     <div class="card card-custom card-gradient-success h-100">
-                        <div class="card-body d-flex flex-column">
+                        <div class="card-body p-4">
                             <div class="d-flex align-items-center gap-2 mb-3">
                                 <div class="icon-badge icon-badge-success">
                                     <i class="bi bi-hand-thumbs-up"></i>
                                 </div>
                                 <h5 class="mb-0">What To Do</h5>
                             </div>
-                            <ul class="small text-muted mb-0 ps-3">
-                                <li class="mb-2">
-                                    <i class="bi bi-check2 me-2" style="color: var(--hazard-low);"></i>Enable notifications for real-time updates
-                                </li>
-                                <li class="mb-2">
-                                    <i class="bi bi-check2 me-2" style="color: var(--hazard-low);"></i>Know your evacuation routes
-                                </li>
-                                <li class="mb-2">
-                                    <i class="bi bi-check2 me-2" style="color: var(--hazard-low);"></i>Keep emergency contacts readily available
-                                </li>
-                                <li>
-                                    <i class="bi bi-check2 me-2" style="color: var(--hazard-low);"></i>Follow official guidance from authorities
-                                </li>
-                            </ul>
+                            <div class="vstack gap-3">
+                                <div style="padding: 1rem; background: rgba(16, 185, 129, 0.08); border-radius: 8px; border-left: 3px solid #10B981;">
+                                    <h6 class="mb-1" style="color: #86EFAC;"><i class="bi bi-bell-fill me-2"></i>Stay Informed</h6>
+                                    <p class="small text-muted mb-0">Enable notifications and check this page regularly for real-time updates.</p>
+                                </div>
+                                <div style="padding: 1rem; background: rgba(16, 185, 129, 0.08); border-radius: 8px; border-left: 3px solid #10B981;">
+                                    <h6 class="mb-1" style="color: #86EFAC;"><i class="bi bi-sign-turn-right-fill me-2"></i>Know Your Routes</h6>
+                                    <p class="small text-muted mb-0">Know your evacuation routes and nearest designated evacuation center.</p>
+                                </div>
+                                <div style="padding: 1rem; background: rgba(16, 185, 129, 0.08); border-radius: 8px; border-left: 3px solid #10B981;">
+                                    <h6 class="mb-1" style="color: #86EFAC;"><i class="bi bi-shield-check me-2"></i>Follow Authorities</h6>
+                                    <p class="small text-muted mb-0">Always follow official guidance from DRRMO and local government units.</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
+
         </div>
     </div>
 </div>
