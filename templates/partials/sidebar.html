@@ -55,7 +55,7 @@
                 </a>
 
                 {% if session.role == 'admin' %}
-                <a href="/user-management" class="sidebar-nav-link {{ 'active' if request.path == '/user-management' else '' }}" data-tooltip="User Management">
+                <a href="/admin/users" class="sidebar-nav-link {{ 'active' if request.path == '/admin/users' else '' }}" data-tooltip="User Management">
                     <i class="bi bi-people-fill"></i>
                     <span class="nav-text sidebar-text-show">User Management</span>
                 </a>
