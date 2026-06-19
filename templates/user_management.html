@@ -1,48 +1,470 @@
 {% extends 'base.html' %}
 
-{% block title %}User Management | DICS AI{% endblock %}
+{% block title %}Admin Panel | DICS AI{% endblock %}
 
 {% block content %}
-<div class="row">
+
+<!-- Header -->
+<div class="row mb-4">
     <div class="col-12">
         <div class="card card-custom">
             <div class="card-body">
-                <h2 class="card-title mb-3"><i class="bi bi-people-fill me-2"></i>User Management</h2>
-                
-                {% if users %}
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Username</th>
-                            <th>Email</th>
-                            <th>Role</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for user in users %}
-                        <tr>
-                            <td>{{ user.username }}</td>
-                            <td>{{ user.email }}</td>
-                            <td>{{ user.role }}</td>
-                            <td>
-                                {% if user.is_disabled %}
-                                    <span class="badge bg-secondary">Disabled</span>
-                                {% else %}
-                                    <span class="badge bg-success">Active</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                {% else %}
-                <p>No users found.</p>
-                {% endif %}
-                
-                <a href="/dashboard" class="btn btn-outline-secondary mt-3">Back to Dashboard</a>
+                <div class="section-header">
+                    <span class="section-header-icon"><i class="bi bi-shield-lock-fill"></i></span>
+                    <h4>Admin Control Panel</h4>
+                </div>
+                <p class="text-muted mb-0">Manage users, roles, system configuration, and platform health.</p>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Flash Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="alert alert-enhanced {% if category == 'success' %}alert-enhanced-info{% elif category == 'error' or category == 'danger' %}alert-enhanced-danger{% else %}alert-enhanced-info{% endif %} mb-4 d-flex align-items-center gap-2" role="alert">
+                {% if category == 'success' %}<i class="bi bi-check-circle-fill text-success"></i>
+                {% else %}<i class="bi bi-exclamation-circle-fill text-danger"></i>{% endif %}
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+<!-- Summary Stats -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card card-gradient-primary h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-label">Total Users</div>
+                    <div class="stat-value">{{ users|length }}</div>
+                    <div class="stat-description">Registered accounts</div>
+                </div>
+                <div class="icon-badge icon-badge-primary">
+                    <i class="bi bi-people-fill"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card card-gradient-success h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-label">Active Users</div>
+                    <div class="stat-value">{{ users|rejectattr('is_disabled')|list|length }}</div>
+                    <div class="stat-description">Currently enabled accounts</div>
+                </div>
+                <div class="icon-badge icon-badge-success">
+                    <i class="bi bi-person-check-fill"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card card-gradient-warning h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-label">Admins</div>
+                    <div class="stat-value">{{ users|selectattr('role', 'equalto', 'admin')|list|length }}</div>
+                    <div class="stat-description">Administrator accounts</div>
+                </div>
+                <div class="icon-badge icon-badge-warning">
+                    <i class="bi bi-shield-fill"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card card-gradient-danger h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-label">Disabled</div>
+                    <div class="stat-value">{{ users|selectattr('is_disabled')|list|length }}</div>
+                    <div class="stat-description">Suspended accounts</div>
+                </div>
+                <div class="icon-badge" style="background: rgba(239,68,68,0.15); color:#FCA5A5; border:1px solid rgba(239,68,68,0.3);">
+                    <i class="bi bi-person-x-fill"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Content: User Table + Add User -->
+<div class="row g-4 mb-4">
+
+    <!-- User Table -->
+    <div class="col-lg-8">
+        <div class="card card-custom shadow-lg h-100">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <div class="icon-badge icon-badge-primary">
+                        <i class="bi bi-table"></i>
+                    </div>
+                    <h5 class="mb-0">User Accounts</h5>
+                    <div class="ms-auto">
+                        <button class="btn btn-outline-primary btn-sm" onclick="location.reload()">
+                            <i class="bi bi-arrow-repeat me-1"></i>Refresh
+                        </button>
+                    </div>
+                </div>
+
+                {% if users %}
+                <div class="table-responsive">
+                    <table class="table table-enhanced align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Role</th>
+                                <th>Agency</th>
+                                <th>Status</th>
+                                <th>Joined</th>
+                                <th class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in users %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div style="width:36px; height:36px; border-radius:50%; background: rgba(59,130,246,0.15); border:1px solid rgba(59,130,246,0.3); display:flex; align-items:center; justify-content:center; color:#93C5FD; font-weight:700; font-size:0.85rem; flex-shrink:0;">
+                                            {{ user.username[0]|upper }}
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold text-white">{{ user.username }}</div>
+                                            <small class="text-muted">{{ user.email }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if user.role == 'admin' %}
+                                        <span style="padding: 0.35em 0.65em; background: rgba(245,158,11,0.2); color: #FCD34D; border: 1px solid rgba(245,158,11,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">
+                                            <i class="bi bi-shield-fill me-1"></i>Admin
+                                        </span>
+                                    {% elif user.role == 'agency_coordinator' %}
+                                        <span style="padding: 0.35em 0.65em; background: rgba(59,130,246,0.2); color: #93C5FD; border: 1px solid rgba(59,130,246,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">
+                                            <i class="bi bi-diagram-3-fill me-1"></i>Coordinator
+                                        </span>
+                                    {% else %}
+                                        <span style="padding: 0.35em 0.65em; background: rgba(16,185,129,0.2); color: #86EFAC; border: 1px solid rgba(16,185,129,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">
+                                            <i class="bi bi-person-fill me-1"></i>Citizen
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td><small class="text-muted">{{ user.agency if user.agency else '—' }}</small></td>
+                                <td>
+                                    {% if user.is_disabled %}
+                                        <span style="padding: 0.35em 0.65em; background: rgba(107,114,128,0.2); color: #9CA3AF; border: 1px solid rgba(107,114,128,0.4); border-radius: 6px; font-size: 0.75em; font-weight:700;">
+                                            <i class="bi bi-x-circle-fill me-1"></i>Disabled
+                                        </span>
+                                    {% else %}
+                                        <span style="padding: 0.35em 0.65em; background: rgba(16,185,129,0.2); color: #86EFAC; border: 1px solid rgba(16,185,129,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">
+                                            <i class="bi bi-check-circle-fill me-1"></i>Active
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td><small class="text-muted">{{ user.created_at.strftime('%b %d, %Y') if user.created_at else '—' }}</small></td>
+                                <td class="text-center">
+                                    <div class="d-flex gap-1 justify-content-center">
+                                        <!-- Edit Button -->
+                                        <button class="btn btn-sm btn-outline-primary" title="Edit User"
+                                            onclick="openEditModal({{ user.id }}, '{{ user.username }}', '{{ user.full_name or '' }}', '{{ user.contact_number or '' }}', '{{ user.agency or '' }}', '{{ user.role }}')">
+                                            <i class="bi bi-pencil-fill"></i>
+                                        </button>
+                                        <!-- Toggle Status -->
+                                        <form method="POST" action="/admin/users/{{ user.id }}/toggle" style="display:inline;">
+                                            <button type="submit" class="btn btn-sm {% if user.is_disabled %}btn-outline-success{% else %}btn-outline-danger{% endif %}"
+                                                title="{{ 'Enable' if user.is_disabled else 'Disable' }} user"
+                                                onclick="return confirm('{{ 'Enable' if user.is_disabled else 'Disable' }} user {{ user.username }}?')">
+                                                <i class="bi {% if user.is_disabled %}bi-person-check-fill{% else %}bi-person-x-fill{% endif %}"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <div style="font-size: 2.5rem; margin-bottom: 1rem;">👥</div>
+                    <h5 class="mb-2">No Users Found</h5>
+                    <p class="text-muted mb-0">No accounts have been registered yet.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Add User Form -->
+    <div class="col-lg-4">
+        <div class="card card-custom shadow-lg h-100">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <div class="icon-badge icon-badge-success">
+                        <i class="bi bi-person-plus-fill"></i>
+                    </div>
+                    <h5 class="mb-0">Add New User</h5>
+                </div>
+                <form method="POST" action="/admin/users/add">
+                    <div class="mb-3">
+                        <label class="form-label"><i class="bi bi-person me-1"></i>Username <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="username" placeholder="e.g. jdelacruz" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label"><i class="bi bi-envelope me-1"></i>Email <span class="text-danger">*</span></label>
+                        <input type="email" class="form-control" name="email" placeholder="email@example.com" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label"><i class="bi bi-lock me-1"></i>Password <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" name="password" placeholder="Minimum 8 characters" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label"><i class="bi bi-card-text me-1"></i>Full Name</label>
+                        <input type="text" class="form-control" name="full_name" placeholder="Juan Dela Cruz">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label"><i class="bi bi-phone me-1"></i>Contact Number</label>
+                        <input type="tel" class="form-control" name="contact_number" placeholder="09XXXXXXXXX"
+                               pattern="^(09\d{9}|\+639\d{9})$" inputmode="numeric"
+                               oninput="this.value = this.value.replace(/[^0-9+]/g, '')" maxlength="13">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label"><i class="bi bi-building me-1"></i>Agency</label>
+                        <input type="text" class="form-control" name="agency" placeholder="e.g. DRRMO Batangas">
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label"><i class="bi bi-shield me-1"></i>Role <span class="text-danger">*</span></label>
+                        <select class="form-select" name="role" required>
+                            <option value="user">👤 Citizen</option>
+                            <option value="agency_coordinator">🏢 Agency Coordinator</option>
+                            <option value="admin">🛡️ Admin</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary-modern btn-modern w-100">
+                        <i class="bi bi-plus-circle me-2"></i>Create User
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Role Guide + System Info -->
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="card card-custom h-100">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <div class="icon-badge icon-badge-warning">
+                        <i class="bi bi-diagram-3-fill"></i>
+                    </div>
+                    <h5 class="mb-0">Role Assignment Guide</h5>
+                </div>
+                <div class="vstack gap-3">
+                    <div style="padding: 1rem; background: rgba(245,158,11,0.08); border-radius: 8px; border-left: 3px solid #F59E0B;">
+                        <h6 class="mb-1" style="color: #FCD34D;"><i class="bi bi-shield-fill me-2"></i>Admin</h6>
+                        <p class="small text-muted mb-0">Full system access. Manages users, roles, config, and platform health.</p>
+                    </div>
+                    <div style="padding: 1rem; background: rgba(59,130,246,0.08); border-radius: 8px; border-left: 3px solid #3B82F6;">
+                        <h6 class="mb-1" style="color: #93C5FD;"><i class="bi bi-diagram-3-fill me-2"></i>Agency Coordinator</h6>
+                        <p class="small text-muted mb-0">Manages alerts, ICS operations, and response team coordination.</p>
+                    </div>
+                    <div style="padding: 1rem; background: rgba(16,185,129,0.08); border-radius: 8px; border-left: 3px solid #10B981;">
+                        <h6 class="mb-1" style="color: #86EFAC;"><i class="bi bi-person-fill me-2"></i>Citizen</h6>
+                        <p class="small text-muted mb-0">Can submit incident reports, view alerts, and track report status.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card card-custom h-100">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <div class="icon-badge" style="background: rgba(139,92,246,0.15); color:#C4B5FD; border:1px solid rgba(139,92,246,0.3);">
+                        <i class="bi bi-activity"></i>
+                    </div>
+                    <h5 class="mb-0">Platform Health</h5>
+                </div>
+                <div class="vstack gap-3">
+                    <div style="padding: 1rem; background: rgba(16,185,129,0.08); border-radius: 8px; border-left: 3px solid #10B981;">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <h6 class="mb-0" style="color: #86EFAC;"><i class="bi bi-database-fill me-2"></i>Database</h6>
+                            <span style="padding: 0.35em 0.65em; background: rgba(16,185,129,0.2); color: #86EFAC; border: 1px solid rgba(16,185,129,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">Online</span>
+                        </div>
+                    </div>
+                    <div style="padding: 1rem; background: rgba(16,185,129,0.08); border-radius: 8px; border-left: 3px solid #10B981;">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <h6 class="mb-0" style="color: #86EFAC;"><i class="bi bi-cloud-fill me-2"></i>Weather API</h6>
+                            <span style="padding: 0.35em 0.65em; background: rgba(16,185,129,0.2); color: #86EFAC; border: 1px solid rgba(16,185,129,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">Connected</span>
+                        </div>
+                    </div>
+                    <div style="padding: 1rem; background: rgba(16,185,129,0.08); border-radius: 8px; border-left: 3px solid #10B981;">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <h6 class="mb-0" style="color: #86EFAC;"><i class="bi bi-cpu-fill me-2"></i>AI Prediction Engine</h6>
+                            <span style="padding: 0.35em 0.65em; background: rgba(16,185,129,0.2); color: #86EFAC; border: 1px solid rgba(16,185,129,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">Running</span>
+                        </div>
+                    </div>
+                    <div style="padding: 1rem; background: rgba(16,185,129,0.08); border-radius: 8px; border-left: 3px solid #10B981;">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <h6 class="mb-0" style="color: #86EFAC;"><i class="bi bi-geo-alt-fill me-2"></i>Hazard Map</h6>
+                            <span style="padding: 0.35em 0.65em; background: rgba(16,185,129,0.2); color: #86EFAC; border: 1px solid rgba(16,185,129,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">Active</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Audit Log + Security Settings -->
+<div class="row g-4">
+    <div class="col-md-7">
+        <div class="card card-custom h-100">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <div class="icon-badge icon-badge-primary">
+                        <i class="bi bi-journal-text"></i>
+                    </div>
+                    <h5 class="mb-0">Audit Log</h5>
+                    <span class="ms-2 small text-muted">(Recent Activity)</span>
+                </div>
+                <div class="vstack gap-2">
+                    {% for user in users[:5] %}
+                    <div style="padding: 0.75rem 1rem; background: rgba(59,130,246,0.05); border-radius: 8px; border-left: 3px solid rgba(59,130,246,0.3);">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <span class="small fw-bold text-white">{{ user.username }}</span>
+                                <span class="small text-muted ms-2">account registered</span>
+                            </div>
+                            <small class="text-muted">{{ user.created_at.strftime('%b %d, %Y') if user.created_at else '—' }}</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% if not users %}
+                    <div class="text-center py-3">
+                        <p class="text-muted small mb-0">No activity logged yet.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-5">
+        <div class="card card-custom h-100">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <div class="icon-badge" style="background: rgba(239,68,68,0.15); color:#FCA5A5; border:1px solid rgba(239,68,68,0.3);">
+                        <i class="bi bi-gear-fill"></i>
+                    </div>
+                    <h5 class="mb-0">Security Settings</h5>
+                </div>
+                <div class="vstack gap-3">
+                    <div style="padding: 1rem; background: rgba(59,130,246,0.08); border-radius: 8px; border-left: 3px solid #3B82F6;">
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <h6 class="mb-0 small" style="color:#93C5FD;"><i class="bi bi-lock-fill me-2"></i>Require Email Verification</h6>
+                            <span class="badge bg-success" style="font-size:0.7em;">ON</span>
+                        </div>
+                        <p class="small text-muted mb-0">New users must verify email before login.</p>
+                    </div>
+                    <div style="padding: 1rem; background: rgba(59,130,246,0.08); border-radius: 8px; border-left: 3px solid #3B82F6;">
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <h6 class="mb-0 small" style="color:#93C5FD;"><i class="bi bi-person-fill-lock me-2"></i>Admin Approval for Roles</h6>
+                            <span class="badge bg-success" style="font-size:0.7em;">ON</span>
+                        </div>
+                        <p class="small text-muted mb-0">Role changes require admin confirmation.</p>
+                    </div>
+                    <div style="padding: 1rem; background: rgba(245,158,11,0.08); border-radius: 8px; border-left: 3px solid #F59E0B;">
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <h6 class="mb-0 small" style="color:#FCD34D;"><i class="bi bi-archive-fill me-2"></i>Backup & Recovery</h6>
+                            <span class="badge bg-warning text-dark" style="font-size:0.7em;">Manual</span>
+                        </div>
+                        <p class="small text-muted mb-2">Downloads a full copy of the SQLite database.</p>
+                        <a href="/admin/backup" class="btn btn-sm btn-outline-warning w-100">
+                            <i class="bi bi-download me-1"></i>Export Database Backup
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background: #141b2d; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;">
+            <div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="icon-badge icon-badge-primary" style="width:32px; height:32px; font-size:0.9rem;">
+                        <i class="bi bi-pencil-fill"></i>
+                    </div>
+                    <h5 class="modal-title mb-0" id="editUserModalLabel">Edit User</h5>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form method="POST" id="editUserForm" action="">
+                    <input type="hidden" id="edit_user_id" name="user_id">
+                    <div class="mb-3">
+                        <label class="form-label"><i class="bi bi-person me-1"></i>Username</label>
+                        <input type="text" class="form-control" id="edit_username" disabled style="opacity:0.6;">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label"><i class="bi bi-card-text me-1"></i>Full Name</label>
+                        <input type="text" class="form-control" id="edit_full_name" name="full_name" placeholder="Full name">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label"><i class="bi bi-phone me-1"></i>Contact Number</label>
+                        <input type="tel" class="form-control" id="edit_contact" name="contact_number"
+                               pattern="^(09\d{9}|\+639\d{9})$" inputmode="numeric"
+                               oninput="this.value = this.value.replace(/[^0-9+]/g, '')" maxlength="13">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label"><i class="bi bi-building me-1"></i>Agency</label>
+                        <input type="text" class="form-control" id="edit_agency" name="agency" placeholder="Agency or organization">
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label"><i class="bi bi-shield me-1"></i>Role</label>
+                        <select class="form-select" id="edit_role" name="role">
+                            <option value="user">👤 Citizen</option>
+                            <option value="agency_coordinator">🏢 Agency Coordinator</option>
+                            <option value="admin">🛡️ Admin</option>
+                        </select>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary-modern btn-modern" style="flex:1;">
+                            <i class="bi bi-check-circle me-2"></i>Save Changes
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" style="flex:0.5;">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openEditModal(id, username, fullName, contact, agency, role) {
+    document.getElementById('edit_user_id').value = id;
+    document.getElementById('edit_username').value = username;
+    document.getElementById('edit_full_name').value = fullName;
+    document.getElementById('edit_contact').value = contact;
+    document.getElementById('edit_agency').value = agency;
+    document.getElementById('edit_role').value = role;
+    document.getElementById('editUserForm').action = '/admin/users/' + id + '/update';
+    new bootstrap.Modal(document.getElementById('editUserModal')).show();
+}
+</script>
 {% endblock %}

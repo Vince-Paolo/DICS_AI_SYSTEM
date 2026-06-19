@@ -1,7 +1,9 @@
 import os
 import sqlite3
 import secrets
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+import shutil
+from datetime import datetime
+from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
 from models import db, User, Incident
 from ai.prediction import predict_hazard
@@ -616,6 +618,36 @@ def toggle_user_status(user_id):
         flash(f'Error toggling user status: {str(e)}', 'error')
     
     return redirect(url_for('manage_users'))
+
+@app.route('/admin/backup')
+def export_backup():
+    """Export SQLite database as a downloadable backup file"""
+    if not session.get('role') == 'admin':
+        flash('Admin access required.', 'danger')
+        return redirect(url_for('manage_users'))
+
+    try:
+        db_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance', 'database.db')
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        backup_filename = f'dics_ai_backup_{timestamp}.db'
+        backup_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance', backup_filename)
+
+        # Use SQLite backup API for a safe consistent copy
+        src = sqlite3.connect(db_path)
+        dst = sqlite3.connect(backup_path)
+        src.backup(dst)
+        dst.close()
+        src.close()
+
+        return send_file(
+            backup_path,
+            as_attachment=True,
+            download_name=backup_filename,
+            mimetype='application/octet-stream'
+        )
+    except Exception as e:
+        flash(f'Backup failed: {str(e)}', 'error')
+        return redirect(url_for('manage_users'))
 
 if __name__ == '__main__':
     create_tables()
