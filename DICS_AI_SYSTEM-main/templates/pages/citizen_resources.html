@@ -1,0 +1,273 @@
+{% extends 'pages/base.html' %}
+
+{% block title %}Resources & Emergency Info | DICS AI Citizen Portal{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="section-header">
+                <span class="section-header-icon"><i class="bi bi-info-square"></i></span>
+                <h4>Emergency Resources & Information</h4>
+            </div>
+
+            <div class="row g-3 mb-4 citizen-highlight-row">
+                <div class="col-md-6 col-xl-6">
+                    <div class="card card-custom card-gradient-danger shadow-lg h-100">
+                        <div class="card-body d-flex flex-column p-3">
+                            <div class="d-flex align-items-center gap-2 mb-3">
+                                <div class="icon-badge" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.1)); color: var(--hazard-high); border: 1px solid rgba(239, 68, 68, 0.3);">
+                                    <i class="bi bi-telephone-fill"></i>
+                                </div>
+                                <h5 class="mb-0">Emergency Hotlines</h5>
+                            </div>
+                            <div class="vstack gap-3 flex-grow-1">
+                                <div class="p-3 rounded h-100" style="background: rgba(239, 68, 68, 0.08); border-left: 3px solid #EF4444;">
+                                    <p class="small text-muted mb-1">🚨 National Emergency</p>
+                                    <p class="text-white fw-bold fs-5 mb-0">911</p>
+                                </div>
+                                <div class="p-3 rounded h-100" style="background: rgba(59, 130, 246, 0.08); border-left: 3px solid #3B82F6;">
+                                    <p class="small text-muted mb-1">👮 Calabarzon Police</p>
+                                    <p class="text-white fw-bold fs-5 mb-0">+63 2 8888-XXXX</p>
+                                </div>
+                                <div class="p-3 rounded h-100" style="background: rgba(239, 68, 68, 0.08); border-left: 3px solid #EF4444;">
+                                    <p class="small text-muted mb-1">🚒 Fire Department</p>
+                                    <p class="text-white fw-bold fs-5 mb-0">(02) 427-8888</p>
+                                </div>
+                                <div class="p-3 rounded h-100" style="background: rgba(16, 185, 129, 0.08); border-left: 3px solid #10B981;">
+                                    <p class="small text-muted mb-1">🏥 Medical Emergency</p>
+                                    <p class="text-white fw-bold fs-5 mb-0">(02) 819-9999</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 col-xl-6">
+                    <div class="card card-custom card-gradient-primary shadow-lg h-100">
+                        <div class="card-body d-flex flex-column p-3">
+                            <div class="d-flex align-items-center gap-2 mb-3">
+                                <div class="icon-badge icon-badge-primary">
+                                    <i class="bi bi-building"></i>
+                                </div>
+                                <h5 class="mb-0">Local Response Centers</h5>
+                            </div>
+                            <div class="vstack gap-3 flex-grow-1">
+                                <div class="p-3 rounded h-100" style="background: rgba(59, 130, 246, 0.08); border-left: 3px solid #3B82F6;">
+                                    <p class="small text-muted mb-1">📍 Cavite DMO</p>
+                                    <p class="text-white fw-bold small mb-0">123 Admin Avenue, Cavite City</p>
+                                </div>
+                                <div class="p-3 rounded h-100" style="background: rgba(59, 130, 246, 0.08); border-left: 3px solid #3B82F6;">
+                                    <p class="small text-muted mb-1">📍 Laguna Emergency</p>
+                                    <p class="text-white fw-bold small mb-0">456 Safety Street, Santa Rosa</p>
+                                </div>
+                                <div class="p-3 rounded h-100" style="background: rgba(59, 130, 246, 0.08); border-left: 3px solid #3B82F6;">
+                                    <p class="small text-muted mb-1">📍 Batangas Crisis</p>
+                                    <p class="text-white fw-bold small mb-0">789 Relief Road, Batangas City</p>
+                                </div>
+                                <div class="p-3 rounded h-100" style="background: rgba(59, 130, 246, 0.08); border-left: 3px solid #3B82F6;">
+                                    <p class="small text-muted mb-1">🌦️ PAGASA Office</p>
+                                    <p class="text-white fw-bold small mb-0">CALABARZON Region</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card card-custom shadow-lg mb-4">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <div class="icon-badge" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.1)); color: var(--hazard-high); border: 1px solid rgba(239, 68, 68, 0.3);">
+                            <i class="bi bi-map"></i>
+                        </div>
+                        <h5 class="mb-0">Evacuation Procedures</h5>
+                    </div>
+                    
+                    <ul class="nav nav-tabs nav-dark mb-4" role="tablist">
+                        <li class="nav-item">
+                            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#flood-evac">🌊 Flood</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#landslide-evac">🏔️ Landslide</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#earthquake-evac">📍 Earthquake</button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content">
+                        <div id="flood-evac" class="tab-pane fade show active">
+                            <h6 class="mb-3">Flood Evacuation Procedures</h6>
+                            <div class="alert-enhanced alert-enhanced-danger mb-3 p-3 rounded">
+                                <strong>⚠️ Warning Signs:</strong> Heavy rainfall, rising water levels, unusual river flow
+                            </div>
+                            <ol class="small text-muted" style="padding-left: 1.5rem;">
+                                <li class="mb-2">Move to higher ground immediately if water level is rising</li>
+                                <li class="mb-2">Bring essential documents, medications, and valuables</li>
+                                <li class="mb-2">Follow designated evacuation routes posted in your area</li>
+                                <li class="mb-2">Head to nearest evacuation center or safe shelter</li>
+                                <li class="mb-2">Stay in contact with family and authorities</li>
+                                <li><strong style="color: var(--text-primary);">Never attempt to cross flooded areas - "Turn Around, Don't Drown"</strong></li>
+                            </ol>
+                        </div>
+
+                        <div id="landslide-evac" class="tab-pane fade">
+                            <h6 class="mb-3">Landslide Safety Measures</h6>
+                            <div class="alert-enhanced alert-enhanced-warning mb-3 p-3 rounded">
+                                <strong>⚠️ Warning Signs:</strong> Ground cracks, tilting trees, unusual sounds from slopes
+                            </div>
+                            <ol class="small text-muted" style="padding-left: 1.5rem;">
+                                <li class="mb-2">Avoid areas at base of steep slopes or hills</li>
+                                <li class="mb-2">Stay away from areas showing signs of instability</li>
+                                <li class="mb-2">Keep away from roads passing through landslide-prone areas</li>
+                                <li class="mb-2">If near a slope, move sideways away from landslide path</li>
+                                <li class="mb-2">Listen for rumbling sounds or rockfall</li>
+                                <li><strong style="color: var(--text-primary);">Report unstable slopes to local authorities immediately</strong></li>
+                            </ol>
+                        </div>
+
+                        <div id="earthquake-evac" class="tab-pane fade">
+                            <h6 class="mb-3">Earthquake Safety & Response</h6>
+                            <div class="alert-enhanced alert-enhanced-danger mb-3 p-3 rounded">
+                                <strong>🔴 KEY ACTION:</strong> DROP, COVER, HOLD ON
+                            </div>
+                            <ol class="small text-muted" style="padding-left: 1.5rem;">
+                                <li class="mb-2"><strong style="color: var(--text-primary);">Drop</strong> to hands and knees immediately</li>
+                                <li class="mb-2"><strong style="color: var(--text-primary);">Cover</strong> under sturdy desk/table or against interior wall</li>
+                                <li class="mb-2"><strong style="color: var(--text-primary);">Hold on</strong> until shaking stops (typically 20-60 seconds)</li>
+                                <li class="mb-2">Stay away from windows and heavy objects that might fall</li>
+                                <li class="mb-2">After shaking stops, carefully exit if building is damaged</li>
+                                <li>Account for family members and move to designated shelter if needed</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-4 citizen-highlight-row">
+                <div class="col-md-6 col-xl-6">
+                    <div class="card card-custom card-gradient-success shadow h-100">
+                        <div class="card-body d-flex flex-column p-3">
+                            <div class="d-flex align-items-center gap-2 mb-3">
+                                <div class="icon-badge icon-badge-success">
+                                    <i class="bi bi-backpack"></i>
+                                </div>
+                                <h5 class="mb-0">Emergency Kit Essentials</h5>
+                            </div>
+                            <div class="vstack gap-3 flex-grow-1">
+                                <div class="form-check p-3 rounded h-100" style="background: rgba(16, 185, 129, 0.08); border-left: 3px solid #10B981;">
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" id="water">
+                                    <label class="form-check-label text-white" for="water">💧 Water (1 gallon per person/day)</label>
+                                </div>
+                                <div class="form-check p-3 rounded h-100" style="background: rgba(16, 185, 129, 0.08); border-left: 3px solid #10B981;">
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" id="food">
+                                    <label class="form-check-label text-white" for="food">🥫 Non-perishable food (3-day supply)</label>
+                                </div>
+                                <div class="form-check p-3 rounded h-100" style="background: rgba(16, 185, 129, 0.08); border-left: 3px solid #10B981;">
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" id="first-aid">
+                                    <label class="form-check-label text-white" for="first-aid">🩹 First aid kit & medications</label>
+                                </div>
+                                <div class="form-check p-3 rounded h-100" style="background: rgba(16, 185, 129, 0.08); border-left: 3px solid #10B981;">
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" id="flashlight">
+                                    <label class="form-check-label text-white" for="flashlight">🔦 Flashlight & batteries</label>
+                                </div>
+                                <div class="form-check p-3 rounded h-100" style="background: rgba(16, 185, 129, 0.08); border-left: 3px solid #10B981;">
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" id="radio">
+                                    <label class="form-check-label text-white" for="radio">📻 Battery/hand-crank radio</label>
+                                </div>
+                                <div class="form-check p-3 rounded h-100" style="background: rgba(16, 185, 129, 0.08); border-left: 3px solid #10B981;">
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" id="documents">
+                                    <label class="form-check-label text-white" for="documents">📄 Important documents (copies)</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 col-xl-6">
+                    <div class="card card-custom card-gradient-primary shadow h-100">
+                        <div class="card-body d-flex flex-column p-3">
+                            <div class="d-flex align-items-center gap-2 mb-3">
+                                <div class="icon-badge icon-badge-primary">
+                                    <i class="bi bi-people"></i>
+                                </div>
+                                <h5 class="mb-0">Family Preparedness</h5>
+                            </div>
+                            <div class="vstack gap-3 flex-grow-1">
+                                <div class="form-check p-3 rounded h-100" style="background: rgba(59, 130, 246, 0.08); border-left: 3px solid #3B82F6;">
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" id="plan">
+                                    <label class="form-check-label text-white" for="plan">📋 Create evacuation plan</label>
+                                </div>
+                                <div class="form-check p-3 rounded h-100" style="background: rgba(59, 130, 246, 0.08); border-left: 3px solid #3B82F6;">
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" id="meetpoint">
+                                    <label class="form-check-label text-white" for="meetpoint">📍 Identify family meeting point</label>
+                                </div>
+                                <div class="form-check p-3 rounded h-100" style="background: rgba(59, 130, 246, 0.08); border-left: 3px solid #3B82F6;">
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" id="contacts">
+                                    <label class="form-check-label text-white" for="contacts">📞 Exchange emergency contacts</label>
+                                </div>
+                                <div class="form-check p-3 rounded h-100" style="background: rgba(59, 130, 246, 0.08); border-left: 3px solid #3B82F6;">
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" id="practice">
+                                    <label class="form-check-label text-white" for="practice">🔄 Practice evacuation drills</label>
+                                </div>
+                                <div class="form-check p-3 rounded h-100" style="background: rgba(59, 130, 246, 0.08); border-left: 3px solid #3B82F6;">
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" id="routes">
+                                    <label class="form-check-label text-white" for="routes">🗺️ Know multiple evacuation routes</label>
+                                </div>
+                                <div class="form-check p-3 rounded h-100" style="background: rgba(59, 130, 246, 0.08); border-left: 3px solid #3B82F6;">
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" id="apps">
+                                    <label class="form-check-label text-white" for="apps">📱 Install emergency alert apps</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card card-custom card-gradient-warning shadow-lg">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <div class="icon-badge icon-badge-warning">
+                            <i class="bi bi-bookmark-fill"></i>
+                        </div>
+                        <h5 class="mb-0">Quick Reference - During an Emergency</h5>
+                    </div>
+                    <div class="row g-4 small text-start">
+                        <div class="col-md-4">
+                            <div class="h-100 p-4 rounded" style="background: rgba(16, 185, 129, 0.08); border-left: 3px solid #10B981;">
+                                <p class="mb-3"><strong style="color: #86EFAC; font-size: 1.1rem;">✓ BEFORE</strong></p>
+                                <ul class="text-muted mb-0 list-unstyled fs-6">
+                                    <li class="mb-2">Prepare emergency kit</li>
+                                    <li class="mb-2">Know evacuation routes</li>
+                                    <li>Have communication plan</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="h-100 p-4 rounded" style="background: rgba(245, 158, 11, 0.08); border-left: 3px solid #F59E0B;">
+                                <p class="mb-3"><strong style="color: #FCD34D; font-size: 1.1rem;">⚡ DURING</strong></p>
+                                <ul class="text-muted mb-0 list-unstyled fs-6">
+                                    <li class="mb-2">Stay calm & alert</li>
+                                    <li class="mb-2">Follow official orders</li>
+                                    <li>Move to safe area</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="h-100 p-4 rounded" style="background: rgba(59, 130, 246, 0.08); border-radius: 8px; border-left: 3px solid #3B82F6;">
+                                <p class="mb-3"><strong style="color: #93C5FD; font-size: 1.1rem;">🔵 AFTER</strong></p>
+                                <ul class="text-muted mb-0 list-unstyled fs-6">
+                                    <li class="mb-2">Account for family</li>
+                                    <li class="mb-2">Listen to authorities</li>
+                                    <li>Help neighbors safely</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

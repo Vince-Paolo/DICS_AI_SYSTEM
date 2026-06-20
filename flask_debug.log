@@ -1,277 +1,72 @@
-[2026-06-13 17:32:06,158] INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
- * Running on http://127.0.0.1:5000
-[2026-06-13 17:32:06,158] INFO: [33mPress CTRL+C to quit[0m
-[2026-06-13 17:34:33,163] INFO: Creating test client...
-[2026-06-13 17:34:33,188] INFO: Making request to /
-[2026-06-13 17:34:33,196] INFO: REQUEST: GET /
-[2026-06-13 17:34:33,196] INFO: Starting database initialization...
-[2026-06-13 17:34:33,196] INFO: Creating all tables...
-[2026-06-13 17:34:33,199] INFO: Migrating user table...
-[2026-06-13 17:34:33,208] INFO: Creating default admin...
-[2026-06-13 17:34:33,223] INFO: Database initialized successfully
-[2026-06-13 17:34:33,224] INFO: After lazy_init for /
-[2026-06-13 17:34:33,236] INFO: Response: 200
-[2026-06-13 17:34:33,237] INFO: Content length: 2799
-[2026-06-13 17:36:48,064] INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
- * Running on http://127.0.0.1:5000
-[2026-06-13 17:36:48,065] INFO: [33mPress CTRL+C to quit[0m
-[2026-06-13 17:38:10,218] INFO: Serving on http://127.0.0.1:5000
-[2026-06-13 17:40:34,529] INFO: REQUEST: GET /
-[2026-06-13 17:40:34,530] INFO: Starting database initialization...
-[2026-06-13 17:40:34,530] INFO: Creating all tables...
-[2026-06-13 17:40:34,535] INFO: Migrating user table...
-[2026-06-13 17:40:34,537] INFO: Creating default admin...
-[2026-06-13 17:40:34,556] INFO: Database initialized successfully
-[2026-06-13 17:40:34,557] INFO: After lazy_init for /
-[2026-06-13 17:40:34,630] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:40:34,630] INFO: Already initialized, skipping
-[2026-06-13 17:40:34,631] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:40:37,424] INFO: REQUEST: GET /register
-[2026-06-13 17:40:37,424] INFO: Already initialized, skipping
-[2026-06-13 17:40:37,425] INFO: After lazy_init for /register
-[2026-06-13 17:40:37,457] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:40:37,458] INFO: Already initialized, skipping
-[2026-06-13 17:40:37,460] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:40:37,516] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:40:37,516] INFO: Already initialized, skipping
-[2026-06-13 17:40:37,517] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:40:42,119] INFO: REQUEST: GET /
-[2026-06-13 17:40:42,121] INFO: Already initialized, skipping
-[2026-06-13 17:40:42,121] INFO: After lazy_init for /
-[2026-06-13 17:40:42,144] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:40:42,145] INFO: Already initialized, skipping
-[2026-06-13 17:40:42,145] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:40:42,186] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:40:42,187] INFO: Already initialized, skipping
-[2026-06-13 17:40:42,187] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:41:03,164] INFO: REQUEST: POST /
-[2026-06-13 17:41:03,164] INFO: Already initialized, skipping
-[2026-06-13 17:41:03,165] INFO: After lazy_init for /
-[2026-06-13 17:41:03,404] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:41:03,404] INFO: Already initialized, skipping
-[2026-06-13 17:41:03,405] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:41:03,456] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:41:03,456] INFO: Already initialized, skipping
-[2026-06-13 17:41:03,457] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:41:15,115] INFO: REQUEST: GET /register
-[2026-06-13 17:41:15,115] INFO: Already initialized, skipping
-[2026-06-13 17:41:15,116] INFO: After lazy_init for /register
-[2026-06-13 17:41:15,140] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:41:15,140] INFO: Already initialized, skipping
-[2026-06-13 17:41:15,140] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:41:15,207] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:41:15,208] INFO: Already initialized, skipping
-[2026-06-13 17:41:15,209] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:42:15,161] INFO: REQUEST: POST /register
-[2026-06-13 17:42:15,162] INFO: Already initialized, skipping
-[2026-06-13 17:42:15,162] INFO: After lazy_init for /register
-[2026-06-13 17:42:15,415] INFO: REQUEST: GET /
-[2026-06-13 17:42:15,415] INFO: Already initialized, skipping
-[2026-06-13 17:42:15,415] INFO: After lazy_init for /
-[2026-06-13 17:42:15,436] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:42:15,437] INFO: Already initialized, skipping
-[2026-06-13 17:42:15,437] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:42:15,502] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:42:15,502] INFO: Already initialized, skipping
-[2026-06-13 17:42:15,502] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:42:48,551] INFO: REQUEST: POST /
-[2026-06-13 17:42:48,555] INFO: Already initialized, skipping
-[2026-06-13 17:42:48,559] INFO: After lazy_init for /
-[2026-06-13 17:42:48,806] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:42:48,806] INFO: Already initialized, skipping
-[2026-06-13 17:42:48,806] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:42:48,864] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:42:48,865] INFO: Already initialized, skipping
-[2026-06-13 17:42:48,865] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:43:13,301] INFO: REQUEST: GET /
-[2026-06-13 17:43:13,303] INFO: Already initialized, skipping
-[2026-06-13 17:43:13,303] INFO: After lazy_init for /
-[2026-06-13 17:43:13,420] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:43:13,420] INFO: Already initialized, skipping
-[2026-06-13 17:43:13,421] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:43:13,566] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:43:13,568] INFO: Already initialized, skipping
-[2026-06-13 17:43:13,569] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:43:15,830] INFO: REQUEST: GET /register
-[2026-06-13 17:43:15,831] INFO: Already initialized, skipping
-[2026-06-13 17:43:15,831] INFO: After lazy_init for /register
-[2026-06-13 17:43:15,854] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:43:15,855] INFO: Already initialized, skipping
-[2026-06-13 17:43:15,855] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:43:15,910] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:43:15,910] INFO: Already initialized, skipping
-[2026-06-13 17:43:15,910] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:43:20,826] INFO: REQUEST: GET /
-[2026-06-13 17:43:20,827] INFO: Already initialized, skipping
-[2026-06-13 17:43:20,827] INFO: After lazy_init for /
-[2026-06-13 17:43:20,850] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:43:20,851] INFO: Already initialized, skipping
-[2026-06-13 17:43:20,851] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:43:20,900] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:43:20,900] INFO: Already initialized, skipping
-[2026-06-13 17:43:20,901] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:43:32,859] INFO: REQUEST: POST /
-[2026-06-13 17:43:32,859] INFO: Already initialized, skipping
-[2026-06-13 17:43:32,860] INFO: After lazy_init for /
-[2026-06-13 17:43:33,075] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:43:33,076] INFO: Already initialized, skipping
-[2026-06-13 17:43:33,076] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:43:33,134] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:43:33,134] INFO: Already initialized, skipping
-[2026-06-13 17:43:33,134] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:43:45,215] INFO: REQUEST: GET /
-[2026-06-13 17:43:45,216] INFO: Already initialized, skipping
-[2026-06-13 17:43:45,217] INFO: After lazy_init for /
-[2026-06-13 17:43:45,307] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:43:45,307] INFO: Already initialized, skipping
-[2026-06-13 17:43:45,308] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:43:49,948] INFO: REQUEST: POST /
-[2026-06-13 17:43:49,948] INFO: Already initialized, skipping
-[2026-06-13 17:43:49,949] INFO: After lazy_init for /
-[2026-06-13 17:43:50,197] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:43:50,197] INFO: Already initialized, skipping
-[2026-06-13 17:43:50,198] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:43:50,256] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:43:50,257] INFO: Already initialized, skipping
-[2026-06-13 17:43:50,257] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:44:07,032] INFO: REQUEST: GET /
-[2026-06-13 17:44:07,033] INFO: Already initialized, skipping
-[2026-06-13 17:44:07,033] INFO: After lazy_init for /
-[2026-06-13 17:44:07,128] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:44:07,128] INFO: Already initialized, skipping
-[2026-06-13 17:44:07,129] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:44:07,261] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:44:07,262] INFO: Already initialized, skipping
-[2026-06-13 17:44:07,262] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:44:23,988] INFO: REQUEST: POST /
-[2026-06-13 17:44:23,988] INFO: Already initialized, skipping
-[2026-06-13 17:44:23,989] INFO: After lazy_init for /
-[2026-06-13 17:44:24,240] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:44:24,240] INFO: Already initialized, skipping
-[2026-06-13 17:44:24,241] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:44:24,319] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:44:24,320] INFO: Already initialized, skipping
-[2026-06-13 17:44:24,321] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:47:59,034] INFO: REQUEST: GET /
-[2026-06-13 17:47:59,035] INFO: Already initialized, skipping
-[2026-06-13 17:47:59,036] INFO: After lazy_init for /
-[2026-06-13 17:47:59,143] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:47:59,143] INFO: Already initialized, skipping
-[2026-06-13 17:47:59,144] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:47:59,308] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:47:59,309] INFO: Already initialized, skipping
-[2026-06-13 17:47:59,309] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:48:02,120] INFO: REQUEST: GET /register
-[2026-06-13 17:48:02,120] INFO: Already initialized, skipping
-[2026-06-13 17:48:02,120] INFO: After lazy_init for /register
-[2026-06-13 17:48:02,145] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:48:02,145] INFO: Already initialized, skipping
-[2026-06-13 17:48:02,145] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:48:02,196] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:48:02,197] INFO: Already initialized, skipping
-[2026-06-13 17:48:02,198] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:48:07,042] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:48:07,042] INFO: Already initialized, skipping
-[2026-06-13 17:48:07,043] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:48:18,157] INFO: REQUEST: POST /
-[2026-06-13 17:48:18,160] INFO: Already initialized, skipping
-[2026-06-13 17:48:18,161] INFO: After lazy_init for /
-[2026-06-13 17:48:18,409] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:48:18,409] INFO: Already initialized, skipping
-[2026-06-13 17:48:18,410] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:48:18,478] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:48:18,478] INFO: Already initialized, skipping
-[2026-06-13 17:48:18,479] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:48:54,123] INFO: REQUEST: GET /
-[2026-06-13 17:48:54,124] INFO: Already initialized, skipping
-[2026-06-13 17:48:54,124] INFO: After lazy_init for /
-[2026-06-13 17:48:54,215] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:48:54,215] INFO: Already initialized, skipping
-[2026-06-13 17:48:54,216] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:48:54,367] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:48:54,368] INFO: Already initialized, skipping
-[2026-06-13 17:48:54,369] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:48:55,803] INFO: REQUEST: GET /register
-[2026-06-13 17:48:55,803] INFO: Already initialized, skipping
-[2026-06-13 17:48:55,804] INFO: After lazy_init for /register
-[2026-06-13 17:48:55,832] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:48:55,832] INFO: Already initialized, skipping
-[2026-06-13 17:48:55,833] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:48:55,891] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:48:55,891] INFO: Already initialized, skipping
-[2026-06-13 17:48:55,891] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:49:30,732] INFO: REQUEST: GET /
-[2026-06-13 17:49:30,732] INFO: Already initialized, skipping
-[2026-06-13 17:49:30,733] INFO: After lazy_init for /
-[2026-06-13 17:49:30,766] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:49:30,767] INFO: Already initialized, skipping
-[2026-06-13 17:49:30,769] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:49:30,830] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:49:30,830] INFO: Already initialized, skipping
-[2026-06-13 17:49:30,830] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:53:01,390] INFO: REQUEST: GET /
-[2026-06-13 17:53:01,391] INFO: Already initialized, skipping
-[2026-06-13 17:53:01,391] INFO: After lazy_init for /
-[2026-06-13 17:53:01,469] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:53:01,469] INFO: Already initialized, skipping
-[2026-06-13 17:53:01,469] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:53:01,567] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:53:01,567] INFO: Already initialized, skipping
-[2026-06-13 17:53:01,568] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:53:03,358] INFO: REQUEST: GET /register
-[2026-06-13 17:53:03,359] INFO: Already initialized, skipping
-[2026-06-13 17:53:03,359] INFO: After lazy_init for /register
-[2026-06-13 17:53:03,380] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:53:03,381] INFO: Already initialized, skipping
-[2026-06-13 17:53:03,383] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:53:03,432] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:53:03,432] INFO: Already initialized, skipping
-[2026-06-13 17:53:03,433] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:53:11,485] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:53:11,485] INFO: Already initialized, skipping
-[2026-06-13 17:53:11,486] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:53:22,894] INFO: REQUEST: GET /
-[2026-06-13 17:53:22,895] INFO: Already initialized, skipping
-[2026-06-13 17:53:22,896] INFO: After lazy_init for /
-[2026-06-13 17:53:22,923] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:53:22,923] INFO: Already initialized, skipping
-[2026-06-13 17:53:22,924] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:53:22,976] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:53:22,977] INFO: Already initialized, skipping
-[2026-06-13 17:53:22,977] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:53:23,270] INFO: REQUEST: GET /
-[2026-06-13 17:53:23,271] INFO: Already initialized, skipping
-[2026-06-13 17:53:23,271] INFO: After lazy_init for /
-[2026-06-13 17:53:23,296] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:53:23,297] INFO: Already initialized, skipping
-[2026-06-13 17:53:23,298] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:53:23,359] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:53:23,359] INFO: Already initialized, skipping
-[2026-06-13 17:53:23,359] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:53:23,463] INFO: REQUEST: GET /
-[2026-06-13 17:53:23,463] INFO: Already initialized, skipping
-[2026-06-13 17:53:23,464] INFO: After lazy_init for /
-[2026-06-13 17:53:23,490] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:53:23,490] INFO: Already initialized, skipping
-[2026-06-13 17:53:23,491] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:53:23,545] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:53:23,545] INFO: Already initialized, skipping
-[2026-06-13 17:53:23,546] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:53:24,089] INFO: REQUEST: GET /
-[2026-06-13 17:53:24,089] INFO: Already initialized, skipping
-[2026-06-13 17:53:24,090] INFO: After lazy_init for /
-[2026-06-13 17:53:24,119] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:53:24,120] INFO: Already initialized, skipping
-[2026-06-13 17:53:24,120] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:53:24,204] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:53:24,204] INFO: Already initialized, skipping
-[2026-06-13 17:53:24,205] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:53:25,349] INFO: REQUEST: GET /register
-[2026-06-13 17:53:25,350] INFO: Already initialized, skipping
-[2026-06-13 17:53:25,351] INFO: After lazy_init for /register
-[2026-06-13 17:53:25,387] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:53:25,388] INFO: Already initialized, skipping
-[2026-06-13 17:53:25,388] INFO: After lazy_init for /static/css/style.css
-[2026-06-13 17:53:25,440] INFO: REQUEST: GET /static/css/style.css
-[2026-06-13 17:53:25,440] INFO: Already initialized, skipping
-[2026-06-13 17:53:25,441] INFO: After lazy_init for /static/css/style.css
+[2026-06-13 17:40:18,915] INFO: REQUEST: GET /logout
+[2026-06-13 17:40:18,917] INFO: REQUEST: GET /logout
+[2026-06-13 17:40:18,918] INFO: Starting database initialization...
+[2026-06-13 17:40:18,918] INFO: Already initialized, skipping
+[2026-06-13 17:40:18,920] INFO: REQUEST: GET /dashboard
+[2026-06-13 17:40:18,920] INFO: Creating all tables...
+[2026-06-13 17:40:18,921] INFO: Already initialized, skipping
+[2026-06-13 17:40:18,925] INFO: After lazy_init for /logout
+[2026-06-13 17:40:18,929] INFO: REQUEST: GET /
+[2026-06-13 17:40:18,929] INFO: After lazy_init for /dashboard
+[2026-06-13 17:40:18,932] INFO: Already initialized, skipping
+[2026-06-13 17:40:18,942] INFO: REQUEST: GET /
+[2026-06-13 17:40:18,944] INFO: Already initialized, skipping
+[2026-06-13 17:40:18,946] INFO: After lazy_init for /
+[2026-06-13 17:40:18,943] INFO: After lazy_init for /
+[2026-06-13 17:40:18,948] INFO: 127.0.0.1 - - [13/Jun/2026 17:40:18] "[32mGET / HTTP/1.1[0m" 302 -
+[2026-06-13 17:40:18,951] INFO: 127.0.0.1 - - [13/Jun/2026 17:40:18] "[32mGET /logout HTTP/1.1[0m" 302 -
+[2026-06-13 17:40:18,949] INFO: REQUEST: GET /
+[2026-06-13 17:40:18,958] INFO: Already initialized, skipping
+[2026-06-13 17:40:18,960] INFO: REQUEST: GET /
+[2026-06-13 17:40:18,962] INFO: Already initialized, skipping
+[2026-06-13 17:40:18,965] INFO: After lazy_init for /
+[2026-06-13 17:40:18,966] INFO: After lazy_init for /
+[2026-06-13 17:40:18,968] INFO: REQUEST: GET /
+[2026-06-13 17:40:18,997] INFO: Already initialized, skipping
+[2026-06-13 17:40:18,995] INFO: REQUEST: GET /
+[2026-06-13 17:40:18,998] INFO: After lazy_init for /
+[2026-06-13 17:40:18,999] INFO: REQUEST: GET /
+[2026-06-13 17:40:19,020] INFO: Already initialized, skipping
+[2026-06-13 17:40:19,023] INFO: Already initialized, skipping
+[2026-06-13 17:40:19,027] INFO: Migrating user table...
+[2026-06-13 17:40:19,027] INFO: After lazy_init for /
+[2026-06-13 17:40:19,033] INFO: REQUEST: GET /
+[2026-06-13 17:40:19,035] INFO: REQUEST: GET /
+[2026-06-13 17:40:19,035] INFO: After lazy_init for /
+[2026-06-13 17:40:19,047] INFO: REQUEST: GET /
+[2026-06-13 17:40:19,048] INFO: Already initialized, skipping
+[2026-06-13 17:40:19,059] INFO: Already initialized, skipping
+[2026-06-13 17:40:19,081] INFO: REQUEST: GET /
+[2026-06-13 17:40:19,081] INFO: Already initialized, skipping
+[2026-06-13 17:40:19,103] INFO: 127.0.0.1 - - [13/Jun/2026 17:40:19] "GET / HTTP/1.1" 200 -
+[2026-06-13 17:40:19,120] INFO: 127.0.0.1 - - [13/Jun/2026 17:40:19] "GET / HTTP/1.1" 200 -
+[2026-06-13 17:40:19,121] INFO: REQUEST: GET /
+[2026-06-13 17:40:19,152] INFO: 127.0.0.1 - - [13/Jun/2026 17:40:19] "GET / HTTP/1.1" 200 -
+[2026-06-13 17:40:19,152] INFO: After lazy_init for /
+[2026-06-13 17:40:19,136] INFO: 127.0.0.1 - - [13/Jun/2026 17:40:19] "GET / HTTP/1.1" 200 -
+[2026-06-13 17:40:19,154] INFO: REQUEST: GET /
+[2026-06-13 17:40:19,168] INFO: 127.0.0.1 - - [13/Jun/2026 17:40:19] "GET / HTTP/1.1" 200 -
+[2026-06-13 17:40:19,186] INFO: 127.0.0.1 - - [13/Jun/2026 17:40:19] "GET / HTTP/1.1" 200 -
+[2026-06-13 17:40:19,186] INFO: After lazy_init for /
+[2026-06-13 17:40:19,217] INFO: Creating default admin...
+[2026-06-13 17:40:19,221] INFO: REQUEST: GET /
+[2026-06-13 17:40:19,220] INFO: Already initialized, skipping
+[2026-06-13 17:40:19,219] INFO: 127.0.0.1 - - [13/Jun/2026 17:40:19] "GET /dashboard HTTP/1.1" 200 -
+[2026-06-13 17:40:19,222] INFO: After lazy_init for /
+[2026-06-13 17:40:19,224] INFO: Already initialized, skipping
+[2026-06-13 17:40:19,229] INFO: 127.0.0.1 - - [13/Jun/2026 17:40:19] "GET / HTTP/1.1" 200 -
+[2026-06-13 17:40:19,230] INFO: Already initialized, skipping
+[2026-06-13 17:40:19,234] INFO: 127.0.0.1 - - [13/Jun/2026 17:40:19] "GET / HTTP/1.1" 200 -
+[2026-06-13 17:40:19,238] INFO: Already initialized, skipping
+[2026-06-13 17:40:19,238] INFO: After lazy_init for /
+[2026-06-13 17:40:19,241] INFO: Database initialized successfully
+[2026-06-13 17:40:19,242] INFO: 127.0.0.1 - - [13/Jun/2026 17:40:19] "GET / HTTP/1.1" 200 -
+[2026-06-13 17:40:19,243] INFO: After lazy_init for /
+[2026-06-13 17:40:19,245] INFO: After lazy_init for /
+[2026-06-13 17:40:19,247] INFO: After lazy_init for /
+[2026-06-13 17:40:19,250] INFO: 127.0.0.1 - - [13/Jun/2026 17:40:19] "GET / HTTP/1.1" 200 -
+[2026-06-13 17:40:19,251] INFO: After lazy_init for /logout
+[2026-06-13 17:40:19,254] INFO: 127.0.0.1 - - [13/Jun/2026 17:40:19] "GET / HTTP/1.1" 200 -
+[2026-06-13 17:40:19,256] INFO: 127.0.0.1 - - [13/Jun/2026 17:40:19] "GET / HTTP/1.1" 200 -
+[2026-06-13 17:40:19,258] INFO: 127.0.0.1 - - [13/Jun/2026 17:40:19] "GET / HTTP/1.1" 200 -
+[2026-06-13 17:40:19,262] INFO: 127.0.0.1 - - [13/Jun/2026 17:40:19] "[32mGET /logout HTTP/1.1[0m" 302 -

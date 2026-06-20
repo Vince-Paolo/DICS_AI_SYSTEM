@@ -1,0 +1,189 @@
+{% extends 'pages/base.html' %}
+
+{% block title %}Report Incident | DICS AI Citizen Portal{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Quick Stats -->
+            <div class="row g-3 mb-5">
+                <div class="col-md-6">
+                    <div class="stat-card card-gradient-primary">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <div class="stat-label">Your Reports</div>
+                                <div class="stat-value">{{ total_incidents }}</div>
+                                <div class="stat-description">Total incident reports submitted</div>
+                            </div>
+                            <div class="icon-badge icon-badge-primary">
+                                <i class="bi bi-file-earmark-text"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="stat-card card-gradient-warning">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <div class="stat-label">Pending Review</div>
+                                <div class="stat-value">{{ pending_count }}</div>
+                                <div class="stat-description">Awaiting authority response</div>
+                            </div>
+                            <div class="icon-badge icon-badge-warning">
+                                <i class="bi bi-hourglass-split"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Report Form Card -->
+            <div class="card card-custom shadow-lg">
+                <div class="card-body">
+                    <div class="section-header">
+                        <span class="section-header-icon"><i class="bi bi-exclamation-circle"></i></span>
+                        <h4>Report an Incident</h4>
+                    </div>
+
+                    <form method="POST" class="needs-validation" novalidate>
+                        <!-- Incident Details Section -->
+                        <div class="form-section-header">
+                            <h5><i class="bi bi-info-circle me-2"></i>Incident Details</h5>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-4">
+                                <label for="hazard_type" class="form-label">
+                                    <i class="bi bi-lightning-charge me-2"></i>Type of Incident
+                                </label>
+                                <select class="form-select" id="hazard_type" name="hazard_type" required>
+                                    <option value="">Choose incident type...</option>
+                                    <option value="flood">🌊 Flood</option>
+                                    <option value="landslide">🏔️ Landslide</option>
+                                    <option value="earthquake">📍 Earthquake</option>
+                                    <option value="storm">⛈️ Severe Storm</option>
+                                    <option value="fire">🔥 Fire</option>
+                                    <option value="other">⚠️ Other Emergency</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6 mb-4">
+                                <label for="severity" class="form-label">
+                                    <i class="bi bi-speedometer me-2"></i>Severity Level
+                                </label>
+                                <select class="form-select" id="severity" name="severity" required>
+                                    <option value="">Select severity...</option>
+                                    <option value="low">🟢 Low - Minor incident</option>
+                                    <option value="moderate">🟡 Moderate - Significant impact</option>
+                                    <option value="high">🔴 High - Critical situation</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="location" class="form-label">
+                                <i class="bi bi-geo-alt me-2"></i>Location (Barangay/Area)
+                            </label>
+                            <input type="text" class="form-control" id="location" name="location" 
+                                   placeholder="e.g., Barangay Santo Tomas" required>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="description" class="form-label">
+                                <i class="bi bi-chat-square-text me-2"></i>Detailed Description
+                            </label>
+                            <textarea class="form-control" id="description" name="description" rows="5" 
+                                      placeholder="Describe what you're experiencing in detail..." required></textarea>
+                            <small class="text-muted d-block mt-2">Be as specific as possible to help authorities respond effectively</small>
+                        </div>
+
+                        <!-- Impact Assessment Section -->
+                        <div class="form-section-header">
+                            <h5><i class="bi bi-bar-chart me-2"></i>Impact Assessment</h5>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-4">
+                                <label for="affected_people" class="form-label">
+                                    <i class="bi bi-people me-2"></i>Number of People Affected (if known)
+                                </label>
+                                <input type="number" class="form-control" id="affected_people" name="affected_people" 
+                                       min="0" placeholder="0">
+                            </div>
+
+                            <div class="col-md-6 mb-4">
+                                <label for="injuries" class="form-label">
+                                    <i class="bi bi-heart-pulse me-2"></i>Injuries or Casualties
+                                </label>
+                                <input type="number" class="form-control" id="injuries" name="injuries" 
+                                       min="0" placeholder="0">
+                            </div>
+                        </div>
+
+                        <!-- Assistance Section -->
+                        <div class="form-section-header">
+                            <h5><i class="bi bi-hand-thumbs-up me-2"></i>Assistance Needed</h5>
+                        </div>
+
+                        <div class="mb-4 p-3" style="background: rgba(59, 130, 246, 0.05); border-radius: 8px;">
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="medical" name="assistance" value="medical">
+                                <label class="form-check-label" for="medical">
+                                    <i class="bi bi-hospital me-2" style="color: var(--hazard-high);"></i>Medical Help Required
+                                </label>
+                            </div>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="evacuation" name="assistance" value="evacuation">
+                                <label class="form-check-label" for="evacuation">
+                                    <i class="bi bi-arrow-right-square me-2" style="color: var(--hazard-mod);"></i>Evacuation Needed
+                                </label>
+                            </div>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="shelter" name="assistance" value="shelter">
+                                <label class="form-check-label" for="shelter">
+                                    <i class="bi bi-house-door me-2" style="color: var(--hazard-low);"></i>Shelter Required
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="supplies" name="assistance" value="supplies">
+                                <label class="form-check-label" for="supplies">
+                                    <i class="bi bi-basket2 me-2" style="color: var(--accent-glow);"></i>Food/Water Supplies Needed
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Contact Section -->
+                        <div class="form-section-header">
+                            <h5><i class="bi bi-telephone me-2"></i>Your Contact Information</h5>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="contact" class="form-label">
+                                <i class="bi bi-phone me-2"></i>Contact Number
+                            </label>
+                            <input type="tel" class="form-control" id="contact" name="contact" 
+                                   placeholder="09XXXXXXXXX" pattern="^(09\d{9}|\+639\d{9})$" inputmode="numeric"
+                                   oninput="this.value = this.value.replace(/[^0-9+]/g, '')" 
+                                   maxlength="13" required>
+                            <small class="text-muted d-block mt-2">Format: 09XXXXXXXXX or +639XXXXXXXXX (Philippine numbers only)</small>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex gap-2 mt-5 pt-3 border-top border-secondary">
+                            <button type="submit" class="btn btn-primary-modern btn-modern" style="flex: 1;">
+                                <i class="bi bi-check-circle me-2"></i>Submit Report
+                            </button>
+                            <a href="/dashboard" class="btn btn-outline-secondary" style="flex: 0.5;">
+                                <i class="bi bi-x-circle me-2"></i>Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# SOS logic and styles consolidated into global assets. #}
+{% endblock %}

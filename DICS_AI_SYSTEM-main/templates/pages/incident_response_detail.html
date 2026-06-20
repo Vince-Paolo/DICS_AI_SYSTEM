@@ -1,0 +1,303 @@
+{% extends 'pages/base.html' %}
+
+{% block title %}Incident Response #{{ response.incident_id }} - DICS{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="text-info fw-bold mb-2">
+                        <i class="bi bi-exclamation-octagon"></i> INCIDENT RESPONSE #{{ response.incident_id }}
+                    </h1>
+                    <p class="text-muted">
+                        {{ response.incident.hazard_type }} @ {{ response.incident.location or 'Unknown Location' }}
+                    </p>
+                </div>
+                <div class="text-end">
+                    <span class="badge bg-success p-2 me-2">{{ response.status }}</span>
+                    {% if response.priority_level == 'CRITICAL' %}
+                        <span class="badge bg-danger p-2">{{ response.priority_level }}</span>
+                    {% elif response.priority_level == 'HIGH' %}
+                        <span class="badge bg-warning p-2">{{ response.priority_level }}</span>
+                    {% else %}
+                        <span class="badge bg-info p-2">{{ response.priority_level }}</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Incident Summary Section -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card bg-dark border border-info">
+                <div class="card-header bg-info bg-opacity-10 border-info">
+                    <h5 class="mb-0 text-info fw-bold">
+                        <i class="bi bi-clipboard-data"></i> INCIDENT SUMMARY
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <p><strong>Risk Score:</strong> <span class="text-danger">{{ "%.2f"|format(response.incident.score) }}</span></p>
+                            <p><strong>Risk Level:</strong> 
+                                {% if response.incident.level == 'CRITICAL' %}
+                                    <span class="badge bg-danger">{{ response.incident.level }}</span>
+                                {% elif response.incident.level == 'HIGH' %}
+                                    <span class="badge bg-warning">{{ response.incident.level }}</span>
+                                {% else %}
+                                    <span class="badge bg-info">{{ response.incident.level }}</span>
+                                {% endif %}
+                            </p>
+                            <p><strong>Rainfall:</strong> {{ response.incident.rainfall_mm }} mm</p>
+                            <p><strong>River Level:</strong> {{ response.incident.river_level_m }} m</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Soil Moisture:</strong> {{ response.incident.soil_moisture_pct }}%</p>
+                            <p><strong>Population Density:</strong> {{ response.incident.population_density }} people/km²</p>
+                            <p><strong>Affected Population:</strong> {{ response.affected_population or 'Not specified' }}</p>
+                            <p><strong>Response Started:</strong> {{ response.started_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                        </div>
+                    </div>
+                    <hr class="border-secondary">
+                    <p><strong>Situation Summary:</strong></p>
+                    <p class="text-muted">{{ response.situation_summary or 'No summary provided yet.' }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="col-lg-4">
+            <div class="card bg-dark border border-danger mb-3">
+                <div class="card-header bg-danger bg-opacity-10 border-danger">
+                    <h5 class="mb-0 text-danger fw-bold">
+                        <i class="bi bi-lightning-charge"></i> QUICK ACTIONS
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <a href="{{ url_for('assign_task', response_id=response.id) }}" class="btn btn-primary w-100 mb-2">
+                        <i class="bi bi-plus-circle"></i> Assign Task
+                    </a>
+                    <a href="{{ url_for('allocate_resource', response_id=response.id) }}" class="btn btn-success w-100 mb-2">
+                        <i class="bi bi-plus-circle"></i> Allocate Resource
+                    </a>
+                    <a href="{{ url_for('create_situation_report', response_id=response.id) }}" class="btn btn-info w-100 mb-2">
+                        <i class="bi bi-pencil-square"></i> Create Report
+                    </a>
+                    {% if response.status != 'CLOSED' %}
+                        <form method="POST" action="{{ url_for('close_incident_response', response_id=response.id) }}">
+                            <button type="submit" class="btn btn-warning w-100" onclick="return confirm('Are you sure? This will close the incident response.')">
+                                <i class="bi bi-check-circle"></i> Close Response
+                            </button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tasks Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-dark border border-primary">
+                <div class="card-header bg-primary bg-opacity-10 border-primary">
+                    <h5 class="mb-0 text-primary fw-bold">
+                        <i class="bi bi-list-task"></i> ASSIGNED TASKS ({{ tasks|length }})
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if tasks %}
+                        <table class="table table-dark table-hover mb-0">
+                            <thead>
+                                <tr class="border-secondary">
+                                    <th>Task</th>
+                                    <th>Agency</th>
+                                    <th>Priority</th>
+                                    <th>Status</th>
+                                    <th>Due Date</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for task in tasks %}
+                                    <tr class="border-secondary">
+                                        <td>
+                                            <strong>{{ task.title }}</strong><br/>
+                                            <small class="text-muted">{{ task.description[:60] }}...</small>
+                                        </td>
+                                        <td>{{ task.assigned_to_agency }}</td>
+                                        <td>
+                                            {% if task.priority == 'CRITICAL' %}
+                                                <span class="badge bg-danger">{{ task.priority }}</span>
+                                            {% elif task.priority == 'HIGH' %}
+                                                <span class="badge bg-warning">{{ task.priority }}</span>
+                                            {% else %}
+                                                <span class="badge bg-info">{{ task.priority }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <form method="POST" action="{{ url_for('update_task', response_id=response.id, task_id=task.id) }}" style="display: inline;">
+                                                <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                                                    <option value="PENDING" {% if task.status == 'PENDING' %}selected{% endif %}>PENDING</option>
+                                                    <option value="IN_PROGRESS" {% if task.status == 'IN_PROGRESS' %}selected{% endif %}>IN PROGRESS</option>
+                                                    <option value="COMPLETED" {% if task.status == 'COMPLETED' %}selected{% endif %}>COMPLETED</option>
+                                                    <option value="FAILED" {% if task.status == 'FAILED' %}selected{% endif %}>FAILED</option>
+                                                </select>
+                                            </form>
+                                        </td>
+                                        <td>
+                                            {% if task.estimated_completion %}
+                                                {{ task.estimated_completion.strftime('%Y-%m-%d %H:%M') }}
+                                            {% else %}
+                                                N/A
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#task-{{ task.id }}">
+                                                <i class="bi bi-chevron-down"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    <tr class="collapse" id="task-{{ task.id }}">
+                                        <td colspan="6" class="text-muted">
+                                            <small><strong>Description:</strong> {{ task.description }}</small>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <div class="p-4 text-center text-muted">
+                            <p>No tasks assigned yet</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resources Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-dark border border-success">
+                <div class="card-header bg-success bg-opacity-10 border-success">
+                    <h5 class="mb-0 text-success fw-bold">
+                        <i class="bi bi-boxes"></i> ALLOCATED RESOURCES ({{ resources|length }})
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if resources %}
+                        <table class="table table-dark table-hover mb-0">
+                            <thead>
+                                <tr class="border-secondary">
+                                    <th>Resource Type</th>
+                                    <th>Agency</th>
+                                    <th>Quantity</th>
+                                    <th>Status</th>
+                                    <th>Location</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for resource in resources %}
+                                    <tr class="border-secondary">
+                                        <td><strong>{{ resource.resource_type }}</strong></td>
+                                        <td>{{ resource.agency }}</td>
+                                        <td>{{ resource.quantity }}</td>
+                                        <td>
+                                            <form method="POST" action="{{ url_for('update_resource', response_id=response.id, resource_id=resource.id) }}" style="display: inline;">
+                                                <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                                                    <option value="AVAILABLE" {% if resource.status == 'AVAILABLE' %}selected{% endif %}>AVAILABLE</option>
+                                                    <option value="DEPLOYED" {% if resource.status == 'DEPLOYED' %}selected{% endif %}>DEPLOYED</option>
+                                                    <option value="RETURNING" {% if resource.status == 'RETURNING' %}selected{% endif %}>RETURNING</option>
+                                                    <option value="UNAVAILABLE" {% if resource.status == 'UNAVAILABLE' %}selected{% endif %}>UNAVAILABLE</option>
+                                                </select>
+                                            </form>
+                                        </td>
+                                        <td>
+                                            <form method="POST" action="{{ url_for('update_resource', response_id=response.id, resource_id=resource.id) }}" style="display: inline;">
+                                                <input type="hidden" name="status" value="{{ resource.status }}">
+                                                <input type="text" name="location" class="form-control form-control-sm" placeholder="Location" value="{{ resource.location or '' }}" onchange="this.form.submit()">
+                                            </form>
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#resource-{{ resource.id }}">
+                                                <i class="bi bi-chevron-down"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    <tr class="collapse" id="resource-{{ resource.id }}">
+                                        <td colspan="6" class="text-muted">
+                                            <small><strong>Notes:</strong> {{ resource.notes or 'None' }}</small>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <div class="p-4 text-center text-muted">
+                            <p>No resources allocated yet</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Situation Reports Section -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card bg-dark border border-warning">
+                <div class="card-header bg-warning bg-opacity-10 border-warning">
+                    <h5 class="mb-0 text-warning fw-bold">
+                        <i class="bi bi-file-text"></i> SITUATION REPORTS ({{ reports|length }})
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if reports %}
+                        <div class="timeline">
+                            {% for report in reports %}
+                                <div class="timeline-item mb-3 pb-3 border-bottom border-secondary">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h6 class="text-info fw-bold">{{ report.title }}</h6>
+                                            <p class="text-muted mb-2">
+                                                <small>
+                                                    By {{ report.reporter.username }} | 
+                                                    {{ report.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                                                </small>
+                                            </p>
+                                            <p class="mb-2">{{ report.content }}</p>
+                                            {% if report.affected_areas or report.casualties or report.evacuated %}
+                                                <small class="text-muted">
+                                                    {% if report.affected_areas %}<strong>Areas:</strong> {{ report.affected_areas }} | {% endif %}
+                                                    {% if report.casualties %}<strong>Casualties:</strong> {{ report.casualties }} | {% endif %}
+                                                    {% if report.evacuated %}<strong>Evacuated:</strong> {{ report.evacuated }}{% endif %}
+                                                </small>
+                                            {% endif %}
+                                        </div>
+                                        <span class="badge" 
+                                            {% if report.report_type == 'ALERT' %}bg-danger
+                                            {% elif report.report_type == 'MILESTONE' %}bg-success
+                                            {% elif report.report_type == 'CLOSURE' %}bg-secondary
+                                            {% else %}bg-info{% endif %}>
+                                            {{ report.report_type }}
+                                        </span>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center text-muted">
+                            <p>No situation reports yet</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

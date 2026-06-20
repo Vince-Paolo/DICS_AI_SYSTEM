@@ -1,0 +1,104 @@
+{% extends 'pages/base.html' %}
+
+{% block title %}Alerts | DICS AI{% endblock %}
+
+{% block content %}
+
+<!-- Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card card-custom">
+            <div class="card-body">
+                <div class="section-header">
+                    <span class="section-header-icon"><i class="bi bi-exclamation-triangle-fill"></i></span>
+                    <h4>Active Alerts</h4>
+                </div>
+                <p class="text-muted mb-0">Review incidents that generated alerts in the system.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Alerts Table Card -->
+<div class="card card-custom shadow-lg mb-4">
+    <div class="card-body p-4">
+        <div class="d-flex align-items-center gap-2 mb-4">
+            <div class="icon-badge icon-badge-warning">
+                <i class="bi bi-bell-fill"></i>
+            </div>
+            <h5 class="mb-0">Alert Log</h5>
+            <div class="ms-auto">
+                <button class="btn btn-outline-primary btn-sm" onclick="location.reload()">
+                    <i class="bi bi-arrow-repeat me-2"></i>Refresh
+                </button>
+            </div>
+        </div>
+
+        {% if alerts %}
+            <div class="table-responsive">
+                <table class="table table-enhanced align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Date & Time</th>
+                            <th>Hazard</th>
+                            <th>Risk Level</th>
+                            <th>Score</th>
+                            <th>Message</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for alert in alerts %}
+                            <tr>
+                                <td><small class="text-muted">{{ alert.created_at.strftime('%b %d, %Y %I:%M %p') }}</small></td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        {% if alert.hazard_type|lower == 'flood' %}
+                                            <span>🌊</span>
+                                        {% elif alert.hazard_type|lower == 'landslide' %}
+                                            <span>🏔️</span>
+                                        {% elif alert.hazard_type|lower == 'earthquake' %}
+                                            <span>📍</span>
+                                        {% elif alert.hazard_type|lower == 'storm' %}
+                                            <span>⛈️</span>
+                                        {% elif alert.hazard_type|lower == 'fire' %}
+                                            <span>🔥</span>
+                                        {% else %}
+                                            <span>⚠️</span>
+                                        {% endif %}
+                                        <strong>{{ alert.hazard_type|upper }}</strong>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if alert.level|lower == 'high' %}
+                                        <span style="padding: 0.35em 0.65em; background: rgba(239,68,68,0.2); color: #FCA5A5; border: 1px solid rgba(239,68,68,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">🔴 HIGH</span>
+                                    {% elif alert.level|lower == 'moderate' %}
+                                        <span style="padding: 0.35em 0.65em; background: rgba(245,158,11,0.2); color: #FCD34D; border: 1px solid rgba(245,158,11,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">🟡 MOD</span>
+                                    {% else %}
+                                        <span style="padding: 0.35em 0.65em; background: rgba(16,185,129,0.2); color: #86EFAC; border: 1px solid rgba(16,185,129,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">🟢 LOW</span>
+                                    {% endif %}
+                                </td>
+                                <td><strong class="text-info">{{ '%.1f'|format(alert.score) }}%</strong></td>
+                                <td><span class="text-muted small">{{ alert.message }}</span></td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-enhanced alert-enhanced-info text-center py-5 mb-0">
+                <div style="font-size: 2.5rem; margin-bottom: 1rem;">✓</div>
+                <h5 class="mb-2">No Active Alerts</h5>
+                <p class="mb-0">No alerts have been triggered in the system.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Footer Action -->
+<div class="d-flex gap-2">
+    <a href="/dashboard" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
+    </a>
+</div>
+
+{% endblock %}

@@ -1,0 +1,214 @@
+{% extends 'pages/base.html' %}
+
+{% block title %}Protocols | DICS AI{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card card-custom">
+            <div class="card-body">
+                <div class="section-header">
+                    <span class="section-header-icon"><i class="bi bi-file-text"></i></span>
+                    <h4>Emergency Protocols</h4>
+                </div>
+                <p class="text-muted mb-0">Clear communication and response steps for disaster scenarios.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Phase Timeline -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="card card-custom h-100" style="border-left: 3px solid #3B82F6;">
+                    <div class="card-body p-3">
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <span style="font-size:0.7rem; font-weight:700; letter-spacing:0.08em; color:#3B82F6; text-transform:uppercase;">Phase 01</span>
+                        </div>
+                        <h6 class="fw-bold text-white mb-0">Detection</h6>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card card-custom h-100" style="border-left: 3px solid #F59E0B;">
+                    <div class="card-body p-3">
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <span style="font-size:0.7rem; font-weight:700; letter-spacing:0.08em; color:#F59E0B; text-transform:uppercase;">Phase 02</span>
+                        </div>
+                        <h6 class="fw-bold text-white mb-0">Response</h6>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card card-custom h-100" style="border-left: 3px solid #10B981;">
+                    <div class="card-body p-3">
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <span style="font-size:0.7rem; font-weight:700; letter-spacing:0.08em; color:#10B981; text-transform:uppercase;">Phase 03</span>
+                        </div>
+                        <h6 class="fw-bold text-white mb-0">Recovery</h6>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Protocol Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="card card-custom h-100">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <div class="icon-badge icon-badge-primary">
+                        <i class="bi bi-broadcast"></i>
+                    </div>
+                    <h5 class="mb-0">Communication Protocol</h5>
+                </div>
+                <div class="vstack gap-3">
+                    <div style="padding: 1rem; background: rgba(59, 130, 246, 0.08); border-radius: 8px; border-left: 3px solid #3B82F6;">
+                        <h6 class="mb-1" style="color: #93C5FD;">
+                            <i class="bi bi-1-circle me-2"></i>Establish Command
+                        </h6>
+                        <p class="small text-muted mb-0">Set up command post and open incident logs for all response activities.</p>
+                    </div>
+                    <div style="padding: 1rem; background: rgba(59, 130, 246, 0.08); border-radius: 8px; border-left: 3px solid #3B82F6;">
+                        <h6 class="mb-1" style="color: #93C5FD;">
+                            <i class="bi bi-2-circle me-2"></i>Notify Stakeholders
+                        </h6>
+                        <p class="small text-muted mb-0">Alert response teams, community leaders, and relevant authorities immediately.</p>
+                    </div>
+                    <div style="padding: 1rem; background: rgba(59, 130, 246, 0.08); border-radius: 8px; border-left: 3px solid #3B82F6;">
+                        <h6 class="mb-1" style="color: #93C5FD;">
+                            <i class="bi bi-3-circle me-2"></i>Broadcast Alerts
+                        </h6>
+                        <p class="small text-muted mb-0">Disseminate warnings through local channels, SMS, and the DICS platform.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card card-custom h-100">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <div class="icon-badge icon-badge-warning">
+                        <i class="bi bi-diagram-3"></i>
+                    </div>
+                    <h5 class="mb-0">Coordination Steps</h5>
+                </div>
+                <div class="vstack gap-3">
+                    <div style="padding: 1rem; background: rgba(245, 158, 11, 0.08); border-radius: 8px; border-left: 3px solid #F59E0B;">
+                        <h6 class="mb-1" style="color: #FCD34D;">
+                            <i class="bi bi-1-circle me-2"></i>Deploy Teams
+                        </h6>
+                        <p class="small text-muted mb-0">Dispatch evacuation, medical, and rescue units to affected areas.</p>
+                    </div>
+                    <div style="padding: 1rem; background: rgba(245, 158, 11, 0.08); border-radius: 8px; border-left: 3px solid #F59E0B;">
+                        <h6 class="mb-1" style="color: #FCD34D;">
+                            <i class="bi bi-2-circle me-2"></i>Monitor Sensors
+                        </h6>
+                        <p class="small text-muted mb-0">Track hazard sensor data and update risk forecasts in real time.</p>
+                    </div>
+                    <div style="padding: 1rem; background: rgba(245, 158, 11, 0.08); border-radius: 8px; border-left: 3px solid #F59E0B;">
+                        <h6 class="mb-1" style="color: #FCD34D;">
+                            <i class="bi bi-3-circle me-2"></i>Maintain Logs
+                        </h6>
+                        <p class="small text-muted mb-0">Document all incident responses and resource deployments accurately.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hazard-Specific Protocols -->
+<div class="card card-custom mb-4">
+    <div class="card-body p-4">
+        <div class="d-flex align-items-center gap-2 mb-4">
+            <div class="icon-badge" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.1)); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.3);">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+            </div>
+            <h5 class="mb-0">Hazard-Specific Response</h5>
+        </div>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="p-3 rounded h-100" style="background: rgba(59, 130, 246, 0.08); border-left: 3px solid #3B82F6;">
+                    <h6 class="mb-2" style="color: #93C5FD;"><span class="me-2">🌊</span>Flood</h6>
+                    <ul class="small text-muted mb-0 ps-3">
+                        <li class="mb-1">Activate flood monitoring stations</li>
+                        <li class="mb-1">Open evacuation centers in high ground</li>
+                        <li>Issue river level advisories</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="p-3 rounded h-100" style="background: rgba(245, 158, 11, 0.08); border-left: 3px solid #F59E0B;">
+                    <h6 class="mb-2" style="color: #FCD34D;"><span class="me-2">🏔️</span>Landslide</h6>
+                    <ul class="small text-muted mb-0 ps-3">
+                        <li class="mb-1">Restrict access to slope-prone zones</li>
+                        <li class="mb-1">Deploy soil instability sensors</li>
+                        <li>Coordinate with PHIVOLCS</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="p-3 rounded h-100" style="background: rgba(239, 68, 68, 0.08); border-left: 3px solid #EF4444;">
+                    <h6 class="mb-2" style="color: #FCA5A5;"><span class="me-2">📍</span>Earthquake</h6>
+                    <ul class="small text-muted mb-0 ps-3">
+                        <li class="mb-1">Assess structural damage immediately</li>
+                        <li class="mb-1">Check for gas leaks and fires</li>
+                        <li>Set up search & rescue teams</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Action Footer -->
+<div class="row g-3">
+    <div class="col-md-4">
+        <div class="card card-custom card-gradient-danger h-100">
+            <div class="card-body p-3 d-flex align-items-start gap-3">
+                <div class="icon-badge" style="background: rgba(239,68,68,0.15); color:#FCA5A5; border:1px solid rgba(239,68,68,0.3); flex-shrink:0;">
+                    <i class="bi bi-telephone-fill"></i>
+                </div>
+                <div>
+                    <div class="small text-muted">National Emergency</div>
+                    <div class="fw-bold text-white fs-5">911</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card card-custom card-gradient-primary h-100">
+            <div class="card-body p-3 d-flex align-items-start gap-3">
+                <div class="icon-badge icon-badge-primary" style="flex-shrink:0;">
+                    <i class="bi bi-geo-alt-fill"></i>
+                </div>
+                <div>
+                    <div class="small text-muted">View Active Zones</div>
+                    <a href="/hazard-map" class="fw-bold text-info text-decoration-none">Open Hazard Map →</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card card-custom card-gradient-success h-100">
+            <div class="card-body p-3 d-flex align-items-start gap-3">
+                <div class="icon-badge icon-badge-success" style="flex-shrink:0;">
+                    <i class="bi bi-clipboard-check"></i>
+                </div>
+                <div>
+                    <div class="small text-muted">Incident Command</div>
+                    <a href="/ics" class="fw-bold text-success text-decoration-none">Go to ICS →</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
