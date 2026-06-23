@@ -892,3 +892,23 @@ p.text-muted {
     font-size: 0.85rem;
     color: #B3B9C4;
 }
+/* Custom thin scrollbar for dark UI */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px; /* Makes the scrollbar very thin */
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02); /* Very subtle track background */
+    border-radius: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15); /* Semi-transparent white thumb */
+    border-radius: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.25); /* Slightly brighter on hover */
+}
+/* Firefox compatibility */
+.custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.15) rgba(255, 255, 255, 0.02);
+}
