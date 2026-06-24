@@ -1,198 +1,229 @@
 {% extends 'pages/base.html' %}
 
-{% block title %}Incident Commander Center - DICS{% endblock %}
+{% block title %}Incident Commander Center | DICS AI{% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4">
-    <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <h1 class="text-danger fw-bold mb-2">
-                <i class="bi bi-exclamation-octagon-fill"></i> INCIDENT COMMANDER CENTER
-            </h1>
-            <p class="text-muted">Real-time incident response coordination and resource management</p>
+
+<!-- Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card card-custom">
+            <div class="card-body">
+                <div class="section-header mb-0">
+                    <span class="section-header-icon text-danger"><i class="bi bi-exclamation-octagon-fill"></i></span>
+                    <h4 class="mb-0">Incident Commander Center</h4>
+                    <span class="ms-auto">
+                        <span class="badge-status-active px-3 py-2" style="font-size:0.8rem;">
+                            <i class="bi bi-circle-fill me-1" style="font-size:0.5rem; vertical-align:middle;"></i>LIVE OPERATIONS
+                        </span>
+                    </span>
+                </div>
+                <p class="text-muted mb-0 mt-2" style="padding-left:2.75rem;">Real-time incident response coordination and resource management.</p>
+            </div>
         </div>
     </div>
+</div>
 
-    <!-- Command Status Cards -->
-    <div class="row mb-4">
-        <div class="col-md-3 mb-3">
-            <div class="card bg-dark border border-danger h-100">
-                <div class="card-body d-flex flex-column justify-content-center align-items-center">
-                    <div class="text-danger fs-3 fw-bold">{{ total_active }}</div>
-                    <div class="text-muted small">Active Incidents</div>
+<!-- Command Status Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card card-gradient-danger h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-label">Active Incidents</div>
+                    <div class="stat-value">{{ total_active }}</div>
+                    <div class="stat-description">Responses in progress</div>
                 </div>
-            </div>
-        </div>
-        <div class="col-md-3 mb-3">
-            <div class="card bg-dark border border-warning h-100">
-                <div class="card-body d-flex flex-column justify-content-center align-items-center">
-                    <div class="text-warning fs-3 fw-bold">{{ total_critical }}</div>
-                    <div class="text-muted small">Critical Alerts</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3 mb-3">
-            <div class="card bg-dark border border-info h-100">
-                <div class="card-body d-flex flex-column justify-content-center align-items-center">
-                    <div class="text-info fs-3 fw-bold">{{ total_tasks }}</div>
-                    <div class="text-muted small">Pending Tasks</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3 mb-3">
-            <div class="card bg-dark border border-success h-100">
-                <div class="card-body d-flex flex-column justify-content-center align-items-center">
-                    <div class="text-success fs-3 fw-bold">{{ total_resources }}</div>
-                    <div class="text-muted small">Resources Deployed</div>
+                <div class="icon-badge" style="background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.3);">
+                    <i class="bi bi-fire"></i>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Active Incident Responses -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card bg-dark border border-secondary">
-                <div class="card-header bg-danger bg-opacity-10 border-danger">
-                    <h5 class="mb-0 text-danger fw-bold">
-                        <i class="bi bi-shield-check"></i> ACTIVE INCIDENT RESPONSES
-                    </h5>
+    <div class="col-md-3">
+        <div class="stat-card card-gradient-warning h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-label">Critical Alerts</div>
+                    <div class="stat-value">{{ total_critical }}</div>
+                    <div class="stat-description">Requiring immediate action</div>
                 </div>
-                <div class="card-body p-0">
-                    {% if active_responses %}
-                        <table class="table table-dark table-hover mb-0">
-                            <thead>
-                                <tr class="border-secondary">
-                                    <th>Incident</th>
-                                    <th>Type</th>
-                                    <th>Location</th>
-                                    <th>Status</th>
-                                    <th>Priority</th>
-                                    <th>Started</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for response in active_responses %}
-                                    <tr class="border-secondary">
-                                        <td><strong>#{{ response.incident_id }}</strong></td>
-                                        <td>{{ response.incident.hazard_type }}</td>
-                                        <td>{{ response.incident.location or 'Unknown' }}</td>
-                                        <td>
-                                            <span class="badge bg-success">{{ response.status }}</span>
-                                        </td>
-                                        <td>
-                                            {% if response.priority_level == 'CRITICAL' %}
-                                                <span class="badge bg-danger">{{ response.priority_level }}</span>
-                                            {% elif response.priority_level == 'HIGH' %}
-                                                <span class="badge bg-warning">{{ response.priority_level }}</span>
-                                            {% else %}
-                                                <span class="badge bg-info">{{ response.priority_level }}</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>{{ response.started_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                                        <td>
-                                            <a href="{{ url_for('incident_response_detail', response_id=response.id) }}" class="btn btn-sm btn-info">
-                                                <i class="bi bi-eye"></i> View
-                                            </a>
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    {% else %}
-                        <div class="p-4 text-center text-muted">
-                            <i class="bi bi-inbox fs-1 mb-2"></i>
-                            <p>No active incident responses</p>
-                        </div>
-                    {% endif %}
+                <div class="icon-badge icon-badge-warning">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Critical Incidents Available for Response -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card bg-dark border border-warning">
-                <div class="card-header bg-warning bg-opacity-10 border-warning">
-                    <h5 class="mb-0 text-warning fw-bold">
-                        <i class="bi bi-exclamation-triangle"></i> CRITICAL INCIDENTS REQUIRING RESPONSE
-                    </h5>
+    <div class="col-md-3">
+        <div class="stat-card card-gradient-primary h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-label">Pending Tasks</div>
+                    <div class="stat-value">{{ total_tasks }}</div>
+                    <div class="stat-description">Awaiting completion</div>
                 </div>
-                <div class="card-body p-0">
-                    {% if critical_incidents %}
-                        <table class="table table-dark table-hover mb-0">
-                            <thead>
-                                <tr class="border-secondary">
-                                    <th>ID</th>
-                                    <th>Hazard Type</th>
-                                    <th>Location</th>
-                                    <th>Risk Level</th>
-                                    <th>Risk Score</th>
-                                    <th>Alert Status</th>
-                                    <th>Detected</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for incident in critical_incidents %}
-                                    {% if not incident.response %}
-                                        <tr class="border-secondary">
-                                            <td><strong>#{{ incident.id }}</strong></td>
-                                            <td>{{ incident.hazard_type }}</td>
-                                            <td>{{ incident.location or 'Unknown' }}</td>
-                                            <td>
-                                                {% if incident.level == 'CRITICAL' %}
-                                                    <span class="badge bg-danger">{{ incident.level }}</span>
-                                                {% else %}
-                                                    <span class="badge bg-warning">{{ incident.level }}</span>
-                                                {% endif %}
-                                            </td>
-                                            <td><strong>{{ "%.2f"|format(incident.score) }}</strong></td>
-                                            <td>
-                                                {% if incident.alert %}
-                                                    <span class="badge bg-danger">ACTIVE</span>
-                                                {% else %}
-                                                    <span class="badge bg-secondary">INACTIVE</span>
-                                                {% endif %}
-                                            </td>
-                                            <td>{{ incident.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                                            <td>
-                                                <form method="POST" action="{{ url_for('activate_incident_response', incident_id=incident.id) }}" style="display: inline;">
-                                                    <button type="submit" class="btn btn-sm btn-danger">
-                                                        <i class="bi bi-play-fill"></i> Activate Response
-                                                    </button>
-                                                </form>
-                                            </td>
-                                        </tr>
-                                    {% endif %}
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    {% else %}
-                        <div class="p-4 text-center text-muted">
-                            <i class="bi bi-check-circle fs-1 mb-2"></i>
-                            <p>No critical incidents pending response</p>
-                        </div>
-                    {% endif %}
+                <div class="icon-badge icon-badge-primary">
+                    <i class="bi bi-list-task"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card card-gradient-success h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-label">Resources Deployed</div>
+                    <div class="stat-value">{{ total_resources }}</div>
+                    <div class="stat-description">Units in the field</div>
+                </div>
+                <div class="icon-badge icon-badge-success">
+                    <i class="bi bi-truck"></i>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<style>
-    .navbar-custom {
-        background: linear-gradient(135deg, #0B0F19 0%, #1a1f2e 100%);
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
-        border-bottom: 2px solid #dc3545;
-    }
-    
-    .card {
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-        min-height: 120px;
-    }
-</style>
+<!-- Active Incident Responses -->
+<div class="card card-custom shadow-lg mb-4">
+    <div class="card-body p-4">
+        <div class="d-flex align-items-center gap-2 mb-4">
+            <div class="icon-badge" style="background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.3);">
+                <i class="bi bi-shield-check"></i>
+            </div>
+            <h5 class="mb-0">Active Incident Responses</h5>
+            <span class="ms-2 badge badge-status-active" style="font-size:0.7rem;">LIVE</span>
+        </div>
+
+        {% if active_responses %}
+            <div class="table-responsive">
+                <table class="table table-enhanced align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Incident</th>
+                            <th>Hazard</th>
+                            <th>Location</th>
+                            <th>Status</th>
+                            <th>Priority</th>
+                            <th>Started</th>
+                            <th class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for response in active_responses %}
+                        <tr>
+                            <td><strong class="text-white">#{{ response.incident_id }}</strong></td>
+                            <td>
+                                <span style="padding:0.3em 0.6em;background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.4);border-radius:6px;font-size:0.75em;font-weight:700;text-transform:uppercase;">
+                                    {{ response.incident.hazard_type }}
+                                </span>
+                            </td>
+                            <td><span class="text-muted small">{{ response.incident.location or 'Unknown' }}</span></td>
+                            <td><span class="badge-status-active text-uppercase" style="font-size:0.72rem;">{{ response.status }}</span></td>
+                            <td>
+                                {% if response.priority_level == 'CRITICAL' %}
+                                    <span style="padding:0.3em 0.6em;background:rgba(239,68,68,0.2);color:#FCA5A5;border:1px solid rgba(239,68,68,0.5);border-radius:6px;font-size:0.75em;font-weight:700;">🔴 CRITICAL</span>
+                                {% elif response.priority_level == 'HIGH' %}
+                                    <span style="padding:0.3em 0.6em;background:rgba(245,158,11,0.2);color:#FCD34D;border:1px solid rgba(245,158,11,0.5);border-radius:6px;font-size:0.75em;font-weight:700;">🟡 HIGH</span>
+                                {% else %}
+                                    <span style="padding:0.3em 0.6em;background:rgba(59,130,246,0.2);color:#93C5FD;border:1px solid rgba(59,130,246,0.5);border-radius:6px;font-size:0.75em;font-weight:700;">🔵 {{ response.priority_level }}</span>
+                                {% endif %}
+                            </td>
+                            <td><span class="text-muted small">{{ response.started_at.strftime('%b %d, %Y %H:%M') }}</span></td>
+                            <td class="text-center">
+                                <a href="{{ url_for('incident_response_detail', response_id=response.id) }}" class="btn btn-sm btn-primary-modern btn-modern">
+                                    <i class="bi bi-eye me-1"></i>View
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <div style="font-size:2.5rem;margin-bottom:1rem;opacity:0.4;"><i class="bi bi-shield-check"></i></div>
+                <h5 class="mb-1">No Active Responses</h5>
+                <p class="text-muted mb-0">All clear — no incidents currently being managed.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Critical Incidents Requiring Response -->
+<div class="card card-custom shadow-lg mb-4">
+    <div class="card-body p-4">
+        <div class="d-flex align-items-center gap-2 mb-4">
+            <div class="icon-badge icon-badge-warning">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+            </div>
+            <h5 class="mb-0">Critical Incidents Requiring Response</h5>
+        </div>
+
+        {% if critical_incidents %}
+            <div class="table-responsive">
+                <table class="table table-enhanced align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Hazard</th>
+                            <th>Location</th>
+                            <th>Risk Level</th>
+                            <th>Score</th>
+                            <th>Alert</th>
+                            <th>Detected</th>
+                            <th class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for incident in critical_incidents %}
+                            {% if not incident.response %}
+                            <tr>
+                                <td><strong class="text-white">#{{ incident.id }}</strong></td>
+                                <td>
+                                    <span style="padding:0.3em 0.6em;background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.4);border-radius:6px;font-size:0.75em;font-weight:700;text-transform:uppercase;">
+                                        {{ incident.hazard_type }}
+                                    </span>
+                                </td>
+                                <td><span class="text-muted small">{{ incident.location or 'Unknown' }}</span></td>
+                                <td>
+                                    {% if incident.level == 'CRITICAL' %}
+                                        <span style="padding:0.3em 0.6em;background:rgba(239,68,68,0.2);color:#FCA5A5;border:1px solid rgba(239,68,68,0.5);border-radius:6px;font-size:0.75em;font-weight:700;">🔴 CRITICAL</span>
+                                    {% else %}
+                                        <span style="padding:0.3em 0.6em;background:rgba(245,158,11,0.2);color:#FCD34D;border:1px solid rgba(245,158,11,0.5);border-radius:6px;font-size:0.75em;font-weight:700;">🟡 {{ incident.level }}</span>
+                                    {% endif %}
+                                </td>
+                                <td><strong class="text-info">{{ "%.2f"|format(incident.score) }}%</strong></td>
+                                <td>
+                                    {% if incident.alert %}
+                                        <span class="badge-status-active" style="font-size:0.72rem;">ACTIVE</span>
+                                    {% else %}
+                                        <span class="badge-status-resolved" style="font-size:0.72rem;">INACTIVE</span>
+                                    {% endif %}
+                                </td>
+                                <td><span class="text-muted small">{{ incident.created_at.strftime('%b %d, %H:%M') }}</span></td>
+                                <td class="text-center">
+                                    <form method="POST" action="{{ url_for('activate_incident_response', incident_id=incident.id) }}" style="display:inline;">
+                                        <button type="submit" class="btn btn-sm" style="background:linear-gradient(135deg,#dc2626,#b91c1c);color:#fff;border:none;font-weight:600;border-radius:6px;padding:0.35rem 0.75rem;"
+                                            onclick="return confirm('Activate incident response for #{{ incident.id }}?')">
+                                            <i class="bi bi-play-fill me-1"></i>Activate
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <div style="font-size:2.5rem;margin-bottom:1rem;opacity:0.4;"><i class="bi bi-check-circle"></i></div>
+                <h5 class="mb-1">No Critical Incidents Pending</h5>
+                <p class="text-muted mb-0">All critical incidents have active responses.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
 {% endblock %}

@@ -1,0 +1,141 @@
+{# ── Shared Incident Response Header & Tab Nav ──────────────────────────── #}
+{# Usage: {% set active_tab = 'dashboard' %} then {% include 'partials/response_header.html' %} #}
+
+<!-- Response Page Header -->
+<div class="row mb-2">
+    <div class="col-12">
+        <!-- Breadcrumb -->
+        <nav aria-label="breadcrumb" class="mb-3">
+            <ol class="breadcrumb" style="background:none;padding:0;margin:0;">
+                <li class="breadcrumb-item">
+                    <a href="{{ url_for('incident_commander_dashboard') }}" class="text-decoration-none" style="color:var(--accent-glow);">
+                        <i class="bi bi-chevron-left me-1"></i>Command Center
+                    </a>
+                </li>
+                <li class="breadcrumb-item active text-muted" aria-current="page">
+                    Response #{{ response.incident_id }}
+                </li>
+            </ol>
+        </nav>
+
+        <!-- Header Card -->
+        <div class="card card-custom mb-1" style="border-left:4px solid
+            {%- if response.priority_level == 'CRITICAL' %} #EF4444
+            {%- elif response.priority_level == 'HIGH' %} #F59E0B
+            {%- else %} #3B82F6
+            {%- endif %} !important;">
+            <div class="card-body p-4">
+
+                <!-- Title Row -->
+                <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="icon-badge" style="background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.3);width:52px;height:52px;font-size:1.4rem;">
+                            <i class="bi bi-shield-fill"></i>
+                        </div>
+                        <div>
+                            <h3 class="mb-0 fw-bold text-white" style="letter-spacing:0.04em;">
+                                INCIDENT RESPONSE <span style="color:var(--accent-glow);">#{{ response.incident_id }}</span>
+                            </h3>
+                            <p class="mb-0 text-muted mt-1">
+                                <span style="padding:0.25em 0.6em;background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.4);border-radius:4px;font-size:0.72em;font-weight:700;text-transform:uppercase;">
+                                    {{ response.incident.hazard_type }}
+                                </span>
+                                <span class="ms-2">@ <strong class="text-white">{{ response.incident.location or 'Unknown Location' }}</strong></span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                        <!-- Status badge -->
+                        {% if response.status == 'ACTIVE' %}
+                            <span class="badge-status-active text-uppercase px-3 py-2" style="font-size:0.78rem;">
+                                <i class="bi bi-circle-fill me-1" style="font-size:0.45rem;vertical-align:middle;"></i>{{ response.status }}
+                            </span>
+                        {% elif response.status == 'CLOSED' %}
+                            <span class="badge-status-resolved text-uppercase px-3 py-2" style="font-size:0.78rem;">
+                                <i class="bi bi-check-circle-fill me-1"></i>{{ response.status }}
+                            </span>
+                        {% else %}
+                            <span class="badge-status-pending text-uppercase px-3 py-2" style="font-size:0.78rem;">{{ response.status }}</span>
+                        {% endif %}
+
+                        <!-- Priority badge -->
+                        {% if response.priority_level == 'CRITICAL' %}
+                            <span style="padding:0.4em 0.85em;background:rgba(239,68,68,0.2);color:#FCA5A5;border:1px solid rgba(239,68,68,0.5);border-radius:6px;font-size:0.78rem;font-weight:700;text-transform:uppercase;">
+                                🔴 CRITICAL
+                            </span>
+                        {% elif response.priority_level == 'HIGH' %}
+                            <span style="padding:0.4em 0.85em;background:rgba(245,158,11,0.2);color:#FCD34D;border:1px solid rgba(245,158,11,0.5);border-radius:6px;font-size:0.78rem;font-weight:700;text-transform:uppercase;">
+                                🟡 HIGH
+                            </span>
+                        {% else %}
+                            <span style="padding:0.4em 0.85em;background:rgba(59,130,246,0.2);color:#93C5FD;border:1px solid rgba(59,130,246,0.5);border-radius:6px;font-size:0.78rem;font-weight:700;text-transform:uppercase;">
+                                🔵 {{ response.priority_level }}
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Tab Navigation -->
+                <div style="border-top:1px solid rgba(255,255,255,0.07);padding-top:1rem;margin-top:0.25rem;">
+                    <ul class="nav gap-1 flex-wrap">
+                        <li class="nav-item">
+                            <a href="{{ url_for('incident_response_detail', response_id=response.id) }}"
+                               class="nav-link d-flex align-items-center gap-1 px-3 py-2 rounded
+                                      {% if active_tab == 'dashboard' %}btn-primary-modern text-white{% else %}text-muted{% endif %}"
+                               style="font-size:0.85rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;transition:all 0.2s;">
+                                <i class="bi bi-speedometer2"></i><span>Overview</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('incident_response_tasks', response_id=response.id) }}"
+                               class="nav-link d-flex align-items-center gap-1 px-3 py-2 rounded
+                                      {% if active_tab == 'tasks' %}btn-primary-modern text-white{% else %}text-muted{% endif %}"
+                               style="font-size:0.85rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;transition:all 0.2s;">
+                                <i class="bi bi-list-task"></i><span>Tasks</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('incident_response_resources', response_id=response.id) }}"
+                               class="nav-link d-flex align-items-center gap-1 px-3 py-2 rounded
+                                      {% if active_tab == 'resources' %}btn-primary-modern text-white{% else %}text-muted{% endif %}"
+                               style="font-size:0.85rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;transition:all 0.2s;">
+                                <i class="bi bi-boxes"></i><span>Resources</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('incident_response_reports', response_id=response.id) }}"
+                               class="nav-link d-flex align-items-center gap-1 px-3 py-2 rounded
+                                      {% if active_tab == 'reports' %}btn-primary-modern text-white{% else %}text-muted{% endif %}"
+                               style="font-size:0.85rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;transition:all 0.2s;">
+                                <i class="bi bi-file-text"></i><span>SitReps</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('incident_response_timeline', response_id=response.id) }}"
+                               class="nav-link d-flex align-items-center gap-1 px-3 py-2 rounded
+                                      {% if active_tab == 'timeline' %}btn-primary-modern text-white{% else %}text-muted{% endif %}"
+                               style="font-size:0.85rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;transition:all 0.2s;">
+                                <i class="bi bi-clock-history"></i><span>Timeline</span>
+                            </a>
+                        </li>
+
+                        {% if response.status != 'CLOSED' %}
+                        <li class="nav-item ms-auto">
+                            <a href="{{ url_for('incident_response_close_page', response_id=response.id) }}"
+                               class="nav-link d-flex align-items-center gap-1 px-3 py-2 rounded
+                                      {% if active_tab == 'close' %}btn-success-modern text-white
+                                      {% else %}text-white{% endif %}"
+                               style="font-size:0.85rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;
+                                      {% if active_tab != 'close' %}background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.35);color:#FCA5A5 !important;{% endif %}">
+                                <i class="bi bi-check-circle{% if active_tab == 'close' %}-fill{% endif %}"></i><span>Close Response</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>

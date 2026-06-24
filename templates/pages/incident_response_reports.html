@@ -1,207 +1,136 @@
 {% extends 'pages/base.html' %}
-
-{% block title %}Incident Response #{{ response.incident_id }} SitReps - DICS{% endblock %}
+{% block title %}Response #{{ response.incident_id }} SitReps | DICS AI{% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4">
-    <!-- Breadcrumb -->
-    <nav aria-label="breadcrumb" class="mb-3">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ url_for('incident_commander_dashboard') }}" class="text-info text-decoration-none"><i class="bi bi-chevron-left"></i> Back to Command Center</a></li>
-            <li class="breadcrumb-item active text-muted" aria-current="page">Response #{{ response.incident_id }} SitReps</li>
-        </ol>
-    </nav>
+{% set active_tab = 'reports' %}
+{% include 'partials/response_header.html' %}
 
-    <!-- Commander Command Header -->
-    <div class="card bg-dark border border-info mb-4">
-        <div class="card-body p-3">
-            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="icon-badge icon-badge-primary">
-                        <i class="bi bi-shield-fill"></i>
-                    </div>
-                    <div>
-                        <h3 class="mb-0 text-white fw-bold">INCIDENT RESPONSE #{{ response.incident_id }}</h3>
-                        <p class="mb-0 text-muted">
-                            <span class="badge bg-danger text-uppercase">{{ response.incident.hazard_type }}</span> @ <strong class="text-white">{{ response.incident.location or 'Unknown Location' }}</strong>
-                        </p>
-                    </div>
+<div class="row">
+    <!-- SitRep Log -->
+    <div class="col-lg-8 mb-4">
+        <div class="card card-custom h-100">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <div class="icon-badge icon-badge-warning"><i class="bi bi-file-text"></i></div>
+                    <h5 class="mb-0">Situation Reports Log</h5>
+                    <span class="ms-2 text-muted small">({{ reports|length }} submitted)</span>
                 </div>
-                
-                <div class="d-flex align-items-center gap-2">
-                    <span class="badge-status-{% if response.status == 'ACTIVE' %}active{% elif response.status == 'CLOSED' %}resolved{% else %}pending{% endif %} text-uppercase">
-                        {{ response.status }}
-                    </span>
-                    
-                    {% if response.priority_level == 'CRITICAL' %}
-                        <span class="badge bg-danger p-2 border border-danger text-uppercase">{{ response.priority_level }}</span>
-                    {% elif response.priority_level == 'HIGH' %}
-                        <span class="badge bg-warning text-dark p-2 border border-warning text-uppercase">{{ response.priority_level }}</span>
-                    {% else %}
-                        <span class="badge bg-info p-2 border border-info text-uppercase">{{ response.priority_level }}</span>
-                    {% endif %}
-                </div>
-            </div>
-            
-            <hr class="border-secondary my-3">
-            
-            <ul class="nav nav-pills border-0 gap-2">
-                <li class="nav-item">
-                    <a class="nav-link {% if active_tab == 'dashboard' %}active btn-primary-modern{% else %}text-muted{% endif %}" href="{{ url_for('incident_response_detail', response_id=response.id) }}">
-                        <i class="bi bi-speedometer2 me-1"></i> Overview
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {% if active_tab == 'tasks' %}active btn-primary-modern{% else %}text-muted{% endif %}" href="{{ url_for('incident_response_tasks', response_id=response.id) }}">
-                        <i class="bi bi-list-task me-1"></i> Tasks
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {% if active_tab == 'resources' %}active btn-primary-modern{% else %}text-muted{% endif %}" href="{{ url_for('incident_response_resources', response_id=response.id) }}">
-                        <i class="bi bi-boxes me-1"></i> Resources
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {% if active_tab == 'reports' %}active btn-primary-modern{% else %}text-muted{% endif %}" href="{{ url_for('incident_response_reports', response_id=response.id) }}">
-                        <i class="bi bi-file-text me-1"></i> SitReps
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {% if active_tab == 'timeline' %}active btn-primary-modern{% else %}text-muted{% endif %}" href="{{ url_for('incident_response_timeline', response_id=response.id) }}">
-                        <i class="bi bi-clock-history me-1"></i> Event Timeline
-                    </a>
-                </li>
-                {% if response.status != 'CLOSED' %}
-                <li class="nav-item ms-auto">
-                    <a class="nav-link {% if active_tab == 'close' %}active btn-success-modern{% else %}text-danger border border-danger border-opacity-20{% endif %}" href="{{ url_for('incident_response_close_page', response_id=response.id) }}">
-                        <i class="bi bi-check-circle me-1"></i> Close Response
-                    </a>
-                </li>
+
+                {% if reports %}
+                    <div class="vstack gap-3">
+                        {% for report in reports %}
+                        <div style="padding:1.25rem;background:rgba(10,13,26,0.5);border-radius:10px;
+                                    border-left:4px solid
+                                    {%- if report.report_type == 'ALERT' %} #EF4444
+                                    {%- elif report.report_type == 'MILESTONE' %} #10B981
+                                    {%- elif report.report_type == 'CLOSURE' %} #6B7280
+                                    {%- else %} #F59E0B
+                                    {%- endif %};">
+                            <div class="d-flex justify-content-between align-items-start gap-3 mb-2">
+                                <div>
+                                    <h5 class="text-white fw-bold mb-1">{{ report.title }}</h5>
+                                    <p class="text-muted small mb-0">
+                                        <i class="bi bi-person-fill me-1"></i>{{ report.reporter.username }}
+                                        <span class="mx-2 opacity-50">|</span>
+                                        <i class="bi bi-clock me-1"></i>{{ report.created_at.strftime('%b %d, %Y %H:%M') }}
+                                    </p>
+                                </div>
+                                <span style="flex-shrink:0;padding:0.35em 0.75em;border-radius:5px;font-size:0.72em;font-weight:700;text-transform:uppercase;
+                                    background:
+                                    {%- if report.report_type == 'ALERT' %} rgba(239,68,68,0.2); color:#FCA5A5; border:1px solid rgba(239,68,68,0.4)
+                                    {%- elif report.report_type == 'MILESTONE' %} rgba(16,185,129,0.2); color:#86EFAC; border:1px solid rgba(16,185,129,0.4)
+                                    {%- elif report.report_type == 'CLOSURE' %} rgba(107,114,128,0.2); color:#9CA3AF; border:1px solid rgba(107,114,128,0.4)
+                                    {%- else %} rgba(245,158,11,0.2); color:#FCD34D; border:1px solid rgba(245,158,11,0.4)
+                                    {%- endif %};">
+                                    {{ report.report_type }}
+                                </span>
+                            </div>
+
+                            <p class="text-white mb-3" style="white-space:pre-line;font-size:0.9rem;line-height:1.65;">{{ report.content }}</p>
+
+                            {% if report.affected_areas or report.casualties or report.evacuated %}
+                            <div class="d-flex flex-wrap gap-3" style="padding:0.65rem 1rem;background:rgba(255,255,255,0.03);border-radius:6px;border:1px solid rgba(255,255,255,0.06);">
+                                {% if report.affected_areas %}
+                                    <div class="small"><span class="text-muted me-1">Affected Sectors:</span><strong class="text-white">{{ report.affected_areas }}</strong></div>
+                                {% endif %}
+                                {% if report.casualties %}
+                                    <div class="small"><span class="text-muted me-1">Casualties:</span><strong style="color:#FCA5A5;">+{{ report.casualties }}</strong></div>
+                                {% endif %}
+                                {% if report.evacuated %}
+                                    <div class="small"><span class="text-muted me-1">Evacuated:</span><strong style="color:#86EFAC;">+{{ report.evacuated }}</strong></div>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <div style="font-size:2.5rem;opacity:0.3;margin-bottom:1rem;"><i class="bi bi-inbox"></i></div>
+                        <h5 class="mb-1">No SitReps Yet</h5>
+                        <p class="text-muted mb-0">No situation reports have been submitted for this incident.</p>
+                    </div>
                 {% endif %}
-            </ul>
+            </div>
         </div>
     </div>
 
-    <!-- Situation Reports Tab Body -->
-    <div class="row">
-        <!-- Situation Reports Log -->
-        <div class="col-lg-8 mb-4">
-            <div class="card bg-dark border border-warning h-100">
-                <div class="card-header bg-warning bg-opacity-10 border-warning">
-                    <h5 class="mb-0 text-white fw-bold">
-                        <i class="bi bi-file-text me-2 text-warning"></i>SITUATION REPORTS LOG ({{ reports|length }})
-                    </h5>
+    <!-- Create SitRep Form -->
+    <div class="col-lg-4 mb-4">
+        <div class="card card-custom h-100">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <div class="icon-badge icon-badge-warning"><i class="bi bi-plus-circle-fill"></i></div>
+                    <h5 class="mb-0">Create Situation Report</h5>
                 </div>
-                <div class="card-body">
-                    {% if reports %}
-                        <div class="timeline">
-                            {% for report in reports %}
-                                <div class="timeline-item mb-4 pb-3 border-bottom border-secondary border-opacity-50">
-                                    <div class="d-flex justify-content-between align-items-start gap-2">
-                                        <div>
-                                            <h5 class="text-info fw-bold mb-1">{{ report.title }}</h5>
-                                            <p class="text-muted small mb-2">
-                                                <i class="bi bi-person-fill"></i> Submitted by <strong>{{ report.reporter.username }}</strong> 
-                                                <span class="mx-2">|</span> 
-                                                <i class="bi bi-calendar-event"></i> {{ report.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
-                                            </p>
-                                            
-                                            <p class="text-light mb-3" style="white-space: pre-line;">{{ report.content }}</p>
-                                            
-                                            {% if report.affected_areas or report.casualties or report.evacuated %}
-                                                <div class="p-2 rounded bg-secondary bg-opacity-10 d-inline-flex flex-wrap gap-3 border border-secondary border-opacity-30 small">
-                                                    {% if report.affected_areas %}
-                                                        <div><strong class="text-info">Affected Sectors:</strong> <span class="text-white">{{ report.affected_areas }}</span></div>
-                                                    {% endif %}
-                                                    {% if report.casualties %}
-                                                        <div><strong class="text-danger">Casualties:</strong> <span class="text-white">+{{ report.casualties }}</span></div>
-                                                    {% endif %}
-                                                    {% if report.evacuated %}
-                                                        <div><strong class="text-success">Evacuated:</strong> <span class="text-white">+{{ report.evacuated }}</span></div>
-                                                    {% endif %}
-                                                </div>
-                                            {% endif %}
-                                        </div>
-                                        <span class="badge 
-                                            {% if report.report_type == 'ALERT' %}bg-danger
-                                            {% elif report.report_type == 'MILESTONE' %}bg-success
-                                            {% elif report.report_type == 'CLOSURE' %}bg-secondary
-                                            {% else %}bg-warning text-dark{% endif %} p-2">
-                                            {{ report.report_type }}
-                                        </span>
-                                    </div>
-                                </div>
-                            {% endfor %}
+
+                {% if response.status != 'CLOSED' %}
+                    <form method="POST" action="{{ url_for('create_situation_report', response_id=response.id) }}">
+                        <div class="mb-3">
+                            <label class="form-label">Report Title <span class="text-danger">*</span></label>
+                            <input type="text" name="title" class="form-control" placeholder="e.g., Tactical Briefing, Sector B Progress" required>
                         </div>
-                    {% else %}
-                        <div class="p-5 text-center text-muted">
-                            <i class="bi bi-inbox fs-1 d-block mb-3"></i>
-                            <p class="mb-0">No situation reports have been submitted for this incident yet.</p>
+                        <div class="mb-3">
+                            <label class="form-label">Report Type</label>
+                            <select name="report_type" class="form-select">
+                                <option value="UPDATE" selected>Status Update (Routine)</option>
+                                <option value="ALERT">Emergency Alert (Critical)</option>
+                                <option value="MILESTONE">Operational Milestone</option>
+                            </select>
                         </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-
-        <!-- Situation Report Form (Right Column) -->
-        <div class="col-lg-4 mb-4">
-            <div class="card bg-dark border border-secondary h-100">
-                <div class="card-header bg-secondary bg-opacity-10 border-secondary">
-                    <h5 class="mb-0 text-white fw-bold">
-                        <i class="bi bi-plus-circle me-2 text-warning"></i>CREATE SITUATION REPORT
-                    </h5>
-                </div>
-                <div class="card-body">
-                    {% if response.status != 'CLOSED' %}
-                        <form method="POST" action="{{ url_for('create_situation_report', response_id=response.id) }}">
-                            <div class="mb-3">
-                                <label for="title" class="form-label text-warning">Report Title *</label>
-                                <input type="text" name="title" id="title" class="form-control bg-dark text-light border-secondary" placeholder="e.g., Tactical Briefing, Sector B Progress" required>
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="report_type" class="form-label text-warning">Report Severity / Type</label>
-                                <select name="report_type" id="report_type" class="form-select bg-dark text-light border-secondary">
-                                    <option value="UPDATE" selected>Status Update (Routine)</option>
-                                    <option value="ALERT">Emergency Alert (Critical info)</option>
-                                    <option value="MILESTONE">Operational Milestone</option>
-                                </select>
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="content" class="form-label text-warning">Update Narrative *</label>
-                                <textarea name="content" id="content" class="form-control bg-dark text-light border-secondary" rows="5" placeholder="Describe the current operational status, weather updates, flood heights, rescue operations, etc..." required></textarea>
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="affected_areas" class="form-label text-warning">Affected Areas</label>
-                                <input type="text" name="affected_areas" id="affected_areas" class="form-control bg-dark text-light border-secondary" placeholder="e.g., Zone A Central, Bridge Area">
-                            </div>
-
-                            <div class="row mb-4">
-                                <div class="col-6">
-                                    <label for="casualties" class="form-label text-warning">New Casualties</label>
-                                    <input type="number" name="casualties" id="casualties" class="form-control bg-dark text-light border-secondary" min="0" placeholder="0">
-                                </div>
-                                <div class="col-6">
-                                    <label for="evacuated" class="form-label text-warning">New Evacuations</label>
-                                    <input type="number" name="evacuated" id="evacuated" class="form-control bg-dark text-light border-secondary" min="0" placeholder="0">
-                                </div>
-                            </div>
-
-                            <button type="submit" class="btn btn-warning btn-modern w-100 py-2 text-dark fw-bold" style="background: linear-gradient(135deg, #f59e0b, #d97706); border: none;">
-                                <i class="bi bi-check-circle me-1"></i> Submit SitRep
-                            </button>
-                        </form>
-                    {% else %}
-                        <div class="alert alert-secondary bg-dark text-muted border-secondary text-center my-4">
-                            <i class="bi bi-lock-fill fs-2 d-block mb-2 text-muted"></i>
-                            <span>This incident response is closed. Report creation is locked.</span>
+                        <div class="mb-3">
+                            <label class="form-label">Update Narrative <span class="text-danger">*</span></label>
+                            <textarea name="content" class="form-control" rows="5"
+                                placeholder="Describe the current operational status, weather updates, flood levels, rescue operations..." required></textarea>
                         </div>
-                    {% endif %}
-                </div>
+                        <div class="mb-3">
+                            <label class="form-label">Affected Areas</label>
+                            <input type="text" name="affected_areas" class="form-control" placeholder="e.g., Zone A Central, Bridge Area">
+                        </div>
+                        <div class="row mb-4">
+                            <div class="col-6">
+                                <label class="form-label">New Casualties</label>
+                                <input type="number" name="casualties" class="form-control" min="0" placeholder="0">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">New Evacuations</label>
+                                <input type="number" name="evacuated" class="form-control" min="0" placeholder="0">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-modern w-100 py-2 fw-bold"
+                                style="background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border:none;">
+                            <i class="bi bi-check-circle me-2"></i>Submit SitRep
+                        </button>
+                    </form>
+                {% else %}
+                    <div style="padding:2rem;text-align:center;background:rgba(107,114,128,0.08);border-radius:8px;border:1px solid rgba(107,114,128,0.2);">
+                        <i class="bi bi-lock-fill text-muted fs-2 d-block mb-2"></i>
+                        <span class="text-muted">This incident response is closed. Report creation is locked.</span>
+                    </div>
+                {% endif %}
             </div>
         </div>
     </div>
 </div>
+
 {% endblock %}
