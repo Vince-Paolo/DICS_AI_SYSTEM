@@ -145,3 +145,16 @@ window.addEventListener('DOMContentLoaded', function () {
         requestAnimationFrame(() => { document.body.style.opacity = '1'; });
     });
 });
+
+/* ── Back/Forward cache restore fix ─────────────────────────
+   The page-exit fade sets opacity:0 before navigating away.
+   When the browser restores the page from bfcache (back button),
+   DOMContentLoaded does NOT re-fire — so the body stays invisible.
+   pageshow fires on every restore, including bfcache hits. ── */
+window.addEventListener('pageshow', function (e) {
+    if (e.persisted) {
+        /* Page was restored from back/forward cache */
+        document.body.style.transition = 'opacity 0.2s ease';
+        document.body.style.opacity    = '1';
+    }
+});

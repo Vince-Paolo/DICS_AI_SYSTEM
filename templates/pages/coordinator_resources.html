@@ -1,0 +1,233 @@
+{% extends 'pages/base.html' %}
+{% block title %}Resource Requests | Agency Coordinator | DICS AI{% endblock %}
+
+{% block content %}
+
+<!-- Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card card-custom">
+            <div class="card-body">
+                <div class="section-header mb-0">
+                    <span class="section-header-icon" style="color:#FCD34D;"><i class="bi bi-box-seam-fill"></i></span>
+                    <h4 class="mb-0">Resource Requests</h4>
+                    <span class="ms-3">
+                        <a href="{{ url_for('coordinator_dashboard') }}" class="btn btn-sm btn-modern" style="background:rgba(245,158,11,0.1);color:#FCD34D;border:1px solid rgba(245,158,11,0.25);font-size:0.78rem;">
+                            <i class="bi bi-arrow-left me-1"></i>Back to Hub
+                        </a>
+                    </span>
+                    <span class="ms-auto">
+                        <span style="padding:0.3em 0.85em;background:rgba(245,158,11,0.12);color:#FCD34D;border:1px solid rgba(245,158,11,0.35);border-radius:20px;font-size:0.78rem;font-weight:700;font-family:monospace;">
+                            {{ session.agency or 'AGENCY' }}
+                        </span>
+                    </span>
+                </div>
+                <p class="text-muted mb-0 mt-2" style="padding-left:2.75rem;">Track allocated resources and request additional supplies or personnel for active responses.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 align-items-stretch">
+    <!-- Current Resources -->
+    <div class="col-lg-7">
+        <div class="card card-custom shadow-lg h-100">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <div class="icon-badge" style="background:rgba(245,158,11,0.15);color:#FCD34D;border:1px solid rgba(245,158,11,0.3);">
+                        <i class="bi bi-boxes"></i>
+                    </div>
+                    <h5 class="mb-0">Allocated Resources</h5>
+                    <span class="ms-2 text-muted small">({{ resources|length }} total)</span>
+                </div>
+
+                {% if resources %}
+                    <div class="table-responsive">
+                        <table class="table table-enhanced align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Type</th>
+                                    <th>Agency</th>
+                                    <th>Qty</th>
+                                    <th>Status</th>
+                                    <th>Location</th>
+                                    <th>Incident</th>
+                                    <th class="text-center">Update</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for res in resources %}
+                                <tr>
+                                    <td>
+                                        <strong class="text-white" style="font-size:0.88rem;">{{ res.resource_type }}</strong>
+                                        {% if res.notes %}
+                                        <br><span class="text-muted" style="font-size:0.72rem;">{{ res.notes[:40] }}{% if res.notes|length > 40 %}...{% endif %}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><span style="color:#FCD34D;font-size:0.82rem;font-weight:600;">{{ res.agency }}</span></td>
+                                    <td><strong class="text-info">{{ res.quantity }}</strong></td>
+                                    <td>
+                                        {% if res.status == 'DEPLOYED' %}
+                                            <span class="badge-status-active" style="font-size:0.7rem;">DEPLOYED</span>
+                                        {% elif res.status == 'AVAILABLE' %}
+                                            <span class="badge-status-resolved" style="font-size:0.7rem;">AVAILABLE</span>
+                                        {% elif res.status == 'RETURNING' %}
+                                            <span class="badge-status-pending" style="font-size:0.7rem;">RETURNING</span>
+                                        {% else %}
+                                            <span style="padding:0.25em 0.55em;background:rgba(107,114,128,0.15);color:#9CA3AF;border:1px solid rgba(107,114,128,0.3);border-radius:5px;font-size:0.7em;font-weight:700;">UNAVAIL.</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><span class="text-muted small">{{ res.location or '—' }}</span></td>
+                                    <td>
+                                        <a href="{{ url_for('coordinator_response_detail', response_id=res.incident_response_id) }}" class="text-info" style="text-decoration:none;font-size:0.82rem;">
+                                            #{{ res.incident_response.incident_id }}
+                                        </a>
+                                    </td>
+                                    <td class="text-center">
+                                        <form method="POST" action="{{ url_for('coordinator_update_resource', resource_id=res.id) }}">
+                                            <select name="status" class="form-select form-select-sm" style="max-width:120px;font-size:0.76rem;" onchange="this.form.submit()">
+                                                <option value="AVAILABLE" {% if res.status == 'AVAILABLE' %}selected{% endif %}>Available</option>
+                                                <option value="DEPLOYED" {% if res.status == 'DEPLOYED' %}selected{% endif %}>Deployed</option>
+                                                <option value="RETURNING" {% if res.status == 'RETURNING' %}selected{% endif %}>Returning</option>
+                                                <option value="UNAVAILABLE" {% if res.status == 'UNAVAILABLE' %}selected{% endif %}>Unavailable</option>
+                                            </select>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <div style="font-size:2.5rem;opacity:0.3;margin-bottom:1rem;"><i class="bi bi-box-seam"></i></div>
+                        <h5 class="mb-1">No Resources Allocated</h5>
+                        <p class="text-muted mb-0">No resources have been assigned to active responses yet.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Request Form -->
+    <div class="col-lg-5 d-flex flex-column" style="gap:1rem;">
+        <div class="card card-custom shadow-lg" style="margin-bottom:0;">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <div class="icon-badge" style="background:rgba(245,158,11,0.15);color:#FCD34D;border:1px solid rgba(245,158,11,0.3);">
+                        <i class="bi bi-plus-circle-fill"></i>
+                    </div>
+                    <h5 class="mb-0">Allocate / Request Resource</h5>
+                </div>
+
+                <form method="POST" action="{{ url_for('coordinator_allocate_resource') }}">
+                    <div class="mb-3">
+                        <label class="form-label" style="font-size:0.82rem;">Active Response <span class="text-danger">*</span></label>
+                        <select name="response_id" class="form-select form-select-sm" required>
+                            <option value="">— Select Active Response —</option>
+                            {% for resp in active_responses %}
+                                <option value="{{ resp.id }}">#{{ resp.incident_id }} – {{ resp.incident.hazard_type }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" style="font-size:0.82rem;">Agency <span class="text-danger">*</span></label>
+                        <select name="agency" class="form-select form-select-sm" required>
+                            <option value="">— Select Agency —</option>
+                            <option value="Fire Department">Fire Department</option>
+                            <option value="Police Department">Police Department</option>
+                            <option value="MDRRMO">MDRRMO</option>
+                            <option value="Health Office">Health Office</option>
+                            <option value="Search & Rescue">Search & Rescue</option>
+                            <option value="Medical Services">Medical Services</option>
+                            <option value="Public Works">Public Works</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" style="font-size:0.82rem;">Resource Type <span class="text-danger">*</span></label>
+                        <select name="resource_type" class="form-select form-select-sm" required>
+                            <option value="">— Select Type —</option>
+                            <optgroup label="Personnel">
+                                <option value="Firefighters">Firefighters</option>
+                                <option value="Police Officers">Police Officers</option>
+                                <option value="Paramedics">Paramedics</option>
+                                <option value="Rescue Personnel">Rescue Personnel</option>
+                                <option value="Volunteers">Volunteers</option>
+                                <option value="Medical Staff">Medical Staff</option>
+                            </optgroup>
+                            <optgroup label="Vehicles">
+                                <option value="Fire Trucks">Fire Trucks</option>
+                                <option value="Ambulances">Ambulances</option>
+                                <option value="Rescue Boats">Rescue Boats</option>
+                                <option value="Patrol Vehicles">Patrol Vehicles</option>
+                                <option value="Evacuation Buses">Evacuation Buses</option>
+                            </optgroup>
+                            <optgroup label="Equipment & Supplies">
+                                <option value="Medical Supplies">Medical Supplies</option>
+                                <option value="Relief Goods">Relief Goods</option>
+                                <option value="Water Pumps">Water Pumps</option>
+                                <option value="Generators">Generators</option>
+                                <option value="Communication Radios">Communication Radios</option>
+                                <option value="Rope Rescue Gear">Rope Rescue Gear</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-5">
+                            <label class="form-label" style="font-size:0.82rem;">Quantity <span class="text-danger">*</span></label>
+                            <input type="number" name="quantity" class="form-control form-control-sm" min="1" placeholder="0" required>
+                        </div>
+                        <div class="col-7">
+                            <label class="form-label" style="font-size:0.82rem;">Initial Status</label>
+                            <select name="status" class="form-select form-select-sm">
+                                <option value="AVAILABLE">Available</option>
+                                <option value="DEPLOYED">Deployed</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" style="font-size:0.82rem;">Current Location</label>
+                        <input type="text" name="location" class="form-control form-control-sm" placeholder="e.g., Calamba City Fire Station">
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label" style="font-size:0.82rem;">Notes / Special Instructions</label>
+                        <textarea name="notes" class="form-control form-control-sm" rows="2" placeholder="Additional notes..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-modern w-100 py-2" style="background:linear-gradient(135deg,#D97706,#F59E0B);color:#0b0f19;font-weight:700;border:none;">
+                        <i class="bi bi-plus-circle me-2"></i>Allocate Resource
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Resource Summary Counters -->
+        <div class="card card-custom shadow-lg flex-grow-1" style="margin-bottom:0;">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <div class="icon-badge" style="background:rgba(56,189,248,0.15);color:#7DD3FC;border:1px solid rgba(56,189,248,0.3);">
+                        <i class="bi bi-pie-chart-fill"></i>
+                    </div>
+                    <h5 class="mb-0" style="font-size:0.95rem;">Resource Summary</h5>
+                </div>
+                <div class="row g-2">
+                    {% for label, count, color in [
+                        ('Deployed', deployed_count, '#FCA5A5'),
+                        ('Available', available_count, '#86EFAC'),
+                        ('Returning', returning_count, '#FCD34D'),
+                        ('Unavailable', unavail_count, '#9CA3AF')
+                    ] %}
+                    <div class="col-6">
+                        <div style="padding:0.6rem;background:rgba(255,255,255,0.04);border-radius:8px;border:1px solid rgba(255,255,255,0.06);text-align:center;">
+                            <div style="font-size:1.4rem;font-weight:800;color:{{ color }};">{{ count }}</div>
+                            <div style="font-size:0.72rem;color:#94A3B8;">{{ label }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

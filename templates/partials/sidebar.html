@@ -23,44 +23,71 @@
             </div>
 
             <nav class="sidebar-nav">
-                {% if session.role in ['admin', 'agency_coordinator'] %}
-                {# ── ADMIN / AGENCY COORDINATOR LINKS ── #}
+                {% if session.role == 'admin' %}
+                {# ── ADMIN LINKS ── #}
                 <a href="/dashboard" class="sidebar-nav-link {{ 'active' if request.path == '/dashboard' else '' }}" data-tooltip="Dashboard">
                     <i class="bi bi-speedometer2"></i>
                     <span class="nav-text sidebar-text-show">Dashboard</span>
                 </a>
-
                 <a href="/hazard-map" class="sidebar-nav-link {{ 'active' if request.path == '/hazard-map' else '' }}" data-tooltip="Hazard Map">
                     <i class="bi bi-pin-map-fill"></i>
                     <span class="nav-text sidebar-text-show">Hazard Map</span>
                 </a>
-
                 <a href="/alerts" class="sidebar-nav-link {{ 'active' if request.path == '/alerts' else '' }}" data-tooltip="Active Alerts">
                     <i class="bi bi-exclamation-triangle-fill"></i>
                     <span class="nav-text sidebar-text-show">Active Alerts</span>
                 </a>
-
                 <a href="/incidents" class="sidebar-nav-link {{ 'active' if request.path == '/incidents' else '' }}" data-tooltip="Incident History">
                     <i class="bi bi-clock-history"></i>
                     <span class="nav-text sidebar-text-show">Incident History</span>
                 </a>
-
                 <a href="/ics" class="sidebar-nav-link {{ 'active' if request.path == '/ics' else '' }}" data-tooltip="Incident Command">
                     <i class="bi bi-clipboard-check"></i>
                     <span class="nav-text sidebar-text-show">Incident Command</span>
                 </a>
-
                 <a href="/protocols" class="sidebar-nav-link {{ 'active' if request.path == '/protocols' else '' }}" data-tooltip="ICS Protocols">
                     <i class="bi bi-file-text"></i>
                     <span class="nav-text sidebar-text-show">ICS Protocols</span>
                 </a>
-
-                {% if session.role == 'admin' %}
                 <a href="/admin/users" class="sidebar-nav-link {{ 'active' if request.path == '/admin/users' else '' }}" data-tooltip="User Management">
                     <i class="bi bi-people-fill"></i>
                     <span class="nav-text sidebar-text-show">User Management</span>
                 </a>
-                {% endif %}
+                
+                {% elif session.role == 'agency_coordinator' %}
+                {# ── AGENCY COORDINATOR LINKS ── #}
+                <a href="/coordinator" class="sidebar-nav-link {{ 'active' if request.path == '/coordinator' else '' }}" data-tooltip="Coordinator Hub">
+                    <i class="bi bi-building-check"></i>
+                    <span class="nav-text sidebar-text-show">Coordinator Hub</span>
+                </a>
+                <a href="/coordinator/tasks" class="sidebar-nav-link {{ 'active' if request.path == '/coordinator/tasks' else '' }}" data-tooltip="Task Management">
+                    <i class="bi bi-list-task"></i>
+                    <span class="nav-text sidebar-text-show">Task Management</span>
+                </a>
+                <a href="/coordinator/team" class="sidebar-nav-link {{ 'active' if request.path == '/coordinator/team' else '' }}" data-tooltip="Team Tracking">
+                    <i class="bi bi-people-fill"></i>
+                    <span class="nav-text sidebar-text-show">Team Tracking</span>
+                </a>
+                <a href="/coordinator/resources" class="sidebar-nav-link {{ 'active' if request.path == '/coordinator/resources' else '' }}" data-tooltip="Resource Requests">
+                    <i class="bi bi-box-seam-fill"></i>
+                    <span class="nav-text sidebar-text-show">Resource Requests</span>
+                </a>
+                <a href="/coordinator/reports" class="sidebar-nav-link {{ 'active' if request.path == '/coordinator/reports' else '' }}" data-tooltip="Situation Reports">
+                    <i class="bi bi-file-earmark-bar-graph-fill"></i>
+                    <span class="nav-text sidebar-text-show">Situation Reports</span>
+                </a>
+                <a href="/coordinator/comms" class="sidebar-nav-link {{ 'active' if request.path == '/coordinator/comms' else '' }}" data-tooltip="Comm Center">
+                    <i class="bi bi-chat-dots-fill"></i>
+                    <span class="nav-text sidebar-text-show">Comm Center</span>
+                </a>
+                <a href="/hazard-map" class="sidebar-nav-link {{ 'active' if request.path == '/hazard-map' else '' }}" data-tooltip="Hazard Map">
+                    <i class="bi bi-pin-map-fill"></i>
+                    <span class="nav-text sidebar-text-show">Hazard Map</span>
+                </a>
+                <a href="/alerts" class="sidebar-nav-link {{ 'active' if request.path == '/alerts' else '' }}" data-tooltip="Active Alerts">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <span class="nav-text sidebar-text-show">Active Alerts</span>
+                </a>
 
                 {% elif session.role == 'incident_commander' %}
                 {# ── INCIDENT COMMANDER LINKS ── #}
@@ -105,7 +132,8 @@
                     <i class="bi bi-bell-fill"></i>
                     <span class="nav-text sidebar-text-show">Emergency Alerts</span>
                     {% if alert_count is defined and alert_count > 0 %}
-                        <span class="badge bg-danger rounded-circle ms-2 sidebar-text-show">{{ alert_count }}</span>
+                        <span class="badge bg-danger rounded-pill ms-auto sidebar-text-show" style="font-size:0.65rem;min-width:1.3rem;">{{ alert_count }}</span>
+                        <span class="alert-dot sidebar-text-hide" style="position:absolute;top:8px;right:8px;width:8px;height:8px;background:#EF4444;border-radius:50%;border:1px solid #0b0f19;"></span>
                     {% endif %}
                 </a>
 
@@ -420,6 +448,15 @@
 .sidebar-nav-link .badge {
     font-size: 0.65rem;
     padding: 0.35rem 0.5rem;
+}
+
+/* Alert dot — hidden when sidebar is expanded, visible when collapsed */
+.sidebar-text-hide {
+    display: none;
+}
+
+.sidebar-container.collapsed .sidebar-text-hide {
+    display: block;
 }
 
 /* SOS Button specific styling */

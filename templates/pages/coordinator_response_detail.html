@@ -1,0 +1,169 @@
+{% extends 'pages/base.html' %}
+{% block title %}Response #{{ response.incident_id }} | Coordinator View | DICS AI{% endblock %}
+
+{% block content %}
+
+<!-- Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card card-custom">
+            <div class="card-body">
+                <div class="section-header mb-0">
+                    <span class="section-header-icon" style="color:#38BDF8;"><i class="bi bi-building-check"></i></span>
+                    <h4 class="mb-0">Response #{{ response.incident_id }} — Coordinator View</h4>
+                    <span class="ms-3">
+                        <a href="{{ url_for('coordinator_dashboard') }}" class="btn btn-sm btn-modern" style="background:rgba(56,189,248,0.1);color:#7DD3FC;border:1px solid rgba(56,189,248,0.25);font-size:0.78rem;">
+                            <i class="bi bi-arrow-left me-1"></i>Back to Hub
+                        </a>
+                    </span>
+                    <span class="ms-auto">
+                        {% if response.status == 'ACTIVE' %}
+                            <span class="badge-status-active" style="font-size:0.78rem;padding:0.4em 0.9em;">ACTIVE</span>
+                        {% elif response.status == 'MONITORING' %}
+                            <span class="badge-status-pending" style="font-size:0.78rem;padding:0.4em 0.9em;">MONITORING</span>
+                        {% elif response.status == 'RESOLVED' %}
+                            <span class="badge-status-resolved" style="font-size:0.78rem;padding:0.4em 0.9em;">RESOLVED</span>
+                        {% else %}
+                            <span style="padding:0.4em 0.9em;background:rgba(107,114,128,0.2);color:#9CA3AF;border:1px solid rgba(107,114,128,0.3);border-radius:20px;font-size:0.78rem;font-weight:700;">CLOSED</span>
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Incident Summary -->
+<div class="card card-custom shadow-lg mb-4">
+    <div class="card-body p-4">
+        <div class="d-flex align-items-center gap-2 mb-3">
+            <div class="icon-badge" style="background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.3);">
+                <i class="bi bi-exclamation-octagon-fill"></i>
+            </div>
+            <h5 class="mb-0">Incident Brief</h5>
+        </div>
+        <div class="row g-3">
+            <div class="col-md-3">
+                <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:#94A3B8;margin-bottom:0.3rem;">Hazard Type</div>
+                <span style="padding:0.3em 0.75em;background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.4);border-radius:6px;font-size:0.8em;font-weight:700;text-transform:uppercase;">
+                    {{ response.incident.hazard_type }}
+                </span>
+            </div>
+            <div class="col-md-3">
+                <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:#94A3B8;margin-bottom:0.3rem;">Location</div>
+                <span class="text-white" style="font-size:0.88rem;"><i class="bi bi-geo-alt me-1 text-info"></i>{{ response.incident.location or 'Unknown' }}</span>
+            </div>
+            <div class="col-md-3">
+                <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:#94A3B8;margin-bottom:0.3rem;">Priority</div>
+                {% if response.priority_level == 'CRITICAL' %}
+                    <span style="padding:0.3em 0.75em;background:rgba(239,68,68,0.2);color:#FCA5A5;border:1px solid rgba(239,68,68,0.5);border-radius:6px;font-size:0.8em;font-weight:700;">🔴 CRITICAL</span>
+                {% elif response.priority_level == 'HIGH' %}
+                    <span style="padding:0.3em 0.75em;background:rgba(245,158,11,0.2);color:#FCD34D;border:1px solid rgba(245,158,11,0.5);border-radius:6px;font-size:0.8em;font-weight:700;">🟡 HIGH</span>
+                {% else %}
+                    <span style="padding:0.3em 0.75em;background:rgba(59,130,246,0.2);color:#93C5FD;border:1px solid rgba(59,130,246,0.5);border-radius:6px;font-size:0.8em;font-weight:700;">🔵 {{ response.priority_level }}</span>
+                {% endif %}
+            </div>
+            <div class="col-md-3">
+                <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:#94A3B8;margin-bottom:0.3rem;">Started</div>
+                <span class="text-white" style="font-size:0.88rem;">{{ response.started_at.strftime('%b %d, %Y %H:%M') }}</span>
+            </div>
+            {% if response.situation_summary %}
+            <div class="col-12">
+                <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:#94A3B8;margin-bottom:0.3rem;">Situation Summary</div>
+                <p class="text-muted mb-0" style="font-size:0.88rem;line-height:1.6;">{{ response.situation_summary }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- My Agency's Tasks -->
+    <div class="col-lg-6">
+        <div class="card card-custom shadow-lg h-100">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <div class="icon-badge" style="background:rgba(56,189,248,0.15);color:#7DD3FC;border:1px solid rgba(56,189,248,0.3);">
+                        <i class="bi bi-list-task"></i>
+                    </div>
+                    <h5 class="mb-0" style="font-size:0.95rem;">My Agency's Tasks</h5>
+                </div>
+                {% if agency_tasks %}
+                    <div class="d-flex flex-column gap-2">
+                        {% for task in agency_tasks %}
+                        <div style="padding:0.75rem 1rem;background:rgba(56,189,248,0.05);border-radius:8px;border:1px solid rgba(56,189,248,0.15);border-left:3px solid rgba(56,189,248,0.4);">
+                            <div class="d-flex align-items-start justify-content-between gap-2">
+                                <strong class="text-white" style="font-size:0.88rem;">{{ task.title }}</strong>
+                                {% if task.priority == 'CRITICAL' %}
+                                    <span style="padding:0.2em 0.45em;background:rgba(239,68,68,0.2);color:#FCA5A5;border-radius:4px;font-size:0.68em;font-weight:700;white-space:nowrap;">🔴 CRIT</span>
+                                {% elif task.priority == 'HIGH' %}
+                                    <span style="padding:0.2em 0.45em;background:rgba(245,158,11,0.2);color:#FCD34D;border-radius:4px;font-size:0.68em;font-weight:700;white-space:nowrap;">🟡 HIGH</span>
+                                {% endif %}
+                            </div>
+                            <p class="text-muted mb-2 mt-1" style="font-size:0.78rem;line-height:1.4;">{{ task.description }}</p>
+                            <div class="d-flex align-items-center gap-2">
+                                <form method="POST" action="{{ url_for('coordinator_update_task', task_id=task.id) }}">
+                                    <select name="status" class="form-select form-select-sm" style="max-width:130px;font-size:0.75rem;" onchange="this.form.submit()">
+                                        <option value="PENDING" {% if task.status == 'PENDING' %}selected{% endif %}>Pending</option>
+                                        <option value="IN_PROGRESS" {% if task.status == 'IN_PROGRESS' %}selected{% endif %}>In Progress</option>
+                                        <option value="COMPLETED" {% if task.status == 'COMPLETED' %}selected{% endif %}>Completed</option>
+                                        <option value="FAILED" {% if task.status == 'FAILED' %}selected{% endif %}>Failed</option>
+                                    </select>
+                                </form>
+                                <span class="text-muted" style="font-size:0.72rem;">
+                                    {% if task.estimated_completion %}Due {{ task.estimated_completion.strftime('%b %d %H:%M') }}{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-clipboard2-check text-muted fs-3 d-block mb-2"></i>
+                        <span class="text-muted small">No tasks assigned to your agency for this response.</span>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- All Response Reports -->
+    <div class="col-lg-6">
+        <div class="card card-custom shadow-lg h-100">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <div class="icon-badge" style="background:rgba(139,92,246,0.15);color:#C4B5FD;border:1px solid rgba(139,92,246,0.3);">
+                        <i class="bi bi-file-text-fill"></i>
+                    </div>
+                    <h5 class="mb-0" style="font-size:0.95rem;">Situation Reports</h5>
+                    <a href="{{ url_for('coordinator_reports') }}" class="ms-auto text-info small" style="text-decoration:none;font-size:0.78rem;">File Report <i class="bi bi-arrow-right ms-1"></i></a>
+                </div>
+                {% if response.reports %}
+                    <div class="d-flex flex-column gap-2" style="max-height:420px;overflow-y:auto;">
+                        {% for rep in response.reports|sort(attribute='created_at',reverse=True) %}
+                        <div style="padding:0.65rem 0.85rem;background:rgba(255,255,255,0.03);border-radius:7px;border:1px solid rgba(255,255,255,0.06);">
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <strong class="text-white" style="font-size:0.82rem;">{{ rep.title }}</strong>
+                                <span style="font-size:0.65em;font-weight:700;padding:0.15em 0.4em;border-radius:3px;
+                                    {% if rep.report_type == 'ALERT' %}background:rgba(239,68,68,0.2);color:#FCA5A5;
+                                    {% elif rep.report_type == 'MILESTONE' %}background:rgba(16,185,129,0.2);color:#86EFAC;
+                                    {% else %}background:rgba(139,92,246,0.2);color:#C4B5FD;{% endif %}">{{ rep.report_type }}</span>
+                                <span class="ms-auto text-muted" style="font-size:0.7rem;white-space:nowrap;">{{ rep.created_at.strftime('%b %d %H:%M') }}</span>
+                            </div>
+                            <p class="text-muted mb-1" style="font-size:0.78rem;line-height:1.45;">{{ rep.content[:200] }}{% if rep.content|length > 200 %}...{% endif %}</p>
+                            <span class="text-muted" style="font-size:0.7rem;"><i class="bi bi-person me-1"></i>{{ rep.reporter.username }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-file-earmark text-muted fs-3 d-block mb-2"></i>
+                        <span class="text-muted small">No situation reports submitted yet.</span>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

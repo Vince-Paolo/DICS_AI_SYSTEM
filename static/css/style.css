@@ -686,6 +686,12 @@ p.text-muted {
 /* Ensure highlight cards are balanced with consistent height */
 .card-custom.h-100 {
     min-height: 100%;
+    margin-bottom: 0 !important; /* cancel the default 1.5rem so h-100 works in flex rows */
+}
+
+/* Cards inside a flex-column container must not add margin that breaks height matching */
+.d-flex.flex-column > .card-custom {
+    margin-bottom: 0 !important;
 }
 
 .card-custom.h-100 .card-body {

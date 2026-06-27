@@ -33,6 +33,22 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 
 db.init_app(app)
 
+@app.context_processor
+def inject_alert_count():
+    """Inject alert_count into every template so the sidebar badge
+    shows consistently on all pages without per-route boilerplate."""
+    alert_count = 0
+    if session.get('username') and session.get('role') == 'user':
+        try:
+            user = User.query.filter_by(username=session['username']).first()
+            if user:
+                alert_count = Incident.query.filter_by(
+                    user_id=user.id, alert=True
+                ).count()
+        except Exception:
+            alert_count = 0
+    return {'alert_count': alert_count}
+
 def migrate_user_table():
     db_path = os.path.join(instance_dir, 'database.db')
     with sqlite3.connect(db_path) as conn:
@@ -218,7 +234,13 @@ def verify_password(user, password):
 @app.route('/', methods=['GET', 'POST'])
 def login():
     if 'username' in session:
-        return redirect(url_for('dashboard'))
+        role = session.get('role')
+        if role == 'incident_commander':
+            return redirect(url_for('incident_commander_dashboard'))
+        elif role == 'agency_coordinator':
+            return redirect(url_for('coordinator_dashboard'))
+        else:
+            return redirect(url_for('dashboard'))
 
     error = None
     if request.method == 'POST':
@@ -233,9 +255,10 @@ def login():
             flash('Welcome back, ' + user.username + '!', 'success')
             if user.role == 'incident_commander':
                 return redirect(url_for('incident_commander_dashboard'))
-            elif user.role in ['admin', 'agency_coordinator']:
-                return redirect(url_for('admin'))
-            return redirect(url_for('dashboard'))
+            elif user.role == 'agency_coordinator':
+                return redirect(url_for('coordinator_dashboard'))
+            else:
+                return redirect(url_for('dashboard'))
         else:
             error = 'Invalid username or password.'
     return render_template('pages/login.html', error=error)
@@ -1220,6 +1243,346 @@ def get_incident_response_stats():
         'pending_tasks': pending_tasks,
         'deployed_resources': deployed_resources
     })
+
+
+
+# ============================================================
+# AGENCY COORDINATOR ROUTES
+# ============================================================
+
+def is_coordinator():
+    """Check if current user is agency_coordinator (not admin)"""
+    return 'username' in session and session.get('role') == 'agency_coordinator'
+
+def get_coordinator_agency():
+    """Get current coordinator's agency name"""
+    user = User.query.filter_by(username=session.get('username')).first()
+    return user.agency if user else None
+
+
+@app.route('/coordinator')
+def coordinator_dashboard():
+    """Agency Coordinator Hub – main landing page"""
+    if not is_admin_or_coordinator():
+        flash('Access denied.', 'error')
+        return redirect(url_for('login'))
+
+    agency = get_coordinator_agency()
+
+    # Tasks assigned to this coordinator's agency
+    my_tasks = Task.query.join(IncidentResponse).filter(
+        Task.assigned_to_agency == agency,
+        IncidentResponse.status.in_(['ACTIVE', 'MONITORING'])
+    ).order_by(Task.created_at.desc()).all() if agency else []
+
+    pending_count = sum(1 for t in my_tasks if t.status in ('PENDING', 'IN_PROGRESS'))
+
+    # Active responses
+    active_responses = IncidentResponse.query.filter(
+        IncidentResponse.status.in_(['ACTIVE', 'MONITORING'])
+    ).order_by(IncidentResponse.started_at.desc()).all()
+
+    # Resources deployed (all agencies, coordinator sees all)
+    deployed_resources = Resource.query.filter_by(status='DEPLOYED').count()
+
+    # Total active incidents with a response
+    active_incidents = IncidentResponse.query.filter(
+        IncidentResponse.status.in_(['ACTIVE', 'MONITORING'])
+    ).count()
+
+    return render_template('pages/coordinator_dashboard.html',
+        my_tasks=my_tasks,
+        pending_count=pending_count,
+        active_responses=active_responses,
+        deployed_resources=deployed_resources,
+        active_incidents=active_incidents
+    )
+
+
+@app.route('/coordinator/tasks')
+def coordinator_tasks():
+    """Agency task management – all tasks assigned to coordinator's agency"""
+    if not is_admin_or_coordinator():
+        flash('Access denied.', 'error')
+        return redirect(url_for('login'))
+
+    agency = get_coordinator_agency()
+    status_filter = request.args.get('status')
+    priority_filter = request.args.get('priority')
+
+    query = Task.query.filter_by(assigned_to_agency=agency) if agency else Task.query
+
+    if status_filter:
+        query = query.filter(Task.status == status_filter)
+    if priority_filter:
+        query = query.filter(Task.priority == priority_filter)
+
+    tasks = query.order_by(Task.created_at.desc()).all()
+
+    return render_template('pages/coordinator_tasks.html', tasks=tasks)
+
+
+@app.route('/coordinator/tasks/<int:task_id>/update', methods=['POST'])
+def coordinator_update_task(task_id):
+    """Agency coordinator updates their own task status"""
+    if not is_admin_or_coordinator():
+        flash('Access denied.', 'error')
+        return redirect(url_for('login'))
+
+    task = Task.query.get_or_404(task_id)
+    new_status = request.form.get('status')
+
+    if new_status in ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'FAILED'):
+        task.status = new_status
+        if new_status == 'COMPLETED':
+            task.completed_at = datetime.utcnow()
+        db.session.commit()
+        flash(f'Task "{task.title}" updated to {new_status}.', 'success')
+
+    # Redirect back to where the user came from
+    referrer = request.referrer
+    if referrer:
+        return redirect(referrer)
+    return redirect(url_for('coordinator_tasks'))
+
+
+@app.route('/coordinator/team')
+def coordinator_team():
+    """Team tracking – resources across agencies"""
+    if not is_admin_or_coordinator():
+        flash('Access denied.', 'error')
+        return redirect(url_for('login'))
+
+    # All resources for active responses
+    resources = Resource.query.join(IncidentResponse).filter(
+        IncidentResponse.status.in_(['ACTIVE', 'MONITORING'])
+    ).order_by(Resource.agency, Resource.allocated_at.desc()).all()
+
+    # Count resources per agency
+    team_counts = {}
+    for r in resources:
+        team_counts[r.agency] = team_counts.get(r.agency, 0) + r.quantity
+
+    # Task completion summary per agency
+    all_tasks = Task.query.join(IncidentResponse).filter(
+        IncidentResponse.status.in_(['ACTIVE', 'MONITORING'])
+    ).all()
+
+    task_summary = {}
+    for t in all_tasks:
+        agency_name = t.assigned_to_agency
+        if agency_name not in task_summary:
+            task_summary[agency_name] = {'total': 0, 'completed': 0}
+        task_summary[agency_name]['total'] += 1
+        if t.status == 'COMPLETED':
+            task_summary[agency_name]['completed'] += 1
+
+    return render_template('pages/coordinator_team.html',
+        resources=resources,
+        team_counts=team_counts,
+        task_summary=task_summary
+    )
+
+
+@app.route('/coordinator/resources')
+def coordinator_resources():
+    """Resource request and tracking page"""
+    if not is_admin_or_coordinator():
+        flash('Access denied.', 'error')
+        return redirect(url_for('login'))
+
+    resources = Resource.query.join(IncidentResponse).filter(
+        IncidentResponse.status.in_(['ACTIVE', 'MONITORING'])
+    ).order_by(Resource.allocated_at.desc()).all()
+
+    active_responses = IncidentResponse.query.filter(
+        IncidentResponse.status.in_(['ACTIVE', 'MONITORING'])
+    ).order_by(IncidentResponse.started_at.desc()).all()
+
+    deployed_count = sum(1 for r in resources if r.status == 'DEPLOYED')
+    available_count = sum(1 for r in resources if r.status == 'AVAILABLE')
+    returning_count = sum(1 for r in resources if r.status == 'RETURNING')
+    unavail_count = sum(1 for r in resources if r.status == 'UNAVAILABLE')
+
+    return render_template('pages/coordinator_resources.html',
+        resources=resources,
+        active_responses=active_responses,
+        deployed_count=deployed_count,
+        available_count=available_count,
+        returning_count=returning_count,
+        unavail_count=unavail_count
+    )
+
+
+@app.route('/coordinator/resources/allocate', methods=['POST'])
+def coordinator_allocate_resource():
+    """Coordinator allocates a resource to a response"""
+    if not is_admin_or_coordinator():
+        flash('Access denied.', 'error')
+        return redirect(url_for('login'))
+
+    response_id = request.form.get('response_id', type=int)
+    agency = request.form.get('agency', '').strip()
+    resource_type = request.form.get('resource_type', '').strip()
+    quantity = request.form.get('quantity', type=int, default=1)
+    status = request.form.get('status', 'AVAILABLE')
+    location = request.form.get('location', '').strip()
+    notes = request.form.get('notes', '').strip()
+
+    if not all([response_id, agency, resource_type, quantity]):
+        flash('Please fill in all required fields.', 'error')
+        return redirect(url_for('coordinator_resources'))
+
+    response = IncidentResponse.query.get_or_404(response_id)
+
+    resource = Resource(
+        incident_response_id=response.id,
+        resource_type=resource_type,
+        agency=agency,
+        quantity=quantity,
+        status=status,
+        location=location or None,
+        notes=notes or None,
+        deployed_at=datetime.utcnow() if status == 'DEPLOYED' else None
+    )
+    db.session.add(resource)
+    db.session.commit()
+    flash(f'{quantity}x {resource_type} ({agency}) allocated to Response #{response.incident_id}.', 'success')
+    return redirect(url_for('coordinator_resources'))
+
+
+@app.route('/coordinator/resources/<int:resource_id>/update', methods=['POST'])
+def coordinator_update_resource(resource_id):
+    """Update resource status"""
+    if not is_admin_or_coordinator():
+        flash('Access denied.', 'error')
+        return redirect(url_for('login'))
+
+    resource = Resource.query.get_or_404(resource_id)
+    new_status = request.form.get('status')
+
+    if new_status in ('AVAILABLE', 'DEPLOYED', 'RETURNING', 'UNAVAILABLE'):
+        resource.status = new_status
+        if new_status == 'DEPLOYED' and not resource.deployed_at:
+            resource.deployed_at = datetime.utcnow()
+        db.session.commit()
+        flash(f'Resource status updated to {new_status}.', 'success')
+
+    referrer = request.referrer
+    if referrer:
+        return redirect(referrer)
+    return redirect(url_for('coordinator_resources'))
+
+
+@app.route('/coordinator/reports')
+def coordinator_reports():
+    """Situation reports page"""
+    if not is_admin_or_coordinator():
+        flash('Access denied.', 'error')
+        return redirect(url_for('login'))
+
+    reports = SituationReport.query.join(IncidentResponse).filter(
+        IncidentResponse.status.in_(['ACTIVE', 'MONITORING'])
+    ).order_by(SituationReport.created_at.desc()).all()
+
+    active_responses = IncidentResponse.query.filter(
+        IncidentResponse.status.in_(['ACTIVE', 'MONITORING'])
+    ).order_by(IncidentResponse.started_at.desc()).all()
+
+    return render_template('pages/coordinator_reports.html',
+        reports=reports,
+        active_responses=active_responses
+    )
+
+
+@app.route('/coordinator/reports/submit', methods=['POST'])
+def coordinator_submit_report():
+    """Submit a situation report"""
+    if not is_admin_or_coordinator():
+        flash('Access denied.', 'error')
+        return redirect(url_for('login'))
+
+    response_id = request.form.get('response_id', type=int)
+    title = request.form.get('title', '').strip()
+    content = request.form.get('content', '').strip()
+    report_type = request.form.get('report_type', 'UPDATE')
+    affected_areas = request.form.get('affected_areas', '').strip()
+    evacuated = request.form.get('evacuated', type=int)
+    casualties = request.form.get('casualties', type=int)
+
+    if not all([response_id, title, content]):
+        flash('Please fill in all required fields.', 'error')
+        referrer = request.referrer
+        return redirect(referrer or url_for('coordinator_reports'))
+
+    user = User.query.filter_by(username=session['username']).first()
+    response = IncidentResponse.query.get_or_404(response_id)
+
+    report = SituationReport(
+        incident_response_id=response.id,
+        reporter_id=user.id,
+        title=title,
+        content=content,
+        report_type=report_type if report_type in ('UPDATE', 'ALERT', 'MILESTONE', 'CLOSURE') else 'UPDATE',
+        affected_areas=affected_areas or None,
+        evacuated=evacuated,
+        casualties=casualties
+    )
+    db.session.add(report)
+    db.session.commit()
+    flash(f'Situation report "{title}" submitted successfully.', 'success')
+
+    referrer = request.referrer
+    if referrer:
+        return redirect(referrer)
+    return redirect(url_for('coordinator_reports'))
+
+
+@app.route('/coordinator/comms')
+def coordinator_comms():
+    """Communication Center – inter-agency coordination feed"""
+    if not is_admin_or_coordinator():
+        flash('Access denied.', 'error')
+        return redirect(url_for('login'))
+
+    # All situation reports from active responses, recent first
+    comm_logs = SituationReport.query.join(IncidentResponse).filter(
+        IncidentResponse.status.in_(['ACTIVE', 'MONITORING'])
+    ).order_by(SituationReport.created_at.desc()).limit(50).all()
+
+    active_responses = IncidentResponse.query.filter(
+        IncidentResponse.status.in_(['ACTIVE', 'MONITORING'])
+    ).order_by(IncidentResponse.started_at.desc()).all()
+
+    return render_template('pages/coordinator_comms.html',
+        comm_logs=comm_logs,
+        active_responses=active_responses
+    )
+
+
+@app.route('/coordinator/response/<int:response_id>')
+def coordinator_response_detail(response_id):
+    """Coordinator view of a specific incident response"""
+    if not is_admin_or_coordinator():
+        flash('Access denied.', 'error')
+        return redirect(url_for('login'))
+
+    response = IncidentResponse.query.get_or_404(response_id)
+    agency = get_coordinator_agency()
+
+    # Tasks assigned specifically to this coordinator's agency
+    agency_tasks = [t for t in response.tasks if t.assigned_to_agency == agency] if agency else []
+
+    return render_template('pages/coordinator_response_detail.html',
+        response=response,
+        agency_tasks=agency_tasks
+    )
+
+
+@app.route('/coordinator/quick-report', methods=['POST'])
+def coordinator_quick_report():
+    """Quick status report shortcut from dashboard"""
+    return coordinator_submit_report()
 
 
 if __name__ == '__main__':
