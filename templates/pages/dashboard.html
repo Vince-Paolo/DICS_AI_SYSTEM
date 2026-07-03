@@ -235,7 +235,7 @@
 
 <!-- Citizen Quick Actions + Recent Reports -->
 <div class="row g-4 mb-4">
-    <div class="col-lg-4">
+    <div class="col-lg-4 d-none d-md-block">
         <div class="card card-custom h-100">
             <div class="card-body p-4">
                 <div class="d-flex align-items-center gap-2 mb-4">
@@ -288,10 +288,10 @@
                             <thead>
                                 <tr>
                                     <th>ID</th>
-                                    <th>Incident Type</th>
-                                    <th>Location</th>
-                                    <th>Status</th>
-                                    <th>Risk Level</th>
+                                    <th class="text-nowrap">Incident Type</th>
+                                    <th class="text-nowrap">Location</th>
+                                    <th class="text-nowrap">Status</th>
+                                    <th class="text-nowrap">Risk Level</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -309,7 +309,7 @@
                                                 <strong>{{ incident.hazard_type|upper }}</strong>
                                             </div>
                                         </td>
-                                        <td><span class="text-muted small">{{ incident.location if incident.location else 'N/A' }}</span></td>
+                                        <td class="text-nowrap"><span class="text-muted small">{{ incident.location if incident.location else 'N/A' }}</span></td>
                                         <td>
                                             {% if incident.alert %}
                                                 <span class="badge badge-status-active"><i class="bi bi-exclamation-circle-fill me-1"></i>Active Alert</span>
@@ -317,13 +317,13 @@
                                                 <span class="badge badge-status-pending"><i class="bi bi-hourglass-split me-1"></i>Pending</span>
                                             {% endif %}
                                         </td>
-                                        <td>
+                                        <td class="text-nowrap">
                                             {% if incident.level|lower == 'high' %}
-                                                <span style="padding: 0.35em 0.65em; background: rgba(239,68,68,0.2); color: #FCA5A5; border: 1px solid rgba(239,68,68,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">🔴 HIGH</span>
+                                                <span style="display:inline-flex; align-items:center; gap:0.35em; white-space:nowrap; padding: 0.35em 0.65em; background: rgba(239,68,68,0.2); color: #FCA5A5; border: 1px solid rgba(239,68,68,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">🔴 HIGH</span>
                                             {% elif incident.level|lower == 'moderate' %}
-                                                <span style="padding: 0.35em 0.65em; background: rgba(245,158,11,0.2); color: #FCD34D; border: 1px solid rgba(245,158,11,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">🟡 MOD</span>
+                                                <span style="display:inline-flex; align-items:center; gap:0.35em; white-space:nowrap; padding: 0.35em 0.65em; background: rgba(245,158,11,0.2); color: #FCD34D; border: 1px solid rgba(245,158,11,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">🟡 MOD</span>
                                             {% else %}
-                                                <span style="padding: 0.35em 0.65em; background: rgba(16,185,129,0.2); color: #86EFAC; border: 1px solid rgba(16,185,129,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">🟢 LOW</span>
+                                                <span style="display:inline-flex; align-items:center; gap:0.35em; white-space:nowrap; padding: 0.35em 0.65em; background: rgba(16,185,129,0.2); color: #86EFAC; border: 1px solid rgba(16,185,129,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">🟢 LOW</span>
                                             {% endif %}
                                         </td>
                                     </tr>

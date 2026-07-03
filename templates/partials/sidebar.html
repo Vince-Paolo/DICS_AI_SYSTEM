@@ -1,5 +1,20 @@
 {# Modern Fixed Sidebar with Toggle & Collapsible State #}
-<div class="sidebar-container">
+
+<!-- Mobile top bar: only visible below lg breakpoint, opens the sidebar as an off-canvas drawer -->
+<div class="mobile-topbar">
+    <button class="mobile-menu-btn" id="mobileSidebarToggle" aria-label="Open menu" aria-controls="sidebarContainer" aria-expanded="false">
+        <i class="bi bi-list"></i>
+    </button>
+    <div class="mobile-topbar-brand">
+        <i class="bi bi-shield-check"></i>
+        <span>DICS-AI</span>
+    </div>
+</div>
+
+<!-- Overlay shown behind the sidebar when it's open as a mobile drawer -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<div class="sidebar-container" id="sidebarContainer">
     <div class="sidebar-wrapper">
         <!-- Sidebar Header -->
         <div class="sidebar-header">
@@ -13,6 +28,9 @@
             <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar"
                     onclick="this.blur()">
                 <i class="bi bi-chevron-left"></i>
+            </button>
+            <button class="sidebar-close-mobile" id="sidebarCloseMobile" aria-label="Close menu">
+                <i class="bi bi-x-lg"></i>
             </button>
         </div>
 
@@ -116,6 +134,28 @@
                     <span class="nav-text sidebar-text-show">ICS Protocols</span>
                 </a>
 
+                {% elif session.role == 'field_responder' %}
+                {# ── FIELD RESPONDER LINKS ── #}
+                <a href="/responder-dashboard" class="sidebar-nav-link {{ 'active' if request.path == '/responder-dashboard' else '' }}" data-tooltip="Field Dashboard">
+                    <i class="bi bi-speedometer2"></i>
+                    <span class="nav-text sidebar-text-show">Field Dashboard</span>
+                </a>
+
+                <a href="/responder-tasks" class="sidebar-nav-link {{ 'active' if request.path == '/responder-tasks' or request.path == '/responder-checklist' else '' }}" data-tooltip="My Tasks">
+                    <i class="bi bi-list-task"></i>
+                    <span class="nav-text sidebar-text-show">My Tasks</span>
+                </a>
+
+                <a href="/responder-report" class="sidebar-nav-link {{ 'active' if request.path == '/responder-report' else '' }}" data-tooltip="File Report">
+                    <i class="bi bi-send-fill"></i>
+                    <span class="nav-text sidebar-text-show">File Report</span>
+                </a>
+
+                <a href="/hazard-map" class="sidebar-nav-link {{ 'active' if request.path == '/hazard-map' else '' }}" data-tooltip="Hazard Map">
+                    <i class="bi bi-pin-map-fill"></i>
+                    <span class="nav-text sidebar-text-show">Hazard Map</span>
+                </a>
+
                 {% else %}
                 {# ── CITIZEN LINKS ── #}
                 <a href="/dashboard" class="sidebar-nav-link {{ 'active' if request.path == '/dashboard' else '' }}" data-tooltip="Dashboard">
@@ -201,7 +241,7 @@
     height: 100vh;
     width: var(--sidebar-width);
     transition: width var(--sidebar-transition);
-    z-index: 1000;
+    z-index: 1060; /* must stay above .mobile-topbar (1050) and .sidebar-overlay (1040) so links are clickable when open as a drawer */
 }
 
 .sidebar-container.collapsed {
@@ -293,6 +333,21 @@
 
 .sidebar-container.collapsed .sidebar-toggle i {
     transform: rotate(180deg);
+}
+
+.sidebar-close-mobile {
+    display: none;
+    background: none;
+    border: none;
+    padding: 0.25rem;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 1.1rem;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.sidebar-close-mobile:hover {
+    color: #fff;
 }
 
 .sidebar-toggle i {
@@ -491,6 +546,169 @@ body {
 body.sidebar-collapsed {
     margin-left: var(--sidebar-collapsed-width);
 }
+
+/* Mobile top bar (hidden on desktop) */
+.mobile-topbar {
+    display: none;
+    align-items: center;
+    gap: 0.75rem;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    padding: 0 1rem;
+    background: linear-gradient(180deg, #0b0f19 0%, #141b2d 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    z-index: 1050;
+}
+
+.mobile-menu-btn {
+    background: none;
+    border: none;
+    color: #f3f4f6;
+    font-size: 1.4rem;
+    line-height: 1;
+    padding: 0.25rem 0.4rem;
+    cursor: pointer;
+}
+
+.mobile-menu-btn i {
+    display: inline-block;
+    transition: transform 0.25s ease;
+}
+
+.mobile-menu-btn.is-active i {
+    transform: rotate(90deg);
+}
+
+.mobile-topbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #fff;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    font-size: 0.95rem;
+}
+
+.mobile-topbar-brand i {
+    color: #3b82f6;
+    font-size: 1.2rem;
+}
+
+.sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(1px);
+    z-index: 1040;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.sidebar-overlay.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Responsive breakpoint: below this, sidebar becomes an off-canvas drawer */
+@media (max-width: 991.98px) {
+    .mobile-topbar {
+        display: flex;
+    }
+
+    body {
+        margin-left: 0 !important;
+        padding-top: 56px;
+    }
+
+    .sidebar-container,
+    .sidebar-container.collapsed {
+        width: min(80vw, 280px);
+        transform: translateX(-100%);
+        box-shadow: none;
+        transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1),
+                    box-shadow 0.32s ease;
+    }
+
+    .sidebar-container.mobile-open {
+        transform: translateX(0);
+        box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Staggered fade/slide-in for nav links once the drawer is open */
+    .sidebar-container .sidebar-nav-link,
+    .sidebar-container .sos-button {
+        opacity: 0;
+        transform: translateX(-12px);
+    }
+
+    .sidebar-container.mobile-open .sidebar-nav-link,
+    .sidebar-container.mobile-open .sos-button {
+        animation: sidebar-link-in 0.32s ease forwards;
+    }
+
+    .sidebar-container.mobile-open .sidebar-nav-link:nth-of-type(1)  { animation-delay: 0.05s; }
+    .sidebar-container.mobile-open .sidebar-nav-link:nth-of-type(2)  { animation-delay: 0.08s; }
+    .sidebar-container.mobile-open .sidebar-nav-link:nth-of-type(3)  { animation-delay: 0.11s; }
+    .sidebar-container.mobile-open .sidebar-nav-link:nth-of-type(4)  { animation-delay: 0.14s; }
+    .sidebar-container.mobile-open .sidebar-nav-link:nth-of-type(5)  { animation-delay: 0.17s; }
+    .sidebar-container.mobile-open .sidebar-nav-link:nth-of-type(6)  { animation-delay: 0.20s; }
+    .sidebar-container.mobile-open .sidebar-nav-link:nth-of-type(7)  { animation-delay: 0.23s; }
+    .sidebar-container.mobile-open .sidebar-nav-link:nth-of-type(8)  { animation-delay: 0.26s; }
+    .sidebar-container.mobile-open .sos-button                       { animation-delay: 0.29s; }
+
+    @keyframes sidebar-link-in {
+        from { opacity: 0; transform: translateX(-12px); }
+        to   { opacity: 1; transform: translateX(0); }
+    }
+
+    /* Respect reduced-motion preference */
+    @media (prefers-reduced-motion: reduce) {
+        .sidebar-container .sidebar-nav-link,
+        .sidebar-container .sos-button {
+            opacity: 1;
+            transform: none;
+            animation: none;
+        }
+    }
+
+    .sidebar-container.collapsed .sidebar-text-show {
+        display: initial;
+    }
+
+    .sidebar-container.collapsed .sidebar-header {
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .sidebar-container.collapsed .sidebar-brand {
+        display: flex;
+        flex: 1;
+        justify-content: flex-start;
+        width: auto;
+        margin: 0;
+    }
+
+    .sidebar-container.collapsed .sidebar-icon {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: auto;
+        margin: 0;
+        text-align: left;
+    }
+
+    .sidebar-toggle {
+        display: none;
+    }
+
+    .sidebar-close-mobile {
+        display: block;
+    }
+}
 </style>
 
 <script>
@@ -518,15 +736,60 @@ body.sidebar-collapsed {
             setCollapsed(!container.classList.contains('collapsed'));
         });
 
-        /* Restore saved state on page load */
+        /* Restore saved state on page load (desktop collapse only) */
         const saved = localStorage.getItem('sidebarCollapsed') === 'true';
         if (saved) setCollapsed(true);
     }
 
+    function initMobileDrawer() {
+        const container   = document.getElementById('sidebarContainer');
+        const openBtn      = document.getElementById('mobileSidebarToggle');
+        const closeBtn      = document.getElementById('sidebarCloseMobile');
+        const overlay        = document.getElementById('sidebarOverlay');
+        if (!container || !openBtn || !overlay) return;
+
+        function openDrawer() {
+            container.classList.add('mobile-open');
+            overlay.classList.add('show');
+            openBtn.classList.add('is-active');
+            openBtn.setAttribute('aria-expanded', 'true');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeDrawer() {
+            container.classList.remove('mobile-open');
+            overlay.classList.remove('show');
+            openBtn.classList.remove('is-active');
+            openBtn.setAttribute('aria-expanded', 'false');
+            document.body.style.overflow = '';
+        }
+
+        openBtn.addEventListener('click', openDrawer);
+        if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+        overlay.addEventListener('click', closeDrawer);
+
+        /* Close the drawer whenever a nav link is tapped on mobile */
+        container.querySelectorAll('.sidebar-nav-link, .sos-button').forEach(function (el) {
+            el.addEventListener('click', function () {
+                if (window.innerWidth <= 991.98) closeDrawer();
+            });
+        });
+
+        /* If the viewport is resized up past the mobile breakpoint while
+           the drawer is open, reset state so desktop layout isn't stuck. */
+        window.addEventListener('resize', function () {
+            if (window.innerWidth > 991.98) closeDrawer();
+        });
+    }
+
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initSidebar);
+        document.addEventListener('DOMContentLoaded', function () {
+            initSidebar();
+            initMobileDrawer();
+        });
     } else {
-        initSidebar(); /* Already loaded (e.g. partial injection) */
+        initSidebar();
+        initMobileDrawer();
     }
 })();
 </script>

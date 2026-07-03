@@ -27,7 +27,7 @@
                 <div>
                     <div class="stat-label">Total Incidents</div>
                     <div class="stat-value">{{ incidents|length }}</div>
-                    <div class="stat-description">All recorded predictions</div>
+                    <div class="stat-description">Recorded incident predictions</div>
                 </div>
                 <div class="icon-badge icon-badge-primary">
                     <i class="bi bi-bar-chart-fill"></i>
@@ -85,18 +85,18 @@
                 <table class="table table-enhanced align-middle mb-0">
                     <thead>
                         <tr>
-                            <th>Date & Time</th>
-                            <th>Hazard</th>
-                            <th>Risk Level</th>
-                            <th>Score</th>
-                            <th>Alert</th>
+                            <th class="text-nowrap">Date &amp; Time</th>
+                            <th class="text-nowrap">Hazard</th>
+                            <th class="text-nowrap">Risk Level</th>
+                            <th class="text-nowrap">Score</th>
+                            <th class="text-nowrap">Alert</th>
                             <th>Message</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for incident in incidents %}
                             <tr>
-                                <td><small class="text-muted">{{ incident.created_at.strftime('%b %d, %Y %I:%M %p') }}</small></td>
+                                <td class="text-nowrap"><small class="text-muted">{{ incident.created_at.strftime('%b %d, %Y %I:%M %p') }}</small></td>
                                 <td>
                                     <div class="d-flex align-items-center gap-2">
                                         {% if incident.hazard_type|lower == 'flood' %}
@@ -115,13 +115,13 @@
                                         <strong>{{ incident.hazard_type|upper }}</strong>
                                     </div>
                                 </td>
-                                <td>
+                                <td class="text-nowrap">
                                     {% if incident.level|lower == 'high' %}
-                                        <span style="padding: 0.35em 0.65em; background: rgba(239,68,68,0.2); color: #FCA5A5; border: 1px solid rgba(239,68,68,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">🔴 HIGH</span>
+                                        <span style="display:inline-flex; align-items:center; gap:0.35em; white-space:nowrap; padding: 0.35em 0.65em; background: rgba(239,68,68,0.2); color: #FCA5A5; border: 1px solid rgba(239,68,68,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">🔴 HIGH</span>
                                     {% elif incident.level|lower == 'moderate' %}
-                                        <span style="padding: 0.35em 0.65em; background: rgba(245,158,11,0.2); color: #FCD34D; border: 1px solid rgba(245,158,11,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">🟡 MOD</span>
+                                        <span style="display:inline-flex; align-items:center; gap:0.35em; white-space:nowrap; padding: 0.35em 0.65em; background: rgba(245,158,11,0.2); color: #FCD34D; border: 1px solid rgba(245,158,11,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">🟡 MOD</span>
                                     {% else %}
-                                        <span style="padding: 0.35em 0.65em; background: rgba(16,185,129,0.2); color: #86EFAC; border: 1px solid rgba(16,185,129,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">🟢 LOW</span>
+                                        <span style="display:inline-flex; align-items:center; gap:0.35em; white-space:nowrap; padding: 0.35em 0.65em; background: rgba(16,185,129,0.2); color: #86EFAC; border: 1px solid rgba(16,185,129,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">🟢 LOW</span>
                                     {% endif %}
                                 </td>
                                 <td><strong class="text-info">{{ '%.1f'|format(incident.score) }}%</strong></td>

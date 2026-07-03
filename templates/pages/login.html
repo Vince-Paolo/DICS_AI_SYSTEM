@@ -3,26 +3,34 @@
 {% block title %}Login | DICS AI{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6 col-lg-5">
-        <div class="card card-custom shadow-sm">
-            <div class="card-body p-4">
-                <h2 class="card-title mb-3">DICS-AI Login</h2>
-                {% if error %}
-                    <div class="alert alert-danger">{{ error }}</div>
-                {% endif %}
-                <form method="post" action="/">
-                    <div class="mb-3">
-                        <label class="form-label">Username</label>
-                        <input type="text" class="form-control" name="username" placeholder="Enter username" required>
+<!-- Wrapper to center content vertically and horizontally -->
+<div class="d-flex align-items-center justify-content-center min-vh-100">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-8 col-lg-5">
+                <div class="card card-custom border-0 shadow-lg rounded-4">
+                    <div class="card-body p-5">
+                        <h2 class="card-title text-center mb-4 fw-bold">DICS-AI LOGIN</h2>
+                        
+                        {% if error %}
+                            <div class="alert alert-danger rounded-3">{{ error }}</div>
+                        {% endif %}
+                        
+                        <form method="post" action="/">
+                            <div class="mb-4">
+                                <label class="form-label fw-bold text-uppercase" style="font-size: 0.85rem; letter-spacing: 0.5px;">Username</label>
+                                <input type="text" class="form-control form-control-lg" name="username" placeholder="Enter username" required>
+                            </div>
+                            <div class="mb-4">
+                                <label class="form-label fw-bold text-uppercase" style="font-size: 0.85rem; letter-spacing: 0.5px;">Password</label>
+                                <input type="password" class="form-control form-control-lg" name="password" placeholder="Enter password" required>
+                            </div>
+                            <button class="btn btn-brand btn-lg w-100 fw-bold rounded-3 mt-2" type="submit">LOGIN</button>
+                        </form>
+                        
+                        <p class="mt-4 text-center mb-0">Need an account? <a href="/register" class="text-decoration-none fw-semibold">Register now</a></p>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Password</label>
-                        <input type="password" class="form-control" name="password" placeholder="Enter password" required>
-                    </div>
-                    <button class="btn btn-brand w-100" type="submit">Login</button>
-                </form>
-                <p class="mt-3 text-center">Need an account? <a href="/register">Register now</a></p>
+                </div>
             </div>
         </div>
     </div>

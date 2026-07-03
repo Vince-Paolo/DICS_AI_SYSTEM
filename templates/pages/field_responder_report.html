@@ -1,0 +1,304 @@
+{% extends 'pages/base.html' %}
+{% block title %}File Field Report | DICS AI{% endblock %}
+
+{% block content %}
+
+<style>
+.upload-zone {
+    background: rgba(255, 255, 255, 0.02);
+    border: 2px dashed rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    transition: border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease, transform 0.15s ease;
+}
+
+.upload-zone:hover {
+    border-color: rgba(249, 115, 22, 0.45);
+    background: rgba(249, 115, 22, 0.04);
+    box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.15), 0 0 24px rgba(249, 115, 22, 0.18);
+}
+
+.upload-zone:hover .upload-zone-icon {
+    color: #F97316;
+    transform: translateY(-2px);
+}
+
+.upload-zone.is-dragover {
+    border-color: rgba(249, 115, 22, 0.7);
+    background: rgba(249, 115, 22, 0.07);
+    box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.25), 0 0 32px rgba(249, 115, 22, 0.28);
+    transform: scale(1.01);
+}
+
+.upload-zone.is-dragover .upload-zone-icon {
+    color: #FB923C;
+}
+
+.upload-zone-icon {
+    color: #6B7280;
+    display: inline-block;
+    transition: color 0.25s ease, transform 0.25s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .upload-zone,
+    .upload-zone-icon {
+        transition: none;
+    }
+    .upload-zone.is-dragover {
+        transform: none;
+    }
+}
+</style>
+
+<!-- Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card card-custom">
+            <div class="card-body p-4">
+                <div class="section-header mb-0">
+                    <span class="section-header-icon" style="color:#38BDF8;"><i class="bi bi-send-fill"></i></span>
+                    <div>
+                        <h4 class="mb-0">File Field Report</h4>
+                        <nav aria-label="breadcrumb" class="mt-1">
+                            <ol class="breadcrumb mb-0" style="font-size:0.75rem;--bs-breadcrumb-divider-color:rgba(255,255,255,0.3);">
+                                <li class="breadcrumb-item"><a href="{{ url_for('responder_dashboard') }}" style="color:#F97316;text-decoration:none;">Field Responder</a></li>
+                                <li class="breadcrumb-item active text-muted">File Report</li>
+                            </ol>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Report Form -->
+    <div class="col-lg-8">
+        <div class="card card-custom shadow-lg">
+            <div class="card-body p-4">
+
+                <!-- GPS capture bar -->
+                <div class="p-3 rounded-3 mb-4" style="background:rgba(249,115,22,0.07);border:1px solid rgba(249,115,22,0.2);">
+                    <div class="d-flex align-items-center gap-3">
+                        <i class="bi bi-geo-alt-fill" style="color:#F97316;font-size:1.1rem;"></i>
+                        <div class="flex-grow-1">
+                            <div style="font-size:0.78rem;color:#9CA3AF;" class="mb-1">Current GPS Coordinates</div>
+                            <div id="gps-display" class="font-monospace" style="font-size:0.82rem;color:#FDBA74;">Not captured — click Capture to attach location</div>
+                        </div>
+                        <button type="button" onclick="captureGPS()" class="btn btn-sm" style="background:rgba(249,115,22,0.15);color:#F97316;border:1px solid rgba(249,115,22,0.3);font-size:0.78rem;white-space:nowrap;">
+                            <i class="bi bi-crosshair me-1"></i>Capture
+                        </button>
+                    </div>
+                </div>
+
+                <form method="POST" action="{{ url_for('responder_report') }}" enctype="multipart/form-data">
+
+                    <div class="row g-3">
+                        <!-- Incident Response -->
+                        <div class="col-12">
+                            <label class="form-label" style="font-size:0.8rem;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.05em;">Link to Incident Response *</label>
+                            <select name="incident_response_id" class="form-select" style="background:#0D1117;color:#E5E7EB;border-color:rgba(255,255,255,0.12);font-size:0.88rem;" required>
+                                <option value="">— Select active incident —</option>
+                                {% for resp in active_responses %}
+                                <option value="{{ resp.id }}">
+                                    [{{ resp.priority_level }}] {{ resp.incident.hazard_type | upper }} — {{ resp.incident.location or 'Location TBD' }} ({{ resp.status }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Report Title -->
+                        <div class="col-12">
+                            <label class="form-label" style="font-size:0.8rem;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.05em;">Report Title *</label>
+                            <input type="text" name="title" class="form-control" placeholder="e.g. Rescue Team Alpha – Zone 3 Status Update" required
+                                style="background:#0D1117;color:#E5E7EB;border-color:rgba(255,255,255,0.12);font-size:0.88rem;">
+                        </div>
+
+                        <!-- Report Type -->
+                        <div class="col-md-6">
+                            <label class="form-label" style="font-size:0.8rem;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.05em;">Report Type *</label>
+                            <select name="report_type" class="form-select" style="background:#0D1117;color:#E5E7EB;border-color:rgba(255,255,255,0.12);font-size:0.88rem;" required>
+                                <option value="UPDATE">Situation Update</option>
+                                <option value="ALERT">Alert / Hazard Found</option>
+                                <option value="MILESTONE">Objective Reached</option>
+                                <option value="CLOSURE">Task Closure</option>
+                            </select>
+                        </div>
+
+                        <!-- Affected Areas -->
+                        <div class="col-md-6">
+                            <label class="form-label" style="font-size:0.8rem;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.05em;">Affected Area / Zone</label>
+                            <input type="text" name="affected_areas" id="affected-areas-input" class="form-control" placeholder="e.g. Brgy. Halang, Zone 3"
+                                style="background:#0D1117;color:#E5E7EB;border-color:rgba(255,255,255,0.12);font-size:0.88rem;">
+                        </div>
+
+                        <!-- GPS hidden inputs -->
+                        <input type="hidden" name="gps_lat" id="gps-lat-input">
+                        <input type="hidden" name="gps_lng" id="gps-lng-input">
+
+                        <!-- Report Content -->
+                        <div class="col-12">
+                            <label class="form-label" style="font-size:0.8rem;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.05em;">Situation Report *</label>
+                            <textarea name="content" class="form-control" rows="6" required
+                                placeholder="Describe current field conditions, actions taken, obstacles encountered, and immediate needs…"
+                                style="background:#0D1117;color:#E5E7EB;border-color:rgba(255,255,255,0.12);font-size:0.88rem;resize:vertical;"></textarea>
+                        </div>
+
+                        <!-- Casualties / Evacuated -->
+                        <div class="col-md-6">
+                            <label class="form-label" style="font-size:0.8rem;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.05em;">Casualties (if any)</label>
+                            <input type="number" name="casualties" min="0" class="form-control" placeholder="0"
+                                style="background:#0D1117;color:#E5E7EB;border-color:rgba(255,255,255,0.12);font-size:0.88rem;">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" style="font-size:0.8rem;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.05em;">Persons Evacuated</label>
+                            <input type="number" name="evacuated" min="0" class="form-control" placeholder="0"
+                                style="background:#0D1117;color:#E5E7EB;border-color:rgba(255,255,255,0.12);font-size:0.88rem;">
+                        </div>
+
+                        <!-- Media Upload -->
+                        <div class="col-12">
+                            <label class="form-label" style="font-size:0.8rem;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.05em;">Attach Media</label>
+                            <div id="upload-zone" class="upload-zone p-4 rounded-3 text-center"
+                                ondragover="event.preventDefault();this.classList.add('is-dragover');"
+                                ondragleave="this.classList.remove('is-dragover');"
+                                ondrop="handleDrop(event);"
+                                onclick="document.getElementById('media-input').click()">
+                                <i class="bi bi-cloud-upload upload-zone-icon" style="font-size:1.8rem;"></i>
+                                <p class="mb-0 mt-2" style="font-size:0.82rem;color:#9CA3AF;">Drag photos or videos here, or click to browse</p>
+                                <p class="mb-0 mt-1" style="font-size:0.72rem;color:#6B7280;">JPG, PNG, MP4 — max 20MB each</p>
+                            </div>
+                            <input type="file" id="media-input" name="media" multiple accept="image/*,video/*" class="d-none" onchange="previewFiles(this.files)">
+                            <div id="file-preview" class="d-flex flex-wrap gap-2 mt-3"></div>
+                        </div>
+
+                        <!-- Submit -->
+                        <div class="col-12 d-flex gap-3 pt-2">
+                            <button type="submit" class="btn btn-modern px-5" style="background:rgba(56,189,248,0.15);color:#38BDF8;border:1px solid rgba(56,189,248,0.35);font-weight:700;">
+                                <i class="bi bi-send-fill me-2"></i>Submit Report
+                            </button>
+                            <a href="{{ url_for('responder_dashboard') }}" class="btn btn-sm" style="color:#9CA3AF;border:1px solid rgba(255,255,255,0.1);background:transparent;align-self:center;">
+                                Cancel
+                            </a>
+                        </div>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar tips -->
+    <div class="col-lg-4">
+        <div class="d-flex flex-column gap-3 h-100">
+
+            <!-- Reporting Tips -->
+            <div class="card card-custom flex-grow-1">
+                <div class="card-body p-4 d-flex flex-column">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <div class="icon-badge" style="background:rgba(234,179,8,0.15);color:#FDE68A;border:1px solid rgba(234,179,8,0.3);">
+                            <i class="bi bi-lightbulb-fill"></i>
+                        </div>
+                        <h6 class="mb-0">Reporting Guide</h6>
+                    </div>
+                    <div class="d-flex flex-column gap-2" style="font-size:0.8rem;color:#D1D5DB;">
+                        <div class="d-flex gap-2"><i class="bi bi-check2 text-success mt-1 flex-shrink-0"></i><span>Be specific — include exact barangay, landmark, or street name.</span></div>
+                        <div class="d-flex gap-2"><i class="bi bi-check2 text-success mt-1 flex-shrink-0"></i><span>Capture GPS before writing the report so coordinates auto-fill.</span></div>
+                        <div class="d-flex gap-2"><i class="bi bi-check2 text-success mt-1 flex-shrink-0"></i><span>Attach photos when possible — visual evidence speeds up command decisions.</span></div>
+                        <div class="d-flex gap-2"><i class="bi bi-check2 text-success mt-1 flex-shrink-0"></i><span>Set type to <strong style="color:#FCA5A5;">Alert</strong> if you discover new hazards.</span></div>
+                        <div class="d-flex gap-2"><i class="bi bi-check2 text-success mt-1 flex-shrink-0"></i><span>Report at minimum every 30 minutes during active operations.</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ICS Reminder -->
+            <div class="card card-custom flex-grow-1">
+                <div class="card-body p-4 d-flex flex-column">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <div class="icon-badge" style="background:rgba(139,92,246,0.15);color:#C4B5FD;border:1px solid rgba(139,92,246,0.3);">
+                            <i class="bi bi-diagram-3-fill"></i>
+                        </div>
+                        <h6 class="mb-0">ICS Report Format</h6>
+                    </div>
+                    <div style="font-size:0.78rem;color:#D1D5DB;line-height:1.7;">
+                        Follow SALUTE where applicable:<br>
+                        <span style="color:#C4B5FD;">S</span>ize · <span style="color:#C4B5FD;">A</span>ctivity · <span style="color:#C4B5FD;">L</span>ocation ·<br>
+                        <span style="color:#C4B5FD;">U</span>nit · <span style="color:#C4B5FD;">T</span>ime · <span style="color:#C4B5FD;">E</span>quipment
+                    </div>
+                </div>
+            </div>
+
+            <!-- Emergency contacts -->
+            <div class="card card-custom flex-grow-1">
+                <div class="card-body p-4 d-flex flex-column">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <div class="icon-badge" style="background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.3);">
+                            <i class="bi bi-telephone-fill"></i>
+                        </div>
+                        <h6 class="mb-0">Quick Contacts</h6>
+                    </div>
+                    <div class="d-flex flex-column gap-2" style="font-size:0.8rem;">
+                        <div class="d-flex justify-content-between"><span class="text-muted">NDRRMC Ops Center</span><a href="tel:117" style="color:#FCA5A5;text-decoration:none;font-family:monospace;">117</a></div>
+                        <div class="d-flex justify-content-between"><span class="text-muted">PNP Emergency</span><a href="tel:911" style="color:#FCA5A5;text-decoration:none;font-family:monospace;">911</a></div>
+                        <div class="d-flex justify-content-between"><span class="text-muted">BFP Fire</span><a href="tel:160" style="color:#FCA5A5;text-decoration:none;font-family:monospace;">160</a></div>
+                        <div class="d-flex justify-content-between"><span class="text-muted">Red Cross PH</span><a href="tel:143" style="color:#FCA5A5;text-decoration:none;font-family:monospace;">143</a></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let capturedLat = null, capturedLng = null;
+
+function captureGPS() {
+    const display = document.getElementById('gps-display');
+    display.textContent = 'Acquiring GPS…';
+    if (!navigator.geolocation) {
+        display.textContent = 'GPS not available on this device.';
+        return;
+    }
+    navigator.geolocation.getCurrentPosition(function(pos) {
+        capturedLat = pos.coords.latitude.toFixed(6);
+        capturedLng = pos.coords.longitude.toFixed(6);
+        display.textContent = capturedLat + ', ' + capturedLng + ' (±' + Math.round(pos.coords.accuracy) + 'm)';
+        display.style.color = '#6EE7B7';
+        document.getElementById('gps-lat-input').value = capturedLat;
+        document.getElementById('gps-lng-input').value = capturedLng;
+        // Also pre-fill affected area if empty
+        const areaInput = document.getElementById('affected-areas-input');
+        if (!areaInput.value) {
+            areaInput.placeholder = capturedLat + ', ' + capturedLng;
+        }
+    }, function(err) {
+        display.textContent = 'GPS error: ' + err.message;
+        display.style.color = '#FCA5A5';
+    }, { enableHighAccuracy: true, timeout: 10000 });
+}
+
+function previewFiles(files) {
+    const container = document.getElementById('file-preview');
+    container.innerHTML = '';
+    Array.from(files).forEach(file => {
+        const tag = document.createElement('div');
+        tag.style.cssText = 'background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:0.4rem 0.75rem;font-size:0.75rem;color:#9CA3AF;display:flex;align-items:center;gap:0.4rem;';
+        const icon = file.type.startsWith('video') ? 'bi-camera-video' : 'bi-image';
+        tag.innerHTML = '<i class="bi ' + icon + '" style="color:#F97316;"></i>' + file.name;
+        container.appendChild(tag);
+    });
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    document.getElementById('upload-zone').classList.remove('is-dragover');
+    const files = e.dataTransfer.files;
+    document.getElementById('media-input').files = files;
+    previewFiles(files);
+}
+</script>
+{% endblock %}

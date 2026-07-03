@@ -1,0 +1,341 @@
+{% extends 'pages/base.html' %}
+{% block title %}Field Responder Dashboard | DICS AI{% endblock %}
+
+{% block content %}
+
+<!-- Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card card-custom">
+            <div class="card-body">
+                <div class="section-header mb-0">
+                    <span class="section-header-icon" style="color:#F97316;"><i class="bi bi-person-walking"></i></span>
+                    <h4 class="mb-0">Field Responder</h4>
+                    <span class="ms-auto d-flex align-items-center gap-2">
+                        <span id="gps-badge" style="padding:0.3em 0.85em;background:rgba(249,115,22,0.12);color:#F97316;border:1px solid rgba(249,115,22,0.35);border-radius:20px;font-size:0.78rem;font-weight:700;font-family:monospace;">
+                            <i class="bi bi-geo-alt-fill me-1"></i><span id="gps-status">GPS OFF</span>
+                        </span>
+                        <span style="padding:0.3em 0.85em;background:rgba(56,189,248,0.12);color:#38BDF8;border:1px solid rgba(56,189,248,0.35);border-radius:20px;font-size:0.78rem;font-weight:700;font-family:monospace;">
+                            <i class="bi bi-circle-fill me-1" style="font-size:0.45rem;vertical-align:middle;"></i>{{ session.agency or 'FIELD UNIT' }}
+                        </span>
+                    </span>
+                </div>
+                <p class="text-muted mb-0 mt-2" style="padding-left:2.75rem;">
+                    Execute field assignments, submit situation reports, and update your operational status in real time.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stat Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="stat-card card-gradient-warning h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-label">My Tasks</div>
+                    <div class="stat-value">{{ my_tasks|length }}</div>
+                    <div class="stat-description">Assigned to me</div>
+                </div>
+                <div class="icon-badge icon-badge-warning">
+                    <i class="bi bi-clipboard2-check-fill"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card card-gradient-danger h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-label">Pending</div>
+                    <div class="stat-value">{{ pending_count }}</div>
+                    <div class="stat-description">Awaiting action</div>
+                </div>
+                <div class="icon-badge" style="background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.3);">
+                    <i class="bi bi-hourglass-split"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card card-gradient-success h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-label">Completed</div>
+                    <div class="stat-value">{{ completed_count }}</div>
+                    <div class="stat-description">This deployment</div>
+                </div>
+                <div class="icon-badge icon-badge-success">
+                    <i class="bi bi-check2-circle"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card card-gradient-info h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-label">Reports Filed</div>
+                    <div class="stat-value">{{ my_reports|length }}</div>
+                    <div class="stat-description">Field updates sent</div>
+                </div>
+                <div class="icon-badge" style="background:rgba(56,189,248,0.15);color:#7DD3FC;border:1px solid rgba(56,189,248,0.3);">
+                    <i class="bi bi-file-earmark-text-fill"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex flex-wrap gap-2 w-100">
+            <a href="{{ url_for('responder_tasks') }}" class="btn btn-modern flex-grow-1 text-center" style="background:rgba(249,115,22,0.12);color:#F97316;border:1px solid rgba(249,115,22,0.3);font-weight:600;padding:0.65rem 1rem;">
+                <i class="bi bi-list-task me-2"></i>My Tasks
+            </a>
+            <a href="{{ url_for('responder_report') }}" class="btn btn-modern flex-grow-1 text-center" style="background:rgba(56,189,248,0.12);color:#38BDF8;border:1px solid rgba(56,189,248,0.3);font-weight:600;padding:0.65rem 1rem;">
+                <i class="bi bi-send-fill me-2"></i>File Report
+            </a>
+            <a href="{{ url_for('responder_checklist') }}" class="btn btn-modern flex-grow-1 text-center" style="background:rgba(16,185,129,0.12);color:#6EE7B7;border:1px solid rgba(16,185,129,0.3);font-weight:600;padding:0.65rem 1rem;">
+                <i class="bi bi-card-checklist me-2"></i>Checklists
+            </a>
+            <a href="/hazard-map" class="btn btn-modern flex-grow-1 text-center" style="background:rgba(139,92,246,0.12);color:#C4B5FD;border:1px solid rgba(139,92,246,0.3);font-weight:600;padding:0.65rem 1rem;">
+                <i class="bi bi-pin-map-fill me-2"></i>Hazard Map
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 align-items-stretch">
+    <!-- Active Tasks -->
+    <div class="col-lg-7">
+        <div class="card card-custom shadow-lg h-100">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <div class="icon-badge" style="background:rgba(249,115,22,0.15);color:#FDBA74;border:1px solid rgba(249,115,22,0.3);">
+                        <i class="bi bi-clipboard2-check-fill"></i>
+                    </div>
+                    <h5 class="mb-0">Active Assignments</h5>
+                    <a href="{{ url_for('responder_tasks') }}" class="ms-auto text-decoration-none" style="color:#F97316;font-size:0.8rem;font-weight:600;">View All <i class="bi bi-arrow-right"></i></a>
+                </div>
+
+                {% set active_tasks = my_tasks | selectattr('status', 'in', ['PENDING', 'IN_PROGRESS']) | list %}
+                {% if active_tasks %}
+                    <div class="d-flex flex-column gap-3">
+                    {% for task in active_tasks[:5] %}
+                        <div class="p-3 rounded-3" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);">
+                            <div class="d-flex align-items-start gap-3">
+                                <div class="mt-1">
+                                    {% if task.priority == 'CRITICAL' %}
+                                        <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#EF4444;box-shadow:0 0 6px #EF4444;"></span>
+                                    {% elif task.priority == 'HIGH' %}
+                                        <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#F97316;"></span>
+                                    {% elif task.priority == 'MEDIUM' %}
+                                        <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#EAB308;"></span>
+                                    {% else %}
+                                        <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#6B7280;"></span>
+                                    {% endif %}
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="fw-semibold" style="font-size:0.9rem;">{{ task.title }}</div>
+                                    <div class="text-muted mt-1" style="font-size:0.78rem;">{{ task.description[:90] }}{% if task.description|length > 90 %}…{% endif %}</div>
+                                    <div class="d-flex align-items-center gap-2 mt-2">
+                                        <span class="badge" style="font-size:0.65rem;background:{% if task.status == 'IN_PROGRESS' %}rgba(56,189,248,0.2);color:#38BDF8{% else %}rgba(234,179,8,0.2);color:#EAB308{% endif %};">
+                                            {{ task.status.replace('_', ' ') }}
+                                        </span>
+                                        <span class="badge" style="font-size:0.65rem;background:{% if task.priority == 'CRITICAL' %}rgba(239,68,68,0.2);color:#EF4444{% elif task.priority == 'HIGH' %}rgba(249,115,22,0.2);color:#F97316{% else %}rgba(107,114,128,0.2);color:#9CA3AF{% endif %};">
+                                            {{ task.priority }}
+                                        </span>
+                                        {% if task.estimated_completion %}
+                                        <span class="text-muted" style="font-size:0.72rem;"><i class="bi bi-clock me-1"></i>Due {{ task.estimated_completion.strftime('%b %d %H:%M') }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <form method="POST" action="{{ url_for('responder_complete_task', task_id=task.id) }}" class="ms-2">
+                                    <button type="submit" class="btn btn-sm" title="Mark complete" style="background:rgba(16,185,129,0.15);color:#6EE7B7;border:1px solid rgba(16,185,129,0.3);font-size:0.75rem;padding:0.3rem 0.6rem;" onclick="return confirm('Mark this task as completed?')">
+                                        <i class="bi bi-check2"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4" style="color:#6B7280;">
+                        <i class="bi bi-clipboard2-check" style="font-size:2rem;"></i>
+                        <p class="mt-2 mb-0" style="font-size:0.85rem;">No active assignments right now.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Right column -->
+    <div class="col-lg-5">
+        <div class="d-flex flex-column gap-4 h-100">
+
+            <!-- GPS Status Card -->
+            <div class="card card-custom">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <div class="icon-badge" style="background:rgba(249,115,22,0.15);color:#FDBA74;border:1px solid rgba(249,115,22,0.3);">
+                            <i class="bi bi-geo-alt-fill"></i>
+                        </div>
+                        <h6 class="mb-0">Location Tracking</h6>
+                    </div>
+                    <div id="gps-coords" class="font-monospace mb-3" style="font-size:0.8rem;color:#9CA3AF;">
+                        <i class="bi bi-crosshair me-1"></i>Waiting for GPS signal…
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button id="gps-start" onclick="startGPS()" class="btn btn-sm flex-grow-1" style="background:rgba(249,115,22,0.15);color:#F97316;border:1px solid rgba(249,115,22,0.3);font-size:0.8rem;">
+                            <i class="bi bi-broadcast me-1"></i>Enable GPS
+                        </button>
+                        <button id="gps-stop" onclick="stopGPS()" class="btn btn-sm flex-grow-1 d-none" style="background:rgba(107,114,128,0.15);color:#9CA3AF;border:1px solid rgba(107,114,128,0.3);font-size:0.8rem;">
+                            <i class="bi bi-stop-circle me-1"></i>Stop
+                        </button>
+                    </div>
+                    <div id="gps-accuracy" class="mt-2" style="font-size:0.72rem;color:#6B7280;display:none;">
+                        Accuracy: <span id="acc-value">—</span>m
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Incident Alerts -->
+            <div class="card card-custom flex-grow-1">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <div class="icon-badge" style="background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.3);">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                        </div>
+                        <h6 class="mb-0">Active Incidents</h6>
+                    </div>
+                    {% if active_responses %}
+                        <div class="d-flex flex-column gap-2">
+                        {% for resp in active_responses[:4] %}
+                            <div class="p-3 rounded-3" style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <div class="fw-semibold" style="font-size:0.82rem;">{{ resp.incident.hazard_type | upper }}</div>
+                                        <div class="text-muted" style="font-size:0.73rem;">{{ resp.incident.location or 'Location TBD' }}</div>
+                                    </div>
+                                    <span class="badge" style="font-size:0.62rem;background:{% if resp.priority_level == 'CRITICAL' %}rgba(239,68,68,0.25);color:#EF4444{% elif resp.priority_level == 'HIGH' %}rgba(249,115,22,0.25);color:#F97316{% else %}rgba(234,179,8,0.25);color:#EAB308{% endif %};">
+                                        {{ resp.priority_level }}
+                                    </span>
+                                </div>
+                            </div>
+                        {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-3" style="color:#6B7280;">
+                            <i class="bi bi-shield-check" style="font-size:1.8rem;"></i>
+                            <p class="mt-2 mb-0" style="font-size:0.82rem;">No active incidents.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Recent Field Reports -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card card-custom shadow-lg">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <div class="icon-badge" style="background:rgba(56,189,248,0.15);color:#7DD3FC;border:1px solid rgba(56,189,248,0.3);">
+                        <i class="bi bi-file-earmark-text-fill"></i>
+                    </div>
+                    <h5 class="mb-0">My Recent Reports</h5>
+                    <a href="{{ url_for('responder_report') }}" class="ms-auto btn btn-sm" style="background:rgba(56,189,248,0.12);color:#38BDF8;border:1px solid rgba(56,189,248,0.3);font-size:0.78rem;">
+                        <i class="bi bi-plus me-1"></i>New Report
+                    </a>
+                </div>
+
+                {% if my_reports %}
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover align-middle mb-0" style="font-size:0.83rem;border-color:rgba(255,255,255,0.07);">
+                            <thead style="color:#9CA3AF;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.05em;">
+                                <tr>
+                                    <th class="fw-normal border-0">Title</th>
+                                    <th class="fw-normal border-0">Type</th>
+                                    <th class="fw-normal border-0">Incident</th>
+                                    <th class="fw-normal border-0">Filed</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for report in my_reports %}
+                                <tr style="border-color:rgba(255,255,255,0.05);">
+                                    <td>{{ report.title }}</td>
+                                    <td>
+                                        <span class="badge" style="font-size:0.65rem;background:{% if report.report_type == 'ALERT' %}rgba(239,68,68,0.2);color:#FCA5A5{% elif report.report_type == 'MILESTONE' %}rgba(16,185,129,0.2);color:#6EE7B7{% else %}rgba(56,189,248,0.2);color:#7DD3FC{% endif %};">
+                                            {{ report.report_type }}
+                                        </span>
+                                    </td>
+                                    <td class="text-muted">{{ report.incident_response.incident.hazard_type | upper if report.incident_response else '—' }}</td>
+                                    <td class="text-muted">{{ report.created_at.strftime('%b %d, %H:%M') }}</td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4" style="color:#6B7280;">
+                        <i class="bi bi-journal-x" style="font-size:2rem;"></i>
+                        <p class="mt-2 mb-0" style="font-size:0.85rem;">No reports filed yet. <a href="{{ url_for('responder_report') }}" style="color:#38BDF8;">Submit your first report.</a></p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let watchId = null;
+
+function startGPS() {
+    if (!navigator.geolocation) {
+        document.getElementById('gps-coords').textContent = 'GPS not supported on this device.';
+        return;
+    }
+    document.getElementById('gps-start').classList.add('d-none');
+    document.getElementById('gps-stop').classList.remove('d-none');
+    document.getElementById('gps-status').textContent = 'TRACKING';
+    document.getElementById('gps-accuracy').style.display = '';
+
+    watchId = navigator.geolocation.watchPosition(function(pos) {
+        const lat = pos.coords.latitude.toFixed(6);
+        const lng = pos.coords.longitude.toFixed(6);
+        const acc = Math.round(pos.coords.accuracy);
+        document.getElementById('gps-coords').innerHTML =
+            '<i class="bi bi-crosshair me-1" style="color:#F97316;"></i>' +
+            '<span style="color:#FDBA74;">' + lat + ', ' + lng + '</span>';
+        document.getElementById('acc-value').textContent = acc;
+        document.getElementById('gps-badge').style.background = 'rgba(16,185,129,0.12)';
+        document.getElementById('gps-badge').style.color = '#6EE7B7';
+        document.getElementById('gps-badge').style.borderColor = 'rgba(16,185,129,0.35)';
+    }, function(err) {
+        document.getElementById('gps-coords').textContent = 'GPS error: ' + err.message;
+    }, { enableHighAccuracy: true, maximumAge: 5000 });
+}
+
+function stopGPS() {
+    if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+    document.getElementById('gps-stop').classList.add('d-none');
+    document.getElementById('gps-start').classList.remove('d-none');
+    document.getElementById('gps-status').textContent = 'GPS OFF';
+    document.getElementById('gps-badge').style.background = '';
+    document.getElementById('gps-badge').style.color = '';
+    document.getElementById('gps-badge').style.borderColor = '';
+    document.getElementById('gps-coords').innerHTML = '<i class="bi bi-crosshair me-1"></i>Waiting for GPS signal…';
+    document.getElementById('gps-accuracy').style.display = 'none';
+}
+</script>
+{% endblock %}

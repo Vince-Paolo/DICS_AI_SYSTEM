@@ -632,12 +632,23 @@ p.text-muted {
     border-radius: 10px !important;
     padding: 1.5rem !important;
     transition: all 0.3s ease !important;
+    container-type: inline-size; /* lets us size children off the card's real width, not the viewport's */
+    overflow: hidden; /* safety net in case content ever exceeds the card before a container-query tier catches it */
 }
 
 .stat-card:hover {
     background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(29, 78, 216, 0.1)) !important;
     transform: translateY(-4px);
     box-shadow: 0 8px 24px rgba(59, 130, 246, 0.2) !important;
+}
+
+.stat-card > .d-flex {
+    min-width: 0; /* let text shrink/wrap instead of forcing the row (and the icon with it) wider than the card */
+}
+
+.stat-card > .d-flex > div:first-child {
+    min-width: 0;
+    overflow: hidden;
 }
 
 .stat-value {
@@ -660,6 +671,78 @@ p.text-muted {
     font-size: 0.8rem;
     color: #9CA3AF;
     margin-top: 0.25rem;
+}
+
+/* Stat card icon badges: sized off the CARD's own width via a container
+   query, not the viewport (vw units can't know a fixed-width sidebar is
+   eating part of the window, so they kept sizing icons for more room
+   than the card actually had once the sidebar was expanded). */
+.stat-card .icon-badge {
+    width: 48px;
+    height: 48px;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+@container (max-width: 190px) {
+    .stat-card .icon-badge {
+        width: 38px;
+        height: 38px;
+        font-size: 1.15rem;
+        border-radius: 8px;
+    }
+    .stat-card .stat-value {
+        font-size: 1.85rem;
+    }
+    .stat-card .stat-label {
+        font-size: 0.7rem;
+    }
+    .stat-card .stat-description {
+        font-size: 0.72rem;
+    }
+    .stat-card {
+        padding: 1rem !important;
+    }
+}
+
+@container (max-width: 140px) {
+    .stat-card .icon-badge {
+        width: 30px;
+        height: 30px;
+        font-size: 0.95rem;
+        border-radius: 7px;
+    }
+    .stat-card .stat-value {
+        font-size: 1.5rem;
+    }
+    .stat-card {
+        padding: 0.8rem !important;
+    }
+}
+
+/* Fallback for browsers without container query support: fall back to the
+   old viewport-based tiers so icons still shrink on small phones, where a
+   fixed sidebar isn't a factor anyway. */
+@supports not (container-type: inline-size) {
+    @media (max-width: 767.98px) {
+        .stat-card {
+            padding: 1rem !important;
+        }
+        .stat-card .icon-badge {
+            width: 36px;
+            height: 36px;
+            font-size: 1.1rem;
+        }
+        .stat-value {
+            font-size: 1.85rem;
+        }
+        .stat-label {
+            font-size: 0.7rem;
+        }
+        .stat-description {
+            font-size: 0.72rem;
+        }
+    }
 }
 
 /* Enhanced Table Styling */

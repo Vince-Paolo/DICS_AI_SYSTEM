@@ -1,0 +1,163 @@
+{% extends 'pages/base.html' %}
+{% block title %}My Tasks | DICS AI Field Responder{% endblock %}
+
+{% block content %}
+
+<!-- Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card card-custom">
+            <div class="card-body">
+                <div class="section-header mb-0">
+                    <span class="section-header-icon" style="color:#F97316;"><i class="bi bi-list-task"></i></span>
+                    <div>
+                        <h4 class="mb-0">My Assigned Tasks</h4>
+                        <nav aria-label="breadcrumb" class="mt-1">
+                            <ol class="breadcrumb mb-0" style="font-size:0.75rem;--bs-breadcrumb-divider-color:rgba(255,255,255,0.3);">
+                                <li class="breadcrumb-item"><a href="{{ url_for('responder_dashboard') }}" style="color:#F97316;text-decoration:none;">Field Responder</a></li>
+                                <li class="breadcrumb-item active text-muted">Tasks</li>
+                            </ol>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <a href="{{ url_for('responder_tasks') }}" class="btn btn-sm {% if not status_filter %}active{% endif %}" style="background:{% if not status_filter %}rgba(249,115,22,0.2);color:#F97316;border:1px solid rgba(249,115,22,0.5){% else %}rgba(255,255,255,0.04);color:#9CA3AF;border:1px solid rgba(255,255,255,0.08){% endif %};font-size:0.78rem;">All</a>
+            {% for s in ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'FAILED'] %}
+            <a href="{{ url_for('responder_tasks', status=s) }}" class="btn btn-sm {% if status_filter == s %}active{% endif %}" style="background:{% if status_filter == s %}rgba(249,115,22,0.2);color:#F97316;border:1px solid rgba(249,115,22,0.5){% else %}rgba(255,255,255,0.04);color:#9CA3AF;border:1px solid rgba(255,255,255,0.08){% endif %};font-size:0.78rem;">
+                {{ s.replace('_', ' ') | title }}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Task Cards -->
+{% if tasks %}
+    <div class="row g-3">
+    {% for task in tasks %}
+        <div class="col-12">
+            <div class="card card-custom" style="border:1px solid {% if task.priority == 'CRITICAL' %}rgba(239,68,68,0.3){% elif task.priority == 'HIGH' %}rgba(249,115,22,0.25){% else %}rgba(255,255,255,0.08){% endif %};">
+                <div class="card-body p-4">
+                    <div class="row align-items-start g-3">
+                        <!-- Priority indicator & title -->
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-start gap-3">
+                                <div class="mt-1">
+                                    {% if task.priority == 'CRITICAL' %}
+                                        <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#EF4444;box-shadow:0 0 8px #EF4444;flex-shrink:0;"></span>
+                                    {% elif task.priority == 'HIGH' %}
+                                        <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#F97316;flex-shrink:0;"></span>
+                                    {% elif task.priority == 'MEDIUM' %}
+                                        <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#EAB308;flex-shrink:0;"></span>
+                                    {% else %}
+                                        <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#6B7280;flex-shrink:0;"></span>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <h6 class="mb-1 fw-semibold">{{ task.title }}</h6>
+                                    <p class="text-muted mb-0" style="font-size:0.82rem;">{{ task.description }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Meta -->
+                        <div class="col-md-3">
+                            <div class="d-flex flex-column gap-2" style="font-size:0.78rem;color:#9CA3AF;">
+                                <div>
+                                    <i class="bi bi-building me-1"></i>{{ task.assigned_to_agency }}
+                                </div>
+                                {% if task.estimated_completion %}
+                                <div>
+                                    <i class="bi bi-clock me-1"></i>Due {{ task.estimated_completion.strftime('%b %d, %H:%M') }}
+                                </div>
+                                {% endif %}
+                                {% if task.completed_at %}
+                                <div style="color:#6EE7B7;">
+                                    <i class="bi bi-check2-circle me-1"></i>Done {{ task.completed_at.strftime('%b %d, %H:%M') }}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Status + Actions -->
+                        <div class="col-md-3">
+                            <div class="d-flex flex-column gap-2">
+                                <div class="d-flex gap-2 flex-wrap">
+                                    <span class="badge" style="font-size:0.68rem;background:{% if task.status == 'COMPLETED' %}rgba(16,185,129,0.2);color:#6EE7B7{% elif task.status == 'IN_PROGRESS' %}rgba(56,189,248,0.2);color:#38BDF8{% elif task.status == 'FAILED' %}rgba(239,68,68,0.2);color:#FCA5A5{% else %}rgba(234,179,8,0.2);color:#EAB308{% endif %};">
+                                        {{ task.status.replace('_', ' ') }}
+                                    </span>
+                                    <span class="badge" style="font-size:0.68rem;background:{% if task.priority == 'CRITICAL' %}rgba(239,68,68,0.2);color:#EF4444{% elif task.priority == 'HIGH' %}rgba(249,115,22,0.2);color:#F97316{% elif task.priority == 'MEDIUM' %}rgba(234,179,8,0.2);color:#EAB308{% else %}rgba(107,114,128,0.2);color:#9CA3AF{% endif %};">
+                                        {{ task.priority }}
+                                    </span>
+                                </div>
+
+                                {% if task.status in ['PENDING', 'IN_PROGRESS'] %}
+                                <div class="d-flex gap-2 mt-1">
+                                    {% if task.status == 'PENDING' %}
+                                    <form method="POST" action="{{ url_for('responder_update_task', task_id=task.id) }}">
+                                        <input type="hidden" name="status" value="IN_PROGRESS">
+                                        <button type="submit" class="btn btn-sm" style="background:rgba(56,189,248,0.15);color:#38BDF8;border:1px solid rgba(56,189,248,0.3);font-size:0.73rem;padding:0.28rem 0.6rem;">
+                                            <i class="bi bi-play-fill me-1"></i>Start
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                    <form method="POST" action="{{ url_for('responder_update_task', task_id=task.id) }}">
+                                        <input type="hidden" name="status" value="COMPLETED">
+                                        <button type="submit" class="btn btn-sm" style="background:rgba(16,185,129,0.15);color:#6EE7B7;border:1px solid rgba(16,185,129,0.3);font-size:0.73rem;padding:0.28rem 0.6rem;" onclick="return confirm('Mark task as completed?')">
+                                            <i class="bi bi-check2 me-1"></i>Complete
+                                        </button>
+                                    </form>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Checklist sub-section -->
+                    {% if task.status in ['PENDING', 'IN_PROGRESS'] %}
+                    <div class="mt-3 pt-3" style="border-top:1px solid rgba(255,255,255,0.06);">
+                        <div id="checklist-{{ task.id }}" class="collapse">
+                            <div class="d-flex flex-column gap-2 mb-2">
+                                {% set default_checks = [
+                                    'Confirm task receipt and ETA to command',
+                                    'Establish communication with team lead',
+                                    'Assess scene safety before approach',
+                                    'Document initial conditions and hazards',
+                                    'Execute assigned objectives',
+                                    'Report completion status to command'
+                                ] %}
+                                {% for item in default_checks %}
+                                <div class="form-check" style="padding-left:1.8rem;">
+                                    <input class="form-check-input" type="checkbox" id="chk-{{ task.id }}-{{ loop.index }}" style="background:rgba(249,115,22,0.15);border-color:rgba(249,115,22,0.4);">
+                                    <label class="form-check-label" for="chk-{{ task.id }}-{{ loop.index }}" style="font-size:0.8rem;color:#D1D5DB;">{{ item }}</label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <button class="btn btn-sm" data-bs-toggle="collapse" data-bs-target="#checklist-{{ task.id }}" style="background:transparent;color:#9CA3AF;border:1px solid rgba(255,255,255,0.08);font-size:0.73rem;padding:0.2rem 0.65rem;">
+                            <i class="bi bi-card-checklist me-1"></i>Field Checklist
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+    </div>
+{% else %}
+    <div class="text-center py-5" style="color:#6B7280;">
+        <i class="bi bi-clipboard2-x" style="font-size:3rem;"></i>
+        <h6 class="mt-3">No tasks found</h6>
+        <p style="font-size:0.85rem;">Assignments from your commander will appear here.</p>
+    </div>
+{% endif %}
+
+{% endblock %}
