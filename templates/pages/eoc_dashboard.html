@@ -1,0 +1,312 @@
+{% extends 'pages/base.html' %}
+
+{% block title %}EOC Command Dashboard | DICS AI{% endblock %}
+
+{% block content %}
+
+<!-- Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card card-custom">
+            <div class="card-body">
+                <div class="section-header mb-0">
+                    <span class="section-header-icon" style="color:#C4B5FD;"><i class="bi bi-display-fill"></i></span>
+                    <h4 class="mb-0">EOC Command Dashboard</h4>
+                    <span class="ms-auto">
+                        <span class="badge-status-active px-3 py-2" style="font-size:0.8rem;">
+                            <i class="bi bi-circle-fill me-1" style="font-size:0.5rem; vertical-align:middle;"></i>MONITORING ALL INCIDENTS
+                        </span>
+                    </span>
+                </div>
+                <p class="text-muted mb-0 mt-2" style="padding-left:2.75rem;">System-wide view across every active incident, response, and resource in the region.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Command Status Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card card-gradient-danger h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-label">Active Responses</div>
+                    <div class="stat-value">{{ total_active }}</div>
+                    <div class="stat-description">Being managed right now</div>
+                </div>
+                <div class="icon-badge" style="background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.3);">
+                    <i class="bi bi-fire"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card card-gradient-warning h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-label">Critical / High Alerts</div>
+                    <div class="stat-value">{{ total_critical }}</div>
+                    <div class="stat-description">Across all incidents</div>
+                </div>
+                <div class="icon-badge icon-badge-warning">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card card-gradient-primary h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-label">Open Tasks</div>
+                    <div class="stat-value">{{ total_tasks }}</div>
+                    <div class="stat-description">Pending or in progress</div>
+                </div>
+                <div class="icon-badge icon-badge-primary">
+                    <i class="bi bi-list-task"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <a href="{{ url_for('eoc_resource_monitoring') }}" class="text-decoration-none">
+        <div class="stat-card card-gradient-purple h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-label">Resources Deployed</div>
+                    <div class="stat-value">{{ total_resources }}</div>
+                    <div class="stat-description">Units in the field</div>
+                </div>
+                <div class="icon-badge" style="background:rgba(139,92,246,0.15);color:#C4B5FD;border:1px solid rgba(139,92,246,0.3);">
+                    <i class="bi bi-truck"></i>
+                </div>
+            </div>
+        </div>
+        </a>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Active Incident Responses (system-wide) -->
+    <div class="col-lg-8">
+        <div class="card card-custom shadow-lg h-100">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <div class="icon-badge" style="background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.3);">
+                        <i class="bi bi-shield-check"></i>
+                    </div>
+                    <h5 class="mb-0">Active Incident Responses</h5>
+                    <span class="ms-2 badge badge-status-active" style="font-size:0.7rem;">LIVE</span>
+                    <a href="{{ url_for('eoc_incident_monitoring') }}" class="ms-auto btn btn-sm btn-outline-light" style="font-size:0.75rem;">
+                        <i class="bi bi-binoculars-fill me-1"></i>Full Incident Log
+                    </a>
+                </div>
+
+                {% if active_responses %}
+                    <div class="table-responsive">
+                        <table class="table table-enhanced align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Incident</th>
+                                    <th>Hazard</th>
+                                    <th>Location</th>
+                                    <th>Commander</th>
+                                    <th>Priority</th>
+                                    <th>Started</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for response in active_responses %}
+                                <tr>
+                                    <td><strong class="text-white">#{{ response.incident_id }}</strong></td>
+                                    <td>
+                                        <span style="padding:0.3em 0.6em;background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.4);border-radius:6px;font-size:0.75em;font-weight:700;text-transform:uppercase;">
+                                            {{ response.incident.hazard_type }}
+                                        </span>
+                                    </td>
+                                    <td><span class="text-muted small">{{ response.incident.location or 'Unknown' }}</span></td>
+                                    <td><span class="text-muted small">{{ response.commander.full_name or response.commander.username }}</span></td>
+                                    <td>
+                                        {% if response.priority_level == 'CRITICAL' %}
+                                            <span style="padding:0.3em 0.6em;background:rgba(239,68,68,0.2);color:#FCA5A5;border:1px solid rgba(239,68,68,0.5);border-radius:6px;font-size:0.75em;font-weight:700;">🔴 CRITICAL</span>
+                                        {% elif response.priority_level == 'HIGH' %}
+                                            <span style="padding:0.3em 0.6em;background:rgba(245,158,11,0.2);color:#FCD34D;border:1px solid rgba(245,158,11,0.5);border-radius:6px;font-size:0.75em;font-weight:700;">🟡 HIGH</span>
+                                        {% else %}
+                                            <span style="padding:0.3em 0.6em;background:rgba(59,130,246,0.2);color:#93C5FD;border:1px solid rgba(59,130,246,0.5);border-radius:6px;font-size:0.75em;font-weight:700;">🔵 {{ response.priority_level }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><span class="text-muted small">{{ response.started_at.strftime('%b %d, %H:%M') }}</span></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <div style="font-size:2.5rem;margin-bottom:1rem;opacity:0.4;"><i class="bi bi-shield-check"></i></div>
+                        <h5 class="mb-1">No Active Responses</h5>
+                        <p class="text-muted mb-0">All clear — no incidents currently being managed anywhere in the region.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Hazard Type Breakdown -->
+    <div class="col-lg-4">
+        <div class="card card-custom shadow-lg h-100">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <div class="icon-badge icon-badge-primary">
+                        <i class="bi bi-bar-chart-fill"></i>
+                    </div>
+                    <h5 class="mb-0">Hazard Breakdown</h5>
+                </div>
+
+                {% if hazard_breakdown %}
+                    {% set max_count = hazard_breakdown[0][1] %}
+                    {% for hazard_type, count in hazard_breakdown %}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted small text-uppercase">{{ hazard_type }}</span>
+                            <span class="text-white small fw-bold">{{ count }}</span>
+                        </div>
+                        <div style="height:6px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden;">
+                            <div style="height:100%;width:{{ (count / max_count * 100) if max_count else 0 }}%;background:linear-gradient(90deg,#8B5CF6,#6D28D9);border-radius:4px;"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    <div class="text-muted small mt-3 pt-2 border-top-custom">
+                        {{ total_incidents_all }} incidents logged system-wide
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <div style="font-size:2rem;margin-bottom:0.5rem;opacity:0.4;"><i class="bi bi-bar-chart"></i></div>
+                        <p class="text-muted mb-0 small">No incident data yet.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Critical Incidents Requiring Response -->
+<div class="card card-custom shadow-lg mb-4">
+    <div class="card-body p-4">
+        <div class="d-flex align-items-center gap-2 mb-4">
+            <div class="icon-badge icon-badge-warning">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+            </div>
+            <h5 class="mb-0">Critical Incidents Requiring Response</h5>
+        </div>
+
+        {% if critical_incidents %}
+            <div class="table-responsive">
+                <table class="table table-enhanced align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Hazard</th>
+                            <th>Location</th>
+                            <th>Risk Level</th>
+                            <th>Score</th>
+                            <th>Status</th>
+                            <th>Detected</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for incident in critical_incidents %}
+                        <tr>
+                            <td><strong class="text-white">#{{ incident.id }}</strong></td>
+                            <td>
+                                <span style="padding:0.3em 0.6em;background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.4);border-radius:6px;font-size:0.75em;font-weight:700;text-transform:uppercase;">
+                                    {{ incident.hazard_type }}
+                                </span>
+                            </td>
+                            <td><span class="text-muted small">{{ incident.location or 'Unknown' }}</span></td>
+                            <td>
+                                {% if incident.level == 'CRITICAL' %}
+                                    <span style="padding:0.3em 0.6em;background:rgba(239,68,68,0.2);color:#FCA5A5;border:1px solid rgba(239,68,68,0.5);border-radius:6px;font-size:0.75em;font-weight:700;">🔴 CRITICAL</span>
+                                {% else %}
+                                    <span style="padding:0.3em 0.6em;background:rgba(245,158,11,0.2);color:#FCD34D;border:1px solid rgba(245,158,11,0.5);border-radius:6px;font-size:0.75em;font-weight:700;">🟡 {{ incident.level }}</span>
+                                {% endif %}
+                            </td>
+                            <td><strong class="text-info">{{ "%.2f"|format(incident.score) }}%</strong></td>
+                            <td>
+                                {% if incident.response %}
+                                    <span class="badge-status-active" style="font-size:0.72rem;">RESPONSE ACTIVE</span>
+                                {% else %}
+                                    <span class="badge-status-resolved" style="font-size:0.72rem;">AWAITING COMMANDER</span>
+                                {% endif %}
+                            </td>
+                            <td><span class="text-muted small">{{ incident.created_at.strftime('%b %d, %H:%M') }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <div style="font-size:2.5rem;margin-bottom:1rem;opacity:0.4;"><i class="bi bi-check-circle"></i></div>
+                <h5 class="mb-1">No Critical Incidents</h5>
+                <p class="text-muted mb-0">Nothing at CRITICAL or HIGH risk level right now.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Live Incident Feed -->
+<div class="card card-custom shadow-lg mb-4">
+    <div class="card-body p-4">
+        <div class="d-flex align-items-center gap-2 mb-4">
+            <div class="icon-badge" style="background:rgba(59,130,246,0.15);color:#93C5FD;border:1px solid rgba(59,130,246,0.3);">
+                <i class="bi bi-activity"></i>
+            </div>
+            <h5 class="mb-0">Live Incident Feed</h5>
+            <span class="ms-2 badge badge-status-active" style="font-size:0.7rem;">LATEST</span>
+        </div>
+
+        {% if recent_incidents %}
+            <div class="table-responsive">
+                <table class="table table-enhanced align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Hazard</th>
+                            <th>Location</th>
+                            <th>Level</th>
+                            <th>Alert</th>
+                            <th>Logged</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for incident in recent_incidents %}
+                        <tr>
+                            <td><strong class="text-white">#{{ incident.id }}</strong></td>
+                            <td><span class="text-muted small text-uppercase">{{ incident.hazard_type }}</span></td>
+                            <td><span class="text-muted small">{{ incident.location or 'Unknown' }}</span></td>
+                            <td><span class="text-muted small">{{ incident.level }}</span></td>
+                            <td>
+                                {% if incident.alert %}
+                                    <span class="badge-status-active" style="font-size:0.72rem;">ACTIVE</span>
+                                {% else %}
+                                    <span class="badge-status-resolved" style="font-size:0.72rem;">INACTIVE</span>
+                                {% endif %}
+                            </td>
+                            <td><span class="text-muted small">{{ incident.created_at.strftime('%b %d, %H:%M') }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <div style="font-size:2.5rem;margin-bottom:1rem;opacity:0.4;"><i class="bi bi-inbox"></i></div>
+                <h5 class="mb-1">No Incidents Logged Yet</h5>
+                <p class="text-muted mb-0">Incoming reports and sensor data will appear here in real time.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

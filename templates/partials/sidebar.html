@@ -134,6 +134,38 @@
                     <span class="nav-text sidebar-text-show">ICS Protocols</span>
                 </a>
 
+                {% elif session.role == 'eoc_staff' %}
+                {# ── EOC STAFF LINKS ── #}
+                <a href="/eoc-dashboard" class="sidebar-nav-link {{ 'active' if request.path == '/eoc-dashboard' else '' }}" data-tooltip="Command Dashboard">
+                    <i class="bi bi-display-fill"></i>
+                    <span class="nav-text sidebar-text-show">Dashboard</span>
+                </a>
+
+                <a href="/hazard-map" class="sidebar-nav-link {{ 'active' if request.path == '/hazard-map' else '' }}" data-tooltip="Heat Maps">
+                    <i class="bi bi-pin-map-fill"></i>
+                    <span class="nav-text sidebar-text-show">Heat Maps</span>
+                </a>
+
+                <a href="/analytics" class="sidebar-nav-link {{ 'active' if request.path == '/analytics' else '' }}" data-tooltip="Analytics">
+                    <i class="bi bi-graph-up"></i>
+                    <span class="nav-text sidebar-text-show">Analytics</span>
+                </a>
+
+                <a href="/eoc/incidents" class="sidebar-nav-link {{ 'active' if request.path == '/eoc/incidents' else '' }}" data-tooltip="Incident Monitoring">
+                    <i class="bi bi-binoculars-fill"></i>
+                    <span class="nav-text sidebar-text-show">Incidents</span>
+                </a>
+
+                <a href="/eoc/resources" class="sidebar-nav-link {{ 'active' if request.path == '/eoc/resources' else '' }}" data-tooltip="Resource Monitoring">
+                    <i class="bi bi-truck"></i>
+                    <span class="nav-text sidebar-text-show">Resources</span>
+                </a>
+
+                <a href="/alerts" class="sidebar-nav-link {{ 'active' if request.path == '/alerts' else '' }}" data-tooltip="Active Alerts">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <span class="nav-text sidebar-text-show">Active Alerts</span>
+                </a>
+
                 {% elif session.role == 'field_responder' %}
                 {# ── FIELD RESPONDER LINKS ── #}
                 <a href="/responder-dashboard" class="sidebar-nav-link {{ 'active' if request.path == '/responder-dashboard' else '' }}" data-tooltip="Field Dashboard">
@@ -425,6 +457,8 @@
     border-left: 3px solid transparent;
     position: relative;
     white-space: nowrap;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .sidebar-nav-link:hover {

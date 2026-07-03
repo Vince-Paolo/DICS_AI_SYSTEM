@@ -1,0 +1,219 @@
+{% extends 'pages/base.html' %}
+
+{% block title %}Resource Monitoring | DICS AI{% endblock %}
+
+{% block content %}
+
+<!-- Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card card-custom">
+            <div class="card-body">
+                <div class="section-header mb-0">
+                    <span class="section-header-icon" style="color:#C4B5FD;"><i class="bi bi-truck"></i></span>
+                    <h4 class="mb-0">Resource Monitoring</h4>
+                    <span class="ms-3">
+                        <a href="{{ url_for('eoc_dashboard') }}" class="btn btn-sm btn-modern" style="background:rgba(139,92,246,0.1);color:#C4B5FD;border:1px solid rgba(139,92,246,0.25);font-size:0.78rem;">
+                            <i class="bi bi-arrow-left me-1"></i>Back to Command Dashboard
+                        </a>
+                    </span>
+                </div>
+                <p class="text-muted mb-0 mt-2" style="padding-left:2.75rem;">Every resource allocated across all active incident responses, region-wide.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Stats -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card card-gradient-danger h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-label">Deployed</div>
+                    <div class="stat-value">{{ total_deployed }}</div>
+                    <div class="stat-description">Resource entries in the field</div>
+                </div>
+                <div class="icon-badge" style="background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.3);">
+                    <i class="bi bi-truck"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card card-gradient-success h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-label">Available</div>
+                    <div class="stat-value">{{ total_available }}</div>
+                    <div class="stat-description">Ready to deploy</div>
+                </div>
+                <div class="icon-badge icon-badge-success">
+                    <i class="bi bi-check-circle-fill"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card card-gradient-warning h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-label">Returning</div>
+                    <div class="stat-value">{{ total_returning }}</div>
+                    <div class="stat-description">Heading back from the field</div>
+                </div>
+                <div class="icon-badge icon-badge-warning">
+                    <i class="bi bi-arrow-return-left"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card card-gradient-primary h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-label">Total Units Deployed</div>
+                    <div class="stat-value">{{ total_units }}</div>
+                    <div class="stat-description">Summed quantity, all agencies</div>
+                </div>
+                <div class="icon-badge icon-badge-primary">
+                    <i class="bi bi-boxes"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Resource Table -->
+    <div class="col-lg-8">
+        <div class="card card-custom shadow-lg h-100">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <div class="icon-badge" style="background:rgba(139,92,246,0.15);color:#C4B5FD;border:1px solid rgba(139,92,246,0.3);">
+                        <i class="bi bi-boxes"></i>
+                    </div>
+                    <h5 class="mb-0">Allocated Resources</h5>
+                    <span class="ms-2 text-muted small">({{ resources|length }} matching)</span>
+                </div>
+
+                <form method="GET" action="{{ url_for('eoc_resource_monitoring') }}" class="row g-3 align-items-end mb-4">
+                    <div class="col-12 col-sm-6">
+                        <label class="form-label text-muted small text-uppercase">Status</label>
+                        <select name="status" class="form-select">
+                            <option value="">All Statuses</option>
+                            {% for st in ['DEPLOYED', 'AVAILABLE', 'RETURNING', 'UNAVAILABLE'] %}
+                                <option value="{{ st }}" {{ 'selected' if status_filter == st else '' }}>{{ st }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12 col-sm-6">
+                        <label class="form-label text-muted small text-uppercase">Agency</label>
+                        <select name="agency" class="form-select">
+                            <option value="">All Agencies</option>
+                            {% for ag in agencies %}
+                                <option value="{{ ag }}" {{ 'selected' if agency_filter == ag else '' }}>{{ ag }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12 d-flex justify-content-start gap-2">
+                        <button type="submit" class="btn btn-primary-modern btn-modern text-nowrap">
+                            <i class="bi bi-funnel-fill me-1"></i>Apply Filters
+                        </button>
+                        <a href="{{ url_for('eoc_resource_monitoring') }}" class="btn btn-outline-secondary btn-modern flex-shrink-0" title="Reset">
+                            <i class="bi bi-x-lg"></i>
+                        </a>
+                    </div>
+                </form>
+
+                {% if resources %}
+                    <div class="table-responsive">
+                        <table class="table table-enhanced align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Type</th>
+                                    <th>Agency</th>
+                                    <th>Qty</th>
+                                    <th>Status</th>
+                                    <th>Location</th>
+                                    <th>Incident</th>
+                                    <th>Allocated</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for res in resources %}
+                                <tr>
+                                    <td>
+                                        <strong class="text-white" style="font-size:0.88rem;">{{ res.resource_type }}</strong>
+                                        {% if res.notes %}
+                                        <br><span class="text-muted" style="font-size:0.72rem;">{{ res.notes[:40] }}{% if res.notes|length > 40 %}...{% endif %}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><span style="color:#C4B5FD;font-size:0.82rem;font-weight:600;">{{ res.agency }}</span></td>
+                                    <td><strong class="text-info">{{ res.quantity }}</strong></td>
+                                    <td>
+                                        {% if res.status == 'DEPLOYED' %}
+                                            <span class="badge-status-active" style="font-size:0.7rem;">DEPLOYED</span>
+                                        {% elif res.status == 'AVAILABLE' %}
+                                            <span class="badge-status-resolved" style="font-size:0.7rem;">AVAILABLE</span>
+                                        {% elif res.status == 'RETURNING' %}
+                                            <span class="badge-status-pending" style="font-size:0.7rem;">RETURNING</span>
+                                        {% else %}
+                                            <span style="padding:0.25em 0.55em;background:rgba(107,114,128,0.15);color:#9CA3AF;border:1px solid rgba(107,114,128,0.3);border-radius:5px;font-size:0.7em;font-weight:700;">UNAVAIL.</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><span class="text-muted small">{{ res.location or '—' }}</span></td>
+                                    <td><span class="text-muted small">#{{ res.incident_response.incident_id }} — {{ res.incident_response.incident.hazard_type|upper }}</span></td>
+                                    <td><span class="text-muted small">{{ res.allocated_at.strftime('%b %d, %H:%M') }}</span></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <div style="font-size:2.5rem;margin-bottom:1rem;opacity:0.4;"><i class="bi bi-inbox"></i></div>
+                        <h5 class="mb-1">No Resources Match These Filters</h5>
+                        <p class="text-muted mb-0">Try adjusting or clearing the filters above.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Deployment by Agency -->
+    <div class="col-lg-4">
+        <div class="card card-custom shadow-lg h-100">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <div class="icon-badge icon-badge-primary">
+                        <i class="bi bi-diagram-3-fill"></i>
+                    </div>
+                    <h5 class="mb-0">Deployed by Agency</h5>
+                </div>
+
+                {% if agency_breakdown %}
+                    {% set max_count = agency_breakdown[0][1] %}
+                    {% for agency, count in agency_breakdown %}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted small">{{ agency }}</span>
+                            <span class="text-white small fw-bold">{{ count }}</span>
+                        </div>
+                        <div style="height:6px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden;">
+                            <div style="height:100%;width:{{ (count / max_count * 100) if max_count else 0 }}%;background:linear-gradient(90deg,#8B5CF6,#6D28D9);border-radius:4px;"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-4">
+                        <div style="font-size:2rem;margin-bottom:0.5rem;opacity:0.4;"><i class="bi bi-boxes"></i></div>
+                        <p class="text-muted mb-0 small">No resources currently deployed.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

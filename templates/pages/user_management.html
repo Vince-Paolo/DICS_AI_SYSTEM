@@ -483,9 +483,9 @@
                             <span class="badge bg-warning text-dark" style="font-size:0.7em;">Manual</span>
                         </div>
                         <p class="small text-muted mb-2">Downloads a full copy of the SQLite database.</p>
-                        <a href="/admin/backup" class="btn btn-sm btn-outline-warning w-100">
+                        <button type="button" onclick="downloadDatabaseBackup(this)" class="btn btn-sm btn-outline-warning w-100">
                             <i class="bi bi-download me-1"></i>Export Database Backup
-                        </a>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -565,6 +565,34 @@ function openEditModal(id, username, fullName, contact, agency, role) {
     document.getElementById('edit_role').value = role;
     document.getElementById('editUserForm').action = '/admin/users/' + id + '/update';
     new bootstrap.Modal(document.getElementById('editUserModal')).show();
+}
+
+function downloadDatabaseBackup(btn) {
+    // Trigger the download inside a hidden iframe rather than navigating the
+    // tab to /admin/backup directly. This keeps the admin on this page the
+    // whole time — whether they click Save or Cancel on the native file
+    // dialog — since the browser's save prompt is tied to the iframe's
+    // request, not the page you're looking at.
+    const originalHTML = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Preparing backup…';
+
+    let iframe = document.getElementById('backup-download-frame');
+    if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.id = 'backup-download-frame';
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+    }
+    iframe.src = '/admin/backup';
+
+    // Re-enable the button shortly after; there's no reliable cross-browser
+    // event for "the save dialog closed", so this just gives the download
+    // enough time to start before restoring the button.
+    setTimeout(() => {
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
+    }, 1500);
 }
 </script>
 {% endblock %}
