@@ -53,6 +53,7 @@
                                     <td>
                                         {% if response.status != 'CLOSED' %}
                                             <form method="POST" action="{{ url_for('update_task', response_id=response.id, task_id=task.id) }}">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                 <select name="status" class="form-select form-select-sm" style="max-width:140px;" onchange="this.form.submit()">
                                                     <option value="PENDING" {% if task.status == 'PENDING' %}selected{% endif %}>PENDING</option>
                                                     <option value="IN_PROGRESS" {% if task.status == 'IN_PROGRESS' %}selected{% endif %}>IN PROGRESS</option>
@@ -121,6 +122,7 @@
 
                 {% if response.status != 'CLOSED' %}
                     <form method="POST" action="{{ url_for('assign_task', response_id=response.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="mb-3">
                             <label class="form-label">Target Agency <span class="text-danger">*</span></label>
                             <select name="agency" class="form-select" required>

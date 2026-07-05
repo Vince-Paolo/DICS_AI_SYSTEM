@@ -20,6 +20,7 @@
                     </div>
 
                     <form method="POST" action="{{ url_for('assign_task', response_id=response.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <!-- Agency Selection -->
                         <div class="mb-3">
                             <label for="agency" class="form-label text-info fw-bold">Assign To Agency *</label>

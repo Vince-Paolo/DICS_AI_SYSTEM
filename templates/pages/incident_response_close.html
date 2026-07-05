@@ -31,6 +31,7 @@
                 </div>
 
                 <form method="POST" action="{{ url_for('incident_response_close_page', response_id=response.id) }}"
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                       onsubmit="return confirm('WARNING: Are you sure you want to permanently close this incident response?')">
                     <div class="mb-3">
                         <label class="form-label">Final Closure Summary <span class="text-danger">*</span></label>
@@ -74,7 +75,7 @@
                     This incident response was closed on
                     <strong class="text-white">{{ response.closed_at.strftime('%b %d, %Y at %H:%M') if response.closed_at else 'unknown date' }}</strong>.
                 </p>
-                <a href="{{ url_for('incident_commander_dashboard') }}" class="btn btn-primary-modern btn-modern px-5 py-2">
+                <a href="{{ url_for('commander.incident_commander_dashboard') }}" class="btn btn-primary-modern btn-modern px-5 py-2">
                     <i class="bi bi-arrow-left me-2"></i>Return to Command Center
                 </a>
             </div>

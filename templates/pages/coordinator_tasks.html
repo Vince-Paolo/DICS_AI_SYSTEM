@@ -12,7 +12,7 @@
                     <span class="section-header-icon" style="color:#38BDF8;"><i class="bi bi-list-task"></i></span>
                     <h4 class="mb-0">Task Management</h4>
                     <span class="ms-3">
-                        <a href="{{ url_for('coordinator_dashboard') }}" class="btn btn-sm btn-modern" style="background:rgba(56,189,248,0.1);color:#7DD3FC;border:1px solid rgba(56,189,248,0.25);font-size:0.78rem;">
+                        <a href="{{ url_for('coordinator.coordinator_dashboard') }}" class="btn btn-sm btn-modern" style="background:rgba(56,189,248,0.1);color:#7DD3FC;border:1px solid rgba(56,189,248,0.25);font-size:0.78rem;">
                             <i class="bi bi-arrow-left me-1"></i>Back to Hub
                         </a>
                     </span>
@@ -53,7 +53,7 @@
                 </select>
             </div>
             {% if request.args.get('status') or request.args.get('priority') %}
-            <a href="{{ url_for('coordinator_tasks') }}" class="btn btn-sm btn-modern" style="background:rgba(107,114,128,0.15);color:#9CA3AF;border:1px solid rgba(107,114,128,0.3);">
+            <a href="{{ url_for('coordinator.coordinator_tasks') }}" class="btn btn-sm btn-modern" style="background:rgba(107,114,128,0.15);color:#9CA3AF;border:1px solid rgba(107,114,128,0.3);">
                 <i class="bi bi-x me-1"></i>Clear
             </a>
             {% endif %}
@@ -135,6 +135,7 @@
                             </td>
                             <td class="text-center">
                                 <form method="POST" action="{{ url_for('coordinator_update_task', task_id=task.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <select name="status" class="form-select form-select-sm" style="max-width:140px;font-size:0.78rem;" onchange="this.form.submit()">
                                         <option value="PENDING" {% if task.status == 'PENDING' %}selected{% endif %}>Pending</option>
                                         <option value="IN_PROGRESS" {% if task.status == 'IN_PROGRESS' %}selected{% endif %}>In Progress</option>

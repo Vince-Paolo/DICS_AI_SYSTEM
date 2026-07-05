@@ -16,27 +16,50 @@ class User(db.Model):
     role = db.Column(db.String(20), default='user')
     is_disabled = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    incidents = db.relationship('Incident', backref='user', lazy=True)
+    incidents = db.relationship('Incident', foreign_keys='[Incident.user_id]', backref='user', lazy=True)
+    citizen_reports = db.relationship('CitizenReport', backref='user', lazy=True)
 
     @property
     def password_hash(self):
         return self.password
+
+
+class CitizenReport(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    hazard_type = db.Column(db.String(50), nullable=False)
+    severity = db.Column(db.String(20), nullable=False)
+    location = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    affected_people = db.Column(db.Integer, nullable=True)
+    injuries = db.Column(db.Integer, nullable=True)
+    contact = db.Column(db.String(30), nullable=True)
+    gps_latitude = db.Column(db.Float, nullable=True)
+    gps_longitude = db.Column(db.Float, nullable=True)
+    anonymous = db.Column(db.Boolean, default=False)
+    photo_filename = db.Column(db.String(255), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 
 class Incident(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     hazard_type = db.Column(db.String(50), nullable=False)
     location = db.Column(db.String(255), nullable=True)
-    rainfall_mm = db.Column(db.Float, nullable=False)
-    river_level_m = db.Column(db.Float, nullable=False)
-    soil_moisture_pct = db.Column(db.Float, nullable=False)
-    population_density = db.Column(db.Float, nullable=False)
-    score = db.Column(db.Float, nullable=False)
-    level = db.Column(db.String(20), nullable=False)
+    rainfall_mm = db.Column(db.Float, nullable=True)
+    river_level_m = db.Column(db.Float, nullable=True)
+    soil_moisture_pct = db.Column(db.Float, nullable=True)
+    population_density = db.Column(db.Float, nullable=True)
+    score = db.Column(db.Float, nullable=True)
+    level = db.Column(db.String(20), nullable=True)
     message = db.Column(db.String(255), nullable=False)
     alert = db.Column(db.Boolean, default=False)
+    status = db.Column(db.String(20), default='NEW')
+    verified_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    reported_by = db.Column(db.String(50), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     response = db.relationship('IncidentResponse', backref='incident', lazy=True, uselist=False)
+    verifier = db.relationship('User', foreign_keys=[verified_by_id], backref='verified_incidents')
 
 
 class IncidentResponse(db.Model):
@@ -56,6 +79,7 @@ class IncidentResponse(db.Model):
     tasks = db.relationship('Task', backref='incident_response', lazy=True, cascade='all, delete-orphan')
     resources = db.relationship('Resource', backref='incident_response', lazy=True, cascade='all, delete-orphan')
     reports = db.relationship('SituationReport', backref='incident_response', lazy=True, cascade='all, delete-orphan')
+    messages = db.relationship('Message', backref='incident_response', lazy=True, cascade='all, delete-orphan')
 
 
 class Task(db.Model):
@@ -73,6 +97,22 @@ class Task(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     assigned_by = db.relationship('User', backref='assigned_tasks', foreign_keys=[assigned_by_id])
+
+
+class Message(db.Model):
+    """Inter-agency comms message model"""
+    id = db.Column(db.Integer, primary_key=True)
+    incident_response_id = db.Column(db.Integer, db.ForeignKey('incident_response.id'), nullable=False)
+    sender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    title = db.Column(db.String(200), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    report_type = db.Column(db.String(50), default='UPDATE')
+    affected_areas = db.Column(db.String(500), nullable=True)
+    casualties = db.Column(db.Integer, nullable=True)
+    evacuated = db.Column(db.Integer, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    reporter = db.relationship('User', backref='messages', foreign_keys=[sender_id])
 
 
 class Resource(db.Model):

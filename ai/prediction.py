@@ -1,47 +1,104 @@
+import csv
+import os
+from pathlib import Path
+
+from joblib import dump, load
 from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import cross_val_score
+
+TRAINING_CSV = os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'data', 'hazard_training.csv')
+MODEL_FILE = os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'instance', 'hazard_predictor.joblib')
 
 class HazardPredictor:
     def __init__(self):
         self.models = {}
-        self._train_models()
+        self.metrics = {}
+        self.default_hazard = 'flood'
+        self._ensure_model_path()
+        if not self._load_model():
+            self._train_models()
+            self._save_model()
+
+    def _ensure_model_path(self):
+        model_dir = os.path.dirname(MODEL_FILE)
+        os.makedirs(model_dir, exist_ok=True)
+
+    def _load_training_data(self):
+        training_data = {}
+        csv_path = Path(TRAINING_CSV)
+        if not csv_path.exists():
+            raise FileNotFoundError(f'Training file not found: {csv_path}')
+
+        with csv_path.open(newline='') as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                hazard_type = row.get('hazard_type', '').strip().lower()
+                if not hazard_type:
+                    continue
+                features = [
+                    float(row.get('rainfall_mm', 0) or 0),
+                    float(row.get('river_level_m', 0) or 0),
+                    float(row.get('soil_moisture_pct', 0) or 0),
+                    float(row.get('population_density', 0) or 0),
+                ]
+                score = float(row.get('score', 0) or 0)
+                training_data.setdefault(hazard_type, []).append((features, score))
+
+        return training_data
 
     def _train_models(self):
-        training_data = {
-            'flood': [
-                ([10, 1.0, 20, 50], 10),
-                ([40, 2.5, 45, 150], 35),
-                ([80, 4.0, 70, 300], 65),
-                ([120, 5.5, 85, 500], 85),
-                ([180, 6.0, 90, 700], 95),
-            ],
-            'landslide': [
-                ([15, 0.5, 80, 200], 40),
-                ([35, 0.8, 85, 400], 55),
-                ([60, 1.0, 90, 600], 75),
-                ([90, 1.5, 95, 700], 88),
-                ([20, 0.3, 40, 80], 20),
-            ],
-            'storm': [
-                ([20, 2.0, 30, 100], 25),
-                ([55, 3.5, 55, 250], 50),
-                ([90, 4.5, 70, 450], 70),
-                ([130, 5.0, 80, 600], 85),
-                ([170, 5.8, 92, 800], 94),
-            ],
-        }
+        training_data = self._load_training_data()
+        if not training_data:
+            raise ValueError('No training data available for hazard prediction')
 
+        self.default_hazard = next(iter(training_data.keys()))
         for hazard_type, examples in training_data.items():
             X = [features for features, score in examples]
             y = [score for features, score in examples]
             model = LinearRegression()
+            cv_folds = min(5, len(y))
+            if cv_folds > 1:
+                scores = cross_val_score(model, X, y, cv=cv_folds, scoring='neg_mean_squared_error')
+                rmse = float(((-scores).mean()) ** 0.5)
+                self.metrics[hazard_type] = {
+                    'cv_folds': cv_folds,
+                    'cv_rmse': round(rmse, 2),
+                    'training_examples': len(y),
+                }
+            else:
+                self.metrics[hazard_type] = {
+                    'cv_folds': 0,
+                    'cv_rmse': None,
+                    'training_examples': len(y),
+                }
             model.fit(X, y)
             self.models[hazard_type] = model
 
+    def _save_model(self):
+        payload = {
+            'models': self.models,
+            'metrics': self.metrics,
+            'default_hazard': self.default_hazard,
+        }
+        dump(payload, MODEL_FILE)
+
+    def _load_model(self):
+        if not os.path.exists(MODEL_FILE):
+            return False
+        try:
+            payload = load(MODEL_FILE)
+            self.models = payload.get('models', {})
+            self.metrics = payload.get('metrics', {})
+            self.default_hazard = payload.get('default_hazard', self.default_hazard)
+            return bool(self.models)
+        except Exception:
+            return False
+
     def predict(self, hazard_type, rainfall_mm, river_level_m, soil_moisture_pct, population_density):
-        model = self.models.get(hazard_type)
+        hazard_type = hazard_type.strip().lower() if isinstance(hazard_type, str) else self.default_hazard
+        model = self.models.get(hazard_type) or self.models.get(self.default_hazard)
         if model is None:
-            hazard_type = 'flood'
-            model = self.models['flood']
+            raise RuntimeError('No hazard prediction model is available')
 
         X = [[rainfall_mm, river_level_m, soil_moisture_pct, population_density]]
         score = model.predict(X)[0]

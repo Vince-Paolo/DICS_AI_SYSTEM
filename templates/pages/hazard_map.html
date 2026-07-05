@@ -102,10 +102,11 @@ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }).addTo(map);
 
 function createHazardIcon(level) {
-    const color = level === 'High' ? '#dc2626' : level === 'Moderate' ? '#f59e0b' : '#10b981';
-    const symbol = level === 'High' ? '!' : level === 'Moderate' ? '!' : '•';
+    const normalizedLevel = (level || 'Moderate').toLowerCase();
+    const color = normalizedLevel === 'high' ? '#dc2626' : normalizedLevel === 'moderate' ? '#f59e0b' : '#10b981';
+    const symbol = normalizedLevel === 'high' ? '!' : normalizedLevel === 'moderate' ? '!' : '•';
     return L.divIcon({
-        className: `hazard-marker-icon ${level.toLowerCase()}`,
+        className: `hazard-marker-icon ${normalizedLevel}`,
         html: `<div style="background:${color}; border: 2px solid #ffffff; width: 40px; height: 40px; border-radius: 50%; display:flex; align-items:center; justify-content:center; color:#ffffff; font-weight:700; font-size:1.05rem; text-shadow:0 0 6px rgba(0,0,0,0.35);">${symbol}</div>`,
         iconSize: [40, 40],
         iconAnchor: [20, 40],
@@ -113,27 +114,43 @@ function createHazardIcon(level) {
     });
 }
 
-const markersData = [
-    {coords: [13.9411, 121.1622], label: 'Lipa City Flood Zone', level: 'High'},
-    {coords: [14.0537, 121.1585], label: 'Batangas River Flood Risk', level: 'Moderate'},
-    {coords: [13.9273, 121.0835], label: 'Landslide-prone Ridge', level: 'Low'}
-];
+let markersData = [];
+let activeFilter = 'all';
 
 const clusterGroup = L.markerClusterGroup({ chunkedLoading: true, spiderfyOnMaxZoom: true, showCoverageOnHover: false });
 clusterGroup.addTo(map);
 
 function renderMarkers(filter) {
+    activeFilter = filter;
     clusterGroup.clearLayers();
     markersData.forEach(item => {
-        if (filter === 'all' || (filter === 'high' && item.level === 'High') || (filter === 'moderate' && item.level === 'Moderate') || (filter === 'low' && item.level === 'Low')) {
-            const marker = L.marker(item.coords, { icon: createHazardIcon(item.level) });
-            marker.bindPopup(`<strong>${item.label}</strong><br/><span style='color:#b8c2ff'>Risk: ${item.level}</span>`);
+        const level = (item.level || 'Moderate').toLowerCase();
+        if (filter === 'all' || (filter === 'high' && level === 'high') || (filter === 'moderate' && level === 'moderate') || (filter === 'low' && level === 'low')) {
+            const marker = L.marker([item.lat, item.lng], { icon: createHazardIcon(item.level) });
+            marker.bindPopup(`<strong>${item.label}</strong><br/><span style='color:#b8c2ff'>Risk: ${item.level}</span><br/>${item.message || ''}`);
             clusterGroup.addLayer(marker);
         }
     });
 }
 
-renderMarkers('all');
+function loadMarkers() {
+    fetch('/api/map-pins')
+        .then(response => response.json())
+        .then(data => {
+            markersData = Array.isArray(data) ? data : [];
+            renderMarkers(activeFilter);
+            if (markersData.length > 0) {
+                const first = markersData[0];
+                map.setView([first.lat, first.lng], 10);
+            }
+        })
+        .catch(() => {
+            markersData = [];
+            renderMarkers(activeFilter);
+        });
+}
+
+loadMarkers();
 
 const buttons = document.querySelectorAll('#allZones, #highRisk, #moderateRisk, #lowRisk');
 buttons.forEach(button => {

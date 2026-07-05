@@ -12,7 +12,7 @@
                     <span class="section-header-icon" style="color:#FCD34D;"><i class="bi bi-box-seam-fill"></i></span>
                     <h4 class="mb-0">Resource Requests</h4>
                     <span class="ms-3">
-                        <a href="{{ url_for('coordinator_dashboard') }}" class="btn btn-sm btn-modern" style="background:rgba(245,158,11,0.1);color:#FCD34D;border:1px solid rgba(245,158,11,0.25);font-size:0.78rem;">
+                        <a href="{{ url_for('coordinator.coordinator_dashboard') }}" class="btn btn-sm btn-modern" style="background:rgba(245,158,11,0.1);color:#FCD34D;border:1px solid rgba(245,158,11,0.25);font-size:0.78rem;">
                             <i class="bi bi-arrow-left me-1"></i>Back to Hub
                         </a>
                     </span>
@@ -85,6 +85,7 @@
                                     </td>
                                     <td class="text-center">
                                         <form method="POST" action="{{ url_for('coordinator_update_resource', resource_id=res.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <select name="status" class="form-select form-select-sm" style="max-width:120px;font-size:0.76rem;" onchange="this.form.submit()">
                                                 <option value="AVAILABLE" {% if res.status == 'AVAILABLE' %}selected{% endif %}>Available</option>
                                                 <option value="DEPLOYED" {% if res.status == 'DEPLOYED' %}selected{% endif %}>Deployed</option>
@@ -120,7 +121,8 @@
                     <h5 class="mb-0">Allocate / Request Resource</h5>
                 </div>
 
-                <form method="POST" action="{{ url_for('coordinator_allocate_resource') }}">
+                <form method="POST" action="{{ url_for('coordinator.coordinator_allocate_resource') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-3">
                         <label class="form-label" style="font-size:0.82rem;">Active Response <span class="text-danger">*</span></label>
                         <select name="response_id" class="form-select form-select-sm" required>

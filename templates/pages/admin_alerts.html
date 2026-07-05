@@ -98,6 +98,7 @@
                                     <!-- Action Button -->
                                     <td class="py-3 px-4 text-end">
                                         <form method="post" action="/admin/alerts/{{ incident.id }}/toggle" class="d-inline">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <button type="submit" class="btn btn-sm btn-outline-primary rounded px-3">Toggle</button>
                                         </form>
                                     </td>

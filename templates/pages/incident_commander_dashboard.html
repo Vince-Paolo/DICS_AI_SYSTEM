@@ -204,6 +204,7 @@
                                 <td><span class="text-muted small">{{ incident.created_at.strftime('%b %d, %H:%M') }}</span></td>
                                 <td class="text-center">
                                     <form method="POST" action="{{ url_for('activate_incident_response', incident_id=incident.id) }}" style="display:inline;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <button type="submit" class="btn btn-sm" style="background:linear-gradient(135deg,#dc2626,#b91c1c);color:#fff;border:none;font-weight:600;border-radius:6px;padding:0.35rem 0.75rem;"
                                             onclick="return confirm('Activate incident response for #{{ incident.id }}?')">
                                             <i class="bi bi-play-fill me-1"></i>Activate

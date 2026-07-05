@@ -61,7 +61,7 @@
                         <h4 class="mb-0">File Field Report</h4>
                         <nav aria-label="breadcrumb" class="mt-1">
                             <ol class="breadcrumb mb-0" style="font-size:0.75rem;--bs-breadcrumb-divider-color:rgba(255,255,255,0.3);">
-                                <li class="breadcrumb-item"><a href="{{ url_for('responder_dashboard') }}" style="color:#F97316;text-decoration:none;">Field Responder</a></li>
+                                <li class="breadcrumb-item"><a href="{{ url_for('responder.responder_dashboard') }}" style="color:#F97316;text-decoration:none;">Field Responder</a></li>
                                 <li class="breadcrumb-item active text-muted">File Report</li>
                             </ol>
                         </nav>
@@ -92,7 +92,8 @@
                     </div>
                 </div>
 
-                <form method="POST" action="{{ url_for('responder_report') }}" enctype="multipart/form-data">
+                <form method="POST" action="{{ url_for('responder.responder_report') }}" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                     <div class="row g-3">
                         <!-- Incident Response -->
@@ -178,7 +179,7 @@
                             <button type="submit" class="btn btn-modern px-5" style="background:rgba(56,189,248,0.15);color:#38BDF8;border:1px solid rgba(56,189,248,0.35);font-weight:700;">
                                 <i class="bi bi-send-fill me-2"></i>Submit Report
                             </button>
-                            <a href="{{ url_for('responder_dashboard') }}" class="btn btn-sm" style="color:#9CA3AF;border:1px solid rgba(255,255,255,0.1);background:transparent;align-self:center;">
+                            <a href="{{ url_for('responder.responder_dashboard') }}" class="btn btn-sm" style="color:#9CA3AF;border:1px solid rgba(255,255,255,0.1);background:transparent;align-self:center;">
                                 Cancel
                             </a>
                         </div>

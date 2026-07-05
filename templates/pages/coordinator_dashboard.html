@@ -89,19 +89,19 @@
 <div class="row mb-4">
     <div class="col-12">
         <div class="d-flex flex-wrap gap-2 w-100">
-            <a href="{{ url_for('coordinator_tasks') }}" class="btn btn-modern flex-grow-1 text-center" style="background:rgba(56,189,248,0.12);color:#38BDF8;border:1px solid rgba(56,189,248,0.3);font-weight:600;padding:0.65rem 1rem;">
+            <a href="{{ url_for('coordinator.coordinator_tasks') }}" class="btn btn-modern flex-grow-1 text-center" style="background:rgba(56,189,248,0.12);color:#38BDF8;border:1px solid rgba(56,189,248,0.3);font-weight:600;padding:0.65rem 1rem;">
                 <i class="bi bi-list-task me-2"></i>Task Management
             </a>
-            <a href="{{ url_for('coordinator_team') }}" class="btn btn-modern flex-grow-1 text-center" style="background:rgba(16,185,129,0.12);color:#6EE7B7;border:1px solid rgba(16,185,129,0.3);font-weight:600;padding:0.65rem 1rem;">
+            <a href="{{ url_for('coordinator.coordinator_team') }}" class="btn btn-modern flex-grow-1 text-center" style="background:rgba(16,185,129,0.12);color:#6EE7B7;border:1px solid rgba(16,185,129,0.3);font-weight:600;padding:0.65rem 1rem;">
                 <i class="bi bi-people-fill me-2"></i>Team Tracking
             </a>
-            <a href="{{ url_for('coordinator_resources') }}" class="btn btn-modern flex-grow-1 text-center" style="background:rgba(245,158,11,0.12);color:#FCD34D;border:1px solid rgba(245,158,11,0.3);font-weight:600;padding:0.65rem 1rem;">
+            <a href="{{ url_for('coordinator.coordinator_resources') }}" class="btn btn-modern flex-grow-1 text-center" style="background:rgba(245,158,11,0.12);color:#FCD34D;border:1px solid rgba(245,158,11,0.3);font-weight:600;padding:0.65rem 1rem;">
                 <i class="bi bi-box-seam-fill me-2"></i>Resource Requests
             </a>
-            <a href="{{ url_for('coordinator_reports') }}" class="btn btn-modern flex-grow-1 text-center" style="background:rgba(139,92,246,0.12);color:#C4B5FD;border:1px solid rgba(139,92,246,0.3);font-weight:600;padding:0.65rem 1rem;">
+            <a href="{{ url_for('coordinator.coordinator_reports') }}" class="btn btn-modern flex-grow-1 text-center" style="background:rgba(139,92,246,0.12);color:#C4B5FD;border:1px solid rgba(139,92,246,0.3);font-weight:600;padding:0.65rem 1rem;">
                 <i class="bi bi-file-earmark-bar-graph-fill me-2"></i>Situation Reports
             </a>
-            <a href="{{ url_for('coordinator_comms') }}" class="btn btn-modern flex-grow-1 text-center" style="background:rgba(236,72,153,0.12);color:#F9A8D4;border:1px solid rgba(236,72,153,0.3);font-weight:600;padding:0.65rem 1rem;">
+            <a href="{{ url_for('coordinator.coordinator_comms') }}" class="btn btn-modern flex-grow-1 text-center" style="background:rgba(236,72,153,0.12);color:#F9A8D4;border:1px solid rgba(236,72,153,0.3);font-weight:600;padding:0.65rem 1rem;">
                 <i class="bi bi-chat-dots-fill me-2"></i>Comm Center
             </a>
         </div>
@@ -118,7 +118,7 @@
                         <i class="bi bi-clipboard2-check-fill"></i>
                     </div>
                     <h5 class="mb-0">Assigned to My Agency</h5>
-                    <a href="{{ url_for('coordinator_tasks') }}" class="ms-auto text-info small" style="text-decoration:none;">View All <i class="bi bi-arrow-right ms-1"></i></a>
+                    <a href="{{ url_for('coordinator.coordinator_tasks') }}" class="ms-auto text-info small" style="text-decoration:none;">View All <i class="bi bi-arrow-right ms-1"></i></a>
                 </div>
 
                 {% if my_tasks %}
@@ -171,6 +171,7 @@
                                     </td>
                                     <td class="text-center">
                                         <form method="POST" action="{{ url_for('coordinator_update_task', task_id=task.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <select name="status" class="form-select form-select-sm" style="max-width:130px;font-size:0.78rem;" onchange="this.form.submit()">
                                                 <option value="PENDING" {% if task.status == 'PENDING' %}selected{% endif %}>Pending</option>
                                                 <option value="IN_PROGRESS" {% if task.status == 'IN_PROGRESS' %}selected{% endif %}>In Progress</option>
@@ -244,7 +245,8 @@
                     <h5 class="mb-0" style="font-size:1rem;">Quick Status Report</h5>
                 </div>
 
-                <form method="POST" action="{{ url_for('coordinator_quick_report') }}">
+                <form method="POST" action="{{ url_for('coordinator.coordinator_quick_report') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-3">
                         <label class="form-label" style="font-size:0.82rem;">Incident Response</label>
                         <select name="response_id" class="form-select form-select-sm" required>

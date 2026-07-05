@@ -20,6 +20,7 @@
                     </div>
 
                     <form method="POST" action="{{ url_for('allocate_resource', response_id=response.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <!-- Resource Type -->
                         <div class="mb-3">
                             <label for="resource_type" class="form-label text-success fw-bold">Resource Type *</label>

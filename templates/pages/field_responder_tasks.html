@@ -14,7 +14,7 @@
                         <h4 class="mb-0">My Assigned Tasks</h4>
                         <nav aria-label="breadcrumb" class="mt-1">
                             <ol class="breadcrumb mb-0" style="font-size:0.75rem;--bs-breadcrumb-divider-color:rgba(255,255,255,0.3);">
-                                <li class="breadcrumb-item"><a href="{{ url_for('responder_dashboard') }}" style="color:#F97316;text-decoration:none;">Field Responder</a></li>
+                                <li class="breadcrumb-item"><a href="{{ url_for('responder.responder_dashboard') }}" style="color:#F97316;text-decoration:none;">Field Responder</a></li>
                                 <li class="breadcrumb-item active text-muted">Tasks</li>
                             </ol>
                         </nav>
@@ -29,7 +29,7 @@
 <div class="row mb-3">
     <div class="col-12">
         <div class="d-flex flex-wrap gap-2 align-items-center">
-            <a href="{{ url_for('responder_tasks') }}" class="btn btn-sm {% if not status_filter %}active{% endif %}" style="background:{% if not status_filter %}rgba(249,115,22,0.2);color:#F97316;border:1px solid rgba(249,115,22,0.5){% else %}rgba(255,255,255,0.04);color:#9CA3AF;border:1px solid rgba(255,255,255,0.08){% endif %};font-size:0.78rem;">All</a>
+            <a href="{{ url_for('responder.responder_tasks') }}" class="btn btn-sm {% if not status_filter %}active{% endif %}" style="background:{% if not status_filter %}rgba(249,115,22,0.2);color:#F97316;border:1px solid rgba(249,115,22,0.5){% else %}rgba(255,255,255,0.04);color:#9CA3AF;border:1px solid rgba(255,255,255,0.08){% endif %};font-size:0.78rem;">All</a>
             {% for s in ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'FAILED'] %}
             <a href="{{ url_for('responder_tasks', status=s) }}" class="btn btn-sm {% if status_filter == s %}active{% endif %}" style="background:{% if status_filter == s %}rgba(249,115,22,0.2);color:#F97316;border:1px solid rgba(249,115,22,0.5){% else %}rgba(255,255,255,0.04);color:#9CA3AF;border:1px solid rgba(255,255,255,0.08){% endif %};font-size:0.78rem;">
                 {{ s.replace('_', ' ') | title }}
