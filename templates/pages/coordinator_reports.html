@@ -12,7 +12,7 @@
                     <span class="section-header-icon" style="color:#C4B5FD;"><i class="bi bi-file-earmark-bar-graph-fill"></i></span>
                     <h4 class="mb-0">Situation Reporting</h4>
                     <span class="ms-3">
-                        <a href="{{ url_for('coordinator_dashboard') }}" class="btn btn-sm btn-modern" style="background:rgba(139,92,246,0.1);color:#C4B5FD;border:1px solid rgba(139,92,246,0.25);font-size:0.78rem;">
+                        <a href="{{ url_for('coordinator.coordinator_dashboard') }}" class="btn btn-sm btn-modern" style="background:rgba(139,92,246,0.1);color:#C4B5FD;border:1px solid rgba(139,92,246,0.25);font-size:0.78rem;">
                             <i class="bi bi-arrow-left me-1"></i>Back to Hub
                         </a>
                     </span>
@@ -97,7 +97,8 @@
                     <h5 class="mb-0">Submit Situation Report</h5>
                 </div>
 
-                <form method="POST" action="{{ url_for('coordinator_submit_report') }}">
+                <form method="POST" action="{{ url_for('coordinator.coordinator_submit_report') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-3">
                         <label class="form-label" style="font-size:0.82rem;">Active Response <span class="text-danger">*</span></label>
                         <select name="response_id" class="form-select form-select-sm" required>

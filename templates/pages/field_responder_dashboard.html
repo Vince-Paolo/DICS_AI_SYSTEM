@@ -92,13 +92,13 @@
 <div class="row mb-4">
     <div class="col-12">
         <div class="d-flex flex-wrap gap-2 w-100">
-            <a href="{{ url_for('responder_tasks') }}" class="btn btn-modern flex-grow-1 text-center" style="background:rgba(249,115,22,0.12);color:#F97316;border:1px solid rgba(249,115,22,0.3);font-weight:600;padding:0.65rem 1rem;">
+            <a href="{{ url_for('responder.responder_tasks') }}" class="btn btn-modern flex-grow-1 text-center" style="background:rgba(249,115,22,0.12);color:#F97316;border:1px solid rgba(249,115,22,0.3);font-weight:600;padding:0.65rem 1rem;">
                 <i class="bi bi-list-task me-2"></i>My Tasks
             </a>
-            <a href="{{ url_for('responder_report') }}" class="btn btn-modern flex-grow-1 text-center" style="background:rgba(56,189,248,0.12);color:#38BDF8;border:1px solid rgba(56,189,248,0.3);font-weight:600;padding:0.65rem 1rem;">
+            <a href="{{ url_for('responder.responder_report') }}" class="btn btn-modern flex-grow-1 text-center" style="background:rgba(56,189,248,0.12);color:#38BDF8;border:1px solid rgba(56,189,248,0.3);font-weight:600;padding:0.65rem 1rem;">
                 <i class="bi bi-send-fill me-2"></i>File Report
             </a>
-            <a href="{{ url_for('responder_checklist') }}" class="btn btn-modern flex-grow-1 text-center" style="background:rgba(16,185,129,0.12);color:#6EE7B7;border:1px solid rgba(16,185,129,0.3);font-weight:600;padding:0.65rem 1rem;">
+            <a href="{{ url_for('responder.responder_checklist') }}" class="btn btn-modern flex-grow-1 text-center" style="background:rgba(16,185,129,0.12);color:#6EE7B7;border:1px solid rgba(16,185,129,0.3);font-weight:600;padding:0.65rem 1rem;">
                 <i class="bi bi-card-checklist me-2"></i>Checklists
             </a>
             <a href="/hazard-map" class="btn btn-modern flex-grow-1 text-center" style="background:rgba(139,92,246,0.12);color:#C4B5FD;border:1px solid rgba(139,92,246,0.3);font-weight:600;padding:0.65rem 1rem;">
@@ -118,7 +118,7 @@
                         <i class="bi bi-clipboard2-check-fill"></i>
                     </div>
                     <h5 class="mb-0">Active Assignments</h5>
-                    <a href="{{ url_for('responder_tasks') }}" class="ms-auto text-decoration-none" style="color:#F97316;font-size:0.8rem;font-weight:600;">View All <i class="bi bi-arrow-right"></i></a>
+                    <a href="{{ url_for('responder.responder_tasks') }}" class="ms-auto text-decoration-none" style="color:#F97316;font-size:0.8rem;font-weight:600;">View All <i class="bi bi-arrow-right"></i></a>
                 </div>
 
                 {% set active_tasks = my_tasks | selectattr('status', 'in', ['PENDING', 'IN_PROGRESS']) | list %}
@@ -154,6 +154,7 @@
                                     </div>
                                 </div>
                                 <form method="POST" action="{{ url_for('responder_complete_task', task_id=task.id) }}" class="ms-2">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn btn-sm" title="Mark complete" style="background:rgba(16,185,129,0.15);color:#6EE7B7;border:1px solid rgba(16,185,129,0.3);font-size:0.75rem;padding:0.3rem 0.6rem;" onclick="return confirm('Mark this task as completed?')">
                                         <i class="bi bi-check2"></i>
                                     </button>
@@ -250,7 +251,7 @@
                         <i class="bi bi-file-earmark-text-fill"></i>
                     </div>
                     <h5 class="mb-0">My Recent Reports</h5>
-                    <a href="{{ url_for('responder_report') }}" class="ms-auto btn btn-sm" style="background:rgba(56,189,248,0.12);color:#38BDF8;border:1px solid rgba(56,189,248,0.3);font-size:0.78rem;">
+                    <a href="{{ url_for('responder.responder_report') }}" class="ms-auto btn btn-sm" style="background:rgba(56,189,248,0.12);color:#38BDF8;border:1px solid rgba(56,189,248,0.3);font-size:0.78rem;">
                         <i class="bi bi-plus me-1"></i>New Report
                     </a>
                 </div>
@@ -285,7 +286,7 @@
                 {% else %}
                     <div class="text-center py-4" style="color:#6B7280;">
                         <i class="bi bi-journal-x" style="font-size:2rem;"></i>
-                        <p class="mt-2 mb-0" style="font-size:0.85rem;">No reports filed yet. <a href="{{ url_for('responder_report') }}" style="color:#38BDF8;">Submit your first report.</a></p>
+                        <p class="mt-2 mb-0" style="font-size:0.85rem;">No reports filed yet. <a href="{{ url_for('responder.responder_report') }}" style="color:#38BDF8;">Submit your first report.</a></p>
                     </div>
                 {% endif %}
             </div>

@@ -243,6 +243,7 @@
                                         </button>
                                         <!-- Toggle Status -->
                                         <form method="POST" action="/admin/users/{{ user.id }}/toggle" style="display:inline;">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <button type="submit" class="btn btn-sm {% if user.is_disabled %}btn-outline-success{% else %}btn-outline-danger{% endif %}"
                                                 title="{{ 'Enable' if user.is_disabled else 'Disable' }} user"
                                                 onclick="return confirm('{{ 'Enable' if user.is_disabled else 'Disable' }} user {{ user.username }}?')">
@@ -278,6 +279,7 @@
                     <h5 class="mb-0">Add New User</h5>
                 </div>
                 <form method="POST" action="/admin/users/add">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-3">
                         <label class="form-label"><i class="bi bi-person me-1"></i>Username <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" name="username" placeholder="e.g. jdelacruz" required>
@@ -508,6 +510,7 @@
             </div>
             <div class="modal-body p-4">
                 <form method="POST" id="editUserForm" action="">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" id="edit_user_id" name="user_id">
                     <div class="mb-3">
                         <label class="form-label"><i class="bi bi-person me-1"></i>Username</label>

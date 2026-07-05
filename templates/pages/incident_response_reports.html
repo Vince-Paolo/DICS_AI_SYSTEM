@@ -86,6 +86,7 @@
 
                 {% if response.status != 'CLOSED' %}
                     <form method="POST" action="{{ url_for('create_situation_report', response_id=response.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="mb-3">
                             <label class="form-label">Report Title <span class="text-danger">*</span></label>
                             <input type="text" name="title" class="form-control" placeholder="e.g., Tactical Briefing, Sector B Progress" required>

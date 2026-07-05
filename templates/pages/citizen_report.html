@@ -46,7 +46,8 @@
                         <h4>Report an Incident</h4>
                     </div>
 
-                    <form method="POST" class="needs-validation" novalidate>
+                    <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <!-- Incident Details Section -->
                         <div class="form-section-header">
                             <h5><i class="bi bi-info-circle me-2"></i>Incident Details</h5>
@@ -170,6 +171,38 @@
                             <small class="text-muted d-block mt-2">Format: 09XXXXXXXXX or +639XXXXXXXXX (Philippine numbers only)</small>
                         </div>
 
+                        <div class="form-section-header">
+                            <h5><i class="bi bi-camera me-2"></i>Evidence & Privacy</h5>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-4">
+                                <label for="photo" class="form-label">
+                                    <i class="bi bi-image me-2"></i>Photo Evidence
+                                </label>
+                                <input type="file" class="form-control" id="photo" name="photo" accept="image/*">
+                                <small class="text-muted d-block mt-2">Optional image upload for the report.</small>
+                            </div>
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label">
+                                    <i class="bi bi-geo-alt me-2"></i>GPS Location
+                                </label>
+                                <input type="hidden" id="gps_lat" name="gps_lat">
+                                <input type="hidden" id="gps_lng" name="gps_lng">
+                                <button type="button" class="btn btn-outline-secondary w-100" id="gpsButton">
+                                    <i class="bi bi-pin-map me-2"></i>Use Current Location
+                                </button>
+                                <small id="gpsStatus" class="text-muted d-block mt-2">Allow browser location access to capture GPS automatically.</small>
+                            </div>
+                        </div>
+
+                        <div class="form-check mb-4">
+                            <input class="form-check-input" type="checkbox" id="anonymous" name="anonymous">
+                            <label class="form-check-label" for="anonymous">
+                                Submit this report anonymously
+                            </label>
+                        </div>
+
                         <!-- Action Buttons -->
                         <div class="d-flex gap-2 mt-5 pt-3 border-top border-secondary">
                             <button type="submit" class="btn btn-primary-modern btn-modern" style="flex: 1;">
@@ -187,4 +220,33 @@
 </div>
 
 {# SOS logic and styles consolidated into global assets. #}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const gpsButton = document.getElementById('gpsButton');
+    const gpsStatus = document.getElementById('gpsStatus');
+    const gpsLat = document.getElementById('gps_lat');
+    const gpsLng = document.getElementById('gps_lng');
+
+    if (gpsButton) {
+        gpsButton.addEventListener('click', function () {
+            if (!navigator.geolocation) {
+                gpsStatus.textContent = 'Geolocation is not supported by this browser.';
+                return;
+            }
+
+            gpsStatus.textContent = 'Capturing your current location...';
+            navigator.geolocation.getCurrentPosition(function (position) {
+                gpsLat.value = position.coords.latitude;
+                gpsLng.value = position.coords.longitude;
+                gpsStatus.textContent = `Captured GPS: ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`;
+            }, function () {
+                gpsStatus.textContent = 'Unable to access your location. You can still submit the report manually.';
+            });
+        });
+    }
+});
+</script>
 {% endblock %}

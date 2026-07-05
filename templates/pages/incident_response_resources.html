@@ -113,6 +113,7 @@
 
                 {% if response.status != 'CLOSED' %}
                     <form method="POST" action="{{ url_for('allocate_resource', response_id=response.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="mb-3">
                             <label class="form-label">Resource Type <span class="text-danger">*</span></label>
                             <select name="resource_type" class="form-select" required>

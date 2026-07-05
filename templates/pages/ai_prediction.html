@@ -78,6 +78,7 @@
                 <p class="text-muted small mb-4 font-monospace">Inject telemetry values to prompt predictive system analytics.</p>
                 
                 <form action="/ai-prediction" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="row g-3 font-monospace text-muted small">
                         <div class="col-md-6">
                             <label class="form-label text-uppercase fw-bold">Target Hazard Index Classification</label>

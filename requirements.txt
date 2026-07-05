@@ -1,5 +1,7 @@
 Flask
 Flask-SQLAlchemy
+Flask-WTF
+Flask-APScheduler
 scikit-learn
+joblib
 requests
-schedule

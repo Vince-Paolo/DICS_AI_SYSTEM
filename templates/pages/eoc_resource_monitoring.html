@@ -13,7 +13,7 @@
                     <span class="section-header-icon" style="color:#C4B5FD;"><i class="bi bi-truck"></i></span>
                     <h4 class="mb-0">Resource Monitoring</h4>
                     <span class="ms-3">
-                        <a href="{{ url_for('eoc_dashboard') }}" class="btn btn-sm btn-modern" style="background:rgba(139,92,246,0.1);color:#C4B5FD;border:1px solid rgba(139,92,246,0.25);font-size:0.78rem;">
+                        <a href="{{ url_for('eoc.eoc_dashboard') }}" class="btn btn-sm btn-modern" style="background:rgba(139,92,246,0.1);color:#C4B5FD;border:1px solid rgba(139,92,246,0.25);font-size:0.78rem;">
                             <i class="bi bi-arrow-left me-1"></i>Back to Command Dashboard
                         </a>
                     </span>
@@ -97,7 +97,7 @@
                     <span class="ms-2 text-muted small">({{ resources|length }} matching)</span>
                 </div>
 
-                <form method="GET" action="{{ url_for('eoc_resource_monitoring') }}" class="row g-3 align-items-end mb-4">
+                <form method="GET" action="{{ url_for('eoc.eoc_resource_monitoring') }}" class="row g-3 align-items-end mb-4">
                     <div class="col-12 col-sm-6">
                         <label class="form-label text-muted small text-uppercase">Status</label>
                         <select name="status" class="form-select">
@@ -120,7 +120,7 @@
                         <button type="submit" class="btn btn-primary-modern btn-modern text-nowrap">
                             <i class="bi bi-funnel-fill me-1"></i>Apply Filters
                         </button>
-                        <a href="{{ url_for('eoc_resource_monitoring') }}" class="btn btn-outline-secondary btn-modern flex-shrink-0" title="Reset">
+                        <a href="{{ url_for('eoc.eoc_resource_monitoring') }}" class="btn btn-outline-secondary btn-modern flex-shrink-0" title="Reset">
                             <i class="bi bi-x-lg"></i>
                         </a>
                     </div>
