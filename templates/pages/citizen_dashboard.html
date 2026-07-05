@@ -1,0 +1,226 @@
+{% extends 'pages/base.html' %}
+
+{% block title %}Dashboard | DICS AI Citizen Portal{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Welcome Section -->
+            <div class="card card-custom shadow-lg mb-4" style="background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); border: none;">
+                <div class="card-body" style="color: white; padding: 2rem;">
+                    <h3 class="mb-2"><i class="bi bi-shield-check me-2"></i>Welcome to DICS-AI</h3>
+                    <p class="mb-0">Stay informed about hazards and emergency response. Report incidents and track their status in real-time.</p>
+                </div>
+            </div>
+
+            <!-- Dashboard Stats -->
+            <div class="row g-3 mb-5">
+                <div class="col-md-4">
+                    <div class="stat-card card-gradient-primary">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <div class="stat-label">Total Reports</div>
+                                <div class="stat-value">{{ total_incidents }}</div>
+                                <div class="stat-description">Reports submitted</div>
+                            </div>
+                            <div class="icon-badge icon-badge-primary">
+                                <i class="bi bi-file-earmark-check"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stat-card card-gradient-warning">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <div class="stat-label">Pending Review</div>
+                                <div class="stat-value">{{ pending_count }}</div>
+                                <div class="stat-description">Awaiting response</div>
+                            </div>
+                            <div class="icon-badge icon-badge-warning">
+                                <i class="bi bi-hourglass-split"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stat-card card-gradient-danger">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <div class="stat-label">Alerts</div>
+                                <div class="stat-value">{{ alert_count }}</div>
+                                <div class="stat-description">Active alerts</div>
+                            </div>
+                            <div class="icon-badge icon-badge-danger">
+                                <i class="bi bi-exclamation-triangle-fill"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="row mb-5">
+                <div class="col-12">
+                    <div class="card card-custom shadow-lg">
+                        <div class="card-body">
+                            <h5 class="mb-3"><i class="bi bi-lightning-fill me-2"></i>Quick Actions</h5>
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <a href="/citizen-report" class="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2" style="padding: 0.75rem;">
+                                        <i class="bi bi-plus-circle"></i>
+                                        <span>Report New Incident</span>
+                                    </a>
+                                </div>
+                                <div class="col-md-6">
+                                    <a href="/citizen-status" class="btn btn-outline-primary w-100 d-flex align-items-center justify-content-center gap-2" style="padding: 0.75rem;">
+                                        <i class="bi bi-clock-history"></i>
+                                        <span>View All Reports</span>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Incidents -->
+            {% if incidents %}
+            <div class="row">
+                <div class="col-12">
+                    <div class="card card-custom shadow-lg">
+                        <div class="card-body">
+                            <h5 class="mb-3"><i class="bi bi-clock-history me-2"></i>Recent Reports</h5>
+                            <div class="row g-3">
+                                {% for incident in incidents %}
+                                <div class="col-md-6">
+                                    <div class="card card-sm border-start" style="border-left: 4px solid {% if incident.alert %}#ef4444{% elif incident.score and incident.score > 0.7 %}#f59e0b{% else %}#10b981{% endif %};">
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <h6 class="mb-0">{{ incident.hazard_type | upper }}</h6>
+                                                <span class="badge {% if incident.alert %}bg-danger{% elif incident.score and incident.score > 0.7 %}bg-warning{% else %}bg-success{% endif %} text-dark">
+                                                    {% if incident.alert %}Alert{% elif incident.score and incident.score > 0.7 %}High Risk{% else %}Normal{% endif %}
+                                                </span>
+                                            </div>
+                                            <p class="text-muted small mb-2">{{ incident.location }}</p>
+                                            <p class="small mb-2">{{ incident.message[:100] }}{% if incident.message|length > 100 %}...{% endif %}</p>
+                                            <div class="text-muted small">
+                                                <i class="bi bi-calendar-event me-1"></i>{{ incident.created_at.strftime('%b %d, %Y %I:%M %p') }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="row">
+                <div class="col-12">
+                    <div class="card card-custom shadow-lg text-center py-5">
+                        <div class="card-body">
+                            <i class="bi bi-inbox" style="font-size: 3rem; color: #6b7280; margin-bottom: 1rem; display: block;"></i>
+                            <h5 class="text-muted mb-2">No Reports Yet</h5>
+                            <p class="text-muted small mb-4">Start by reporting your first incident to help keep your community informed.</p>
+                            <a href="/citizen-report" class="btn btn-primary">
+                                <i class="bi bi-plus-circle me-2"></i>Report Your First Incident
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.stat-card {
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    border: none;
+    color: white;
+    transition: transform 0.2s;
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    opacity: 0.9;
+    margin-bottom: 0.5rem;
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 0.5rem;
+}
+
+.stat-description {
+    font-size: 0.8rem;
+    opacity: 0.85;
+}
+
+.icon-badge {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 1.5rem;
+    opacity: 0.2;
+}
+
+.card-gradient-primary {
+    background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+}
+
+.card-gradient-warning {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+.card-gradient-danger {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+.card-gradient-success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.icon-badge-primary {
+    background-color: rgba(59, 130, 246, 0.3);
+}
+
+.icon-badge-warning {
+    background-color: rgba(245, 158, 11, 0.3);
+}
+
+.icon-badge-danger {
+    background-color: rgba(239, 68, 68, 0.3);
+}
+
+.icon-badge-success {
+    background-color: rgba(16, 185, 129, 0.3);
+}
+
+.card-sm {
+    background-color: #0f172a;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.5rem;
+}
+
+.card-sm .card-body {
+    padding: 1rem;
+}
+</style>
+{% endblock %}

@@ -52,7 +52,7 @@ from blueprints.responder import (
     responder_complete_task,
 )
 from blueprints.eoc import eoc_bp, eoc_dashboard, eoc_incident_monitoring, eoc_resource_monitoring
-from blueprints.citizen import citizen_bp
+from blueprints.citizen import citizen_bp, citizen_report, citizen_status, citizen_resources, citizen_alerts, citizen_dashboard
 from blueprints.ai import ai_bp
 
 
@@ -137,6 +137,11 @@ app.add_url_rule('/responder-task/<int:task_id>/complete', endpoint='responder_c
 app.add_url_rule('/eoc-dashboard', endpoint='eoc_dashboard', view_func=eoc_dashboard)
 app.add_url_rule('/eoc/incidents', endpoint='eoc_incident_monitoring', view_func=eoc_incident_monitoring)
 app.add_url_rule('/eoc/resources', endpoint='eoc_resource_monitoring', view_func=eoc_resource_monitoring)
+app.add_url_rule('/citizen-dashboard', endpoint='citizen_dashboard', view_func=citizen_dashboard)
+app.add_url_rule('/citizen-report', endpoint='citizen_report', view_func=citizen_report, methods=['GET', 'POST'])
+app.add_url_rule('/citizen-status', endpoint='citizen_status', view_func=citizen_status)
+app.add_url_rule('/citizen-resources', endpoint='citizen_resources', view_func=citizen_resources)
+app.add_url_rule('/citizen-alerts', endpoint='citizen_alerts', view_func=citizen_alerts)
 
 
 @app.errorhandler(404)
@@ -386,10 +391,17 @@ def verify_password(user, password):
         return False
 
     stored = user.password
+    if not stored:
+        return False
+    
     try:
         if check_password_hash(stored, password):
             return True
-    except (ValueError, TypeError):
+    except (ValueError, TypeError) as e:
+        app.logger.warning(f'Password hash check failed for user {user.username}: {e}')
+        pass
+    except Exception as e:
+        app.logger.error(f'Unexpected error in password hash check for user {user.username}: {e}')
         pass
 
     if stored == password:
@@ -398,7 +410,7 @@ def verify_password(user, password):
             db.session.commit()
         except Exception as e:
             db.session.rollback()
-            flash(f'Unable to update password: {str(e)}', 'error')
+            app.logger.error(f'Failed to update password for user {user.username}: {e}')
             return False
         return True
 
@@ -419,36 +431,40 @@ def login():
         elif role == 'eoc_staff':
             return redirect(url_for('eoc_dashboard'))
         elif role == 'citizen':
-            return redirect(url_for('citizen_report'))
+            return redirect(url_for('citizen_dashboard'))
         else:
             return redirect(url_for('dashboard'))
 
     error = None
     if request.method == 'POST':
-        username = request.form.get('username', '').strip()
-        password = request.form.get('password', '').strip()
-        user = User.query.filter_by(username=username).first()
-        if user and user.is_disabled:
-            error = 'This account has been disabled. Contact an administrator.'
-        elif user and verify_password(user, password):
-            session['username'] = user.username
-            session['role'] = user.role
-            session['agency'] = user.agency or 'FIELD UNIT'
-            flash('Welcome back, ' + user.username + '!', 'success')
-            if user.role == 'incident_commander':
-                return redirect(url_for('incident_commander_dashboard'))
-            elif user.role == 'agency_coordinator':
-                return redirect(url_for('coordinator_dashboard'))
-            elif user.role == 'field_responder':
-                return redirect(url_for('responder_dashboard'))
-            elif user.role == 'eoc_staff':
-                return redirect(url_for('eoc_dashboard'))
-            elif user.role == 'citizen':
-                return redirect(url_for('citizen_report'))
+        try:
+            username = request.form.get('username', '').strip()
+            password = request.form.get('password', '').strip()
+            user = User.query.filter_by(username=username).first()
+            if user and user.is_disabled:
+                error = 'This account has been disabled. Contact an administrator.'
+            elif user and verify_password(user, password):
+                session['username'] = user.username
+                session['role'] = user.role
+                session['agency'] = user.agency or 'FIELD UNIT'
+                flash('Welcome back, ' + user.username + '!', 'success')
+                if user.role == 'incident_commander':
+                    return redirect(url_for('incident_commander_dashboard'))
+                elif user.role == 'agency_coordinator':
+                    return redirect(url_for('coordinator_dashboard'))
+                elif user.role == 'field_responder':
+                    return redirect(url_for('responder_dashboard'))
+                elif user.role == 'eoc_staff':
+                    return redirect(url_for('eoc_dashboard'))
+                elif user.role == 'citizen':
+                    return redirect(url_for('citizen_dashboard'))
+                else:
+                    return redirect(url_for('dashboard'))
             else:
-                return redirect(url_for('dashboard'))
-        else:
-            error = 'Invalid username or password.'
+                error = 'Invalid username or password.'
+        except Exception as e:
+            app.logger.error(f'Login error for user {username}: {str(e)}', exc_info=True)
+            error = 'An error occurred during login. Please try again.'
     return render_template('pages/login.html', error=error)
 
 
