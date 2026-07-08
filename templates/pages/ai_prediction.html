@@ -45,7 +45,7 @@
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
                             <div class="text-muted text-uppercase fw-bold mb-1" style="font-size: 0.75rem; letter-spacing: 0.5px;">Latest Risk Score</div>
-                            <div class="fw-bold my-1 font-monospace" style="color: #3b82f6; font-size: 2.2rem;">{{ "%.0f"|format(latest_risk_score) }}%</div>
+                            <div class="fw-bold my-1 font-monospace" style="color: #3b82f6; font-size: 2.2rem;">{{ "%.0f"|format(latest_risk_score or 0) }}%</div>
                             <div class="text-muted small">Current threat level</div>
                         </div>
                         <div style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 12px; flex-shrink: 0;">
@@ -61,7 +61,7 @@
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
                             <div class="text-muted text-uppercase fw-bold mb-1" style="font-size: 0.75rem; letter-spacing: 0.5px;">Earthquake Magnitude</div>
-                            <div class="fw-bold my-1 font-monospace" style="color: #3b82f6; font-size: 2.2rem;">{{ "%.1f"|format(latest_earthquake_magnitude) }}</div>
+                            <div class="fw-bold my-1 font-monospace" style="color: #3b82f6; font-size: 2.2rem;">{{ "%.1f"|format(latest_earthquake_magnitude or 0) }}</div>
                             <div class="text-muted small">Latest seismic reading</div>
                         </div>
                         <div style="background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 12px; flex-shrink: 0;">
