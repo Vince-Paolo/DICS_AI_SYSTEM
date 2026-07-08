@@ -35,13 +35,6 @@ def monitor_hazards():
                 "soil_moisture_pct": humidity_pct,
                 "population_density": population_density,
             },
-            {
-                "hazard_type": "earthquake",
-                "rainfall_mm": rainfall_mm,
-                "river_level_m": river_level_m,
-                "soil_moisture_pct": humidity_pct,
-                "population_density": population_density,
-            },
         ]
 
         created_any = False

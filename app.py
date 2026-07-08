@@ -64,7 +64,7 @@ upload_dir = os.path.join(instance_dir, 'uploads', 'citizen_reports')
 os.makedirs(upload_dir, exist_ok=True)
 app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(instance_dir, 'database.db').replace('\\', '/')}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-me')
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-me'
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.config['UPLOAD_FOLDER'] = upload_dir
 app.config['INSTANCE_DIR'] = instance_dir
@@ -73,8 +73,9 @@ app.config['WTF_CSRF_ENABLED'] = True
 app.config['SCHEDULER_API_ENABLED'] = True
 app.config['SCHEDULER_TIMEZONE'] = 'UTC'
 app.config['PROPAGATE_EXCEPTIONS'] = False
-app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE', 'false').lower() == 'true'
 app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
 csrf = CSRFProtect(app)
 db.init_app(app)
@@ -142,6 +143,10 @@ app.add_url_rule('/citizen-report', endpoint='citizen_report', view_func=citizen
 app.add_url_rule('/citizen-status', endpoint='citizen_status', view_func=citizen_status)
 app.add_url_rule('/citizen-resources', endpoint='citizen_resources', view_func=citizen_resources)
 app.add_url_rule('/citizen-alerts', endpoint='citizen_alerts', view_func=citizen_alerts)
+# Missing aliases that caused BuildError crashes in templates
+from blueprints.commander import activate_incident_response, incident_response_detail
+app.add_url_rule('/incident/<int:incident_id>/activate-response', endpoint='activate_incident_response', view_func=activate_incident_response, methods=['POST'])
+app.add_url_rule('/incident-response/<int:response_id>', endpoint='incident_response_detail', view_func=incident_response_detail)
 
 
 @app.errorhandler(404)
@@ -157,11 +162,16 @@ def handle_server_error(error):
 @app.context_processor
 def inject_alert_count():
     alert_count = 0
-    if session.get('username') and session.get('role') == 'user':
+    try:
+        username = session.get('username')
+        role = session.get('role')
+    except RuntimeError:
+        username = None
+        role = None
+
+    if username and role in ('user', 'citizen'):
         try:
-            user = User.query.filter_by(username=session['username']).first()
-            if user:
-                alert_count = Incident.query.filter_by(user_id=user.id, alert=True).count()
+            alert_count = Incident.query.filter(Incident.alert == True).count()
         except Exception:
             alert_count = 0
     return {'alert_count': alert_count}
@@ -295,21 +305,24 @@ def migrate_incident_commander_tables():
 
 
 def create_default_admin():
+    admin_password = os.environ.get('ADMIN_PASSWORD', 'Admin123!')
     admin = User.query.filter_by(username='admin').first()
     if admin is None:
         admin = User.query.filter_by(email='admin@dics-ai.local').first()
     if admin is None:
         admin = User.query.filter_by(role='admin').first()
 
+    created_new = False
     if admin is None:
         admin = User(
             username='admin',
             email='admin@dics-ai.local',
-            password=generate_password_hash('Admin123!'),
+            password=generate_password_hash(admin_password),
             email_verified=True,
             role='admin',
         )
         db.session.add(admin)
+        created_new = True
     else:
         admin.role = 'admin'
         admin.email_verified = True
@@ -317,11 +330,13 @@ def create_default_admin():
             admin.email = 'admin@dics-ai.local'
         if admin.username != 'admin' and admin.username in {None, ''}:
             admin.username = 'admin'
-        if not admin.password or not check_password_hash(admin.password, 'Admin123!'):
-            admin.password = generate_password_hash('Admin123!')
+        if not admin.password or not check_password_hash(admin.password, admin_password):
+            admin.password = generate_password_hash(admin_password)
 
     try:
         db.session.commit()
+        if created_new:
+            app.logger.warning('Default admin created. Change the password immediately.')
     except Exception as e:
         db.session.rollback()
         app.logger.error(f'Unable to create default admin: {e}')
@@ -532,8 +547,10 @@ def dashboard():
     elif user.role == 'eoc_staff':
         return redirect(url_for('eoc_dashboard'))
     elif user.role == 'citizen':
-        return redirect(url_for('citizen_report'))
-    elif user.role in ['admin', 'agency_coordinator']:
+        return redirect(url_for('citizen_dashboard'))
+    elif user.role == 'agency_coordinator':
+        return redirect(url_for('coordinator_dashboard'))
+    elif user.role == 'admin':
         return redirect(url_for('admin.admin'))
 
     incidents = Incident.query.filter_by(user_id=user.id).order_by(Incident.created_at.desc()).limit(5).all()
@@ -738,6 +755,13 @@ def live_prediction():
 def analytics():
     if 'username' not in session:
         return redirect(url_for('login'))
+    
+    # Analytics restricted to Admin and EOC Staff (system-wide monitoring)
+    allowed_roles = ['admin', 'eoc_staff']
+    if session.get('role') not in allowed_roles:
+        flash('You do not have permission to access analytics. Only admins and EOC staff can view system analytics.', 'danger')
+        return redirect(url_for('dashboard'))
+    
     total_incidents = db.session.query(Incident).count()
     avg_score = db.session.query(db.func.avg(Incident.score)).scalar() or 0
     active_responses = db.session.query(IncidentResponse).filter(IncidentResponse.status.in_(['ACTIVE', 'MONITORING'])).count()
@@ -754,6 +778,13 @@ def analytics():
 def hazard_map():
     if 'username' not in session:
         return redirect(url_for('login'))
+    
+    # Hazard Map accessible to all authenticated operational and citizen roles
+    allowed_roles = ['admin', 'agency_coordinator', 'incident_commander', 'eoc_staff', 'field_responder', 'citizen']
+    if session.get('role') not in allowed_roles:
+        flash('You do not have permission to view the hazard map.', 'danger')
+        return redirect(url_for('dashboard'))
+    
     return render_template('pages/hazard_map.html', sidebar_variant='hazard')
 
 
@@ -761,6 +792,13 @@ def hazard_map():
 def ics_page():
     if 'username' not in session:
         return redirect(url_for('login'))
+    
+    # ICS structure only for Admin and Incident Commanders
+    allowed_roles = ['admin', 'incident_commander']
+    if session.get('role') not in allowed_roles:
+        flash('You do not have permission to access the Incident Command System. Only admins and incident commanders can view this.', 'danger')
+        return redirect(url_for('dashboard'))
+    
     return render_template('pages/ics.html')
 
 
@@ -768,9 +806,16 @@ def ics_page():
 def protocols():
     if 'username' not in session:
         return redirect(url_for('login'))
+    
+    # Protocols accessible to Admin and Incident Commanders
+    allowed_roles = ['admin', 'incident_commander']
+    if session.get('role') not in allowed_roles:
+        flash('You do not have permission to access ICS protocols. Only admins and incident commanders can view this.', 'danger')
+        return redirect(url_for('dashboard'))
+    
     return render_template('pages/protocols.html')
 
 
 if __name__ == '__main__':
     create_tables()
-    app.run(debug=True, use_reloader=False, host='127.0.0.1', port=5000)
+    app.run(debug=os.environ.get('FLASK_DEBUG', '0') == '1', use_reloader=False, host='127.0.0.1', port=5000)

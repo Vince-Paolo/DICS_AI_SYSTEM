@@ -17,7 +17,7 @@ class HazardPredictor:
         self.metrics = {}
         self.default_hazard = 'flood'
         self._ensure_model_path()
-        if not self._load_model():
+        if self._training_data_is_newer_than_model() or not self._load_model():
             self._train_models()
             self._save_model()
 
@@ -97,6 +97,16 @@ class HazardPredictor:
             'default_hazard': self.default_hazard,
         }
         dump(payload, MODEL_FILE)
+
+    def _training_data_is_newer_than_model(self):
+        if not os.path.exists(MODEL_FILE):
+            return True
+        try:
+            training_mtime = os.path.getmtime(TRAINING_CSV)
+            model_mtime = os.path.getmtime(MODEL_FILE)
+            return training_mtime > model_mtime
+        except OSError:
+            return True
 
     def _load_model(self):
         if not os.path.exists(MODEL_FILE):

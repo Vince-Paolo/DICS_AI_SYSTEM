@@ -66,7 +66,7 @@ def _fetch_json(url):
             if not body:
                 return None
             return json.loads(body.decode('utf-8'))
-    except (urllib.error.HTTPError, urllib.error.URLError, ValueError):
+    except (urllib.error.HTTPError, urllib.error.URLError, ValueError, TimeoutError):
         return None
 
 

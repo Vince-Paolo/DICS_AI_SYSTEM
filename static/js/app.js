@@ -4,9 +4,44 @@
 
 /* ── SOS trigger ─────────────────────────────────────────── */
 function triggerSOS() {
-    if (confirm('Confirm SOS Emergency Alert? This will immediately notify authorities.')) {
-        alert('SOS Alert sent! Emergency responders have been notified.');
+    if (!confirm('Confirm SOS Emergency Alert?\n\nThis will immediately notify emergency authorities and services.')) {
+        return;
     }
+    
+    // Disable button to prevent duplicate submissions
+    const sosButton = document.querySelector('.sos-button');
+    if (sosButton) {
+        sosButton.disabled = true;
+    }
+    
+    // Send emergency alert to backend
+    fetch('/emergency-sos', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            location: 'User Emergency Location'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('🚨 EMERGENCY ALERT SENT\n\n' + data.message + '\n\nEmergency services have been notified of your location.');
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error sending emergency alert. Please contact authorities directly.');
+    })
+    .finally(() => {
+        // Re-enable button
+        if (sosButton) {
+            sosButton.disabled = false;
+        }
+    });
 }
 
 /* ── Ripple effect on buttons ────────────────────────────── */

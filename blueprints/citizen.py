@@ -1,11 +1,10 @@
 import os
 import secrets
 
-from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for
+from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, session, url_for
 from werkzeug.utils import secure_filename
 
 from models import db, User, Incident, CitizenReport
-from blueprints.common import is_admin_or_coordinator
 
 citizen_bp = Blueprint('citizen', __name__)
 
@@ -124,7 +123,8 @@ def citizen_alerts():
     if not user:
         return redirect(url_for('logout'))
 
-    alerts = Incident.query.filter_by(user_id=user.id, alert=True).order_by(Incident.created_at.desc()).all()
+    # Show all public alerts (system-generated + admin-flagged) not just the user's own reports
+    alerts = Incident.query.filter(Incident.alert == True).order_by(Incident.created_at.desc()).all()
     alert_count = len(alerts)
 
     return render_template('pages/citizen_alerts.html', alerts=alerts, alert_count=alert_count)
@@ -177,3 +177,43 @@ def alerts():
 
     alerts = Incident.query.filter_by(user_id=user.id, alert=True).order_by(Incident.created_at.desc()).all()
     return render_template('pages/alerts.html', alerts=alerts)
+
+
+@citizen_bp.route('/emergency-sos', methods=['POST'])
+def emergency_sos():
+    """
+    Emergency SOS endpoint for citizens.
+    Creates a high-priority EMERGENCY incident with immediate alert.
+    """
+    if 'username' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+    
+    user = User.query.filter_by(username=session['username']).first()
+    if not user:
+        return jsonify({'success': False, 'message': 'User not found'}), 404
+    
+    # Get location from request if available, otherwise use generic
+    location = request.json.get('location', 'User Emergency Location') if request.is_json else 'User Emergency Location'
+    
+    try:
+        emergency_incident = Incident(
+            user_id=user.id,
+            hazard_type='EMERGENCY',
+            location=location,
+            message='EMERGENCY SOS Alert from citizen',
+            level='CRITICAL',
+            alert=True,  # Immediately create alert
+            status='NEW',
+            reported_by='citizen',
+        )
+        db.session.add(emergency_incident)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Emergency alert sent! Authorities have been notified immediately.',
+            'incident_id': emergency_incident.id
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Error creating emergency alert: {str(e)}'}), 500

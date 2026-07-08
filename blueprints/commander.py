@@ -434,15 +434,24 @@ def allocate_resource(response_id):
 
 @commander_bp.route('/incident-response/<int:response_id>/create-report', methods=['GET', 'POST'])
 def create_situation_report(response_id):
-    if not is_incident_commander() and session.get('role') != 'agency_coordinator':
-        flash('Access required.', 'danger')
+    """
+    Create a situation report for an incident response.
+    
+    Only the assigned Incident Commander can create situation reports for their response.
+    
+    Agency Coordinators use the separate coordinator_submit_report route to submit
+    broadcast messages and reports for their agency's participation.
+    """
+    if not is_incident_commander():
+        flash('Only Incident Commanders can create situation reports. Coordinators use their Coordinator portal to submit reports.', 'danger')
         return redirect(url_for('dashboard'))
 
     commander = User.query.filter_by(username=session['username']).first()
     response = IncidentResponse.query.get_or_404(response_id)
     if response.commander_id != commander.id:
-        abort(403)
-    reporter = User.query.filter_by(username=session['username']).first()
+        flash('You can only create situation reports for incidents you command.', 'danger')
+        return redirect(url_for('incident_commander_dashboard'))
+    reporter = commander
 
     if request.method == 'POST':
         title = request.form.get('title')

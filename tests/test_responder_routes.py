@@ -4,6 +4,10 @@ import unittest
 from io import BytesIO
 from unittest.mock import patch
 
+os.environ.setdefault('SECRET_KEY', 'test-secret-key')
+
+from flask import render_template_string
+
 import app as app_module
 from app import app, db
 from models import User, CitizenReport, Incident, IncidentResponse, PostIncidentReport
@@ -106,6 +110,21 @@ class ResponderRoutesTestCase(unittest.TestCase):
             else:
                 os.environ['SECRET_KEY'] = original_secret
 
+    def test_secret_key_falls_back_to_default_when_unset(self):
+        original_secret = os.environ.get('SECRET_KEY')
+        os.environ.pop('SECRET_KEY', None)
+
+        try:
+            import app as app_module
+            app_module = importlib.reload(app_module)
+            self.assertTrue(app_module.app.config['SECRET_KEY'])
+            self.assertEqual(app_module.app.config['SECRET_KEY'], 'dev-secret-key-change-me')
+        finally:
+            if original_secret is None:
+                os.environ.pop('SECRET_KEY', None)
+            else:
+                os.environ['SECRET_KEY'] = original_secret
+
     def test_citizen_report_creates_record_with_photo_and_anonymous_flag(self):
         with self.client.session_transaction() as session:
             session['username'] = 'responder1'
@@ -188,6 +207,12 @@ class ResponderRoutesTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 500)
         self.assertIn(b'Something went wrong on our side.', response.data)
 
+    def test_template_rendering_without_request_context_is_safe(self):
+        with self.app.app_context():
+            rendered = render_template_string('Status: {{ alert_count }}', alert_count=0)
+
+        self.assertEqual(rendered, 'Status: 0')
+
     def test_monitor_hazards_creates_incident_for_high_risk_prediction(self):
         weather_data = {
             'city': 'Lipa',
@@ -246,9 +271,9 @@ class ResponderRoutesTestCase(unittest.TestCase):
                 scheduler.monitor_hazards()
 
         with self.app.app_context():
-            incidents = Incident.query.filter(Incident.hazard_type.in_(['flood', 'landslide', 'earthquake'])).all()
-            self.assertEqual(len(incidents), 3)
-            self.assertEqual({incident.hazard_type for incident in incidents}, {'flood', 'landslide', 'earthquake'})
+            incidents = Incident.query.filter(Incident.hazard_type.in_(['flood', 'landslide'])).all()
+            self.assertEqual(len(incidents), 2)
+            self.assertEqual({incident.hazard_type for incident in incidents}, {'flood', 'landslide'})
 
     def test_post_incident_evaluation_saves_report_for_closed_response(self):
         with self.app.app_context():

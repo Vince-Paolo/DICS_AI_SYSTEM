@@ -3,7 +3,13 @@ from flask import session
 from models import User
 
 
+def is_admin():
+    """Check if user is an admin (for admin-only operations like user management, system backups)"""
+    return 'username' in session and session.get('role') == 'admin'
+
+
 def is_admin_or_coordinator():
+    """Check if user is admin or coordinator (for viewing/managing agency operations)"""
     return 'username' in session and session.get('role') in ['admin', 'agency_coordinator']
 
 

@@ -51,11 +51,11 @@
                     <i class="bi bi-pin-map-fill"></i>
                     <span class="nav-text sidebar-text-show">Hazard Map</span>
                 </a>
-                <a href="/alerts" class="sidebar-nav-link {{ 'active' if request.path == '/alerts' else '' }}" data-tooltip="Active Alerts">
+                <a href="/all-alerts" class="sidebar-nav-link {{ 'active' if request.path == '/all-alerts' else '' }}" data-tooltip="Active Alerts">
                     <i class="bi bi-exclamation-triangle-fill"></i>
                     <span class="nav-text sidebar-text-show">Active Alerts</span>
                 </a>
-                <a href="/incidents" class="sidebar-nav-link {{ 'active' if request.path == '/incidents' else '' }}" data-tooltip="Incident History">
+                <a href="/all-incidents" class="sidebar-nav-link {{ 'active' if request.path == '/all-incidents' else '' }}" data-tooltip="Incident History">
                     <i class="bi bi-clock-history"></i>
                     <span class="nav-text sidebar-text-show">Incident History</span>
                 </a>
@@ -70,6 +70,14 @@
                 <a href="/admin/users" class="sidebar-nav-link {{ 'active' if request.path == '/admin/users' else '' }}" data-tooltip="User Management">
                     <i class="bi bi-people-fill"></i>
                     <span class="nav-text sidebar-text-show">User Management</span>
+                </a>
+                <a href="/admin/alerts" class="sidebar-nav-link {{ 'active' if request.path == '/admin/alerts' else '' }}" data-tooltip="Verify & Toggle Alerts">
+                    <i class="bi bi-check-circle-fill"></i>
+                    <span class="nav-text sidebar-text-show">Incident Verification</span>
+                </a>
+                <a href="/admin/backup" class="sidebar-nav-link {{ 'active' if request.path == '/admin/backup' else '' }}" data-tooltip="Export Database">
+                    <i class="bi bi-cloud-download-fill"></i>
+                    <span class="nav-text sidebar-text-show">Database Backup</span>
                 </a>
                 
                 {% elif session.role == 'agency_coordinator' %}
@@ -102,7 +110,7 @@
                     <i class="bi bi-pin-map-fill"></i>
                     <span class="nav-text sidebar-text-show">Hazard Map</span>
                 </a>
-                <a href="/alerts" class="sidebar-nav-link {{ 'active' if request.path == '/alerts' else '' }}" data-tooltip="Active Alerts">
+                <a href="/all-alerts" class="sidebar-nav-link {{ 'active' if request.path == '/all-alerts' else '' }}" data-tooltip="Active Alerts">
                     <i class="bi bi-exclamation-triangle-fill"></i>
                     <span class="nav-text sidebar-text-show">Active Alerts</span>
                 </a>
@@ -119,12 +127,12 @@
                     <span class="nav-text sidebar-text-show">Hazard Map</span>
                 </a>
 
-                <a href="/alerts" class="sidebar-nav-link {{ 'active' if request.path == '/alerts' else '' }}" data-tooltip="Active Alerts">
+                <a href="/all-alerts" class="sidebar-nav-link {{ 'active' if request.path == '/all-alerts' else '' }}" data-tooltip="Active Alerts">
                     <i class="bi bi-exclamation-triangle-fill"></i>
                     <span class="nav-text sidebar-text-show">Active Alerts</span>
                 </a>
 
-                <a href="/incidents" class="sidebar-nav-link {{ 'active' if request.path == '/incidents' else '' }}" data-tooltip="Incident History">
+                <a href="/all-incidents" class="sidebar-nav-link {{ 'active' if request.path == '/all-incidents' else '' }}" data-tooltip="Incident History">
                     <i class="bi bi-clock-history"></i>
                     <span class="nav-text sidebar-text-show">Incident History</span>
                 </a>
@@ -161,7 +169,7 @@
                     <span class="nav-text sidebar-text-show">Resources</span>
                 </a>
 
-                <a href="/alerts" class="sidebar-nav-link {{ 'active' if request.path == '/alerts' else '' }}" data-tooltip="Active Alerts">
+                <a href="/all-alerts" class="sidebar-nav-link {{ 'active' if request.path == '/all-alerts' else '' }}" data-tooltip="Active Alerts">
                     <i class="bi bi-exclamation-triangle-fill"></i>
                     <span class="nav-text sidebar-text-show">Active Alerts</span>
                 </a>
@@ -227,7 +235,8 @@
             </nav>
         </div>
 
-        <!-- Emergency Section -->
+        <!-- Emergency Section: Citizens Only -->
+        {% if session.role == 'citizen' %}
         <div class="sidebar-menu border-top-custom">
             <div class="menu-section-label sidebar-text-show">
                 <i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>Emergency
@@ -241,6 +250,7 @@
                 <span class="sidebar-text-show">Emergency SOS</span>
             </button>
         </div>
+        {% endif %}
 
         <!-- Footer -->
         <div class="sidebar-footer border-top-custom">

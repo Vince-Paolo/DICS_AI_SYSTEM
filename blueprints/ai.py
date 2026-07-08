@@ -11,6 +11,12 @@ ai_bp = Blueprint('ai', __name__)
 def ai_prediction():
     if 'username' not in session:
         return redirect(url_for('login'))
+    
+    # Restrict to operational roles only: Incident Commanders, EOC Staff, and Coordinators
+    allowed_roles = ['incident_commander', 'eoc_staff', 'agency_coordinator', 'admin']
+    if session.get('role') not in allowed_roles:
+        flash('You do not have permission to run hazard predictions. Only incident commanders, EOC staff, and coordinators can perform this action.', 'danger')
+        return redirect(url_for('dashboard'))
 
     prediction = None
     if request.method == 'POST':

@@ -7,14 +7,14 @@ from flask import Blueprint, flash, redirect, render_template, request, session,
 from werkzeug.security import generate_password_hash
 
 from models import db, User, Incident, IncidentResponse, Task, Resource
-from blueprints.common import is_admin_or_coordinator, is_incident_commander, is_field_responder, is_eoc_staff
+from blueprints.common import is_admin, is_admin_or_coordinator, is_incident_commander, is_field_responder, is_eoc_staff
 
 admin_bp = Blueprint('admin', __name__)
 
 
 @admin_bp.route('/admin')
 def admin():
-    if not is_admin_or_coordinator():
+    if not is_admin():
         flash('Admin access required.', 'danger')
         return redirect(url_for('dashboard'))
     return redirect(url_for('admin.admin_alerts'))
@@ -32,8 +32,8 @@ def admin_alerts():
 
 @admin_bp.route('/admin/alerts/<int:incident_id>/toggle', methods=['POST'])
 def toggle_alert(incident_id):
-    if not is_admin_or_coordinator():
-        flash('Admin access required.', 'danger')
+    if not is_admin():
+        flash('Only admins can toggle alert status.', 'danger')
         return redirect(url_for('dashboard'))
 
     incident = Incident.query.get_or_404(incident_id)
@@ -50,8 +50,8 @@ def toggle_alert(incident_id):
 
 @admin_bp.route('/admin/incidents/<int:incident_id>/verify', methods=['POST'])
 def verify_incident(incident_id):
-    if not is_admin_or_coordinator():
-        flash('Admin access required.', 'danger')
+    if not is_admin():
+        flash('Only admins can verify incidents.', 'danger')
         return redirect(url_for('dashboard'))
 
     incident = Incident.query.get_or_404(incident_id)
@@ -70,10 +70,40 @@ def verify_incident(incident_id):
     return redirect(url_for('admin.admin_alerts'))
 
 
+@admin_bp.route('/all-incidents')
+def all_incidents():
+    """Show all incidents for operational roles (admin, coordinator, commander, eoc_staff)"""
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    
+    allowed_roles = ['admin', 'agency_coordinator', 'incident_commander', 'eoc_staff']
+    if session.get('role') not in allowed_roles:
+        flash('You do not have permission to view all incidents.', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    incidents = Incident.query.order_by(Incident.created_at.desc()).all()
+    return render_template('pages/incidents.html', incidents=incidents)
+
+
+@admin_bp.route('/all-alerts')
+def all_alerts():
+    """Show all active alerts for operational roles (admin, coordinator, commander, eoc_staff)"""
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    
+    allowed_roles = ['admin', 'agency_coordinator', 'incident_commander', 'eoc_staff']
+    if session.get('role') not in allowed_roles:
+        flash('You do not have permission to view all alerts.', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    alerts = Incident.query.filter(Incident.alert == True).order_by(Incident.created_at.desc()).all()
+    return render_template('pages/alerts.html', alerts=alerts)
+
+
 @admin_bp.route('/admin/users')
 def manage_users():
-    """User management page for admins and coordinators"""
-    if not is_admin_or_coordinator():
+    """User management page for admins only"""
+    if not is_admin():
         flash('Admin access required.', 'danger')
         return redirect(url_for('dashboard'))
 
@@ -84,8 +114,8 @@ def manage_users():
 
 @admin_bp.route('/admin/users/add', methods=['POST'])
 def add_user():
-    """Add a new user"""
-    if not is_admin_or_coordinator():
+    """Add a new user - admin only"""
+    if not is_admin():
         flash('Admin access required.', 'danger')
         return redirect(url_for('dashboard'))
 
@@ -100,6 +130,10 @@ def add_user():
 
         if not username or not password or not email:
             flash('Username, email, and password are required.', 'error')
+            return redirect(url_for('admin.manage_users'))
+
+        if len(password) < 8:
+            flash('Password must be at least 8 characters.', 'error')
             return redirect(url_for('admin.manage_users'))
 
         if User.query.filter_by(username=username).first():
@@ -136,8 +170,8 @@ def add_user():
 
 @admin_bp.route('/admin/users/<int:user_id>/update', methods=['POST'])
 def update_user(user_id):
-    """Update user details and role"""
-    if not is_admin_or_coordinator():
+    """Update user details and role - admin only"""
+    if not is_admin():
         flash('Admin access required.', 'danger')
         return redirect(url_for('dashboard'))
 
@@ -170,8 +204,8 @@ def update_user(user_id):
 
 @admin_bp.route('/admin/users/<int:user_id>/toggle', methods=['POST'])
 def toggle_user_status(user_id):
-    """Disable/enable user account"""
-    if not is_admin_or_coordinator():
+    """Disable/enable user account - admin only"""
+    if not is_admin():
         flash('Admin access required.', 'danger')
         return redirect(url_for('dashboard'))
 
