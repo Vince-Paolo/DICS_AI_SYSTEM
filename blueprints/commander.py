@@ -2,7 +2,7 @@ from datetime import datetime
 
 from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, session, url_for
 
-from models import db, User, Incident, IncidentResponse, Task, Resource, IncidentMessage, PostIncidentReport
+from models import db, User, Incident, IncidentResponse, Task, Resource, IncidentMessage, PostIncidentReport, Agency
 from blueprints.common import is_incident_commander
 
 commander_bp = Blueprint('commander', __name__)
@@ -171,8 +171,17 @@ def post_incident_evaluation(response_id):
         report = PostIncidentReport(incident_response_id=response_id)
         db.session.add(report)
 
+    rating_value = None
+    if response_rating.isdigit():
+        r_int = int(response_rating)
+        if 1 <= r_int <= 5:
+            rating_value = r_int
+        else:
+            flash('Response rating must be between 1 and 5.', 'error')
+            return redirect(url_for('commander.incident_response_detail', response_id=response_id))
+
     report.lessons_learned = lessons_learned or None
-    report.response_rating = int(response_rating) if response_rating.isdigit() else None
+    report.response_rating = rating_value
     report.recommendations = recommendations or None
 
     try:
@@ -360,12 +369,20 @@ def assign_task(response_id):
     if response.commander_id != commander.id:
         abort(403)
 
+    agencies = Agency.query.order_by(Agency.name).all()
+
     if request.method == 'POST':
-        agency = request.form.get('agency')
+        agency = request.form.get('agency', '').strip()
         title = request.form.get('title')
         description = request.form.get('description')
         priority = request.form.get('priority', 'MEDIUM')
         estimated_completion = request.form.get('estimated_completion')
+
+        # Validate agency exists in the Agency table
+        valid_agency_names = [a.name for a in agencies]
+        if agency not in valid_agency_names:
+            flash(f'Invalid agency "{agency}". Please select from the list.', 'error')
+            return redirect(url_for('incident_response_tasks', response_id=response_id))
 
         task = Task(
             incident_response_id=response_id,
@@ -387,8 +404,9 @@ def assign_task(response_id):
             return redirect(url_for('commander.incident_response_tasks', response_id=response_id))
 
         flash(f'Task "{title}" assigned to {agency}', 'success')
+        return redirect(url_for('commander.incident_response_tasks', response_id=response_id))
 
-    return redirect(url_for('commander.incident_response_tasks', response_id=response_id))
+    return render_template('pages/assign_task.html', response=response, agencies=agencies, active_tab='tasks')
 
 
 @commander_bp.route('/incident-response/<int:response_id>/allocate-resource', methods=['GET', 'POST'])
@@ -408,6 +426,10 @@ def allocate_resource(response_id):
         quantity = int(request.form.get('quantity', 1))
         location = request.form.get('location')
         notes = request.form.get('notes')
+
+        if quantity < 1:
+            flash('Quantity must be at least 1.', 'error')
+            return redirect(url_for('incident_response_resources', response_id=response_id))
 
         resource = Resource(
             incident_response_id=response_id,

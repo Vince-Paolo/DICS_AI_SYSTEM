@@ -146,6 +146,36 @@ def citizen_status():
     return render_template('pages/citizen_status.html', incidents=incidents, total_incidents=total_incidents, pending_count=pending_count)
 
 
+@citizen_bp.route('/citizen-report/<int:incident_id>')
+def citizen_report_detail(incident_id):
+    """Citizen can view full details of their own submitted report."""
+    if 'username' not in session:
+        return redirect(url_for('login'))
+
+    user = User.query.filter_by(username=session['username']).first()
+    if not user:
+        return redirect(url_for('logout'))
+
+    incident = Incident.query.get_or_404(incident_id)
+
+    # Security: citizen can only view their own reports
+    if incident.user_id != user.id:
+        flash('You can only view your own reports.', 'danger')
+        return redirect(url_for('citizen.citizen_status'))
+
+    # Get matching CitizenReport for photo and GPS details
+    citizen_rep = CitizenReport.query.filter_by(
+        user_id=user.id,
+        location=incident.location
+    ).order_by(CitizenReport.created_at.desc()).first()
+
+    return render_template(
+        'pages/citizen_report_detail.html',
+        incident=incident,
+        citizen_rep=citizen_rep
+    )
+
+
 @citizen_bp.route('/citizen-resources')
 def citizen_resources():
     if 'username' not in session:
