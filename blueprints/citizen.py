@@ -43,7 +43,7 @@ def citizen_report():
                 photo_filename = stored_name
             else:
                 flash('Photo upload was invalid.', 'error')
-                return redirect(url_for('citizen_report'))
+                return redirect(url_for('citizen.citizen_report'))
 
         try:
             gps_latitude_value = float(gps_latitude) if gps_latitude else None
@@ -84,9 +84,9 @@ def citizen_report():
             except Exception as e:
                 db.session.rollback()
                 flash(str(e), 'error')
-                return redirect(url_for('citizen_report'))
+                return redirect(url_for('citizen.citizen_report'))
             flash('Incident report submitted successfully. Authorities have been notified.', 'success')
-            return redirect(url_for('citizen_status'))
+            return redirect(url_for('citizen.citizen_status'))
         except Exception as e:
             flash(f'Error submitting report: {str(e)}', 'error')
 

@@ -384,11 +384,11 @@ def assign_task(response_id):
         except Exception as e:
             db.session.rollback()
             flash(str(e), 'error')
-            return redirect(url_for('incident_response_tasks', response_id=response_id))
+            return redirect(url_for('commander.incident_response_tasks', response_id=response_id))
 
         flash(f'Task "{title}" assigned to {agency}', 'success')
 
-    return redirect(url_for('incident_response_tasks', response_id=response_id))
+    return redirect(url_for('commander.incident_response_tasks', response_id=response_id))
 
 
 @commander_bp.route('/incident-response/<int:response_id>/allocate-resource', methods=['GET', 'POST'])
@@ -425,11 +425,11 @@ def allocate_resource(response_id):
         except Exception as e:
             db.session.rollback()
             flash(str(e), 'error')
-            return redirect(url_for('incident_response_resources', response_id=response_id))
+            return redirect(url_for('commander.incident_response_resources', response_id=response_id))
 
         flash(f'Resource allocated: {quantity} x {resource_type} from {agency}', 'success')
 
-    return redirect(url_for('incident_response_resources', response_id=response_id))
+    return redirect(url_for('commander.incident_response_resources', response_id=response_id))
 
 
 @commander_bp.route('/incident-response/<int:response_id>/create-report', methods=['GET', 'POST'])
@@ -450,7 +450,7 @@ def create_situation_report(response_id):
     response = IncidentResponse.query.get_or_404(response_id)
     if response.commander_id != commander.id:
         flash('You can only create situation reports for incidents you command.', 'danger')
-        return redirect(url_for('incident_commander_dashboard'))
+        return redirect(url_for('commander.incident_commander_dashboard'))
     reporter = commander
 
     if request.method == 'POST':
@@ -480,11 +480,11 @@ def create_situation_report(response_id):
         except Exception as e:
             db.session.rollback()
             flash(str(e), 'error')
-            return redirect(url_for('incident_response_reports', response_id=response_id))
+            return redirect(url_for('commander.incident_response_reports', response_id=response_id))
 
         flash(f'Situation report "{title}" created successfully', 'success')
 
-    return redirect(url_for('incident_response_reports', response_id=response_id))
+    return redirect(url_for('commander.incident_response_reports', response_id=response_id))
 
 
 @commander_bp.route('/incident-response/<int:response_id>/update-task/<int:task_id>', methods=['POST'])
@@ -508,10 +508,10 @@ def update_task(response_id, task_id):
     except Exception as e:
         db.session.rollback()
         flash(str(e), 'error')
-        return redirect(url_for('incident_response_tasks', response_id=response_id))
+        return redirect(url_for('commander.incident_response_tasks', response_id=response_id))
 
     flash(f'Task status updated to {status}', 'success')
-    return redirect(url_for('incident_response_tasks', response_id=response_id))
+    return redirect(url_for('commander.incident_response_tasks', response_id=response_id))
 
 
 @commander_bp.route('/incident-response/<int:response_id>/update-resource/<int:resource_id>', methods=['POST'])
@@ -538,10 +538,10 @@ def update_resource(response_id, resource_id):
     except Exception as e:
         db.session.rollback()
         flash(str(e), 'error')
-        return redirect(url_for('incident_response_resources', response_id=response_id))
+        return redirect(url_for('commander.incident_response_resources', response_id=response_id))
 
     flash(f'Resource status updated to {status}', 'success')
-    return redirect(url_for('incident_response_resources', response_id=response_id))
+    return redirect(url_for('commander.incident_response_resources', response_id=response_id))
 
 
 @commander_bp.route('/api/incident-response-stats')
