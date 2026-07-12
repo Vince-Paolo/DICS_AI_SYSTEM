@@ -1,9 +1,6 @@
 from datetime import datetime, timedelta
 
 from services.realtime_data import get_weather_data, get_earthquake_data
-from services.aftershock import (
-    probability_of_aftershock, build_forecast_message, get_region_for_location,
-)
 from ai.prediction import predict_hazard
 from models import db, Incident
 
@@ -11,12 +8,6 @@ from models import db, Incident
 # rainfall/river/soil-moisture ML model (which was never trained on
 # earthquake data and has no meaningful relationship to seismic magnitude).
 EARTHQUAKE_ALERT_MAGNITUDE = 4.5
-
-# Aftershock forecast defaults: probability of an M>=AFTERSHOCK_TARGET_MAGNITUDE
-# event within AFTERSHOCK_WINDOW_HOURS of a qualifying mainshock.
-AFTERSHOCK_TARGET_MAGNITUDE = 4.5
-AFTERSHOCK_WINDOW_HOURS = 24
-AFTERSHOCK_RADIUS_KM = 35  # matches the calibrated r90 for the Batangas-offshore region
 
 
 def _magnitude_to_level(magnitude):
@@ -77,50 +68,6 @@ def monitor_earthquakes(app):
             status='ACTIVE',
             reported_by='system',
         )
-
-        # Aftershock forecast: elevated-probability window, not a deterministic
-        # prediction (see services/aftershock.py). hours_since_mainshock is
-        # normally ~0 right after detection, but is computed from the actual
-        # USGS event time in case the scheduler run was delayed.
-        hours_since_mainshock = 0.0
-        if quake_time:
-            try:
-                quake_dt = datetime.utcfromtimestamp(quake_time / 1000.0)
-                hours_since_mainshock = max(
-                    0.0, (datetime.utcnow() - quake_dt).total_seconds() / 3600.0
-                )
-            except (TypeError, ValueError, OSError):
-                hours_since_mainshock = 0.0
-
-        # Prefer distance-based region lookup (physically grounded, uses the
-        # real epicenter). Only fall back to string-matching the place-name
-        # text if coordinates weren't available from the earthquake feed.
-        eq_lat = quake.get("latitude")
-        eq_lon = quake.get("longitude")
-        region_key = get_region_for_location(eq_lat, eq_lon)
-        if region_key is None and eq_lat is None:
-            region_key = 'calabarzon_batangas_offshore' if 'batangas' in location.lower() else None
-
-        try:
-            forecast = probability_of_aftershock(
-                mainshock_magnitude=magnitude,
-                target_magnitude=AFTERSHOCK_TARGET_MAGNITUDE,
-                hours_since_mainshock=hours_since_mainshock,
-                window_hours=AFTERSHOCK_WINDOW_HOURS,
-                region_key=region_key,
-                radius_km=AFTERSHOCK_RADIUS_KM,
-            )
-            incident.message = (
-                f"Magnitude {magnitude:.1f} earthquake detected near {location}. "
-                f"{build_forecast_message(forecast)}"
-            )
-            incident.aftershock_probability_pct = forecast['probability_pct']
-            incident.aftershock_target_magnitude = forecast['target_magnitude']
-            incident.aftershock_window_hours = forecast['window_hours']
-            incident.aftershock_params_default = forecast['is_default_params']
-        except Exception as exc:
-            app.logger.warning("Aftershock forecast failed for %s: %s", location, exc)
-
         db.session.add(incident)
         created_any = True
         app.logger.info(
