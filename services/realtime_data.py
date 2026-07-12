@@ -140,16 +140,10 @@ def get_earthquake_data():
     earthquakes = []
     for feat in data.get('features', []):
         prop = feat.get('properties', {})
-        geom = feat.get('geometry', {}) or {}
-        coords = geom.get('coordinates') or [None, None, None]
-        lon, lat, depth = (coords + [None, None, None])[:3]
         earthquakes.append({
             'magnitude': prop.get('mag'),
             'place': prop.get('place'),
-            'time': prop.get('time'),
-            'latitude': lat,
-            'longitude': lon,
-            'depth_km': depth,
+            'time': prop.get('time')
         })
     # Cache the result
     _cache['earthquakes'] = {'data': earthquakes, 'timestamp': datetime.utcnow()}

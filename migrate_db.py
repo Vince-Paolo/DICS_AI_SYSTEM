@@ -23,22 +23,4 @@ if 'password_hash' not in cols:
     print('migrated', len(rows), 'rows')
 else:
     print('already migrated')
-
-# Phase 2: aftershock forecast columns on Incident
-cur.execute('PRAGMA table_info(incident)')
-incident_cols = [row[1] for row in cur.fetchall()]
-aftershock_columns = {
-    'aftershock_probability_pct': 'FLOAT',
-    'aftershock_target_magnitude': 'FLOAT',
-    'aftershock_window_hours': 'INTEGER',
-    'aftershock_params_default': 'BOOLEAN',
-}
-for col_name, col_type in aftershock_columns.items():
-    if col_name not in incident_cols:
-        print(f'adding {col_name} column to incident...')
-        cur.execute(f'ALTER TABLE incident ADD COLUMN {col_name} {col_type}')
-        conn.commit()
-    else:
-        print(f'{col_name} already migrated')
-
 conn.close()

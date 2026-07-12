@@ -5,128 +5,285 @@
 {% block content %}
 <div class="row">
     <div class="col-12">
-        
-        <!-- Header Card -->
-        <div class="card card-custom shadow-sm mb-4">
-            <div class="card-body">
-                <div class="d-flex align-items-center mb-3">
-                    <i class="bi bi-shield-lock-fill text-primary fs-4 me-2"></i>
-                    <h4 class="card-title mb-0 fw-bold text-uppercase">Incident Verification</h4>
+
+        <!-- ── Page Header ── -->
+        <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+            <div>
+                <div class="d-flex align-items-center gap-3 mb-1">
+                    <div style="background:rgba(245,158,11,0.15);color:#f59e0b;width:42px;height:42px;display:flex;align-items:center;justify-content:center;border-radius:10px;">
+                        <i class="bi bi-shield-lock-fill fs-5"></i>
+                    </div>
+                    <h4 class="mb-0 fw-bold text-uppercase tracking-wide">Incident Verification</h4>
                 </div>
-                <div class="border-top border-secondary pt-3">
-                    <p class="text-muted mb-0">Verify reported incidents and toggle alert status with administrator privileges.</p>
+                <p class="text-muted mb-0 ms-1" style="font-size:.85rem;">
+                    Review, verify, and assign commanders to reported incidents.
+                </p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('admin.admin_responses') }}" class="btn btn-outline-info btn-sm d-flex align-items-center gap-2">
+                    <i class="bi bi-shield-fill-exclamation"></i> Operations Overview
+                </a>
+                <button onclick="window.location.reload()" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2">
+                    <i class="bi bi-arrow-repeat"></i> Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- ── Summary Stats ── -->
+        <div class="row g-3 mb-4">
+            {% set total = incidents|length %}
+            {% set verified = incidents|selectattr('status','equalto','VERIFIED')|list|length %}
+            {% set active_alerts = incidents|selectattr('alert','equalto',true)|list|length %}
+            {% set unresponded = incidents|rejectattr('response')|list|length %}
+            <div class="col-6 col-md-3">
+                <div class="card card-custom h-100 p-3" style="border-left:3px solid rgba(255,255,255,0.15);">
+                    <div class="text-muted" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;">Total Incidents</div>
+                    <div class="fw-bold mt-1" style="font-size:1.6rem;">{{ total }}</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card card-custom h-100 p-3" style="border-left:3px solid rgba(16,185,129,0.5);">
+                    <div class="text-muted" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;">Verified</div>
+                    <div class="fw-bold mt-1" style="font-size:1.6rem;color:#86EFAC;">{{ verified }}</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card card-custom h-100 p-3" style="border-left:3px solid rgba(239,68,68,0.5);">
+                    <div class="text-muted" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;">Active Alerts</div>
+                    <div class="fw-bold mt-1" style="font-size:1.6rem;color:#FCA5A5;">{{ active_alerts }}</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card card-custom h-100 p-3" style="border-left:3px solid rgba(245,158,11,0.5);">
+                    <div class="text-muted" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;">No Commander</div>
+                    <div class="fw-bold mt-1" style="font-size:1.6rem;color:#FCD34D;">{{ unresponded }}</div>
                 </div>
             </div>
         </div>
 
-        <!-- Main Content Card -->
-        <div class="card card-custom shadow-sm border-0 mb-4">
-            <div class="card-body p-0"> <!-- Removed padding to make table flush -->
-                
-                <!-- Table Header Section -->
-                <div class="p-4 d-flex justify-content-between align-items-center border-bottom border-secondary">
-                    <div class="d-flex align-items-center gap-3">
-                        <div style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
-                            <i class="bi bi-bell-fill fs-5"></i>
+        <!-- ── Filter bar ── -->
+        <div class="card card-custom mb-4 p-3">
+            <div class="d-flex gap-2 flex-wrap align-items-center">
+                <span class="text-muted me-1" style="font-size:.8rem;">Filter:</span>
+                <button class="btn btn-sm btn-outline-secondary filter-btn active" data-filter="all">All</button>
+                <button class="btn btn-sm btn-outline-warning filter-btn" data-filter="unverified">Needs Verification</button>
+                <button class="btn btn-sm btn-outline-danger filter-btn" data-filter="alert">Active Alert</button>
+                <button class="btn btn-sm btn-outline-info filter-btn" data-filter="unassigned">No Commander</button>
+                <button class="btn btn-sm btn-outline-success filter-btn" data-filter="verified">Verified</button>
+            </div>
+        </div>
+
+        <!-- ── Incident Cards ── -->
+        {% if incidents %}
+        <div class="vstack gap-3 mb-4" id="incidentList">
+            {% for incident in incidents %}
+            <div class="incident-card card card-custom shadow-sm"
+                 data-verified="{{ 'true' if incident.status == 'VERIFIED' else 'false' }}"
+                 data-alert="{{ 'true' if incident.alert else 'false' }}"
+                 data-responded="{{ 'true' if incident.response else 'false' }}"
+                 style="border:1px solid {% if incident.level and incident.level|lower == 'critical' %}rgba(239,68,68,0.35){% elif incident.level and incident.level|lower == 'high' %}rgba(249,115,22,0.3){% elif incident.level and incident.level|lower == 'moderate' %}rgba(245,158,11,0.25){% else %}rgba(255,255,255,0.07){% endif %};
+                        border-left:4px solid {% if incident.level and incident.level|lower == 'critical' %}#ef4444{% elif incident.level and incident.level|lower == 'high' %}#f97316{% elif incident.level and incident.level|lower == 'moderate' %}#f59e0b{% else %}#10b981{% endif %};">
+                <div class="card-body p-0">
+
+                    <!-- Top row: meta info -->
+                    <div class="d-flex flex-wrap align-items-start gap-3 p-4 pb-3">
+
+                        <!-- Hazard icon -->
+                        <div style="width:46px;height:46px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;
+                            background:{% if incident.level and incident.level|lower == 'critical' %}rgba(239,68,68,0.12){% elif incident.level and incident.level|lower == 'high' %}rgba(249,115,22,0.12){% elif incident.level and incident.level|lower == 'moderate' %}rgba(245,158,11,0.12){% else %}rgba(16,185,129,0.12){% endif %};">
+                            {% if incident.hazard_type|lower == 'storm' %}⛈️
+                            {% elif incident.hazard_type|lower == 'earthquake' %}📍
+                            {% elif incident.hazard_type|lower == 'flood' %}🌊
+                            {% elif incident.hazard_type|lower == 'landslide' %}🏔️
+                            {% elif incident.hazard_type|lower == 'fire' %}🔥
+                            {% elif incident.hazard_type|lower == 'emergency' %}🆘
+                            {% else %}⚠️{% endif %}
                         </div>
-                        <h5 class="mb-0 fw-bold">Incident Verification Log</h5>
-                    </div>
-                    <button onclick="window.location.reload()" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-2">
-                        <i class="bi bi-arrow-repeat"></i> Refresh
-                    </button>
-                </div>
 
-                {% if incidents %}
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <!-- Dark background for table header row -->
-                        <thead style="background: rgba(255, 255, 255, 0.03);">
-                            <tr>
-                                <th scope="col" class="py-3 px-4 border-0 text-white">Date & Time</th>
-                                <th scope="col" class="py-3 border-0 text-white">Hazard</th>
-                                <th scope="col" class="py-3 border-0 text-white">Risk Level</th>
-                                <th scope="col" class="py-3 border-0 text-white">Score</th>
-                                <th scope="col" class="py-3 border-0 text-white">Alert Status</th>
-                                <th scope="col" class="py-3 border-0 text-white">Message</th>
-                                <th scope="col" class="py-3 px-4 border-0 text-white text-end">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody class="border-top-0">
-                            {% for incident in incidents %}
-                                <tr>
-                                    <!-- Formatted Date -->
-                                    <td class="py-3 px-4 text-light">{{ incident.created_at.strftime('%b %d, %Y %I:%M %p') }}</td>
-                                    
-                                    <!-- Formatted Hazard with Emoji -->
-                                    <td class="py-3 fw-bold text-white">
-                                        {% if incident.hazard_type|lower == 'storm' %}⛈️
-                                        {% elif incident.hazard_type|lower == 'earthquake' %}📍
-                                        {% elif incident.hazard_type|lower == 'flood' %}🌊
-                                        {% elif incident.hazard_type|lower == 'landslide' %}🏔️
-                                        {% elif incident.hazard_type|lower == 'fire' %}🔥
-                                        {% else %}⚠️{% endif %}
-                                        {{ incident.hazard_type|upper }}
-                                    </td>
-                                    
-                                    <!-- Outline Badges for Risk Level -->
-                                    <td class="py-3">
-                                        {% if incident.level|lower == 'critical' %}
-                                            <span class="badge" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2);">🔴 CRITICAL</span>
-                                        {% elif incident.level|lower == 'moderate' %}
-                                            <span class="badge" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.2);">🟡 MODERATE</span>
-                                        {% else %}
-                                            <span class="badge" style="background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2);">🟢 LOW</span>
-                                        {% endif %}
-                                    </td>
-                                    
-                                    <!-- Blue Percentage Score -->
-                                    <td class="py-3 fw-bold" style="color: #3b82f6;">{{ '%.1f'|format(incident.score|float(0)) }}%</td>
-                                    
-                                    <!-- Alert Status -->
-                                    <td class="py-3">
-                                        {% if incident.alert %}
-                                            <span class="badge bg-danger px-2 py-1">Active</span>
-                                        {% else %}
-                                            <span class="badge bg-secondary px-2 py-1">Clear</span>
-                                        {% endif %}
-                                    </td>
-                                    
-                                    <td class="py-3 text-muted" style="max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ incident.message }}">
-                                        {{ incident.message }}
-                                    </td>
-                                    
-                                    <!-- Action Buttons -->
-                                    <td class="py-3 px-4 text-end">
-                                        <form method="post" action="{{ url_for('admin.verify_incident', incident_id=incident.id) }}" class="d-inline me-2">
-                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                            <button type="submit" class="btn btn-sm btn-outline-success rounded px-3">Verify</button>
-                                        </form>
-                                        <form method="post" action="/admin/alerts/{{ incident.id }}/toggle" class="d-inline">
-                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                            <button type="submit" class="btn btn-sm btn-outline-primary rounded px-3">Toggle</button>
-                                        </form>
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                {% else %}
-                    <div class="text-center py-5 m-4 rounded" style="background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.1);">
-                        <p class="text-muted mb-0">No incidents available for verification.</p>
+                        <!-- Incident info -->
+                        <div class="flex-grow-1 min-w-0">
+                            <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                                <span class="fw-bold text-white" style="font-size:.95rem;">
+                                    {{ incident.hazard_type|upper }}
+                                </span>
+                                <span class="text-muted" style="font-size:.8rem;">#{{ incident.id }}</span>
+
+                                <!-- Level badge -->
+                                {% if incident.level %}
+                                <span style="font-size:.7rem;font-weight:600;padding:.25em .7em;border-radius:5px;
+                                    {% if incident.level|lower == 'critical' %}background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.3);
+                                    {% elif incident.level|lower == 'high' %}background:rgba(249,115,22,0.15);color:#FDBA74;border:1px solid rgba(249,115,22,0.3);
+                                    {% elif incident.level|lower == 'moderate' %}background:rgba(245,158,11,0.15);color:#FDE68A;border:1px solid rgba(245,158,11,0.3);
+                                    {% else %}background:rgba(16,185,129,0.15);color:#86EFAC;border:1px solid rgba(16,185,129,0.3);
+                                    {% endif %}">
+                                    {{ incident.level|upper }}
+                                </span>
+                                {% endif %}
+
+                                <!-- Alert status pill -->
+                                {% if incident.alert %}
+                                <span style="font-size:.7rem;font-weight:600;padding:.25em .7em;border-radius:5px;background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.4);">
+                                    <i class="bi bi-exclamation-circle-fill me-1"></i>ALERT ACTIVE
+                                </span>
+                                {% else %}
+                                <span style="font-size:.7rem;padding:.25em .7em;border-radius:5px;background:rgba(255,255,255,0.05);color:#6B7280;border:1px solid rgba(255,255,255,0.08);">
+                                    Clear
+                                </span>
+                                {% endif %}
+
+                                <!-- Verification badge -->
+                                {% if incident.status == 'VERIFIED' %}
+                                <span style="font-size:.7rem;font-weight:600;padding:.25em .7em;border-radius:5px;background:rgba(16,185,129,0.15);color:#86EFAC;border:1px solid rgba(16,185,129,0.4);">
+                                    <i class="bi bi-patch-check-fill me-1"></i>VERIFIED
+                                </span>
+                                {% endif %}
+
+                                <!-- Response badge -->
+                                {% if incident.response %}
+                                <span style="font-size:.7rem;font-weight:600;padding:.25em .7em;border-radius:5px;background:rgba(56,189,248,0.15);color:#38BDF8;border:1px solid rgba(56,189,248,0.3);">
+                                    <i class="bi bi-shield-fill-check me-1"></i>RESPONSE ACTIVE
+                                </span>
+                                {% endif %}
+                            </div>
+
+                            <!-- Location + message -->
+                            {% if incident.location %}
+                            <div class="d-flex align-items-center gap-1 mb-1" style="font-size:.8rem;color:#9CA3AF;">
+                                <i class="bi bi-geo-alt"></i>
+                                <span>{{ incident.location }}</span>
+                            </div>
+                            {% endif %}
+                            <div class="text-muted" style="font-size:.8rem;line-height:1.4;">
+                                {{ incident.message }}
+                            </div>
+                        </div>
+
+                        <!-- Right meta -->
+                        <div class="text-end flex-shrink-0" style="min-width:140px;">
+                            <div class="text-muted" style="font-size:.72rem;">
+                                <i class="bi bi-clock me-1"></i>
+                                {{ incident.created_at.strftime('%b %d, %Y') }}
+                            </div>
+                            <div class="text-muted" style="font-size:.72rem;">
+                                {{ incident.created_at.strftime('%I:%M %p') }}
+                            </div>
+                            {% if incident.score %}
+                            <div class="mt-1 fw-bold" style="font-size:.85rem;color:#60A5FA;">
+                                Risk: {{ '%.1f'|format(incident.score|float(0)) }}%
+                            </div>
+                            {% endif %}
+                            <div class="mt-1" style="font-size:.72rem;color:#6B7280;">
+                                Source: {{ incident.reported_by or 'system' }}
+                            </div>
+                        </div>
                     </div>
-                {% endif %}
-                
+
+                    <!-- Divider -->
+                    <div style="height:1px;background:rgba(255,255,255,0.06);margin:0 1rem;"></div>
+
+                    <!-- Action row -->
+                    <div class="d-flex flex-wrap align-items-center gap-2 p-3 px-4">
+
+                        <!-- Verify / Verified -->
+                        {% if incident.status != 'VERIFIED' %}
+                        <form method="post" action="{{ url_for('eoc.verify_incident', incident_id=incident.id) }}" class="d-inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm d-flex align-items-center gap-1"
+                                style="background:rgba(16,185,129,0.12);color:#86EFAC;border:1px solid rgba(16,185,129,0.35);font-size:.78rem;padding:.35em .9em;border-radius:6px;">
+                                <i class="bi bi-check-circle-fill"></i> Verify
+                            </button>
+                        </form>
+                        {% else %}
+                        <span class="d-inline-flex align-items-center gap-1"
+                            style="font-size:.78rem;padding:.35em .9em;border-radius:6px;background:rgba(16,185,129,0.08);color:#6EE7B7;border:1px solid rgba(16,185,129,0.2);">
+                            <i class="bi bi-patch-check-fill"></i> Verified
+                        </span>
+                        {% endif %}
+
+                        <!-- Toggle Alert -->
+                        <form method="post" action="{{ url_for('eoc.toggle_alert', incident_id=incident.id) }}" class="d-inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm d-flex align-items-center gap-1"
+                                style="{% if incident.alert %}background:rgba(239,68,68,0.12);color:#FCA5A5;border:1px solid rgba(239,68,68,0.3);{% else %}background:rgba(255,255,255,0.05);color:#9CA3AF;border:1px solid rgba(255,255,255,0.12);{% endif %}font-size:.78rem;padding:.35em .9em;border-radius:6px;">
+                                <i class="bi bi-bell{% if not incident.alert %}-slash{% endif %}-fill"></i>
+                                {% if incident.alert %}Deactivate Alert{% else %}Activate Alert{% endif %}
+                            </button>
+                        </form>
+
+                        <!-- Assign commander (only if no response exists) -->
+                        {% if not incident.response and commanders %}
+                        <form method="post" action="{{ url_for('eoc.assign_commander', incident_id=incident.id) }}"
+                              class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <label style="font-size:.75rem;color:#9CA3AF;white-space:nowrap;margin-bottom:0;">
+                                <i class="bi bi-person-badge me-1"></i>Assign Commander:
+                            </label>
+                            <select name="commander_id"
+                                style="font-size:.78rem;padding:.3em .7em;border-radius:6px;background:rgba(255,255,255,0.05);color:#e5e7eb;border:1px solid rgba(255,255,255,0.15);min-width:150px;max-width:200px;">
+                                {% for c in commanders %}
+                                <option value="{{ c.id }}">{{ c.full_name or c.username }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="btn btn-sm d-flex align-items-center gap-1"
+                                style="background:rgba(245,158,11,0.15);color:#FCD34D;border:1px solid rgba(245,158,11,0.35);font-size:.78rem;padding:.35em .9em;border-radius:6px;white-space:nowrap;">
+                                <i class="bi bi-send-fill"></i> Assign &amp; Activate
+                            </button>
+                        </form>
+                        {% elif incident.response %}
+                        <div class="ms-auto d-flex align-items-center gap-2">
+                            <div style="font-size:.78rem;color:#6B7280;">Commander:</div>
+                            <div style="font-size:.78rem;font-weight:600;color:#38BDF8;">
+                                {{ incident.response.commander.full_name or incident.response.commander.username }}
+                            </div>
+                            <span style="font-size:.72rem;padding:.25em .65em;border-radius:5px;background:rgba(56,189,248,0.1);color:#38BDF8;border:1px solid rgba(56,189,248,0.25);">
+                                {{ incident.response.status }}
+                            </span>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        {% else %}
+        <div class="card card-custom">
+            <div class="card-body text-center py-5">
+                <div style="font-size:2.5rem;margin-bottom:1rem;opacity:.3;">🛡️</div>
+                <div class="text-muted fw-semibold mb-1">No incidents to review</div>
+                <div class="text-muted" style="font-size:.82rem;">Incidents submitted by citizens and the AI scheduler will appear here.</div>
             </div>
         </div>
-        
-        <!-- Back Button -->
+        {% endif %}
+
+        <!-- Back -->
         <div class="mb-5">
-            <a href="/dashboard" class="btn btn-outline-secondary rounded px-4 py-2">
-                &larr; Back to dashboard
+            <a href="/dashboard" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
             </a>
         </div>
 
     </div>
 </div>
+
+<script>
+// Filter functionality
+document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', function () {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+
+        const filter = this.dataset.filter;
+        document.querySelectorAll('.incident-card').forEach(card => {
+            let show = true;
+            if (filter === 'unverified')  show = card.dataset.verified === 'false';
+            if (filter === 'alert')       show = card.dataset.alert === 'true';
+            if (filter === 'unassigned')  show = card.dataset.responded === 'false';
+            if (filter === 'verified')    show = card.dataset.verified === 'true';
+            card.style.display = show ? '' : 'none';
+        });
+    });
+});
+</script>
 {% endblock %}

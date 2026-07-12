@@ -26,15 +26,9 @@
                             <label for="agency" class="form-label text-info fw-bold">Assign To Agency *</label>
                             <select name="agency" id="agency" class="form-select bg-dark text-light border-secondary" required>
                                 <option value="">-- Select Agency --</option>
-                                <option value="Fire Department">Fire Department</option>
-                                <option value="Emergency Management">Emergency Management</option>
-                                <option value="Police Department">Police Department</option>
-                                <option value="Medical Services">Medical Services</option>
-                                <option value="Search & Rescue">Search & Rescue</option>
-                                <option value="Public Works">Public Works</option>
-                                <option value="Environmental Protection">Environmental Protection</option>
-                                <option value="Transportation Authority">Transportation Authority</option>
-                                <option value="Other">Other (specify in description)</option>
+                                {% for agency in agencies %}
+                                    <option value="{{ agency.name }}">{{ agency.name }}</option>
+                                {% endfor %}
                             </select>
                         </div>
 

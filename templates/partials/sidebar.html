@@ -73,7 +73,11 @@
                 </a>
                 <a href="/admin/alerts" class="sidebar-nav-link {{ 'active' if request.path == '/admin/alerts' else '' }}" data-tooltip="Verify & Toggle Alerts">
                     <i class="bi bi-check-circle-fill"></i>
-                    <span class="nav-text sidebar-text-show">Incident Verification</span>
+                    <span class="nav-text sidebar-text-show">Verifications</span>
+                </a>
+                <a href="/admin/responses" class="sidebar-nav-link {{ 'active' if request.path == '/admin/responses' else '' }}" data-tooltip="Active Operations">
+                    <i class="bi bi-shield-fill-exclamation"></i>
+                    <span class="nav-text sidebar-text-show">Operations</span>
                 </a>
                 <a href="/admin/backup" id="sidebarBackupLink" class="sidebar-nav-link {{ 'active' if request.path == '/admin/backup' else '' }}" data-tooltip="Export Database">
                     <i class="bi bi-cloud-download-fill"></i>

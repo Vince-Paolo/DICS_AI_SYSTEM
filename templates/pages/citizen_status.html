@@ -58,10 +58,11 @@
                                     <tr>
                                         <th style="width: 8%;">Report ID</th>
                                         <th style="width: 15%;">Incident Type</th>
-                                        <th style="width: 20%;">Location</th>
-                                        <th style="width: 15%;">Status</th>
-                                        <th style="width: 20%;">Submitted</th>
-                                        <th style="width: 12%;">Risk Level</th>
+                                        <th style="width: 18%;">Location</th>
+                                        <th style="width: 18%;">Status</th>
+                                        <th style="width: 17%;">Submitted</th>
+                                        <th style="width: 10%;">Risk</th>
+                                        <th style="width: 14%;">Details</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -88,13 +89,25 @@
                                             </td>
                                             <td><span class="text-muted">{{ incident.location if incident.location else 'N/A' }}</span></td>
                                             <td>
-                                                {% if incident.alert %}
+                                                {% if incident.status == 'VERIFIED' %}
+                                                    <span class="badge" style="background:rgba(16,185,129,0.15);color:#86EFAC;border:1px solid rgba(16,185,129,0.4);border-radius:6px;padding:.35em .7em;font-size:.75em;">
+                                                        <i class="bi bi-check-circle-fill me-1"></i>Verified — Awaiting Response
+                                                    </span>
+                                                {% elif incident.status == 'ACTIVE' or incident.response %}
                                                     <span class="badge badge-status-active">
-                                                        <i class="bi bi-exclamation-circle-fill me-1"></i>Active Alert
+                                                        <i class="bi bi-shield-fill-check me-1"></i>Response Activated
+                                                    </span>
+                                                {% elif incident.status == 'CLOSED' or incident.status == 'RESOLVED' %}
+                                                    <span class="badge" style="background:rgba(99,102,241,0.15);color:#a5b4fc;border:1px solid rgba(99,102,241,0.4);border-radius:6px;padding:.35em .7em;font-size:.75em;">
+                                                        <i class="bi bi-archive-fill me-1"></i>Resolved
+                                                    </span>
+                                                {% elif incident.alert %}
+                                                    <span class="badge badge-status-active">
+                                                        <i class="bi bi-exclamation-circle-fill me-1"></i>Alert Issued
                                                     </span>
                                                 {% else %}
                                                     <span class="badge badge-status-pending">
-                                                        <i class="bi bi-hourglass-split me-1"></i>Pending
+                                                        <i class="bi bi-hourglass-split me-1"></i>Submitted — Under Review
                                                     </span>
                                                 {% endif %}
                                             </td>
@@ -107,6 +120,12 @@
                                                 {% else %}
                                                     <span class="badge-low" style="padding: 0.35em 0.65em; background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.1)); color: #86EFAC; border: 1px solid rgba(16, 185, 129, 0.5); border-radius: 6px; font-weight: 700; font-size: 0.75em; display: inline-flex; align-items: center; gap: 0.3em;">🟢 LOW</span>
                                                 {% endif %}
+                                            </td>
+                                            <td>
+                                                <a href="{{ url_for('citizen.citizen_report_detail', incident_id=incident.id) }}"
+                                                   class="btn btn-outline-info btn-sm">
+                                                    <i class="bi bi-eye me-1"></i>View
+                                                </a>
                                             </td>
                                         </tr>
                                     {% endfor %}

@@ -1,7 +1,7 @@
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 
 from models import db, User, Incident, IncidentResponse, Task, Resource
-from blueprints.common import is_eoc_staff
+from blueprints.common import is_eoc_staff, is_admin_or_eoc
 
 eoc_bp = Blueprint('eoc', __name__)
 
@@ -137,3 +137,120 @@ def eoc_resource_monitoring():
                          total_returning=total_returning,
                          total_units=total_units,
                          agency_breakdown=agency_breakdown)
+
+
+@eoc_bp.route('/admin/alerts/<int:incident_id>/toggle', methods=['POST'])
+def toggle_alert(incident_id):
+    """Dispatch: toggle an incident's public alert status."""
+    if not is_admin_or_eoc():
+        flash('Admin or EOC staff access required.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    incident = Incident.query.get_or_404(incident_id)
+    incident.alert = not incident.alert
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        flash(str(e), 'error')
+        return redirect(url_for('admin.admin_alerts'))
+    flash('Alert status updated.', 'success')
+    return redirect(url_for('admin.admin_alerts'))
+
+
+@eoc_bp.route('/admin/incidents/<int:incident_id>/verify', methods=['POST'])
+def verify_incident(incident_id):
+    """Dispatch: verify that a reported incident is legitimate."""
+    if not is_admin_or_eoc():
+        flash('Admin or EOC staff access required.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    incident = Incident.query.get_or_404(incident_id)
+    verifier = User.query.filter_by(username=session['username']).first()
+    incident.status = 'VERIFIED'
+    incident.verified_by_id = verifier.id if verifier else None
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        flash(str(e), 'error')
+        return redirect(url_for('admin.admin_alerts'))
+
+    flash('Incident marked as verified.', 'success')
+    return redirect(url_for('admin.admin_alerts'))
+
+
+@eoc_bp.route('/admin/incidents/<int:incident_id>/assign-commander', methods=['POST'])
+def assign_commander(incident_id):
+    """Dispatch: assign a commander to an unresponded incident, creating an IncidentResponse."""
+    if not is_admin_or_eoc():
+        flash('Admin or EOC staff access required.', 'danger')
+        return redirect(url_for('admin.admin_alerts'))
+
+    incident = Incident.query.get_or_404(incident_id)
+
+    existing = IncidentResponse.query.filter_by(incident_id=incident_id).first()
+    if existing:
+        flash('An incident response already exists for this incident.', 'warning')
+        return redirect(url_for('admin.admin_alerts'))
+
+    commander_id = request.form.get('commander_id', type=int)
+    if not commander_id:
+        flash('Please select a commander.', 'error')
+        return redirect(url_for('admin.admin_alerts'))
+
+    commander = User.query.get(commander_id)
+    if not commander or commander.role != 'incident_commander':
+        flash('Invalid commander selected.', 'error')
+        return redirect(url_for('admin.admin_alerts'))
+
+    response = IncidentResponse(
+        incident_id=incident_id,
+        commander_id=commander_id,
+        status='ACTIVE',
+        situation_summary=f'Response initiated by dispatch for {incident.hazard_type} at {incident.location}',
+        priority_level='CRITICAL' if incident.level == 'CRITICAL' else 'HIGH' if incident.level == 'HIGH' else 'MEDIUM'
+    )
+    db.session.add(response)
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error assigning commander: {str(e)}', 'error')
+        return redirect(url_for('admin.admin_alerts'))
+
+    flash(f'Commander "{commander.full_name or commander.username}" assigned to incident #{incident_id}.', 'success')
+    return redirect(url_for('admin.admin_alerts'))
+
+
+@eoc_bp.route('/admin/responses/<int:response_id>/transfer', methods=['POST'])
+def transfer_commander(response_id):
+    """Dispatch: transfer an active response to a different commander."""
+    if not is_admin_or_eoc():
+        flash('Admin or EOC staff access required.', 'danger')
+        return redirect(url_for('admin.admin_responses'))
+
+    response = IncidentResponse.query.get_or_404(response_id)
+    new_commander_id = request.form.get('commander_id', type=int)
+
+    if not new_commander_id:
+        flash('Please select a commander.', 'error')
+        return redirect(url_for('admin.admin_responses'))
+
+    new_commander = User.query.get(new_commander_id)
+    if not new_commander or new_commander.role != 'incident_commander':
+        flash('Invalid commander selected.', 'error')
+        return redirect(url_for('admin.admin_responses'))
+
+    old_commander_name = response.commander.username if response.commander else 'Unknown'
+    response.commander_id = new_commander_id
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Transfer failed: {str(e)}', 'error')
+        return redirect(url_for('admin.admin_responses'))
+
+    flash(f'Response #{response_id} transferred from {old_commander_name} to {new_commander.username}.', 'success')
+    return redirect(url_for('admin.admin_responses'))

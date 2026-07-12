@@ -29,6 +29,12 @@ def is_eoc_staff():
     return 'username' in session and session.get('role') == 'eoc_staff'
 
 
+def is_admin_or_eoc():
+    """Check if user is admin or EOC staff (for dispatch-style operations:
+    verifying incidents, assigning/transferring commanders, toggling alerts)"""
+    return 'username' in session and session.get('role') in ['admin', 'eoc_staff']
+
+
 def is_coordinator():
     return 'username' in session and session.get('role') == 'agency_coordinator'
 

@@ -6,8 +6,8 @@ from datetime import datetime
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for, send_file
 from werkzeug.security import generate_password_hash
 
-from models import db, User, Incident, IncidentResponse, Task, Resource
-from blueprints.common import is_admin, is_admin_or_coordinator, is_incident_commander, is_field_responder, is_eoc_staff
+from models import db, User, Incident, IncidentResponse, Task, Resource, Agency
+from blueprints.common import is_admin, is_admin_or_eoc
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -22,52 +22,13 @@ def admin():
 
 @admin_bp.route('/admin/alerts')
 def admin_alerts():
-    if not is_admin_or_coordinator():
-        flash('Admin access required.', 'danger')
+    if not is_admin_or_eoc():
+        flash('Admin or EOC staff access required.', 'danger')
         return redirect(url_for('dashboard'))
 
     incidents = Incident.query.order_by(Incident.created_at.desc()).all()
-    return render_template('pages/admin_alerts.html', incidents=incidents)
-
-
-@admin_bp.route('/admin/alerts/<int:incident_id>/toggle', methods=['POST'])
-def toggle_alert(incident_id):
-    if not is_admin():
-        flash('Only admins can toggle alert status.', 'danger')
-        return redirect(url_for('dashboard'))
-
-    incident = Incident.query.get_or_404(incident_id)
-    incident.alert = not incident.alert
-    try:
-        db.session.commit()
-    except Exception as e:
-        db.session.rollback()
-        flash(str(e), 'error')
-        return redirect(url_for('admin.admin_alerts'))
-    flash('Alert status updated.', 'success')
-    return redirect(url_for('admin.admin_alerts'))
-
-
-@admin_bp.route('/admin/incidents/<int:incident_id>/verify', methods=['POST'])
-def verify_incident(incident_id):
-    if not is_admin():
-        flash('Only admins can verify incidents.', 'danger')
-        return redirect(url_for('dashboard'))
-
-    incident = Incident.query.get_or_404(incident_id)
-    verifier = User.query.filter_by(username=session['username']).first()
-    incident.status = 'VERIFIED'
-    incident.verified_by_id = verifier.id if verifier else None
-
-    try:
-        db.session.commit()
-    except Exception as e:
-        db.session.rollback()
-        flash(str(e), 'error')
-        return redirect(url_for('admin.admin_alerts'))
-
-    flash('Incident marked as verified.', 'success')
-    return redirect(url_for('admin.admin_alerts'))
+    commanders = User.query.filter_by(role='incident_commander', is_disabled=False).all()
+    return render_template('pages/admin_alerts.html', incidents=incidents, commanders=commanders)
 
 
 @admin_bp.route('/all-incidents')
@@ -231,6 +192,29 @@ def toggle_user_status(user_id):
         flash(f'Error toggling user status: {str(e)}', 'error')
 
     return redirect(url_for('admin.manage_users'))
+
+
+@admin_bp.route('/admin/responses')
+def admin_responses():
+    """Admin/EOC view of all active IncidentResponse records."""
+    if not is_admin_or_eoc():
+        flash('Admin or EOC staff access required.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    active_responses = IncidentResponse.query.filter(
+        IncidentResponse.status.in_(['ACTIVE', 'MONITORING'])
+    ).order_by(IncidentResponse.started_at.desc()).all()
+
+    closed_responses = IncidentResponse.query.filter(
+        IncidentResponse.status.in_(['CLOSED', 'RESOLVED'])
+    ).order_by(IncidentResponse.closed_at.desc()).limit(10).all()
+
+    commanders = User.query.filter_by(role='incident_commander', is_disabled=False).all()
+
+    return render_template('pages/admin_responses.html',
+                           active_responses=active_responses,
+                           closed_responses=closed_responses,
+                           commanders=commanders)
 
 
 @admin_bp.route('/admin/backup')

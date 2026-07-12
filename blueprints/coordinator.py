@@ -171,6 +171,10 @@ def coordinator_allocate_resource():
         flash('Please fill in all required fields.', 'error')
         return redirect(url_for('coordinator.coordinator_resources'))
 
+    if quantity < 1:
+        flash('Quantity must be at least 1.', 'error')
+        return redirect(url_for('coordinator.coordinator_resources'))
+
     response = IncidentResponse.query.get_or_404(response_id)
 
     resource = Resource(

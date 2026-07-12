@@ -63,7 +63,18 @@
                                 </div>
                                 <div>
                                     <h6 class="mb-1 fw-semibold">{{ task.title }}</h6>
-                                    <p class="text-muted mb-0" style="font-size:0.82rem;">{{ task.description }}</p>
+                                    <p class="text-muted mb-1" style="font-size:0.82rem;">{{ task.description }}</p>
+                                    {% if task_context.get(task.id) %}
+                                    {% set ctx = task_context[task.id] %}
+                                    <div class="d-flex flex-wrap gap-2 mt-1">
+                                        <span style="font-size:0.72rem;background:rgba(56,189,248,0.1);color:#38BDF8;border:1px solid rgba(56,189,248,0.25);border-radius:4px;padding:2px 7px;">
+                                            <i class="bi bi-exclamation-triangle me-1"></i>{{ ctx.incident_type|upper }} — {{ ctx.incident_location }}
+                                        </span>
+                                        <span style="font-size:0.72rem;background:rgba(255,255,255,0.05);color:#9CA3AF;border:1px solid rgba(255,255,255,0.1);border-radius:4px;padding:2px 7px;">
+                                            <i class="bi bi-activity me-1"></i>Response: {{ ctx.response_status }}
+                                        </span>
+                                    </div>
+                                    {% endif %}
                                 </div>
                             </div>
                         </div>
