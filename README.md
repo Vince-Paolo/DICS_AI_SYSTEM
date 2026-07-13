@@ -188,6 +188,6 @@ earthquake risk.
   more real historical data per region would likely improve accuracy.
 - Aftershock calibration defaults to a Luzon-only bounding box.
 
-## License
+## Deployment Link
 
-Add your license here.
+- https://dics-ai-system.onrender.com/
