@@ -3,7 +3,7 @@ import os
 import sqlite3
 from datetime import datetime
 
-from flask import Blueprint, flash, redirect, render_template, request, session, url_for, send_file
+from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for, send_file
 from werkzeug.security import generate_password_hash
 
 from models import db, User, Incident, IncidentResponse, Task, Resource, Agency
@@ -222,6 +222,15 @@ def export_backup():
     """Export SQLite database as a downloadable backup file"""
     if not session.get('role') == 'admin':
         flash('Admin access required.', 'danger')
+        return redirect(url_for('admin.manage_users'))
+
+    if not current_app.config['SQLALCHEMY_DATABASE_URI'].startswith('sqlite'):
+        flash(
+            'This database runs on Postgres, so this SQLite-only export '
+            "isn't available. Use Render's built-in database backups, or "
+            'run pg_dump against your DATABASE_URL instead.',
+            'warning'
+        )
         return redirect(url_for('admin.manage_users'))
 
     try:
