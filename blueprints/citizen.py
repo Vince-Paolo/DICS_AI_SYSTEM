@@ -5,6 +5,7 @@ from flask import Blueprint, current_app, flash, jsonify, redirect, render_templ
 from werkzeug.utils import secure_filename
 
 from models import db, User, Incident, CitizenReport
+from services.realtime_data import get_earthquake_data
 
 citizen_bp = Blueprint('citizen', __name__)
 
@@ -109,9 +110,25 @@ def citizen_dashboard():
     incidents = Incident.query.filter_by(user_id=user.id).order_by(Incident.created_at.desc()).all()
     total_incidents = len(incidents)
     pending_count = sum(1 for i in incidents if not i.alert)
-    alert_count = sum(1 for i in incidents if i.alert)
+    # Alerts in the area, not just this citizen's own reports - matches the
+    # sidebar notification badge and /citizen-alerts, both of which count
+    # all active alerts system-wide.
+    alert_count = Incident.query.filter_by(alert=True).count()
 
-    return render_template('pages/citizen_dashboard.html', total_incidents=total_incidents, pending_count=pending_count, alert_count=alert_count, incidents=incidents[:5])
+    earthquake_data = get_earthquake_data()
+    latest_earthquake_magnitude = 0
+    if earthquake_data and len(earthquake_data) > 0:
+        latest_earthquake_magnitude = earthquake_data[0].get('magnitude', 0)
+
+    return render_template(
+        'pages/citizen_dashboard.html',
+        username=user.username,
+        total_incidents=total_incidents,
+        pending_count=pending_count,
+        alert_count=alert_count,
+        incidents=incidents[:5],
+        latest_earthquake_magnitude=latest_earthquake_magnitude,
+    )
 
 
 @citizen_bp.route('/citizen-alerts')

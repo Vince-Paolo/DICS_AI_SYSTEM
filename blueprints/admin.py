@@ -87,7 +87,7 @@ def add_user():
         full_name = request.form.get('full_name', '').strip()
         contact_number = request.form.get('contact_number', '').strip()
         agency = request.form.get('agency', '').strip()
-        role = request.form.get('role', 'user')
+        role = request.form.get('role', 'citizen')
 
         if not username or not password or not email:
             flash('Username, email, and password are required.', 'error')
