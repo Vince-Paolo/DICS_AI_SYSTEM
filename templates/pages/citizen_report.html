@@ -2,6 +2,10 @@
 
 {% block title %}Report Incident | DICS AI Citizen Portal{% endblock %}
 
+{% block extra_head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
     <div class="row">
@@ -53,8 +57,8 @@
                             <h5><i class="bi bi-info-circle me-2"></i>Incident Details</h5>
                         </div>
                         
-                        <div class="row">
-                            <div class="col-md-6 mb-4">
+                        <div class="row form-pair-grid">
+                            <div class="form-pair-field">
                                 <label for="hazard_type" class="form-label">
                                     <i class="bi bi-lightning-charge me-2"></i>Type of Incident
                                 </label>
@@ -70,7 +74,7 @@
                                 </select>
                             </div>
 
-                            <div class="col-md-6 mb-4">
+                            <div class="form-pair-field">
                                 <label for="severity" class="form-label">
                                     <i class="bi bi-speedometer me-2"></i>Severity Level
                                 </label>
@@ -105,8 +109,8 @@
                             <h5><i class="bi bi-bar-chart me-2"></i>Impact Assessment</h5>
                         </div>
 
-                        <div class="row">
-                            <div class="col-md-6 mb-4">
+                        <div class="row form-pair-grid">
+                            <div class="form-pair-field">
                                 <label for="affected_people" class="form-label">
                                     <i class="bi bi-people me-2"></i>Number of People Affected (if known)
                                 </label>
@@ -114,7 +118,7 @@
                                        min="0" placeholder="0">
                             </div>
 
-                            <div class="col-md-6 mb-4">
+                            <div class="form-pair-field">
                                 <label for="injuries" class="form-label">
                                     <i class="bi bi-heart-pulse me-2"></i>Injuries or Casualties
                                 </label>
@@ -175,24 +179,71 @@
                             <h5><i class="bi bi-camera me-2"></i>Evidence & Privacy</h5>
                         </div>
 
-                        <div class="row">
-                            <div class="col-md-6 mb-4">
+                        <div class="row form-pair-grid">
+                            <div class="form-pair-field">
                                 <label for="photo" class="form-label">
                                     <i class="bi bi-image me-2"></i>Photo Evidence
                                 </label>
-                                <input type="file" class="form-control" id="photo" name="photo" accept="image/*">
-                                <small class="text-muted d-block mt-2">Optional image upload for the report.</small>
+
+                                <div class="field-card">
+                                    <div class="photo-dropzone" id="photoDropzone" tabindex="0" role="button"
+                                         aria-label="Upload photo evidence">
+                                        <input type="file" class="visually-hidden" id="photo" name="photo" accept="image/*">
+
+                                        <div class="photo-dropzone-empty" id="photoDropzoneEmpty">
+                                            <div class="icon-badge icon-badge-primary mb-3">
+                                                <i class="bi bi-cloud-arrow-up-fill"></i>
+                                            </div>
+                                            <p class="mb-1 fw-semibold">Drag & drop a photo here</p>
+                                            <p class="text-muted small mb-0">or click to browse &middot; JPG, PNG, up to 10MB</p>
+                                        </div>
+
+                                        <div class="photo-dropzone-preview d-none" id="photoDropzonePreview">
+                                            <img id="photoPreviewImg" src="" alt="Selected photo preview">
+                                            <div class="photo-preview-info">
+                                                <div class="photo-preview-name text-truncate" id="photoPreviewName"></div>
+                                                <div class="photo-preview-size" id="photoPreviewSize"></div>
+                                            </div>
+                                            <button type="button" class="photo-preview-remove" id="photoRemoveBtn" aria-label="Remove photo">
+                                                <i class="bi bi-x-lg"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <small class="text-muted d-block mt-2">Optional image upload for the report.</small>
+                                </div>
                             </div>
-                            <div class="col-md-6 mb-4">
+                            <div class="form-pair-field">
                                 <label class="form-label">
                                     <i class="bi bi-geo-alt me-2"></i>GPS Location
                                 </label>
                                 <input type="hidden" id="gps_lat" name="gps_lat">
                                 <input type="hidden" id="gps_lng" name="gps_lng">
-                                <button type="button" class="btn btn-outline-secondary w-100" id="gpsButton">
-                                    <i class="bi bi-pin-map me-2"></i>Use Current Location
-                                </button>
-                                <small id="gpsStatus" class="text-muted d-block mt-2">Allow browser location access to capture GPS automatically.</small>
+
+                                <div class="field-card">
+                                    <div class="location-preview" id="locationPreview">
+                                        <div class="location-preview-empty" id="locationPreviewEmpty">
+                                            <div class="icon-badge icon-badge-primary mb-2">
+                                                <i class="bi bi-pin-map-fill"></i>
+                                            </div>
+                                            <p class="mb-0 text-muted small">No location captured yet</p>
+                                        </div>
+                                        <div class="location-preview-map d-none" id="locationPreviewMap"></div>
+                                    </div>
+
+                                    <small id="gpsStatus" class="text-muted d-block mt-2 mb-2">Allow browser location access to capture GPS automatically.</small>
+
+                                    <div class="location-manual-row">
+                                        <input type="text" class="form-control form-control-sm" id="manualLocationInput"
+                                               placeholder="Or type an address / landmark...">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="manualLocationSearch" aria-label="Search address">
+                                            <i class="bi bi-search"></i>
+                                        </button>
+                                    </div>
+
+                                    <button type="button" class="btn btn-outline-secondary w-100 mt-auto" id="gpsButton">
+                                        <i class="bi bi-crosshair me-2"></i>Use Current Location
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
@@ -204,7 +255,7 @@
                         </div>
 
                         <!-- Action Buttons -->
-                        <div class="d-flex gap-2 mt-5 pt-3 border-top border-secondary">
+                        <div class="d-flex gap-2 mt-5 pt-3 border-top border-secondary form-actions-row">
                             <button type="submit" class="btn btn-primary-modern btn-modern" style="flex: 1;">
                                 <i class="bi bi-check-circle me-2"></i>Submit Report
                             </button>
@@ -223,12 +274,74 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const gpsButton = document.getElementById('gpsButton');
     const gpsStatus = document.getElementById('gpsStatus');
     const gpsLat = document.getElementById('gps_lat');
     const gpsLng = document.getElementById('gps_lng');
+    const manualInput = document.getElementById('manualLocationInput');
+    const manualSearchBtn = document.getElementById('manualLocationSearch');
+
+    // ── Location map preview ─────────────────────────────────
+    const previewEmpty = document.getElementById('locationPreviewEmpty');
+    const previewMapEl = document.getElementById('locationPreviewMap');
+    let locationMap = null;
+    let locationMarker = null;
+
+    function showLocationOnMap(lat, lng) {
+        previewEmpty.classList.add('d-none');
+        previewMapEl.classList.remove('d-none');
+
+        // Leaflet needs the container visible with real dimensions before
+        // it can measure itself, so init/resize only after we un-hide it.
+        if (!locationMap) {
+            locationMap = L.map(previewMapEl, {
+                zoomControl: false,
+                attributionControl: false,
+            }).setView([lat, lng], 15);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+            }).addTo(locationMap);
+
+            locationMarker = L.marker([lat, lng]).addTo(locationMap);
+        } else {
+            locationMap.setView([lat, lng], 15);
+            locationMarker.setLatLng([lat, lng]);
+        }
+
+        setTimeout(function () {
+            locationMap.invalidateSize();
+        }, 50);
+    }
+
+    // Shared by both "Use Current Location" and manual address search, so
+    // the map/coordinates/status text stay consistent no matter which path
+    // set the location.
+    function setLocation(lat, lng, address) {
+        gpsLat.value = lat;
+        gpsLng.value = lng;
+        gpsStatus.textContent = address || `Captured GPS: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+        showLocationOnMap(lat, lng);
+
+        // Helps citizens who'd otherwise leave "Location (Barangay/Area)"
+        // blank - never overwrites something they already typed themselves.
+        const locationField = document.getElementById('location');
+        if (locationField && address && !locationField.value.trim()) {
+            locationField.value = address;
+        }
+    }
+
+    // OpenStreetMap's free Nominatim endpoint - no API key needed, matches
+    // the tile provider already used for the map itself.
+    function reverseGeocode(lat, lng) {
+        return fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`)
+            .then(res => res.json())
+            .then(data => data && data.display_name ? data.display_name : null)
+            .catch(() => null);
+    }
 
     if (gpsButton) {
         gpsButton.addEventListener('click', function () {
@@ -239,12 +352,147 @@ document.addEventListener('DOMContentLoaded', function () {
 
             gpsStatus.textContent = 'Capturing your current location...';
             navigator.geolocation.getCurrentPosition(function (position) {
-                gpsLat.value = position.coords.latitude;
-                gpsLng.value = position.coords.longitude;
-                gpsStatus.textContent = `Captured GPS: ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`;
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                setLocation(lat, lng, null);
+                gpsStatus.textContent = `Captured GPS: ${lat.toFixed(4)}, ${lng.toFixed(4)} — looking up address...`;
+                reverseGeocode(lat, lng).then(function (address) {
+                    if (address) {
+                        gpsStatus.textContent = address;
+                        const locationField = document.getElementById('location');
+                        if (locationField && !locationField.value.trim()) {
+                            locationField.value = address;
+                        }
+                    }
+                });
             }, function () {
-                gpsStatus.textContent = 'Unable to access your location. You can still submit the report manually.';
+                gpsStatus.textContent = 'Unable to access your location. You can still type an address below, or submit the report manually.';
             });
+        });
+    }
+
+    if (manualSearchBtn && manualInput) {
+        function runManualSearch() {
+            const query = manualInput.value.trim();
+            if (!query) return;
+
+            gpsStatus.textContent = 'Searching for that location...';
+            manualSearchBtn.disabled = true;
+
+            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1`)
+                .then(res => res.json())
+                .then(function (results) {
+                    manualSearchBtn.disabled = false;
+                    if (!results || !results.length) {
+                        gpsStatus.textContent = `Couldn't find "${query}". Try a more specific address or landmark.`;
+                        return;
+                    }
+                    const result = results[0];
+                    setLocation(parseFloat(result.lat), parseFloat(result.lon), result.display_name);
+                })
+                .catch(function () {
+                    manualSearchBtn.disabled = false;
+                    gpsStatus.textContent = 'Address lookup failed. Check your connection and try again.';
+                });
+        }
+
+        manualSearchBtn.addEventListener('click', runManualSearch);
+        manualInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                runManualSearch();
+            }
+        });
+    }
+
+    // ── Photo Evidence dropzone ──────────────────────────────
+    const dropzone = document.getElementById('photoDropzone');
+    const fileInput = document.getElementById('photo');
+    const emptyState = document.getElementById('photoDropzoneEmpty');
+    const previewState = document.getElementById('photoDropzonePreview');
+    const previewImg = document.getElementById('photoPreviewImg');
+    const previewName = document.getElementById('photoPreviewName');
+    const previewSize = document.getElementById('photoPreviewSize');
+    const removeBtn = document.getElementById('photoRemoveBtn');
+
+    if (dropzone && fileInput) {
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        function showPreview(file) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                previewImg.src = e.target.result;
+                previewName.textContent = file.name;
+                previewSize.textContent = formatFileSize(file.size);
+                emptyState.classList.add('d-none');
+                previewState.classList.remove('d-none');
+                dropzone.classList.add('has-file');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearPreview() {
+            fileInput.value = '';
+            previewImg.src = '';
+            emptyState.classList.remove('d-none');
+            previewState.classList.add('d-none');
+            dropzone.classList.remove('has-file');
+        }
+
+        function handleFiles(files) {
+            if (!files || !files.length) return;
+            const file = files[0];
+            if (!file.type.startsWith('image/')) return;
+
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            fileInput.files = dt.files;
+            showPreview(file);
+        }
+
+        dropzone.addEventListener('click', function (e) {
+            if (e.target.closest('#photoRemoveBtn')) return;
+            fileInput.click();
+        });
+
+        dropzone.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                fileInput.click();
+            }
+        });
+
+        fileInput.addEventListener('change', function () {
+            handleFiles(fileInput.files);
+        });
+
+        ['dragenter', 'dragover'].forEach(evt => {
+            dropzone.addEventListener(evt, function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.add('is-dragover');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(evt => {
+            dropzone.addEventListener(evt, function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.remove('is-dragover');
+            });
+        });
+
+        dropzone.addEventListener('drop', function (e) {
+            handleFiles(e.dataTransfer.files);
+        });
+
+        removeBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            clearPreview();
         });
     }
 });

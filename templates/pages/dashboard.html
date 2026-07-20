@@ -1,15 +1,12 @@
 <!-- Generated at: 2024-01-15 03:37:00 -->
 {% extends 'pages/base.html' %}
 
-{% block title %}
-    {% if user_role == 'user' %}Citizen Dashboard | DICS AI{% else %}Operational Center Console | DICS AI{% endif %}
-{% endblock %}
+{% block title %}Operational Center Console | DICS AI{% endblock %}
 
 {% block content %}
 
-{% if user_role in ['admin', 'agency_coordinator'] %}
 {# ============================================================ #}
-{# ADMIN / AGENCY COORDINATOR DASHBOARD                         #}
+{# ADMIN DASHBOARD                                               #}
 {# ============================================================ #}
 
 <div class="row mb-4">
@@ -167,235 +164,11 @@
     </div>
 </div>
 
-{% else %}
-{# ============================================================ #}
-{# CITIZEN DASHBOARD                                            #}
-{# ============================================================ #}
-
-<!-- Citizen Header -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card card-custom">
-            <div class="card-body">
-                <div class="section-header">
-                    <span class="section-header-icon"><i class="bi bi-house-heart-fill"></i></span>
-                    <h4>Welcome, {{ username }}</h4>
-                </div>
-                <p class="text-muted mb-0">Stay informed and report incidents in your area. Your reports help authorities respond faster.</p>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Citizen Stat Cards -->
-<div class="row g-3 mb-4">
-    <div class="col-md-4">
-        <div class="stat-card card-gradient-primary h-100">
-            <div class="d-flex align-items-center justify-content-between">
-                <div>
-                    <div class="stat-label">Your Reports</div>
-                    <div class="stat-value">{{ total_incidents }}</div>
-                    <div class="stat-description">Total incidents submitted</div>
-                </div>
-                <div class="icon-badge icon-badge-primary">
-                    <i class="bi bi-file-earmark-text"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="stat-card card-gradient-danger h-100">
-            <div class="d-flex align-items-center justify-content-between">
-                <div>
-                    <div class="stat-label">Active Alerts</div>
-                    <div class="stat-value">{{ alert_count }}</div>
-                    <div class="stat-description">Alerts in your area</div>
-                </div>
-                <div class="icon-badge" style="background: rgba(239,68,68,0.15); color:#FCA5A5; border:1px solid rgba(239,68,68,0.3);">
-                    <i class="bi bi-exclamation-triangle-fill"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="stat-card card-gradient-warning h-100">
-            <div class="d-flex align-items-center justify-content-between">
-                <div>
-                    <div class="stat-label">Earthquake</div>
-                    <div class="stat-value" style="font-size: 1.75rem;">M{{ "%.1f"|format(latest_earthquake_magnitude|float(0)) }}</div>
-                    <div class="stat-description">Latest recorded magnitude</div>
-                </div>
-                <div class="icon-badge icon-badge-warning">
-                    <i class="bi bi-tsunami"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Citizen Quick Actions + Recent Reports -->
-<div class="row g-4 mb-4">
-    <div class="col-lg-4 d-none d-md-block">
-        <div class="card card-custom h-100">
-            <div class="card-body p-4">
-                <div class="d-flex align-items-center gap-2 mb-4">
-                    <div class="icon-badge icon-badge-primary">
-                        <i class="bi bi-lightning-charge-fill"></i>
-                    </div>
-                    <h5 class="mb-0">Quick Actions</h5>
-                </div>
-                <div class="d-flex flex-column gap-2">
-                    <a href="/citizen-report" class="btn btn-primary-modern btn-modern py-3 d-flex justify-content-between align-items-center">
-                        <span><i class="bi bi-plus-circle-fill me-2"></i>Report an Incident</span>
-                        <i class="bi bi-arrow-right"></i>
-                    </a>
-                    <a href="/citizen-alerts" class="btn btn-modern py-3 d-flex justify-content-between align-items-center"
-                       style="background:linear-gradient(135deg,#dc2626,#b91c1c);color:#fff;border:none;">
-                        <span><i class="bi bi-bell-fill me-2"></i>View Active Alerts</span>
-                        <i class="bi bi-arrow-right"></i>
-                    </a>
-                    <a href="/citizen-status" class="btn btn-success-modern btn-modern py-3 d-flex justify-content-between align-items-center">
-                        <span><i class="bi bi-clock-history me-2"></i>Track My Reports</span>
-                        <i class="bi bi-arrow-right"></i>
-                    </a>
-                    <a href="/citizen-resources" class="btn btn-modern py-3 d-flex justify-content-between align-items-center"
-                       style="background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border:none;">
-                        <span><i class="bi bi-info-circle-fill me-2"></i>Safety Resources</span>
-                        <i class="bi bi-arrow-right"></i>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-lg-8">
-        <div class="card card-custom h-100">
-            <div class="card-body p-4">
-                <div class="d-flex align-items-center gap-2 mb-4">
-                    <div class="icon-badge icon-badge-success">
-                        <i class="bi bi-clock-history"></i>
-                    </div>
-                    <h5 class="mb-0">Your Recent Reports</h5>
-                    <div class="ms-auto">
-                        <a href="/citizen-status" class="btn btn-outline-primary btn-sm">
-                            <i class="bi bi-arrow-right me-1"></i>View All
-                        </a>
-                    </div>
-                </div>
-                {% if incidents %}
-                    <div class="table-responsive">
-                        <table class="table table-enhanced align-middle mb-0">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th class="text-nowrap">Incident Type</th>
-                                    <th class="text-nowrap">Location</th>
-                                    <th class="text-nowrap">Status</th>
-                                    <th class="text-nowrap">Risk Level</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for incident in incidents %}
-                                    <tr>
-                                        <td><strong class="text-info">#{{ incident.id }}</strong></td>
-                                        <td>
-                                            <div class="d-flex align-items-center gap-2">
-                                                {% if incident.hazard_type|lower == 'flood' %}<span>🌊</span>
-                                                {% elif incident.hazard_type|lower == 'landslide' %}<span>🏔️</span>
-                                                {% elif incident.hazard_type|lower == 'earthquake' %}<span>📍</span>
-                                                {% elif incident.hazard_type|lower == 'storm' %}<span>⛈️</span>
-                                                {% elif incident.hazard_type|lower == 'fire' %}<span>🔥</span>
-                                                {% else %}<span>⚠️</span>{% endif %}
-                                                <strong>{{ incident.hazard_type|upper }}</strong>
-                                            </div>
-                                        </td>
-                                        <td class="text-nowrap"><span class="text-muted small">{{ incident.location if incident.location else 'N/A' }}</span></td>
-                                        <td>
-                                            {% if incident.alert %}
-                                                <span class="badge badge-status-active"><i class="bi bi-exclamation-circle-fill me-1"></i>Active Alert</span>
-                                            {% else %}
-                                                <span class="badge badge-status-pending"><i class="bi bi-hourglass-split me-1"></i>Pending</span>
-                                            {% endif %}
-                                        </td>
-                                        <td class="text-nowrap">
-                                            {% if incident.level|lower == 'high' %}
-                                                <span style="display:inline-flex; align-items:center; gap:0.35em; white-space:nowrap; padding: 0.35em 0.65em; background: rgba(239,68,68,0.2); color: #FCA5A5; border: 1px solid rgba(239,68,68,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">🔴 HIGH</span>
-                                            {% elif incident.level|lower == 'moderate' %}
-                                                <span style="display:inline-flex; align-items:center; gap:0.35em; white-space:nowrap; padding: 0.35em 0.65em; background: rgba(245,158,11,0.2); color: #FCD34D; border: 1px solid rgba(245,158,11,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">🟡 MOD</span>
-                                            {% else %}
-                                                <span style="display:inline-flex; align-items:center; gap:0.35em; white-space:nowrap; padding: 0.35em 0.65em; background: rgba(16,185,129,0.2); color: #86EFAC; border: 1px solid rgba(16,185,129,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">🟢 LOW</span>
-                                            {% endif %}
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                {% else %}
-                    <div class="text-center py-5">
-                        <div style="font-size: 2.5rem; margin-bottom: 1rem;">📋</div>
-                        <h5 class="mb-2">No Reports Yet</h5>
-                        <p class="text-muted mb-3">You haven't submitted any incident reports.</p>
-                        <a href="/citizen-report" class="btn btn-primary-modern btn-modern" style="width: auto; display: inline-block;">
-                            <i class="bi bi-plus-circle me-2"></i>Submit Your First Report
-                        </a>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Citizen Safety Tips -->
-<div class="row g-3">
-    <div class="col-md-4">
-        <div class="card card-custom card-gradient-danger h-100">
-            <div class="card-body p-3 d-flex align-items-start gap-3">
-                <div class="icon-badge" style="background: rgba(239,68,68,0.15); color:#FCA5A5; border:1px solid rgba(239,68,68,0.3); flex-shrink:0;">
-                    <i class="bi bi-telephone-fill"></i>
-                </div>
-                <div>
-                    <div class="small text-muted">National Emergency</div>
-                    <div class="fw-bold text-white fs-5">911</div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card card-custom card-gradient-primary h-100">
-            <div class="card-body p-3 d-flex align-items-start gap-3">
-                <div class="icon-badge icon-badge-primary" style="flex-shrink:0;">
-                    <i class="bi bi-pin-map-fill"></i>
-                </div>
-                <div>
-                    <div class="small text-muted">View Hazard Zones</div>
-                    <a href="/hazard-map" class="fw-bold text-info text-decoration-none">Open Hazard Map →</a>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-         <div class="card card-custom card-gradient-success h-100">
-            <div class="card-body p-3 d-flex align-items-start gap-3">
-                <div class="icon-badge icon-badge-success" style="flex-shrink:0;">
-                    <i class="bi bi-file-text-fill"></i>
-                </div>
-                <div>
-                    <div class="small text-muted">Safety Protocols</div>
-                    <a href="/citizen-resources" class="fw-bold text-success text-decoration-none">View Resources →</a>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-{% endif %}
 {% endblock %}
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-{% if user_role in ['admin', 'agency_coordinator'] %}
 fetch('/api/realtime-data')
     .then(response => response.json())
     .then(data => {
@@ -431,6 +204,5 @@ if (ctx) {
         }
     });
 }
-{% endif %}
 </script>
 {% endblock %}
