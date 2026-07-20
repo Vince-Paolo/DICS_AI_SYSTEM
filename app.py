@@ -566,19 +566,13 @@ def dashboard():
     elif user.role == 'agency_coordinator':
         return redirect(url_for('coordinator.coordinator_dashboard'))
 
-    if user.role == 'admin':
-        # System-wide view for admins, not scoped to a single user's own reports.
-        incidents = Incident.query.order_by(Incident.created_at.desc()).limit(5).all()
-        total_incidents = Incident.query.count()
-        alert_count = Incident.query.filter_by(alert=True).count()
-        latest_incident = Incident.query.order_by(Incident.created_at.desc()).first()
-        latest_risk_score = latest_incident.score if latest_incident else 0
-    else:
-        incidents = Incident.query.filter_by(user_id=user.id).order_by(Incident.created_at.desc()).limit(5).all()
-        total_incidents = Incident.query.filter_by(user_id=user.id).count()
-        alert_count = Incident.query.filter_by(user_id=user.id, alert=True).count()
-        latest_incident = Incident.query.filter_by(user_id=user.id).order_by(Incident.created_at.desc()).first()
-        latest_risk_score = latest_incident.score if latest_incident else 0
+    # Only admins reach this point; every other role is redirected above.
+    # System-wide view, not scoped to a single user's own reports.
+    incidents = Incident.query.order_by(Incident.created_at.desc()).limit(5).all()
+    total_incidents = Incident.query.count()
+    alert_count = Incident.query.filter_by(alert=True).count()
+    latest_incident = Incident.query.order_by(Incident.created_at.desc()).first()
+    latest_risk_score = latest_incident.score if latest_incident else 0
 
     earthquake_data = get_earthquake_data()
     latest_earthquake_magnitude = 0
