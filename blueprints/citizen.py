@@ -1,7 +1,9 @@
 import os
 import secrets
+from io import BytesIO
 
 from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, session, url_for
+from PIL import Image, UnidentifiedImageError
 from werkzeug.utils import secure_filename
 
 from models import db, User, Incident, CitizenReport
@@ -34,17 +36,30 @@ def citizen_report():
         photo_filename = None
         photo_file = request.files.get('photo')
         if photo_file and photo_file.filename:
-            upload_dir = current_app.config['UPLOAD_FOLDER']
-            os.makedirs(upload_dir, exist_ok=True)
+            allowed_extensions = {'.jpg', '.jpeg', '.png', '.webp'}
             filename = secure_filename(photo_file.filename)
-            if filename:
-                stored_name = f"{secrets.token_hex(8)}_{filename}"
-                photo_path = os.path.join(upload_dir, stored_name)
-                photo_file.save(photo_path)
-                photo_filename = stored_name
-            else:
+            ext = os.path.splitext(filename)[1].lower()
+            if not filename or ext not in allowed_extensions:
                 flash('Photo upload was invalid.', 'error')
                 return redirect(url_for('citizen.citizen_report'))
+
+            try:
+                image_bytes = photo_file.read()
+                if not image_bytes:
+                    raise UnidentifiedImageError('Empty image upload')
+                with Image.open(BytesIO(image_bytes)) as image:
+                    image.verify()
+            except (UnidentifiedImageError, OSError, ValueError):
+                flash('Photo upload was invalid.', 'error')
+                return redirect(url_for('citizen.citizen_report'))
+
+            upload_dir = current_app.config['UPLOAD_FOLDER']
+            os.makedirs(upload_dir, exist_ok=True)
+            stored_name = f"{secrets.token_hex(8)}_{filename}"
+            photo_path = os.path.join(upload_dir, stored_name)
+            with open(photo_path, 'wb') as output_file:
+                output_file.write(image_bytes)
+            photo_filename = stored_name
 
         try:
             gps_latitude_value = float(gps_latitude) if gps_latitude else None

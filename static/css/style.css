@@ -547,6 +547,7 @@ p.text-muted {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     position: relative;
     overflow: hidden;
+    white-space: nowrap !important;
 }
 
 .btn-modern::before {
@@ -571,6 +572,7 @@ p.text-muted {
     background: linear-gradient(135deg, #1E40AF, #1D4ED8) !important;
     color: #ffffff !important;
     box-shadow: 0 4px 15px rgba(29, 78, 216, 0.3);
+    white-space: nowrap !important;
 }
 
 .btn-primary-modern:hover {
@@ -583,6 +585,7 @@ p.text-muted {
     background: linear-gradient(135deg, #059669, #10B981) !important;
     color: #ffffff !important;
     box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+    white-space: nowrap !important;
 }
 
 .btn-success-modern:hover {
@@ -599,6 +602,9 @@ p.text-muted {
     font-weight: 700;
     padding: 0.5rem 0.75rem;
     border-radius: 6px;
+    white-space: nowrap !important;
+    display: inline-flex !important;
+    align-items: center !important;
 }
 
 .badge-status-active {
@@ -609,6 +615,9 @@ p.text-muted {
     padding: 0.5rem 0.75rem;
     border-radius: 6px;
     animation: pulse-blue 2s infinite;
+    white-space: nowrap !important;
+    display: inline-flex !important;
+    align-items: center !important;
 }
 
 .badge-status-resolved {
@@ -618,6 +627,9 @@ p.text-muted {
     font-weight: 700;
     padding: 0.5rem 0.75rem;
     border-radius: 6px;
+    white-space: nowrap !important;
+    display: inline-flex !important;
+    align-items: center !important;
 }
 
 @keyframes pulse-blue {
@@ -1227,6 +1239,406 @@ p.text-muted {
     }
 }
 
+/* ============================================================
+   COMPREHENSIVE RESPONSIVE BUTTON & BADGE FIXES
+   ============================================================ */
+
+/* ── Mobile Devices: max-width 767px ──────────────────────── */
+@media (max-width: 767.98px) {
+    /* Stat cards: better mobile layout */
+    .row.g-3 {
+        gap: 0.75rem !important;
+    }
+    
+    .stat-card {
+        padding: 0.9rem !important;
+    }
+    
+    .stat-value {
+        font-size: 1.85rem !important;
+    }
+    
+    .stat-label {
+        font-size: 0.65rem !important;
+        margin-top: 0.3rem !important;
+    }
+    
+    .stat-description {
+        font-size: 0.65rem !important;
+        margin-top: 0.15rem !important;
+    }
+    
+    .stat-card .icon-badge {
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 1.1rem !important;
+    }
+    
+    /* Button scaling for mobile */
+    .btn, .btn-sm, .btn-lg {
+        font-size: 0.75rem !important;
+        padding: 0.5rem 0.9rem !important;
+    }
+    
+    .btn-modern {
+        padding: 0.6rem 1rem !important;
+        font-size: 0.75rem !important;
+    }
+    
+    .btn-primary-modern, .btn-success-modern {
+        padding: 0.6rem 1rem !important;
+        font-size: 0.75rem !important;
+    }
+    
+    /* Small buttons (action buttons in tables) */
+    .btn-sm {
+        padding: 0.35rem 0.65rem !important;
+        font-size: 0.7rem !important;
+    }
+    
+    /* Badge scaling */
+    .badge {
+        font-size: 0.65rem !important;
+        padding: 0.3em 0.5em !important;
+    }
+    
+    .badge-status-pending, 
+    .badge-status-active, 
+    .badge-status-resolved {
+        padding: 0.4em 0.65em !important;
+        font-size: 0.68rem !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        margin: 0.25rem 0 !important;
+    }
+    
+    .priority-badge {
+        padding: 0.3em 0.55em !important;
+        font-size: 0.65em !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        margin: 0.25rem 0 !important;
+        white-space: nowrap !important;
+    }
+    
+    /* Icons in badges/buttons */
+    .bi {
+        font-size: 0.8em !important;
+    }
+    
+    /* Reduce padding in cards */
+    .card-body {
+        padding: 1rem !important;
+    }
+    
+    .card-custom .card-body {
+        padding: 0.9rem !important;
+    }
+    
+    /* Section headers responsive */
+    .section-header {
+        gap: 0.5rem !important;
+        margin-bottom: 1rem !important;
+        padding-bottom: 0.75rem !important;
+    }
+    
+    .section-header h4 {
+        font-size: 1.05rem !important;
+    }
+    
+    /* Icon badges general */
+    .icon-badge {
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 1.1rem !important;
+    }
+    
+    .icon-badge-primary, 
+    .icon-badge-success, 
+    .icon-badge-warning {
+        width: 32px !important;
+        height: 32px !important;
+        font-size: 0.95rem !important;
+    }
+    
+    /* Form controls on mobile */
+    .form-select, .form-control {
+        font-size: 0.85rem !important;
+        padding: 0.5rem 0.6rem !important;
+    }
+    
+    .form-select-sm, .form-control-sm {
+        font-size: 0.75rem !important;
+        padding: 0.35rem 0.5rem !important;
+    }
+    
+    /* Reduce margins for tighter layouts */
+    .mb-4 { margin-bottom: 1rem !important; }
+    .mb-3 { margin-bottom: 0.75rem !important; }
+    .my-4 { margin-top: 1rem !important; margin-bottom: 1rem !important; }
+    
+    /* Header sizing */
+    h2 { font-size: 1.25rem !important; }
+    h3 { font-size: 1.1rem !important; }
+    h4 { font-size: 1rem !important; }
+    h5 { font-size: 0.95rem !important; }
+    h6 { font-size: 0.85rem !important; }
+    
+    /* Table font scaling */
+    .table {
+        font-size: 0.8rem !important;
+    }
+    
+    .table thead th {
+        padding: 0.5rem 0.5rem !important;
+        font-size: 0.7rem !important;
+    }
+    
+    .table tbody td {
+        padding: 0.5rem 0.5rem !important;
+    }
+    
+    /* Action cell buttons */
+    .table-enhanced tbody td .btn {
+        margin-top: 0.3rem !important;
+    }
+    
+    /* Flex gaps on mobile */
+    .gap-2 { gap: 0.4rem !important; }
+    .gap-3 { gap: 0.75rem !important; }
+}
+
+/* ── Tablet: 768px - 991px ────────────────────────────────── */
+@media (min-width: 768px) and (max-width: 991.98px) {
+    .stat-card {
+        padding: 1.1rem !important;
+    }
+    
+    .stat-value {
+        font-size: 2rem !important;
+    }
+    
+    .stat-label {
+        font-size: 0.75rem !important;
+    }
+    
+    .stat-description {
+        font-size: 0.72rem !important;
+    }
+    
+    .stat-card .icon-badge {
+        width: 40px !important;
+        height: 40px !important;
+        font-size: 1.2rem !important;
+    }
+    
+    /* Buttons on tablet */
+    .btn {
+        font-size: 0.78rem !important;
+        padding: 0.55rem 1rem !important;
+    }
+    
+    .btn-sm {
+        padding: 0.4rem 0.75rem !important;
+        font-size: 0.72rem !important;
+    }
+    
+    .btn-modern {
+        padding: 0.65rem 1.2rem !important;
+        font-size: 0.78rem !important;
+    }
+    
+    /* Badges on tablet */
+    .badge {
+        font-size: 0.7rem !important;
+    }
+    
+    .badge-status-pending, 
+    .badge-status-active, 
+    .badge-status-resolved {
+        padding: 0.4em 0.6em !important;
+        font-size: 0.68rem !important;
+    }
+    
+    .priority-badge {
+        padding: 0.27em 0.5em !important;
+        font-size: 0.68em !important;
+    }
+    
+    /* Form elements on tablet */
+    .form-select, .form-control {
+        font-size: 0.88rem !important;
+    }
+    
+    .card-body {
+        padding: 1.25rem !important;
+    }
+}
+
+/* ── Desktop: 992px and up ────────────────────────────────── */
+@media (min-width: 992px) {
+    .btn {
+        font-size: 0.85rem !important;
+        padding: 0.75rem 1.5rem !important;
+    }
+    
+    .btn-sm {
+        padding: 0.45rem 0.9rem !important;
+        font-size: 0.75rem !important;
+    }
+    
+    .badge {
+        font-size: 0.75rem !important;
+    }
+    
+    .priority-badge {
+        padding: 0.3em 0.6em !important;
+        font-size: 0.75em !important;
+    }
+}
+
+/* ── Ultra-small screens: max 480px ────────────────────── */
+@media (max-width: 480px) {
+    /* Extra aggressive scaling for phones */
+    .container-fluid {
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+    }
+    
+    .container {
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+    }
+    
+    .row.g-3 {
+        gap: 0.5rem !important;
+    }
+    
+    .col-md-3, .col-lg-4, .col-lg-5, .col-lg-7 {
+        padding-left: 0.25rem !important;
+        padding-right: 0.25rem !important;
+    }
+    
+    .card, .card-custom {
+        margin-bottom: 0.75rem !important;
+    }
+    
+    .card-body, .card-custom .card-body {
+        padding: 0.75rem !important;
+    }
+    
+    .btn-modern {
+        padding: 0.5rem 0.85rem !important;
+        font-size: 0.7rem !important;
+        letter-spacing: 0.02em !important;
+    }
+    
+    .stat-value {
+        font-size: 1.5rem !important;
+    }
+    
+    .stat-label {
+        font-size: 0.6rem !important;
+    }
+}
+
+/* ── Stat card row responsive layout ──────────────────── */
+@media (max-width: 1199.98px) {
+    .row.g-3 .col-md-3 {
+        flex: 0 0 calc(50% - 0.375rem) !important;
+        max-width: calc(50% - 0.375rem) !important;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .row.g-3 .col-md-3 {
+        flex: 0 0 100% !important;
+        max-width: 100% !important;
+    }
+}
+
+/* ── Mobile card layout improvements ──────────────────── */
+@media (max-width: 767.98px) {
+    /* Ensure badges in mobile cards don't overlap with text */
+    .table-mobile-stack td .priority-badge,
+    .table-mobile-stack td .badge-status-active,
+    .table-mobile-stack td .badge-status-pending,
+    .table-mobile-stack td .badge-status-resolved {
+        display: block !important;
+        margin-bottom: 0.3rem !important;
+        margin-top: 0.15rem !important;
+    }
+    
+    /* Ensure text after badges is on a new line */
+    .table-mobile-stack td strong,
+    .table-mobile-stack td .text-muted {
+        display: block;
+        margin-top: 0.2rem;
+    }
+    
+    /* Separate cell content with clear vertical spacing */
+    .table-mobile-stack td > * {
+        margin-bottom: 0.2rem;
+    }
+    
+    .table-mobile-stack td > *:last-child {
+        margin-bottom: 0;
+    }
+}
+@media (max-width: 991.98px) {
+    .badge-status-pending, 
+    .badge-status-active, 
+    .badge-status-resolved,
+    .priority-badge {
+        display: inline-flex !important;
+        align-items: center !important;
+        white-space: nowrap !important;
+        word-break: keep-all !important;
+    }
+}
+
+/* ── Responsive button groups and card actions ────────── */
+@media (max-width: 767.98px) {
+    .d-flex.align-items-center.gap-2,
+    .d-flex.align-items-start.gap-2 {
+        flex-wrap: wrap !important;
+        gap: 0.5rem !important;
+    }
+    
+    .d-flex.gap-3 {
+        gap: 0.75rem !important;
+    }
+    
+    /* Make card action buttons stack better */
+    .card .d-flex.align-items-center.justify-content-between {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+    }
+    
+    /* Button text truncation */
+    .btn, .badge {
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+    
+    /* Prevent button overflow in tight spaces */
+    .btn {
+        max-width: 100% !important;
+    }
+}
+
+/* ── Special handling for "LIVE" badges and status indicators ── */
+@media (max-width: 767.98px) {
+    .badge-status-active {
+        white-space: nowrap !important;
+        min-width: fit-content !important;
+    }
+    
+    .d-flex.gap-2 .badge {
+        flex-shrink: 0 !important;
+    }
+}
+
 /* ── Tighter card/body padding on small screens so forms have more ───
    usable width instead of losing it to fixed rem padding meant for
    desktop card layouts */
@@ -1298,6 +1710,585 @@ p.text-muted {
 .container > *:nth-child(3)  { animation-delay: 0.15s; }
 .container > *:nth-child(4)  { animation-delay: 0.20s; }
 .container > *:nth-child(5)  { animation-delay: 0.25s; }
+
+/* ============================================================
+   PRIORITY BADGE RESPONSIVE STYLING
+   ============================================================ */
+
+/* Base priority badge styles */
+.priority-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.3em 0.6em;
+    border-radius: 6px;
+    font-size: 0.75em;
+    font-weight: 700;
+    white-space: nowrap !important;
+    text-transform: uppercase;
+    transition: all 0.2s ease;
+    word-break: keep-all !important;
+}
+
+.priority-critical {
+    background: rgba(239, 68, 68, 0.2);
+    color: #FCA5A5;
+    border: 1px solid rgba(239, 68, 68, 0.5);
+}
+
+.priority-high {
+    background: rgba(245, 158, 11, 0.2);
+    color: #FCD34D;
+    border: 1px solid rgba(245, 158, 11, 0.5);
+}
+
+.priority-medium {
+    background: rgba(59, 130, 246, 0.2);
+    color: #93C5FD;
+    border: 1px solid rgba(59, 130, 246, 0.5);
+}
+
+.priority-low {
+    background: rgba(16, 185, 129, 0.2);
+    color: #86EFAC;
+    border: 1px solid rgba(16, 185, 129, 0.5);
+}
+
+/* ============================================================
+   RESPONSIVE TABLE IMPROVEMENTS
+   ============================================================ */
+
+/* Enhanced responsive behavior for tables */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
+    -ms-overflow-style: -ms-autohiding-scrollbar;
+}
+
+/* Ensure table doesn't get squeezed into breaking text character-by-character */
+.table-responsive .table {
+    margin-bottom: 0;
+    min-width: 550px;
+}
+
+/* Improve table visibility on all screens */
+.table-enhanced {
+    table-layout: auto;
+    width: 100%;
+    min-width: 550px;
+}
+
+.table-enhanced thead th {
+    white-space: nowrap;
+    vertical-align: middle;
+    word-break: keep-all;
+}
+
+.table-enhanced tbody td {
+    vertical-align: middle;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    min-width: 0;
+}
+
+/* Prevent text from breaking into individual characters */
+.table-enhanced tbody td > * {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+/* Ensure table cells don't get too narrow */
+.table-enhanced thead th {
+    min-width: 80px;
+}
+
+.table-enhanced tbody td {
+    min-width: 60px;
+}
+
+/* User column should have more space */
+.table-enhanced tbody td:first-child {
+    min-width: 140px;
+}
+
+/* Role, Status, Agency columns need proper space */
+.table-enhanced thead th:nth-child(2),
+.table-enhanced thead th:nth-child(3),
+.table-enhanced thead th:nth-child(4) {
+    min-width: 100px;
+}
+
+.table-enhanced tbody td:nth-child(2),
+.table-enhanced tbody td:nth-child(3),
+.table-enhanced tbody td:nth-child(4) {
+    min-width: 90px;
+}
+
+/* Alert Log table specific rules - Date & Time column */
+.table-enhanced thead th:nth-child(1) {
+    min-width: 150px;
+}
+
+.table-enhanced tbody td:nth-child(1) {
+    min-width: 150px;
+    white-space: nowrap;
+}
+
+/* Alert Log - Hazard column (prevent text wrapping with emoji) */
+.table-enhanced thead th:nth-child(2) {
+    min-width: 130px;
+}
+
+.table-enhanced tbody td:nth-child(2) {
+    min-width: 130px;
+    white-space: nowrap;
+}
+
+.table-enhanced tbody td:nth-child(2) .d-flex {
+    white-space: nowrap;
+    flex-wrap: nowrap;
+    gap: 0.4rem;
+}
+
+.table-enhanced tbody td:nth-child(2) strong {
+    white-space: nowrap;
+}
+
+/* Alert Log - Risk Level column (prevent badge wrapping) */
+.table-enhanced thead th:nth-child(3) {
+    min-width: 110px;
+}
+
+.table-enhanced tbody td:nth-child(3) {
+    min-width: 110px;
+    white-space: nowrap;
+}
+
+.table-enhanced tbody td:nth-child(3) span {
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+}
+
+/* Alert Log - Score column */
+.table-enhanced thead th:nth-child(4) {
+    min-width: 70px;
+}
+
+.table-enhanced tbody td:nth-child(4) {
+    min-width: 70px;
+    white-space: nowrap;
+}
+
+/* Alert Log - Message column (allow wrapping but with proper spacing) */
+.table-enhanced thead th:nth-child(5) {
+    min-width: 200px;
+}
+
+.table-enhanced tbody td:nth-child(5) {
+    min-width: 200px;
+    word-wrap: break-word;
+}
+
+/* Incident History - 6 column table (with Alert status column) */
+.table-enhanced thead th:nth-child(5) {
+    min-width: 80px;
+}
+
+.table-enhanced tbody td:nth-child(5) {
+    min-width: 80px;
+    white-space: nowrap;
+}
+
+.table-enhanced tbody td:nth-child(5) span {
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+}
+
+/* Incident History - Message column (6th column) */
+.table-enhanced thead th:nth-child(6) {
+    min-width: 180px;
+}
+
+.table-enhanced tbody td:nth-child(6) {
+    min-width: 180px;
+    word-wrap: break-word;
+}
+
+/* Prevent text wrapping in action button cells */
+.table-enhanced tbody td .btn,
+.table-enhanced tbody td .badge-status-active,
+.table-enhanced tbody td .badge-status-pending,
+.table-enhanced tbody td .priority-badge {
+    white-space: nowrap !important;
+}
+
+/* ── Mobile table improvements: allow horizontal scroll instead of breaking text ── */
+@media (max-width: 767.98px) {
+    /* Regular tables: allow horizontal scroll on mobile */
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border-radius: 8px;
+    }
+    
+    /* Ensure table doesn't break text into characters */
+    .table {
+        min-width: 600px;
+        margin-bottom: 0;
+    }
+    
+    .table thead th {
+        white-space: nowrap;
+        font-size: 0.7rem;
+        padding: 0.65rem 0.5rem;
+    }
+    
+    .table tbody td {
+        white-space: nowrap;
+        font-size: 0.75rem;
+        padding: 0.65rem 0.5rem;
+    }
+    
+    /* User management table specifics */
+    .table-enhanced {
+        min-width: 700px;
+    }
+    
+    .table-enhanced tbody td:first-child {
+        min-width: 180px;
+        white-space: normal;
+    }
+    
+    .table-enhanced tbody td:first-child .d-flex {
+        white-space: nowrap;
+    }
+    
+    .table-enhanced tbody td:first-child .fw-bold,
+    .table-enhanced tbody td:first-child small {
+        display: block;
+        white-space: normal;
+    }
+    
+    /* Alert Log table on mobile */
+    .table-enhanced tbody td:nth-child(1),
+    .table-enhanced tbody td:nth-child(2),
+    .table-enhanced tbody td:nth-child(3),
+    .table-enhanced tbody td:nth-child(4),
+    .table-enhanced tbody td:nth-child(5),
+    .table-enhanced tbody td:nth-child(6) {
+        white-space: nowrap;
+    }
+    
+    /* Ensure all table columns maintain minimum widths on mobile */
+    .table-enhanced thead th:nth-child(n) {
+        min-width: 100px;
+    }
+    
+    .table-enhanced tbody td:nth-child(n) {
+        min-width: 100px;
+    }
+    
+    /* Role, Agency, Status badges stay inline */
+    .table-enhanced tbody td:nth-child(2),
+    .table-enhanced tbody td:nth-child(3),
+    .table-enhanced tbody td:nth-child(4),
+    .table-enhanced tbody td:nth-child(5),
+    .table-enhanced tbody td:nth-child(6) {
+        white-space: nowrap;
+        min-width: 100px;
+    }
+}
+@media (max-width: 767.98px) {
+    /* Hide table headers on mobile, convert to card-style layout */
+    .table-mobile-stack thead {
+        display: none;
+    }
+    
+    .table-mobile-stack tbody,
+    .table-mobile-stack tr,
+    .table-mobile-stack td {
+        display: block;
+        width: 100%;
+    }
+    
+    .table-mobile-stack tr {
+        margin-bottom: 1.5rem;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        padding: 1.25rem;
+        background-color: rgba(20, 27, 45, 0.6);
+    }
+    
+    .table-mobile-stack td {
+        padding: 1rem 0;
+        text-align: left;
+        border: none;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+    
+    .table-mobile-stack td::before {
+        content: attr(data-label);
+        position: static;
+        font-weight: 700;
+        color: #B3B9C4;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-bottom: 0.35rem;
+        display: block;
+    }
+    
+    .table-mobile-stack td:first-child::before {
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Ensure badges display properly stacked */
+    .table-mobile-stack .priority-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.35em 0.6em !important;
+        font-size: 0.68em !important;
+        margin: 0.2em 0 !important;
+        white-space: nowrap !important;
+        word-break: keep-all !important;
+    }
+    
+    .table-mobile-stack .badge-status-active {
+        display: inline-flex !important;
+        align-items: center !important;
+        padding: 0.4em 0.7em !important;
+        font-size: 0.68rem !important;
+        white-space: nowrap !important;
+    }
+    
+    /* Ensure action buttons are full width */
+    .table-mobile-stack .btn-sm {
+        width: 100%;
+        margin-top: 1rem;
+        font-size: 0.75rem !important;
+        padding: 0.6rem 1rem !important;
+    }
+    
+    /* Hide less critical columns on very small screens */
+    .table-mobile-hide-sm {
+        display: none !important;
+    }
+    
+    /* Make text more readable */
+    .table-mobile-stack td strong {
+        display: inline;
+        color: var(--text-primary);
+        font-weight: 700;
+    }
+    
+    .table-mobile-stack .text-muted {
+        font-size: 0.78rem;
+        color: #9CA3AF;
+    }
+    
+    .table-mobile-stack .small {
+        font-size: 0.75rem;
+    }
+    
+    /* Prevent label from being too wide */
+    .table-mobile-stack td[data-label]::before {
+        min-width: auto;
+        max-width: 100%;
+    }
+    
+    /* Add proper spacing between rows */
+    .table-mobile-stack tbody tr {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+}
+
+/* ── Tablet: Optimize for medium screens ──────────────────────────── */
+@media (min-width: 768px) and (max-width: 991.98px) {
+    .table-responsive {
+        font-size: 0.9rem;
+        overflow-x: auto;
+    }
+    
+    .table {
+        min-width: 600px;
+    }
+    
+    .table-enhanced {
+        min-width: 650px;
+    }
+    
+    .table-enhanced thead th {
+        padding: 0.65rem 0.75rem;
+        font-size: 0.8rem;
+        white-space: nowrap;
+        word-break: keep-all;
+    }
+    
+    .table-enhanced tbody td {
+        padding: 0.7rem 0.75rem;
+        font-size: 0.85rem;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+    
+    /* Prevent user column text from breaking into characters */
+    .table-enhanced tbody td:first-child {
+        min-width: 180px;
+        white-space: normal;
+    }
+    
+    /* Priority badges scale for tablet */
+    .priority-badge {
+        padding: 0.28em 0.55em;
+        font-size: 0.7em;
+    }
+    
+    /* Incident History & Alert Log table columns on tablet */
+    .table-enhanced thead th:nth-child(1) { min-width: 140px; }
+    .table-enhanced thead th:nth-child(2) { min-width: 120px; }
+    .table-enhanced thead th:nth-child(3) { min-width: 100px; }
+    .table-enhanced thead th:nth-child(4) { min-width: 70px; }
+    .table-enhanced thead th:nth-child(5) { min-width: 90px; }
+    .table-enhanced thead th:nth-child(6) { min-width: 150px; }
+    
+    .table-enhanced tbody td:nth-child(2),
+    .table-enhanced tbody td:nth-child(3),
+    .table-enhanced tbody td:nth-child(4),
+    .table-enhanced tbody td:nth-child(5) {
+        white-space: nowrap;
+        min-width: auto;
+    }
+    
+    /* Optionally hide less important columns */
+    .table-hide-tablet {
+        display: none !important;
+    }
+}
+
+/* ── Desktop: Default sizing ──────────────────────────────────────── */
+@media (min-width: 992px) {
+    .priority-badge {
+        padding: 0.3em 0.6em;
+        font-size: 0.75em;
+    }
+    
+    .table-enhanced thead th {
+        padding: 0.75rem 1rem;
+    }
+    
+    .table-enhanced tbody td {
+        padding: 0.85rem 1rem;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        word-break: break-word;
+    }
+    
+    /* Prevent text from breaking character-by-character */
+    .table-enhanced tbody td > * {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+    
+    /* Ensure user column has proper width */
+    .table-enhanced thead th:first-child {
+        min-width: 200px;
+    }
+    
+    .table-enhanced tbody td:first-child {
+        min-width: 200px;
+    }
+}
+
+/* ── Ensure priority status cells don't break on any screen ────────── */
+.priority-status-cell {
+    min-width: fit-content;
+    overflow-wrap: break-word;
+}
+
+/* Prevent badge text from breaking mid-word */
+.priority-badge {
+    word-break: keep-all;
+}
+
+/* Fix for inline badges that might have emoji or special chars */
+.priority-badge-content {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3em;
+    justify-content: center;
+}
+
+/* Ensure action cells are always clickable on mobile */
+@media (max-width: 767.98px) {
+    .table-mobile-stack .text-center {
+        text-align: left;
+    }
+    
+    .table-mobile-stack a.btn,
+    .table-mobile-stack button.btn {
+        font-size: 0.85rem;
+        padding: 0.5rem 1rem;
+    }
+}
+
+/* ── Ultra-small mobile: 480px and below ──────────────── */
+@media (max-width: 480px) {
+    /* Extra aggressive spacing for tiny screens */
+    .table-mobile-stack tr {
+        padding: 1rem;
+        margin-bottom: 1.25rem;
+    }
+    
+    .table-mobile-stack td {
+        padding: 0.9rem 0;
+        margin-bottom: 0.1rem;
+    }
+    
+    .table-mobile-stack td::before {
+        font-size: 0.7rem;
+        margin-bottom: 0.4rem;
+        font-weight: 700;
+    }
+    
+    /* Stack badges vertically on ultra-small */
+    .table-mobile-stack .priority-badge {
+        display: flex !important;
+        padding: 0.4em 0.65em !important;
+        font-size: 0.65em !important;
+        margin: 0.3em 0 !important;
+    }
+    
+    .table-mobile-stack .badge-status-active {
+        display: flex !important;
+        padding: 0.4em 0.65em !important;
+        font-size: 0.65rem !important;
+    }
+    
+    /* Make buttons more touch-friendly */
+    .table-mobile-stack .btn-sm {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.73rem !important;
+        padding: 0.65rem 1rem !important;
+        margin-top: 1.2rem;
+    }
+    
+    /* Better text spacing */
+    .table-mobile-stack td strong {
+        display: block;
+        margin-bottom: 0.15rem;
+    }
+}
 .container > *:nth-child(n+6){ animation-delay: 0.30s; }
 
 /* ── Card entrance (stagger within rows) ────────────────── */

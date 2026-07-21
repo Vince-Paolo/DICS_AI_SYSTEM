@@ -69,6 +69,11 @@ def coordinator_update_task(task_id):
         return redirect(url_for('login'))
 
     task = Task.query.get_or_404(task_id)
+    agency = get_coordinator_agency()
+    if not agency or task.assigned_to_agency != agency:
+        flash('You can only update tasks assigned to your agency.', 'error')
+        return redirect(request.referrer or url_for('coordinator.coordinator_tasks'))
+
     new_status = request.form.get('status')
     referrer = request.referrer
 
@@ -160,14 +165,18 @@ def coordinator_allocate_resource():
         return redirect(url_for('login'))
 
     response_id = request.form.get('response_id', type=int)
-    agency = request.form.get('agency', '').strip()
+    agency = get_coordinator_agency()
     resource_type = request.form.get('resource_type', '').strip()
     quantity = request.form.get('quantity', type=int, default=1)
     status = request.form.get('status', 'AVAILABLE')
     location = request.form.get('location', '').strip()
     notes = request.form.get('notes', '').strip()
 
-    if not all([response_id, agency, resource_type, quantity]):
+    if not agency:
+        flash('Coordinator agency is not configured.', 'error')
+        return redirect(url_for('coordinator.coordinator_resources'))
+
+    if not all([response_id, resource_type, quantity]):
         flash('Please fill in all required fields.', 'error')
         return redirect(url_for('coordinator.coordinator_resources'))
 
@@ -205,6 +214,11 @@ def coordinator_update_resource(resource_id):
         return redirect(url_for('login'))
 
     resource = Resource.query.get_or_404(resource_id)
+    agency = get_coordinator_agency()
+    if not agency or resource.agency != agency:
+        flash('You can only update resources allocated to your agency.', 'error')
+        return redirect(request.referrer or url_for('coordinator.coordinator_resources'))
+
     new_status = request.form.get('status')
     referrer = request.referrer
 
@@ -266,7 +280,21 @@ def coordinator_submit_report():
         return redirect(referrer or url_for('coordinator.coordinator_reports'))
 
     user = User.query.filter_by(username=session['username']).first()
+    agency = get_coordinator_agency()
     response = IncidentResponse.query.get_or_404(response_id)
+
+    if not agency:
+        flash('Coordinator agency is not configured.', 'error')
+        return redirect(request.referrer or url_for('coordinator.coordinator_reports'))
+
+    has_owned_assets = any(
+        task.assigned_to_agency == agency for task in response.tasks
+    ) or any(
+        resource.agency == agency for resource in response.resources
+    )
+    if not has_owned_assets:
+        flash('You can only submit reports for responses that include your agency.', 'error')
+        return redirect(request.referrer or url_for('coordinator.coordinator_reports'))
 
     message = IncidentMessage(
         incident_response_id=response.id,
