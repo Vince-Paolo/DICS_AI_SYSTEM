@@ -56,11 +56,11 @@
             <div class="col-md-3">
                 <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:#94A3B8;margin-bottom:0.3rem;">Priority</div>
                 {% if response.priority_level == 'CRITICAL' %}
-                    <span style="padding:0.3em 0.75em;background:rgba(239,68,68,0.2);color:#FCA5A5;border:1px solid rgba(239,68,68,0.5);border-radius:6px;font-size:0.8em;font-weight:700;">🔴 CRITICAL</span>
+                    <span class="priority-badge priority-critical"><span class="priority-badge-content">🔴 CRITICAL</span></span>
                 {% elif response.priority_level == 'HIGH' %}
-                    <span style="padding:0.3em 0.75em;background:rgba(245,158,11,0.2);color:#FCD34D;border:1px solid rgba(245,158,11,0.5);border-radius:6px;font-size:0.8em;font-weight:700;">🟡 HIGH</span>
+                    <span class="priority-badge priority-high"><span class="priority-badge-content">🟡 HIGH</span></span>
                 {% else %}
-                    <span style="padding:0.3em 0.75em;background:rgba(59,130,246,0.2);color:#93C5FD;border:1px solid rgba(59,130,246,0.5);border-radius:6px;font-size:0.8em;font-weight:700;">🔵 {{ response.priority_level }}</span>
+                    <span class="priority-badge priority-medium"><span class="priority-badge-content">🔵 {{ response.priority_level }}</span></span>
                 {% endif %}
             </div>
             <div class="col-md-3">

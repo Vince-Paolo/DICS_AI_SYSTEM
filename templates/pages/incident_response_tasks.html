@@ -18,39 +18,39 @@
 
                 {% if tasks %}
                     <div class="table-responsive">
-                        <table class="table table-enhanced align-middle mb-0">
+                        <table class="table table-enhanced table-mobile-stack align-middle mb-0">
                             <thead>
                                 <tr>
                                     <th>Task</th>
-                                    <th>Agency</th>
+                                    <th class="table-hide-tablet">Agency</th>
                                     <th>Priority</th>
                                     <th>Status</th>
-                                    <th>Est. Due</th>
+                                    <th class="table-hide-tablet">Est. Due</th>
                                     <th class="text-center">Details</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for task in tasks %}
                                 <tr>
-                                    <td>
+                                    <td data-label="Task">
                                         <strong class="text-white">{{ task.title }}</strong><br>
                                         <span class="text-muted small">ID: #{{ task.id }}</span>
                                     </td>
-                                    <td>
+                                    <td data-label="Agency" class="table-hide-tablet">
                                         <span style="color:#93C5FD;font-weight:600;">{{ task.assigned_to_agency }}</span>
                                     </td>
-                                    <td>
+                                    <td data-label="Priority" class="priority-status-cell">
                                         {% if task.priority == 'CRITICAL' %}
-                                            <span style="padding:0.3em 0.6em;background:rgba(239,68,68,0.2);color:#FCA5A5;border:1px solid rgba(239,68,68,0.5);border-radius:5px;font-size:0.72em;font-weight:700;">🔴 CRITICAL</span>
+                                            <span class="priority-badge priority-critical"><span class="priority-badge-content">🔴 CRITICAL</span></span>
                                         {% elif task.priority == 'HIGH' %}
-                                            <span style="padding:0.3em 0.6em;background:rgba(245,158,11,0.2);color:#FCD34D;border:1px solid rgba(245,158,11,0.5);border-radius:5px;font-size:0.72em;font-weight:700;">🟡 HIGH</span>
+                                            <span class="priority-badge priority-high"><span class="priority-badge-content">🟡 HIGH</span></span>
                                         {% elif task.priority == 'MEDIUM' %}
-                                            <span style="padding:0.3em 0.6em;background:rgba(59,130,246,0.2);color:#93C5FD;border:1px solid rgba(59,130,246,0.5);border-radius:5px;font-size:0.72em;font-weight:700;">🔵 MEDIUM</span>
+                                            <span class="priority-badge priority-medium"><span class="priority-badge-content">🔵 MEDIUM</span></span>
                                         {% else %}
-                                            <span style="padding:0.3em 0.6em;background:rgba(16,185,129,0.2);color:#86EFAC;border:1px solid rgba(16,185,129,0.5);border-radius:5px;font-size:0.72em;font-weight:700;">🟢 LOW</span>
+                                            <span class="priority-badge priority-low"><span class="priority-badge-content">🟢 LOW</span></span>
                                         {% endif %}
                                     </td>
-                                    <td>
+                                    <td data-label="Status">
                                         {% if response.status != 'CLOSED' %}
                                             <form method="POST" action="{{ url_for('commander.update_task', response_id=response.id, task_id=task.id) }}">
                                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -71,7 +71,7 @@
                                             {% endif %}
                                         {% endif %}
                                     </td>
-                                    <td>
+                                    <td data-label="Est. Due" class="table-hide-tablet">
                                         <span class="text-muted small">
                                             {% if task.estimated_completion %}
                                                 {{ task.estimated_completion.strftime('%b %d, %H:%M') }}

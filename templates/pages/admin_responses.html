@@ -38,34 +38,34 @@
       </div>
       {% if active_responses %}
       <div class="table-responsive">
-        <table class="table table-enhanced align-middle">
+        <table class="table table-enhanced table-mobile-stack align-middle">
           <thead>
             <tr>
               <th>Incident</th>
               <th>Location</th>
-              <th>Commander</th>
+              <th class="table-hide-tablet">Commander</th>
               <th>Priority</th>
-              <th>Tasks</th>
-              <th>Resources</th>
-              <th>Started</th>
+              <th class="table-hide-tablet">Tasks</th>
+              <th class="table-hide-tablet">Resources</th>
+              <th class="table-hide-tablet">Started</th>
               <th>Transfer</th>
             </tr>
           </thead>
           <tbody>
             {% for r in active_responses %}
             <tr>
-              <td><strong class="text-info">#{{ r.incident_id }}</strong> <span class="text-muted small">{{ r.incident.hazard_type|upper }}</span></td>
-              <td><span class="text-muted small">{{ r.incident.location or '—' }}</span></td>
-              <td><span class="fw-semibold">{{ r.commander.full_name or r.commander.username }}</span></td>
-              <td>
-                <span class="badge" style="font-size:.7rem;background:{% if r.priority_level == 'CRITICAL' %}rgba(239,68,68,0.2);color:#FCA5A5{% elif r.priority_level == 'HIGH' %}rgba(249,115,22,0.2);color:#FED7AA{% else %}rgba(234,179,8,0.2);color:#FDE68A{% endif %};">
+              <td data-label="Incident"><strong class="text-info">#{{ r.incident_id }}</strong> <span class="text-muted small">{{ r.incident.hazard_type|upper }}</span></td>
+              <td data-label="Location"><span class="text-muted small">{{ r.incident.location or '—' }}</span></td>
+              <td data-label="Commander" class="table-hide-tablet"><span class="fw-semibold">{{ r.commander.full_name or r.commander.username }}</span></td>
+              <td data-label="Priority" class="priority-status-cell">
+                <span class="priority-badge {% if r.priority_level == 'CRITICAL' %}priority-critical{% elif r.priority_level == 'HIGH' %}priority-high{% elif r.priority_level == 'MEDIUM' %}priority-medium{% else %}priority-low{% endif %}">
                   {{ r.priority_level }}
                 </span>
               </td>
-              <td><span class="badge bg-secondary">{{ r.tasks|length }} tasks</span></td>
-              <td><span class="badge bg-secondary">{{ r.resources|length }} resources</span></td>
-              <td><span class="text-muted small">{{ r.started_at.strftime('%b %d %H:%M') }}</span></td>
-              <td>
+              <td data-label="Tasks" class="table-hide-tablet"><span class="badge bg-secondary">{{ r.tasks|length }} tasks</span></td>
+              <td data-label="Resources" class="table-hide-tablet"><span class="badge bg-secondary">{{ r.resources|length }} resources</span></td>
+              <td data-label="Started" class="table-hide-tablet"><span class="text-muted small">{{ r.started_at.strftime('%b %d %H:%M') }}</span></td>
+              <td data-label="Transfer">
                 <form method="POST" action="{{ url_for('eoc.transfer_commander', response_id=r.id) }}" class="d-flex gap-2 align-items-center">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <select name="commander_id" class="form-select form-select-sm bg-dark text-light border-secondary" style="min-width:130px;">

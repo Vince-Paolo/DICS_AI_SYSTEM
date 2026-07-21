@@ -97,7 +97,7 @@
 
         {% if active_responses %}
             <div class="table-responsive">
-                <table class="table table-enhanced align-middle mb-0">
+                <table class="table table-enhanced table-mobile-stack align-middle mb-0">
                     <thead>
                         <tr>
                             <th>Incident</th>
@@ -105,32 +105,32 @@
                             <th>Location</th>
                             <th>Status</th>
                             <th>Priority</th>
-                            <th>Started</th>
+                            <th class="table-hide-tablet">Started</th>
                             <th class="text-center">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for response in active_responses %}
                         <tr>
-                            <td><strong class="text-white">#{{ response.incident_id }}</strong></td>
-                            <td>
-                                <span style="padding:0.3em 0.6em;background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.4);border-radius:6px;font-size:0.75em;font-weight:700;text-transform:uppercase;">
+                            <td data-label="Incident"><strong class="text-white">#{{ response.incident_id }}</strong></td>
+                            <td data-label="Hazard">
+                                <span class="priority-badge priority-critical">
                                     {{ response.incident.hazard_type }}
                                 </span>
                             </td>
-                            <td><span class="text-muted small">{{ response.incident.location or 'Unknown' }}</span></td>
-                            <td><span class="badge-status-active text-uppercase" style="font-size:0.72rem;">{{ response.status }}</span></td>
-                            <td>
+                            <td data-label="Location"><span class="text-muted small">{{ response.incident.location or 'Unknown' }}</span></td>
+                            <td data-label="Status"><span class="badge-status-active text-uppercase" style="font-size:0.72rem;">{{ response.status }}</span></td>
+                            <td data-label="Priority" class="priority-status-cell">
                                 {% if response.priority_level == 'CRITICAL' %}
-                                    <span style="padding:0.3em 0.6em;background:rgba(239,68,68,0.2);color:#FCA5A5;border:1px solid rgba(239,68,68,0.5);border-radius:6px;font-size:0.75em;font-weight:700;">🔴 CRITICAL</span>
+                                    <span class="priority-badge priority-critical"><span class="priority-badge-content">🔴 CRITICAL</span></span>
                                 {% elif response.priority_level == 'HIGH' %}
-                                    <span style="padding:0.3em 0.6em;background:rgba(245,158,11,0.2);color:#FCD34D;border:1px solid rgba(245,158,11,0.5);border-radius:6px;font-size:0.75em;font-weight:700;">🟡 HIGH</span>
+                                    <span class="priority-badge priority-high"><span class="priority-badge-content">🟡 HIGH</span></span>
                                 {% else %}
-                                    <span style="padding:0.3em 0.6em;background:rgba(59,130,246,0.2);color:#93C5FD;border:1px solid rgba(59,130,246,0.5);border-radius:6px;font-size:0.75em;font-weight:700;">🔵 {{ response.priority_level }}</span>
+                                    <span class="priority-badge priority-medium"><span class="priority-badge-content">🔵 {{ response.priority_level }}</span></span>
                                 {% endif %}
                             </td>
-                            <td><span class="text-muted small">{{ response.started_at.strftime('%b %d, %Y %H:%M') }}</span></td>
-                            <td class="text-center">
+                            <td data-label="Started" class="table-hide-tablet"><span class="text-muted small">{{ response.started_at.strftime('%b %d, %Y %H:%M') }}</span></td>
+                            <td data-label="Action" class="text-center">
                                 <a href="{{ url_for('commander.incident_response_detail', response_id=response.id) }}" class="btn btn-sm btn-primary-modern btn-modern">
                                     <i class="bi bi-eye me-1"></i>View
                                 </a>

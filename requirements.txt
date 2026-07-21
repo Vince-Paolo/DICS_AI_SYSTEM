@@ -6,3 +6,4 @@ Flask-Limiter
 scikit-learn
 joblib
 requests
+Pillow

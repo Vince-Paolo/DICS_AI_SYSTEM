@@ -17,7 +17,7 @@ from flask import render_template_string
 
 import app as app_module
 from app import app, db
-from models import User, CitizenReport, Incident, IncidentResponse, PostIncidentReport
+from models import User, CitizenReport, Incident, IncidentResponse, PostIncidentReport, Task, Resource, IncidentMessage
 import scheduler
 
 
@@ -49,6 +49,129 @@ class ResponderRoutesTestCase(unittest.TestCase):
     def test_field_responder_dashboard_requires_login(self):
         response = self.client.get('/responder-dashboard')
         self.assertEqual(response.status_code, 302)
+
+    def test_coordinator_update_task_rejects_unowned_task(self):
+        with self.app.app_context():
+            coordinator = User(
+                username='coordinator1',
+                email='coord@example.com',
+                password='secret',
+                role='agency_coordinator',
+                agency='BFP',
+                email_verified=True,
+            )
+            db.session.add(coordinator)
+            db.session.commit()
+
+            incident = Incident(user_id=coordinator.id, hazard_type='earthquake', location='Test', message='Test', level='high', alert=True, status='ACTIVE')
+            db.session.add(incident)
+            db.session.commit()
+
+            response = IncidentResponse(incident_id=incident.id, commander_id=coordinator.id, status='ACTIVE')
+            db.session.add(response)
+            db.session.commit()
+
+            task = Task(
+                incident_response_id=response.id,
+                assigned_to_agency='DOH',
+                assigned_by_id=coordinator.id,
+                title='Unknown agency task',
+                description='Should not be mutable by BFP coordinator',
+                status='PENDING',
+            )
+            db.session.add(task)
+            db.session.commit()
+            task_id = task.id
+
+        with self.client.session_transaction() as session:
+            session['username'] = 'coordinator1'
+            session['role'] = 'agency_coordinator'
+            session['agency'] = 'BFP'
+
+        response = self.client.post(f'/coordinator/tasks/{task_id}/update', data={'status': 'IN_PROGRESS'}, follow_redirects=True)
+        self.assertEqual(response.status_code, 200)
+        with self.app.app_context():
+            refreshed = Task.query.get(task_id)
+            self.assertEqual(refreshed.status, 'PENDING')
+
+    def test_coordinator_allocate_resource_uses_coordinator_agency(self):
+        with self.app.app_context():
+            coordinator = User(
+                username='coordinator2',
+                email='coord2@example.com',
+                password='secret',
+                role='agency_coordinator',
+                agency='BFP',
+                email_verified=True,
+            )
+            db.session.add(coordinator)
+            db.session.commit()
+
+            incident = Incident(user_id=coordinator.id, hazard_type='earthquake', location='Test', message='Test', level='high', alert=True, status='ACTIVE')
+            db.session.add(incident)
+            db.session.commit()
+
+            response = IncidentResponse(incident_id=incident.id, commander_id=coordinator.id, status='ACTIVE')
+            db.session.add(response)
+            db.session.commit()
+            response_id = response.id
+
+        with self.client.session_transaction() as session:
+            session['username'] = 'coordinator2'
+            session['role'] = 'agency_coordinator'
+            session['agency'] = 'BFP'
+
+        response = self.client.post('/coordinator/resources/allocate', data={
+            'response_id': response_id,
+            'agency': 'DOH',
+            'resource_type': 'Vehicles',
+            'quantity': 2,
+            'status': 'AVAILABLE',
+            'location': 'Base',
+            'notes': 'Test',
+        }, follow_redirects=True)
+        self.assertEqual(response.status_code, 200)
+        with self.app.app_context():
+            resource = Resource.query.filter_by(incident_response_id=response_id).first()
+            self.assertIsNotNone(resource)
+            self.assertEqual(resource.agency, 'BFP')
+
+    def test_coordinator_submit_report_requires_agency_owned_response_assets(self):
+        with self.app.app_context():
+            coordinator = User(
+                username='coordinator3',
+                email='coord3@example.com',
+                password='secret',
+                role='agency_coordinator',
+                agency='BFP',
+                email_verified=True,
+            )
+            db.session.add(coordinator)
+            db.session.commit()
+
+            incident = Incident(user_id=coordinator.id, hazard_type='earthquake', location='Test', message='Test', level='high', alert=True, status='ACTIVE')
+            db.session.add(incident)
+            db.session.commit()
+
+            response = IncidentResponse(incident_id=incident.id, commander_id=coordinator.id, status='ACTIVE')
+            db.session.add(response)
+            db.session.commit()
+            response_id = response.id
+
+        with self.client.session_transaction() as session:
+            session['username'] = 'coordinator3'
+            session['role'] = 'agency_coordinator'
+            session['agency'] = 'BFP'
+
+        response = self.client.post('/coordinator/reports/submit', data={
+            'response_id': response_id,
+            'title': 'Test report',
+            'content': 'This should be blocked',
+            'report_type': 'UPDATE',
+        }, follow_redirects=True)
+        self.assertEqual(response.status_code, 200)
+        with self.app.app_context():
+            self.assertEqual(IncidentMessage.query.count(), 0)
 
     def test_create_default_admin_uses_default_credentials(self):
         with self.app.app_context():
@@ -169,6 +292,30 @@ class ResponderRoutesTestCase(unittest.TestCase):
             upload_response = self.client.get(f'/uploads/{report.photo_filename}')
             self.assertEqual(upload_response.status_code, 200)
             self.assertIn(b'photo-data', upload_response.data)
+
+    def test_citizen_report_rejects_invalid_photo_upload(self):
+        with self.client.session_transaction() as session:
+            session['username'] = 'responder1'
+            session['role'] = 'user'
+
+        response = self.client.post('/citizen-report', data={
+            'hazard_type': 'flood',
+            'severity': 'high',
+            'location': 'Barangay Test',
+            'description': 'Water rising',
+            'affected_people': '5',
+            'injuries': '0',
+            'contact': '09171234567',
+            'gps_lat': '14.1234',
+            'gps_lng': '121.5678',
+            'photo': (BytesIO(b'not-an-image'), 'evil.exe'),
+        }, content_type='multipart/form-data', follow_redirects=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'Photo upload was invalid.', response.data)
+        with self.app.app_context():
+            self.assertEqual(CitizenReport.query.count(), 0)
+            self.assertEqual(Incident.query.count(), 0)
 
     def test_map_pins_endpoint_returns_active_incidents_with_coordinates(self):
         with self.app.app_context():
