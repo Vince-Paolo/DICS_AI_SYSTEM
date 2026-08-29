@@ -4,6 +4,8 @@ from typing import Iterable
 
 from flask import session
 
+from models import User
+
 
 ROLE_ALIASES = {
     'citizen': 'CITIZEN',
@@ -33,8 +35,21 @@ def current_role() -> str | None:
         return None
 
 
+def current_user():
+    try:
+        username = session.get('username')
+    except RuntimeError:
+        return None
+    return User.query.filter_by(username=username).first() if username else None
+
+
+def current_user_for_roles(*roles):
+    user = current_user()
+    return user if user and user_has_any_role(user, *roles) else None
+
+
 def is_authenticated() -> bool:
-    return bool(session.get('username'))
+    return current_user() is not None
 
 
 def has_any_role(*roles: str) -> bool:
@@ -78,13 +93,13 @@ def is_admin() -> bool:
 def can_view_incident(user, incident) -> bool:
     if not user or not incident:
         return False
-    if is_admin():
+    if user_has_any_role(user, 'ADMIN'):
         return True
-    if is_citizen():
+    if user_has_any_role(user, 'CITIZEN'):
         return getattr(incident, 'user_id', None) == user.id
-    if is_responder():
+    if user_has_any_role(user, 'RESPONDER'):
         return True
-    if is_coordinator() or is_commander() or is_eoc():
+    if user_has_any_role(user, 'COORDINATOR', 'COMMANDER', 'EOC'):
         return True
     return False
 
@@ -92,11 +107,11 @@ def can_view_incident(user, incident) -> bool:
 def can_edit_incident(user, incident) -> bool:
     if not user or not incident:
         return False
-    if is_admin():
+    if user_has_any_role(user, 'ADMIN'):
         return True
-    if is_citizen():
+    if user_has_any_role(user, 'CITIZEN'):
         return getattr(incident, 'user_id', None) == user.id
-    if is_coordinator() or is_commander() or is_eoc():
+    if user_has_any_role(user, 'COORDINATOR', 'COMMANDER', 'EOC'):
         return True
     return False
 
@@ -104,17 +119,17 @@ def can_edit_incident(user, incident) -> bool:
 def can_assign_task(user, incident) -> bool:
     if not user or not incident:
         return False
-    return is_admin() or is_coordinator() or is_commander() or is_eoc()
+    return user_has_any_role(user, 'ADMIN', 'COORDINATOR', 'COMMANDER', 'EOC')
 
 
 def can_allocate_resource(user, resource) -> bool:
     if not user or not resource:
         return False
-    return is_admin() or is_coordinator() or is_commander() or is_eoc()
+    return user_has_any_role(user, 'ADMIN', 'COORDINATOR', 'COMMANDER', 'EOC')
 
 
 def can_verify_incident(user) -> bool:
-    return is_admin() or is_eoc()
+    return user_has_any_role(user, 'ADMIN', 'EOC')
 
 
 def can_issue_alert(user) -> bool:
@@ -123,25 +138,25 @@ def can_issue_alert(user) -> bool:
     as the rest of admin's role being pure administration, not incident
     operations (see is_agency_coordinator() in blueprints/common.py for the
     coordinator-dashboard precedent for this)."""
-    return is_commander() or is_eoc()
+    return user_has_any_role(user, 'COMMANDER', 'EOC')
 
 
 def can_manage_users(user) -> bool:
-    return is_admin()
+    return user_has_any_role(user, 'ADMIN')
 
 
 def can_view_analytics(user) -> bool:
-    return is_admin() or is_coordinator() or is_commander() or is_eoc()
+    return user_has_any_role(user, 'ADMIN', 'COORDINATOR', 'COMMANDER', 'EOC')
 
 
 def can_manage_facilities(user) -> bool:
     """Adding facilities to the directory is an EOC operational action.
     Admin is intentionally excluded -- same boundary as can_issue_alert()."""
-    return is_eoc()
+    return user_has_any_role(user, 'EOC')
 
 
 def can_manage_evacuation_centers(user) -> bool:
-    return is_eoc() or is_coordinator()
+    return user_has_any_role(user, 'EOC', 'COORDINATOR')
 
 
 def can_request_resources(user) -> bool:
@@ -151,12 +166,12 @@ def can_request_resources(user) -> bool:
     behalf of, so it's intentionally excluded (see is_agency_coordinator()
     in blueprints/common.py for the same boundary on the rest of the
     coordinator dashboard)."""
-    return is_coordinator()
+    return user_has_any_role(user, 'COORDINATOR')
 
 
 def can_decide_resource_request(user) -> bool:
-    return is_admin() or is_eoc() or is_commander()
+    return user_has_any_role(user, 'ADMIN', 'EOC', 'COMMANDER')
 
 
 def can_log_incident_report(user) -> bool:
-    return is_admin() or is_eoc()
+    return user_has_any_role(user, 'ADMIN', 'EOC')

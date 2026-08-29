@@ -32,6 +32,7 @@ flag as a visible caveat to show stakeholders alongside the number.
 ==============================================================================
 """
 import math
+from datetime import datetime, timezone
 
 # Global literature defaults (Utsu, Ogata & Matsu'ura 1995 summary ranges)
 DEFAULT_OMORI_PARAMS = {
@@ -397,6 +398,31 @@ def probability_of_aftershock(mainshock_magnitude, target_magnitude, hours_since
         'is_proxy': is_proxy,
         'region_key': region_key,
     }
+
+
+def forecast_for_event(magnitude, event_time, target_magnitude=None, window_hours=24):
+    """Build a display-ready forecast for a live earthquake event.
+
+    The realtime earthquake adapter supplies magnitude and event time but not
+    a reliable fault assignment, so this intentionally uses the global
+    fallback parameters until a region can be identified from an epicenter.
+    """
+    if magnitude is None or event_time is None:
+        return None
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    hours_since_mainshock = max(0.0, (now - event_time).total_seconds() / 3600.0)
+    if target_magnitude is None:
+        target_magnitude = max(COMPLETENESS_MAGNITUDE, min(4.5, float(magnitude) - 0.5))
+
+    forecast = probability_of_aftershock(
+        mainshock_magnitude=float(magnitude),
+        target_magnitude=float(target_magnitude),
+        hours_since_mainshock=hours_since_mainshock,
+        window_hours=window_hours,
+    )
+    forecast['message'] = build_forecast_message(forecast)
+    return forecast
 
 
 def fit_omori_params(times_days, counts):
