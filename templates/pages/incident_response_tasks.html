@@ -1,0 +1,166 @@
+{% extends 'pages/base.html' %}
+{% import 'partials/hazard_macros.html' as hz %}
+{% import 'partials/empty_state.html' as es %}
+{% block title %}Response #{{ response.incident_id }} Tasks | DICS AI{% endblock %}
+
+{% block content %}
+<h1 class="visually-hidden">Response #{{ response.incident_id }} Tasks</h1>
+{% set active_tab = 'tasks' %}
+{% include 'partials/response_header.html' %}
+
+<div class="row">
+    <!-- Tasks List -->
+    <div class="col-lg-8 mb-4">
+        <div class="card card-custom h-100">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <div class="icon-badge icon-badge-primary"><i class="bi bi-list-task"></i></div>
+                    <h5 class="mb-0">Assigned Tasks</h5>
+                    <span class="ms-2 text-muted small">({{ tasks|length }} total)</span>
+                </div>
+
+                {% if tasks %}
+                    <div class="table-responsive">
+                        <table class="table table-enhanced table-mobile-stack align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Task</th>
+                                    <th class="table-hide-tablet">Agency</th>
+                                    <th>Priority</th>
+                                    <th>Status</th>
+                                    <th class="table-hide-tablet">Est. Due</th>
+                                    <th class="text-center">Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for task in tasks %}
+                                <tr>
+                                    <td data-label="Task">
+                                        <strong class="text-white">{{ task.title }}</strong><br>
+                                        <span class="text-muted small">ID: #{{ task.id }}</span>
+                                    </td>
+                                    <td data-label="Agency" class="table-hide-tablet">
+                                        <span style="color:#93C5FD;font-weight:600;">{{ task.assigned_to_agency }}</span>
+                                    </td>
+                                    <td data-label="Priority" class="priority-status-cell">
+                                        {{ hz.priority_badge(task.priority) }}
+                                    </td>
+                                    <td data-label="Status">
+                                        {% if response.status != 'CLOSED' %}
+                                            <form method="POST" action="{{ url_for('commander.update_task', response_id=response.id, task_id=task.id) }}">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <select name="status" class="form-select form-select-sm" style="max-width:140px;" onchange="this.form.submit()">
+                                                    <option value="PENDING" {% if task.status == 'PENDING' %}selected{% endif %}>PENDING</option>
+                                                    <option value="IN_PROGRESS" {% if task.status == 'IN_PROGRESS' %}selected{% endif %}>IN PROGRESS</option>
+                                                    <option value="COMPLETED" {% if task.status == 'COMPLETED' %}selected{% endif %}>COMPLETED</option>
+                                                    <option value="FAILED" {% if task.status == 'FAILED' %}selected{% endif %}>FAILED</option>
+                                                </select>
+                                            </form>
+                                        {% else %}
+                                            {% if task.status == 'COMPLETED' %}
+                                                <span class="badge-status-resolved" style="font-size:0.72rem;">COMPLETED</span>
+                                            {% elif task.status == 'FAILED' %}
+                                                <span style="padding:0.3em 0.6em;background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.4);border-radius:5px;font-size:0.72em;font-weight:700;">FAILED</span>
+                                            {% else %}
+                                                <span class="badge-status-pending" style="font-size:0.72rem;">{{ task.status }}</span>
+                                            {% endif %}
+                                        {% endif %}
+                                    </td>
+                                    <td data-label="Est. Due" class="table-hide-tablet">
+                                        <span class="text-muted small">
+                                            {% if task.estimated_completion %}
+                                                {{ task.estimated_completion.strftime('%b %d, %H:%M') }}
+                                            {% else %}N/A{% endif %}
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="collapse" data-bs-target="#task-{{ task.id }}"
+                                                aria-expanded="false" aria-controls="task-{{ task.id }}" aria-label="Toggle description for this task">
+                                            <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr class="collapse" id="task-{{ task.id }}">
+                                    <td colspan="6" style="background:rgba(59,130,246,0.04);border-left:3px solid rgba(59,130,246,0.3);padding:1rem 1.25rem;">
+                                        <div class="text-muted small mb-1" style="text-transform:uppercase;letter-spacing:0.05em;">Description</div>
+                                        <div class="text-white" style="white-space:pre-line;font-size:0.9rem;">{{ task.description }}</div>
+                                        <div class="text-muted small mt-2">
+                                            Assigned by: <strong>{{ task.assigned_by.username }}</strong>
+                                            {% if task.completed_at %}
+                                            · Completed: {{ task.completed_at.strftime('%b %d, %Y %H:%M') }}
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    {{ es.render('bi-list-task', 'No Tasks Assigned', subtitle='No tasks have been assigned to responding agencies yet.') }}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Assign Task Form -->
+    <div class="col-lg-4 mb-4">
+        <div class="card card-custom h-100">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <div class="icon-badge icon-badge-primary"><i class="bi bi-plus-circle-fill"></i></div>
+                    <h5 class="mb-0">Assign Agency Task</h5>
+                </div>
+
+                {% if response.status != 'CLOSED' %}
+                    <form method="POST" action="{{ url_for('commander.assign_task', response_id=response.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="mb-3">
+                            <label class="form-label" for="agency">Target Agency <span class="text-danger">*</span></label>
+                            <select id="agency" name="agency" class="form-select" required>
+                                <option value="">— Select Responding Agency —</option>
+                                {% for a in agencies %}
+                                <option value="{{ a.name }}">{{ a.name }}</option>
+                                {% endfor %}
+                            </select>
+                            {% if not agencies %}
+                                <small class="text-warning d-block mt-1">No agencies are registered yet. Contact an administrator to add agencies before assigning tasks.</small>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="title">Task Title <span class="text-danger">*</span></label>
+                            <input id="title" type="text" name="title" class="form-control" placeholder="e.g., Secure Levee Area, Deploy Ambulances" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="description">Task Instructions <span class="text-danger">*</span></label>
+                            <textarea id="description" name="description" class="form-control" rows="4" placeholder="Provide clear tactical instructions for the field agency..." required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="priority">Priority</label>
+                            <select id="priority" name="priority" class="form-select">
+                                <option value="LOW">Low</option>
+                                <option value="MEDIUM" selected>Medium</option>
+                                <option value="HIGH">High</option>
+                                <option value="CRITICAL">Critical</option>
+                            </select>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label" for="estimated_completion">Est. Completion Target</label>
+                            <input id="estimated_completion" type="datetime-local" name="estimated_completion" class="form-control">
+                        </div>
+                        <button type="submit" class="btn btn-primary-modern btn-modern w-100 py-2">
+                            <i class="bi bi-check-circle me-2"></i>Assign Task
+                        </button>
+                    </form>
+                {% else %}
+                    <div style="padding:2rem;text-align:center;background:rgba(107,114,128,0.08);border-radius:8px;border:1px solid rgba(107,114,128,0.2);">
+                        <i class="bi bi-lock-fill text-muted fs-2 d-block mb-2"></i>
+                        <span class="text-muted">This incident response is closed. No new tasks can be assigned.</span>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

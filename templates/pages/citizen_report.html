@@ -1,0 +1,587 @@
+{% extends 'pages/base.html' %}
+
+{% block title %}Report Incident | DICS AI Citizen Portal{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+{% endblock %}
+
+{% block content %}
+<h1 class="visually-hidden">Report Incident | DICS AI Citizen Portal</h1>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Quick Stats -->
+            <div class="row g-3 mb-5">
+                <div class="col-md-6">
+                    <div class="stat-card card-gradient-primary">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <div class="stat-label">Your Reports</div>
+                                <div class="stat-value">{{ total_incidents }}</div>
+                                <div class="stat-description">Total incident reports submitted</div>
+                            </div>
+                            <div class="icon-badge icon-badge-primary">
+                                <i class="bi bi-file-earmark-text"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="stat-card card-gradient-warning">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <div class="stat-label">Pending Review</div>
+                                <div class="stat-value">{{ pending_count }}</div>
+                                <div class="stat-description">Awaiting authority response</div>
+                            </div>
+                            <div class="icon-badge icon-badge-warning">
+                                <i class="bi bi-hourglass-split"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Report Form Card -->
+            <div class="card card-custom shadow-lg">
+                <div class="card-body">
+                    <div class="section-header">
+                        <span class="section-header-icon"><i class="bi bi-exclamation-circle"></i></span>
+                        <h4>Report an Incident</h4>
+                    </div>
+
+                    <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <!-- Incident Details Section -->
+                        <div class="form-section-header">
+                            <h5><i class="bi bi-info-circle me-2"></i>Incident Details</h5>
+                        </div>
+                        
+                        <div class="row form-pair-grid">
+                            <div class="form-pair-field">
+                                <label for="hazard_type" class="form-label">
+                                    <i class="bi bi-lightning-charge me-2"></i>Type of Incident
+                                </label>
+                                <select class="form-select" id="hazard_type" name="hazard_type" required>
+                                    <option value="">Choose incident type...</option>
+                                    <option value="flood">Flood</option>
+                                    <option value="landslide">Landslide</option>
+                                    <option value="earthquake">Earthquake</option>
+                                    <option value="storm">Severe Storm</option>
+                                    <option value="fire">Fire</option>
+                                    <option value="volcanic">Volcanic Activity</option>
+                                    <option value="other">Other Emergency</option>
+                                </select>
+                                <div class="invalid-feedback">Please select the type of incident.</div>
+                            </div>
+
+                            <div class="form-pair-field">
+                                <label for="severity" class="form-label">
+                                    <i class="bi bi-speedometer me-2"></i>Severity Level
+                                </label>
+                                <select class="form-select" id="severity" name="severity" required>
+                                    <option value="">Select severity...</option>
+                                    <option value="low">Low &ndash; Minor incident</option>
+                                    <option value="moderate">Moderate &ndash; Significant impact</option>
+                                    <option value="high">High &ndash; Critical situation</option>
+                                </select>
+                                <div class="invalid-feedback">Please select a severity level.</div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label">
+                                <i class="bi bi-geo-alt me-2"></i>Location
+                            </label>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label for="province_id" class="form-label small">Province</label>
+                                    <select class="form-select" id="province_id" name="province_id">
+                                        <option value="">Select province</option>
+                                        {% for province in provinces %}
+                                        <option value="{{ province.id }}">{{ province.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="municipality_id" class="form-label small">Municipality</label>
+                                    <select class="form-select" id="municipality_id" name="municipality_id" disabled>
+                                        <option value="">Select province first</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="barangay_id" class="form-label small">Barangay</label>
+                                    <select class="form-select" id="barangay_id" name="barangay_id" disabled>
+                                        <option value="">Select municipality first</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <input type="text" class="form-control mt-3" id="location" name="location"
+                                   placeholder="e.g., Near the market or along the river" required>
+                            <div class="invalid-feedback">Please enter a nearby landmark or area.</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="description" class="form-label">
+                                <i class="bi bi-chat-square-text me-2"></i>Detailed Description
+                            </label>
+                            <textarea class="form-control" id="description" name="description" rows="5" 
+                                      placeholder="Describe what you're experiencing in detail..." required></textarea>
+                            <div class="invalid-feedback">Please describe what's happening.</div>
+                            <small class="text-muted d-block mt-2">Be as specific as possible to help authorities respond effectively</small>
+                        </div>
+
+                        <!-- Impact Assessment Section -->
+                        <div class="form-section-header" style="margin-top: 1rem;">
+                            <h5><i class="bi bi-bar-chart me-2"></i>Impact Assessment</h5>
+                        </div>
+
+                        <div class="row form-pair-grid">
+                            <div class="form-pair-field">
+                                <label for="affected_people" class="form-label">
+                                    <i class="bi bi-people me-2"></i>Number of People Affected (if known)
+                                </label>
+                                <input type="number" class="form-control" id="affected_people" name="affected_people" 
+                                       min="0" placeholder="0">
+                            </div>
+
+                            <div class="form-pair-field">
+                                <label for="injuries" class="form-label">
+                                    <i class="bi bi-heart-pulse me-2"></i>Injuries or Casualties
+                                </label>
+                                <input type="number" class="form-control" id="injuries" name="injuries" 
+                                       min="0" placeholder="0">
+                            </div>
+                        </div>
+
+                        <!-- Assistance Section -->
+                        <div class="form-section-header" style="margin-top: 1rem;">
+                            <h5><i class="bi bi-hand-thumbs-up me-2"></i>Assistance Needed</h5>
+                        </div>
+
+                        <div class="mb-4 p-3" style="background: rgba(59, 130, 246, 0.05); border-radius: 8px;">
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="medical" name="assistance" value="medical">
+                                <label class="form-check-label" for="medical">
+                                    <i class="bi bi-hospital me-2" style="color: var(--hazard-high);"></i>Medical Help Required
+                                </label>
+                            </div>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="evacuation" name="assistance" value="evacuation">
+                                <label class="form-check-label" for="evacuation">
+                                    <i class="bi bi-arrow-right-square me-2" style="color: var(--hazard-mod);"></i>Evacuation Needed
+                                </label>
+                            </div>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="shelter" name="assistance" value="shelter">
+                                <label class="form-check-label" for="shelter">
+                                    <i class="bi bi-house-door me-2" style="color: var(--hazard-low);"></i>Shelter Required
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="supplies" name="assistance" value="supplies">
+                                <label class="form-check-label" for="supplies">
+                                    <i class="bi bi-basket2 me-2" style="color: var(--accent-glow);"></i>Food/Water Supplies Needed
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Contact Section -->
+                        <div class="form-section-header">
+                            <h5><i class="bi bi-telephone me-2"></i>Your Contact Information</h5>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="contact" class="form-label">
+                                <i class="bi bi-phone me-2"></i>Contact Number
+                            </label>
+                            <input type="tel" class="form-control" id="contact" name="contact" 
+                                   placeholder="09XXXXXXXXX" pattern="^(09\d{9}|\+639\d{9})$" inputmode="numeric"
+                                   oninput="this.value = this.value.replace(/[^0-9+]/g, '')" 
+                                   maxlength="13" required>
+                            <div class="invalid-feedback">Enter a valid Philippine number: 09XXXXXXXXX or +639XXXXXXXXX.</div>
+                            <small class="text-muted d-block mt-2">Format: 09XXXXXXXXX or +639XXXXXXXXX (Philippine numbers only)</small>
+                        </div>
+
+                        <div class="form-section-header">
+                            <h5><i class="bi bi-camera me-2"></i>Evidence & Privacy</h5>
+                        </div>
+
+                        <div class="row form-pair-grid">
+                            <div class="form-pair-field">
+                                <label for="photo" class="form-label">
+                                    <i class="bi bi-image me-2"></i>Photo Evidence
+                                </label>
+
+                                <div class="field-card">
+                                    <button type="button" class="photo-dropzone" id="photoDropzone"
+                                            aria-label="Upload photo evidence"
+                                            aria-describedby="photoDropzoneHint">
+                                        <input type="file" class="visually-hidden" id="photo" name="photo" accept="image/*">
+
+                                        <div class="photo-dropzone-empty" id="photoDropzoneEmpty">
+                                            <div class="icon-badge icon-badge-primary mb-3">
+                                                <i class="bi bi-cloud-arrow-up-fill"></i>
+                                            </div>
+                                            <p class="mb-1 fw-semibold">Drag & drop a photo here</p>
+                                            <p id="photoDropzoneHint" class="text-muted small mb-0">or click to browse · JPG, PNG, up to 10MB</p>
+                                        </div>
+
+                                        <div class="photo-dropzone-preview d-none" id="photoDropzonePreview">
+                                            <img id="photoPreviewImg" src="" alt="Selected photo preview">
+                                            <div class="photo-preview-info">
+                                                <div class="photo-preview-name text-truncate" id="photoPreviewName"></div>
+                                                <div class="photo-preview-size" id="photoPreviewSize"></div>
+                                            </div>
+                                            <button type="button" class="photo-preview-remove" id="photoRemoveBtn" aria-label="Remove photo">
+                                                <i class="bi bi-x-lg"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <small class="text-muted d-block mt-2">Optional image upload for the report.</small>
+                                </div>
+                            </div>
+                            <div class="form-pair-field">
+                                <label class="form-label" for="gps_lat">
+                                    <i class="bi bi-geo-alt me-2"></i>GPS Location
+                                </label>
+                                <input type="hidden" id="gps_lat" name="gps_lat">
+                                <input type="hidden" id="gps_lng" name="gps_lng">
+
+                                <div class="field-card">
+                                    <div class="location-preview" id="locationPreview">
+                                        <div class="location-preview-empty" id="locationPreviewEmpty">
+                                            <div class="icon-badge icon-badge-primary mb-2">
+                                                <i class="bi bi-pin-map-fill"></i>
+                                            </div>
+                                            <p class="mb-0 text-muted small">No location captured yet</p>
+                                        </div>
+                                        <div class="location-preview-map d-none" id="locationPreviewMap"></div>
+                                    </div>
+
+                                    <small id="gpsStatus" class="text-muted d-block mt-2 mb-2">Allow browser location access to capture GPS automatically.</small>
+
+                                    <div class="location-manual-row">
+                                        <input type="text" class="form-control form-control-sm" id="manualLocationInput"
+                                               placeholder="Or type an address / landmark...">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="manualLocationSearch" aria-label="Search address">
+                                            <i class="bi bi-search"></i>
+                                        </button>
+                                    </div>
+
+                                    <button type="button" class="btn btn-outline-secondary w-100 mt-auto" id="gpsButton">
+                                        <i class="bi bi-crosshair me-2"></i>Use Current Location
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-check mb-4">
+                            <input class="form-check-input" type="checkbox" id="anonymous" name="anonymous">
+                            <label class="form-check-label" for="anonymous">
+                                Submit this report anonymously
+                            </label>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex gap-2 mt-5 pt-3 border-top border-secondary form-actions-row">
+                            <button type="submit" class="btn btn-primary-modern btn-modern" style="flex: 1;">
+                                <i class="bi bi-check-circle me-2"></i>Submit Report
+                            </button>
+                            <a href="/dashboard" class="btn btn-outline-secondary" style="flex: 0.5;">
+                                <i class="bi bi-x-circle me-2"></i>Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# SOS logic and styles consolidated into global assets. #}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // ── Province -> Municipality -> Barangay cascade ─────────
+    // Only the ~5 provinces are rendered server-side; municipalities and
+    // barangays (142 and 4,018 across all of CALABARZON) are fetched on
+    // demand for just the selected parent, both to keep this page light
+    // and so each dropdown only ever shows options that actually belong
+    // to what's selected above it.
+    const provinceSelect = document.getElementById('province_id');
+    const municipalitySelect = document.getElementById('municipality_id');
+    const barangaySelect = document.getElementById('barangay_id');
+
+    function resetSelect(select, placeholderText) {
+        select.innerHTML = '';
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = placeholderText;
+        select.appendChild(placeholder);
+        select.disabled = true;
+    }
+
+    function populateSelect(select, items, placeholderText) {
+        resetSelect(select, placeholderText);
+        items.forEach(function (item) {
+            const option = document.createElement('option');
+            option.value = item.id;
+            option.textContent = item.name;
+            select.appendChild(option);
+        });
+        select.disabled = false;
+    }
+
+    if (provinceSelect && municipalitySelect && barangaySelect) {
+        provinceSelect.addEventListener('change', function () {
+            resetSelect(barangaySelect, 'Select municipality first');
+            if (!provinceSelect.value) {
+                resetSelect(municipalitySelect, 'Select province first');
+                return;
+            }
+            resetSelect(municipalitySelect, 'Loading...');
+            fetch('/api/municipalities/' + provinceSelect.value)
+                .then(function (response) { return response.ok ? response.json() : { municipalities: [] }; })
+                .then(function (data) { populateSelect(municipalitySelect, data.municipalities || [], 'Select municipality'); })
+                .catch(function () { resetSelect(municipalitySelect, 'Unable to load municipalities'); });
+        });
+
+        municipalitySelect.addEventListener('change', function () {
+            if (!municipalitySelect.value) {
+                resetSelect(barangaySelect, 'Select municipality first');
+                return;
+            }
+            resetSelect(barangaySelect, 'Loading...');
+            fetch('/api/barangays/' + municipalitySelect.value)
+                .then(function (response) { return response.ok ? response.json() : { barangays: [] }; })
+                .then(function (data) { populateSelect(barangaySelect, data.barangays || [], 'Select barangay'); })
+                .catch(function () { resetSelect(barangaySelect, 'Unable to load barangays'); });
+        });
+    }
+
+    const gpsButton = document.getElementById('gpsButton');
+    const gpsStatus = document.getElementById('gpsStatus');
+    const gpsLat = document.getElementById('gps_lat');
+    const gpsLng = document.getElementById('gps_lng');
+    const manualInput = document.getElementById('manualLocationInput');
+    const manualSearchBtn = document.getElementById('manualLocationSearch');
+
+    // ── Location map preview ─────────────────────────────────
+    const previewEmpty = document.getElementById('locationPreviewEmpty');
+    const previewMapEl = document.getElementById('locationPreviewMap');
+    let locationMap = null;
+    let locationMarker = null;
+
+    function showLocationOnMap(lat, lng) {
+        previewEmpty.classList.add('d-none');
+        previewMapEl.classList.remove('d-none');
+
+        // Leaflet needs the container visible with real dimensions before
+        // it can measure itself, so init/resize only after we un-hide it.
+        if (!locationMap) {
+            locationMap = L.map(previewMapEl, {
+                zoomControl: false,
+                attributionControl: false,
+            }).setView([lat, lng], 15);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+            }).addTo(locationMap);
+
+            locationMarker = L.marker([lat, lng]).addTo(locationMap);
+        } else {
+            locationMap.setView([lat, lng], 15);
+            locationMarker.setLatLng([lat, lng]);
+        }
+
+        setTimeout(function () {
+            locationMap.invalidateSize();
+        }, 50);
+    }
+
+    // Shared by both "Use Current Location" and manual address search, so
+    // the map/coordinates/status text stay consistent no matter which path
+    // set the location.
+    function setLocation(lat, lng, address) {
+        gpsLat.value = lat;
+        gpsLng.value = lng;
+        gpsStatus.textContent = address || `Captured GPS: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+        showLocationOnMap(lat, lng);
+
+        // Helps citizens who'd otherwise leave "Location (Barangay/Area)"
+        // blank - never overwrites something they already typed themselves.
+        const locationField = document.getElementById('location');
+        if (locationField && address && !locationField.value.trim()) {
+            locationField.value = address;
+        }
+    }
+
+    // OpenStreetMap's free Nominatim endpoint - no API key needed, matches
+    // the tile provider already used for the map itself.
+    function reverseGeocode(lat, lng) {
+        return fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`)
+            .then(res => res.json())
+            .then(data => data && data.display_name ? data.display_name : null)
+            .catch(() => null);
+    }
+
+    if (gpsButton) {
+        gpsButton.addEventListener('click', function () {
+            if (!navigator.geolocation) {
+                gpsStatus.textContent = 'Geolocation is not supported by this browser.';
+                return;
+            }
+
+            gpsStatus.textContent = 'Capturing your current location...';
+            navigator.geolocation.getCurrentPosition(function (position) {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                setLocation(lat, lng, null);
+                gpsStatus.textContent = `Captured GPS: ${lat.toFixed(4)}, ${lng.toFixed(4)} — looking up address...`;
+                reverseGeocode(lat, lng).then(function (address) {
+                    if (address) {
+                        gpsStatus.textContent = address;
+                        const locationField = document.getElementById('location');
+                        if (locationField && !locationField.value.trim()) {
+                            locationField.value = address;
+                        }
+                    }
+                });
+            }, function () {
+                gpsStatus.textContent = 'Unable to access your location. You can still type an address below, or submit the report manually.';
+            });
+        });
+    }
+
+    if (manualSearchBtn && manualInput) {
+        function runManualSearch() {
+            const query = manualInput.value.trim();
+            if (!query) return;
+
+            gpsStatus.textContent = 'Searching for that location...';
+            manualSearchBtn.disabled = true;
+
+            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1`)
+                .then(res => res.json())
+                .then(function (results) {
+                    manualSearchBtn.disabled = false;
+                    if (!results || !results.length) {
+                        gpsStatus.textContent = `Couldn't find "${query}". Try a more specific address or landmark.`;
+                        return;
+                    }
+                    const result = results[0];
+                    setLocation(parseFloat(result.lat), parseFloat(result.lon), result.display_name);
+                })
+                .catch(function () {
+                    manualSearchBtn.disabled = false;
+                    gpsStatus.textContent = 'Address lookup failed. Check your connection and try again.';
+                });
+        }
+
+        manualSearchBtn.addEventListener('click', runManualSearch);
+        manualInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                runManualSearch();
+            }
+        });
+    }
+
+    // ── Photo Evidence dropzone ──────────────────────────────
+    const dropzone = document.getElementById('photoDropzone');
+    const fileInput = document.getElementById('photo');
+    const emptyState = document.getElementById('photoDropzoneEmpty');
+    const previewState = document.getElementById('photoDropzonePreview');
+    const previewImg = document.getElementById('photoPreviewImg');
+    const previewName = document.getElementById('photoPreviewName');
+    const previewSize = document.getElementById('photoPreviewSize');
+    const removeBtn = document.getElementById('photoRemoveBtn');
+
+    if (dropzone && fileInput) {
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        function showPreview(file) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                previewImg.src = e.target.result;
+                previewName.textContent = file.name;
+                previewSize.textContent = formatFileSize(file.size);
+                emptyState.classList.add('d-none');
+                previewState.classList.remove('d-none');
+                dropzone.classList.add('has-file');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearPreview() {
+            fileInput.value = '';
+            previewImg.src = '';
+            emptyState.classList.remove('d-none');
+            previewState.classList.add('d-none');
+            dropzone.classList.remove('has-file');
+        }
+
+        function handleFiles(files) {
+            if (!files || !files.length) return;
+            const file = files[0];
+            if (!file.type.startsWith('image/')) return;
+
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            fileInput.files = dt.files;
+            showPreview(file);
+        }
+
+        dropzone.addEventListener('click', function (e) {
+            if (e.target.closest('#photoRemoveBtn')) return;
+            fileInput.click();
+        });
+
+        dropzone.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                fileInput.click();
+            }
+        });
+
+        fileInput.addEventListener('change', function () {
+            handleFiles(fileInput.files);
+        });
+
+        ['dragenter', 'dragover'].forEach(evt => {
+            dropzone.addEventListener(evt, function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.add('is-dragover');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(evt => {
+            dropzone.addEventListener(evt, function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.remove('is-dragover');
+            });
+        });
+
+        dropzone.addEventListener('drop', function (e) {
+            handleFiles(e.dataTransfer.files);
+        });
+
+        removeBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            clearPreview();
+        });
+    }
+});
+</script>
+{% endblock %}

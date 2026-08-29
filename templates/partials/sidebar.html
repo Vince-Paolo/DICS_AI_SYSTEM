@@ -1,0 +1,950 @@
+{# Modern Fixed Sidebar with Toggle & Collapsible State #}
+
+<!-- Mobile top bar: only visible below lg breakpoint, opens the sidebar as an off-canvas drawer -->
+<div class="mobile-topbar">
+    <button class="mobile-menu-btn" id="mobileSidebarToggle" aria-label="Open menu" aria-controls="sidebarContainer" aria-expanded="false">
+        <i class="bi bi-list"></i>
+    </button>
+    <div class="mobile-topbar-brand">
+        <i class="bi bi-geo-alt-fill"></i>
+        <span>DICS <span style="color:#3b82f6;">AI</span></span>
+    </div>
+</div>
+
+<!-- Overlay shown behind the sidebar when it's open as a mobile drawer -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<div class="sidebar-container" id="sidebarContainer">
+    <div class="sidebar-wrapper">
+        <!-- Sidebar Header -->
+        <div class="sidebar-header">
+            <div class="sidebar-brand">
+                <div class="sidebar-icon" style="display:flex; align-items:center; justify-content:center;"><i class="bi bi-geo-alt-fill"></i></div>
+                <div class="sidebar-text-content sidebar-text-show">
+                    <h6 class="mb-0 fw-bold">DICS <span style="color:#3b82f6;">AI</span></h6>
+                    <small class="text-muted-custom">Crisis Response</small>
+                </div>
+            </div>
+            <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar"
+                    onclick="this.blur()">
+                <i class="bi bi-chevron-left"></i>
+            </button>
+            <button class="sidebar-close-mobile" id="sidebarCloseMobile" aria-label="Close menu">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        <!-- Menu Section: Navigation -->
+        <div class="sidebar-menu">
+            <div class="menu-section-label sidebar-text-show">
+                <i class="bi bi-collection-play me-2"></i>Main
+            </div>
+
+            <nav class="sidebar-nav">
+                {% if session.role == 'admin' %}
+                {# ── ADMIN LINKS ── #}
+                <a href="/dashboard" class="sidebar-nav-link {{ 'active' if request.path == '/dashboard' else '' }}" data-tooltip="Dashboard" aria-label="Dashboard">
+                    <i class="bi bi-speedometer2"></i>
+                    <span class="nav-text sidebar-text-show">Dashboard</span>
+                </a>
+
+                <div class="menu-subgroup-label sidebar-text-show">Administration</div>
+                <a href="/admin/users" class="sidebar-nav-link {{ 'active' if request.path == '/admin/users' else '' }}" data-tooltip="User Management" aria-label="User Management">
+                    <i class="bi bi-people-fill"></i>
+                    <span class="nav-text sidebar-text-show">User Management</span>
+                </a>
+                <a href="/admin/backup" id="sidebarBackupLink" class="sidebar-nav-link {{ 'active' if request.path == '/admin/backup' else '' }}" data-tooltip="Export Database" aria-label="Export Database">
+                    <i class="bi bi-cloud-download-fill"></i>
+                    <span class="nav-text sidebar-text-show">Database Backup</span>
+                </a>
+
+                {% elif session.role == 'agency_coordinator' %}
+                {# ── AGENCY COORDINATOR LINKS ── #}
+                <a href="/coordinator" class="sidebar-nav-link {{ 'active' if request.path == '/coordinator' else '' }}" data-tooltip="Coordinator Hub" aria-label="Coordinator Hub">
+                    <i class="bi bi-building-check"></i>
+                    <span class="nav-text sidebar-text-show">Coordinator Hub</span>
+                </a>
+                <a href="/coordinator/tasks" class="sidebar-nav-link {{ 'active' if request.path == '/coordinator/tasks' else '' }}" data-tooltip="Task Management" aria-label="Task Management">
+                    <i class="bi bi-list-task"></i>
+                    <span class="nav-text sidebar-text-show">Task Management</span>
+                </a>
+                <a href="/coordinator/team" class="sidebar-nav-link {{ 'active' if request.path == '/coordinator/team' else '' }}" data-tooltip="Team Tracking" aria-label="Team Tracking">
+                    <i class="bi bi-people-fill"></i>
+                    <span class="nav-text sidebar-text-show">Team Tracking</span>
+                </a>
+                <a href="/coordinator/resources" class="sidebar-nav-link {{ 'active' if request.path == '/coordinator/resources' else '' }}" data-tooltip="Resource Requests" aria-label="Resource Requests">
+                    <i class="bi bi-box-seam-fill"></i>
+                    <span class="nav-text sidebar-text-show">Resource Requests</span>
+                </a>
+                <a href="/coordinator/resource-requests" class="sidebar-nav-link {{ 'active' if request.path == '/coordinator/resource-requests' else '' }}" data-tooltip="Request from EOC" aria-label="Request from EOC">
+                    <i class="bi bi-send-plus-fill"></i>
+                    <span class="nav-text sidebar-text-show">Request from EOC</span>
+                </a>
+                <a href="/coordinator/reports" class="sidebar-nav-link {{ 'active' if request.path == '/coordinator/reports' else '' }}" data-tooltip="Situation Reports" aria-label="Situation Reports">
+                    <i class="bi bi-file-earmark-bar-graph-fill"></i>
+                    <span class="nav-text sidebar-text-show">Situation Reports</span>
+                </a>
+                <a href="/coordinator/comms" class="sidebar-nav-link {{ 'active' if request.path == '/coordinator/comms' else '' }}" data-tooltip="Comm Center" aria-label="Comm Center">
+                    <i class="bi bi-chat-dots-fill"></i>
+                    <span class="nav-text sidebar-text-show">Comm Center</span>
+                </a>
+                <a href="/hazard-map" class="sidebar-nav-link {{ 'active' if request.path == '/hazard-map' else '' }}" data-tooltip="Hazard Map" aria-label="Hazard Map">
+                    <i class="bi bi-pin-map-fill"></i>
+                    <span class="nav-text sidebar-text-show">Hazard Map</span>
+                </a>
+                <a href="/all-alerts" class="sidebar-nav-link {{ 'active' if request.path == '/all-alerts' else '' }}" data-tooltip="Active Alerts" aria-label="Active Alerts">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <span class="nav-text sidebar-text-show">Active Alerts</span>
+                </a>
+
+                {% elif session.role == 'incident_commander' %}
+                {# ── INCIDENT COMMANDER LINKS ── #}
+                <a href="/incident-commander-dashboard" class="sidebar-nav-link {{ 'active' if request.path == '/incident-commander-dashboard' or request.path.startswith('/incident-response/') else '' }}" data-tooltip="Command Center" aria-label="Command Center">
+                    <i class="bi bi-person-badge-fill"></i>
+                    <span class="nav-text sidebar-text-show">Command Center</span>
+                </a>
+
+                <a href="/hazard-map" class="sidebar-nav-link {{ 'active' if request.path == '/hazard-map' else '' }}" data-tooltip="Hazard Map" aria-label="Hazard Map">
+                    <i class="bi bi-pin-map-fill"></i>
+                    <span class="nav-text sidebar-text-show">Hazard Map</span>
+                </a>
+
+                <a href="/all-alerts" class="sidebar-nav-link {{ 'active' if request.path == '/all-alerts' else '' }}" data-tooltip="Active Alerts" aria-label="Active Alerts">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <span class="nav-text sidebar-text-show">Active Alerts</span>
+                </a>
+
+                <a href="/eoc/alerts" class="sidebar-nav-link {{ 'active' if request.path == '/eoc/alerts' else '' }}" data-tooltip="Official Alerts" aria-label="Official Alerts">
+                    <i class="bi bi-megaphone-fill"></i>
+                    <span class="nav-text sidebar-text-show">Official Alerts</span>
+                </a>
+
+                <a href="/eoc/resource-requests" class="sidebar-nav-link {{ 'active' if request.path == '/eoc/resource-requests' else '' }}" data-tooltip="Resource Requests" aria-label="Resource Requests">
+                    <i class="bi bi-inbox-fill"></i>
+                    <span class="nav-text sidebar-text-show">Resource Requests</span>
+                </a>
+
+                <a href="/all-incidents" class="sidebar-nav-link {{ 'active' if request.path == '/all-incidents' else '' }}" data-tooltip="Incident History" aria-label="Incident History">
+                    <i class="bi bi-clock-history"></i>
+                    <span class="nav-text sidebar-text-show">Incident History</span>
+                </a>
+
+                <a href="/protocols" class="sidebar-nav-link {{ 'active' if request.path == '/protocols' else '' }}" data-tooltip="ICS Protocols" aria-label="ICS Protocols">
+                    <i class="bi bi-file-text"></i>
+                    <span class="nav-text sidebar-text-show">ICS Protocols</span>
+                </a>
+
+                {% elif session.role == 'eoc_staff' %}
+                {# ── EOC STAFF LINKS ── #}
+                <a href="/eoc-dashboard" class="sidebar-nav-link {{ 'active' if request.path == '/eoc-dashboard' else '' }}" data-tooltip="Command Dashboard" aria-label="Command Dashboard">
+                    <i class="bi bi-display-fill"></i>
+                    <span class="nav-text sidebar-text-show">Dashboard</span>
+                </a>
+
+                <a href="/hazard-map" class="sidebar-nav-link {{ 'active' if request.path == '/hazard-map' else '' }}" data-tooltip="Heat Maps" aria-label="Heat Maps">
+                    <i class="bi bi-pin-map-fill"></i>
+                    <span class="nav-text sidebar-text-show">Hazard Map</span>
+                </a>
+
+                <a href="/analytics" class="sidebar-nav-link {{ 'active' if request.path == '/analytics' else '' }}" data-tooltip="Analytics" aria-label="Analytics">
+                    <i class="bi bi-graph-up"></i>
+                    <span class="nav-text sidebar-text-show">Analytics</span>
+                </a>
+
+                <a href="/eoc/incidents" class="sidebar-nav-link {{ 'active' if request.path == '/eoc/incidents' else '' }}" data-tooltip="Incident Monitoring" aria-label="Incident Monitoring">
+                    <i class="bi bi-binoculars-fill"></i>
+                    <span class="nav-text sidebar-text-show">Incidents</span>
+                </a>
+
+                <a href="/eoc/resources" class="sidebar-nav-link {{ 'active' if request.path == '/eoc/resources' else '' }}" data-tooltip="Resource Monitoring" aria-label="Resource Monitoring">
+                    <i class="bi bi-truck"></i>
+                    <span class="nav-text sidebar-text-show">Resources</span>
+                </a>
+
+                <div class="menu-subgroup-label sidebar-text-show">Dispatch</div>
+                <a href="/admin/alerts" class="sidebar-nav-link {{ 'active' if request.path == '/admin/alerts' else '' }}" data-tooltip="Verify & Toggle Alerts" aria-label="Verify & Toggle Alerts">
+                    <i class="bi bi-check-circle-fill"></i>
+                    <span class="nav-text sidebar-text-show">Verifications</span>
+                </a>
+                <a href="/admin/responses" class="sidebar-nav-link {{ 'active' if request.path == '/admin/responses' else '' }}" data-tooltip="Active Operations" aria-label="Active Operations">
+                    <i class="bi bi-shield-fill-exclamation"></i>
+                    <span class="nav-text sidebar-text-show">Operations</span>
+                </a>
+
+                <a href="/all-alerts" class="sidebar-nav-link {{ 'active' if request.path == '/all-alerts' else '' }}" data-tooltip="Active Alerts" aria-label="Active Alerts">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <span class="nav-text sidebar-text-show">Active Alerts</span>
+                </a>
+
+                <a href="/eoc/alerts" class="sidebar-nav-link {{ 'active' if request.path == '/eoc/alerts' else '' }}" data-tooltip="Official Alerts" aria-label="Official Alerts">
+                    <i class="bi bi-megaphone-fill"></i>
+                    <span class="nav-text sidebar-text-show">Official Alerts</span>
+                </a>
+
+                <a href="/eoc/resource-requests" class="sidebar-nav-link {{ 'active' if request.path == '/eoc/resource-requests' else '' }}" data-tooltip="Resource Requests" aria-label="Resource Requests">
+                    <i class="bi bi-inbox-fill"></i>
+                    <span class="nav-text sidebar-text-show">Resource Requests</span>
+                </a>
+
+                <a href="/facilities" class="sidebar-nav-link {{ 'active' if request.path == '/facilities' else '' }}" data-tooltip="Facility Directory" aria-label="Facility Directory">
+                    <i class="bi bi-building-fill"></i>
+                    <span class="nav-text sidebar-text-show">Facilities</span>
+                </a>
+
+                {% elif session.role == 'field_responder' %}
+                {# ── FIELD RESPONDER LINKS ── #}
+                <a href="/responder-dashboard" class="sidebar-nav-link {{ 'active' if request.path == '/responder-dashboard' else '' }}" data-tooltip="Field Dashboard" aria-label="Field Dashboard">
+                    <i class="bi bi-speedometer2"></i>
+                    <span class="nav-text sidebar-text-show">Field Dashboard</span>
+                </a>
+
+                <a href="/responder-tasks" class="sidebar-nav-link {{ 'active' if request.path == '/responder-tasks' or request.path == '/responder-checklist' else '' }}" data-tooltip="My Tasks" aria-label="My Tasks">
+                    <i class="bi bi-list-task"></i>
+                    <span class="nav-text sidebar-text-show">My Tasks</span>
+                </a>
+
+                <a href="/responder-report" class="sidebar-nav-link {{ 'active' if request.path == '/responder-report' else '' }}" data-tooltip="File Report" aria-label="File Report">
+                    <i class="bi bi-send-fill"></i>
+                    <span class="nav-text sidebar-text-show">File Report</span>
+                </a>
+
+                <a href="/hazard-map" class="sidebar-nav-link {{ 'active' if request.path == '/hazard-map' else '' }}" data-tooltip="Hazard Map" aria-label="Hazard Map">
+                    <i class="bi bi-pin-map-fill"></i>
+                    <span class="nav-text sidebar-text-show">Hazard Map</span>
+                </a>
+
+                {% else %}
+                {# ── CITIZEN LINKS ── #}
+                <a href="/citizen-dashboard" class="sidebar-nav-link {{ 'active' if request.path == '/citizen-dashboard' else '' }}" data-tooltip="Dashboard" aria-label="Dashboard">
+                    <i class="bi bi-speedometer2"></i>
+                    <span class="nav-text sidebar-text-show">Dashboard</span>
+                </a>
+
+                <a href="/citizen-alerts" class="sidebar-nav-link {{ 'active' if request.path == '/citizen-alerts' else '' }}" data-tooltip="Emergency Alerts" aria-label="Emergency Alerts">
+                    <i class="bi bi-bell-fill"></i>
+                    <span class="nav-text sidebar-text-show">Emergency Alerts</span>
+                    {% if alert_count is defined and alert_count > 0 %}
+                        <span class="badge bg-danger rounded-pill ms-auto sidebar-text-show" style="font-size:0.65rem;min-width:1.3rem;">{{ alert_count }}</span>
+                        <span class="alert-dot sidebar-text-hide" style="position:absolute;top:8px;right:8px;width:8px;height:8px;background:#EF4444;border-radius:50%;border:1px solid #0b0f19;"></span>
+                    {% endif %}
+                </a>
+
+                <a href="/citizen-report" class="sidebar-nav-link {{ 'active' if request.path == '/citizen-report' else '' }}" data-tooltip="Report Incident" aria-label="Report Incident">
+                    <i class="bi bi-plus-circle-fill"></i>
+                    <span class="nav-text sidebar-text-show">Report Incident</span>
+                </a>
+
+                <a href="/citizen-status" class="sidebar-nav-link {{ 'active' if request.path == '/citizen-status' else '' }}" data-tooltip="Status Tracking" aria-label="Status Tracking">
+                    <i class="bi bi-clock-history"></i>
+                    <span class="nav-text sidebar-text-show">Status Tracking</span>
+                </a>
+
+                <a href="/citizen-resources" class="sidebar-nav-link {{ 'active' if request.path == '/citizen-resources' else '' }}" data-tooltip="Resources & Info" aria-label="Resources & Info">
+                    <i class="bi bi-info-circle-fill"></i>
+                    <span class="nav-text sidebar-text-show">Resources & Info</span>
+                </a>
+
+                <a href="/citizen-evacuation-centers" class="sidebar-nav-link {{ 'active' if request.path == '/citizen-evacuation-centers' else '' }}" data-tooltip="Evacuation Centers" aria-label="Evacuation Centers">
+                    <i class="bi bi-houses-fill"></i>
+                    <span class="nav-text sidebar-text-show">Evacuation Centers</span>
+                </a>
+                {% endif %}
+            </nav>
+        </div>
+
+        <!-- Emergency Section: Citizens Only -->
+        {% if session.role == 'citizen' %}
+        <div class="sidebar-menu border-top-custom">
+            <div class="menu-section-label sidebar-text-show">
+                <i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>Emergency
+            </div>
+            
+            <button class="btn btn-danger w-100 sos-button d-flex align-items-center justify-content-center gap-2" 
+                    onclick="triggerSOS()" 
+                    aria-label="Emergency SOS" 
+                    aria-live="assertive">
+                <i class="bi bi-exclamation-octagon-fill"></i>
+                <span class="sidebar-text-show">Emergency SOS</span>
+            </button>
+        </div>
+        {% endif %}
+
+        <!-- Footer -->
+        <div class="sidebar-footer border-top-custom">
+            <a href="/logout" class="sidebar-nav-link" data-tooltip="Logout" aria-label="Logout">
+                <i class="bi bi-box-arrow-right"></i>
+                <span class="nav-text sidebar-text-show">Logout</span>
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Sidebar Variables */
+:root {
+    --sidebar-width: 250px;
+    --sidebar-collapsed-width: 96px;
+    --sidebar-hover: rgba(59, 130, 246, 0.1);
+    --sidebar-active-bg: rgba(59, 130, 246, 0.2);
+    --sidebar-active-border: #3b82f6;
+    --sidebar-text: #f3f4f6;
+    --sidebar-transition: 0.3s ease;
+}
+
+/* Fixed sidebar container */
+.sidebar-container {
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 100vh;
+    width: var(--sidebar-width);
+    transition: width var(--sidebar-transition);
+    z-index: 1060; /* must stay above .mobile-topbar (1050) and .sidebar-overlay (1040) so links are clickable when open as a drawer */
+}
+
+.sidebar-container.collapsed {
+    width: var(--sidebar-collapsed-width);
+}
+
+.sidebar-wrapper {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(180deg, #0b0f19 0%, #12192b 100%);
+    color: var(--sidebar-text);
+    display: flex;
+    flex-direction: column;
+    padding: 1.2rem;
+    box-shadow: 2px 0 16px rgba(0, 0, 0, 0.28);
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.sidebar-wrapper::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+}
+
+.sidebar-wrapper::-webkit-scrollbar-thumb {
+    background: transparent;
+}
+
+.sidebar-container.collapsed .sidebar-wrapper {
+    padding: 1rem;
+}
+
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.4rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
+}
+
+.sidebar-brand {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    min-width: 0;
+}
+
+.sidebar-icon {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    border-radius: 10px;
+    background: #141b2d;
+    border: 1px solid rgba(59, 130, 246, 0.4);
+    font-size: 1.15rem;
+    color: #3b82f6;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.sidebar-text-content h6 {
+    color: #fff;
+    font-size: 1rem;
+    margin-bottom: 0.125rem;
+}
+
+.text-muted-custom {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.75rem;
+}
+
+.sidebar-toggle {
+    background: none;
+    border: none;
+    padding: 0.25rem;
+    margin-left: 0.6rem;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 1rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: color 0.2s ease, text-shadow 0.2s ease, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    line-height: 1;
+}
+
+.sidebar-toggle:hover {
+    color: #3b82f6;
+    text-shadow: 0 0 8px rgba(59, 130, 246, 0.7);
+}
+
+.sidebar-toggle:focus {
+    outline: none;
+}
+
+.sidebar-toggle:focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+.sidebar-container.collapsed .sidebar-toggle i {
+    transform: rotate(180deg);
+}
+
+.sidebar-close-mobile {
+    display: none;
+    background: none;
+    border: none;
+    padding: 0.25rem;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 1.1rem;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.sidebar-close-mobile:hover {
+    color: #fff;
+}
+
+.sidebar-toggle i {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: block;
+}
+.sidebar-text-show {
+    transition: opacity var(--sidebar-transition), visibility var(--sidebar-transition);
+}
+
+.sidebar-container.collapsed .sidebar-text-show {
+    display: none;
+}
+
+.sidebar-container.collapsed .sidebar-header {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.65rem;
+}
+
+.sidebar-container.collapsed .sidebar-brand {
+    flex: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    margin: 0;
+}
+
+.sidebar-container.collapsed .sidebar-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    margin: 0;
+    text-align: center;
+}
+
+.sidebar-container.collapsed .sidebar-toggle {
+    margin-left: 0;
+    width: 40px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    padding: 0;
+}
+
+.sidebar-menu {
+    margin-bottom: 1.25rem;
+    flex-shrink: 0;
+}
+
+.sidebar-menu:last-of-type {
+    margin-bottom: 0;
+}
+
+.menu-section-label {
+    display: flex;
+    align-items: center;
+    padding-left: 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.7rem;
+}
+
+.menu-subgroup-label {
+    padding-left: 0.5rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.35);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin: 0.75rem 0 0.1rem;
+}
+
+.sidebar-container.collapsed .menu-subgroup-label {
+    display: none;
+}
+
+.sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.sidebar-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.68rem 0.9rem;
+    border-radius: 0.5rem;
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    transition: all var(--sidebar-transition);
+    border-left: 3px solid transparent;
+    position: relative;
+    white-space: nowrap;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.sidebar-nav-link:hover {
+    background: var(--sidebar-hover);
+    color: #fff;
+    border-left-color: rgba(59, 130, 246, 0.5);
+}
+
+.sidebar-nav-link:focus-visible {
+    background: var(--sidebar-hover);
+    color: #fff;
+    border-left-color: rgba(59, 130, 246, 0.5);
+    outline: 2px solid #3b82f6;
+    outline-offset: -2px;
+}
+
+.sidebar-nav-link.active {
+    background: var(--sidebar-active-bg);
+    color: #3b82f6;
+    border-left-color: var(--sidebar-active-border);
+    font-weight: 500;
+    box-shadow: inset 0 0 12px rgba(59, 130, 246, 0.15);
+}
+
+.sidebar-nav-link i {
+    font-size: 1.25rem;
+    min-width: 1.5rem;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.sidebar-nav-link .nav-text {
+    flex: 1;
+}
+
+.sidebar-container.collapsed .sidebar-nav-link {
+    justify-content: center;
+    padding: 0.75rem;
+    border-left: none;
+}
+
+.sidebar-container.collapsed .sidebar-nav-link:hover {
+    border-left: none;
+}
+
+/* Tooltip for collapsed state */
+.sidebar-container.collapsed .sidebar-nav-link::before {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(0, 0, 0, 0.95);
+    color: #fff;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.4rem;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--sidebar-transition);
+    margin-left: 0.75rem;
+    z-index: 1001;
+}
+
+.sidebar-container.collapsed .sidebar-nav-link:hover::before,
+.sidebar-container.collapsed .sidebar-nav-link:focus-visible::before {
+    opacity: 1;
+}
+
+.sidebar-container.collapsed .sidebar-nav-link:focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: -2px;
+    border-radius: 0.5rem;
+}
+
+.border-top-custom {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 1rem;
+}
+
+.sidebar-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: auto;
+    flex-shrink: 0;
+}
+
+/* Badge styling */
+.sidebar-nav-link .badge {
+    font-size: 0.65rem;
+    padding: 0.35rem 0.5rem;
+}
+
+/* Alert dot — hidden when sidebar is expanded, visible when collapsed */
+.sidebar-text-hide {
+    display: none;
+}
+
+.sidebar-container.collapsed .sidebar-text-hide {
+    display: block;
+}
+
+/* SOS Button specific styling */
+.sos-button {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    border: none;
+    font-weight: 600;
+    animation: sos-pulse 2s infinite;
+    padding: 0.75rem 1rem;
+}
+
+.sos-button:hover {
+    transform: scale(1.02);
+    box-shadow: 0 0 20px rgba(220, 38, 38, 0.5);
+}
+
+.sos-button i {
+    font-size: 1.1rem;
+}
+
+@keyframes sos-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
+    50% { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
+}
+
+/* Body margin adjustment for sidebar */
+body {
+    margin-left: var(--sidebar-width);
+    transition: margin-left var(--sidebar-transition);
+}
+
+body.sidebar-collapsed {
+    margin-left: var(--sidebar-collapsed-width);
+}
+
+/* Mobile top bar (hidden on desktop) */
+.mobile-topbar {
+    display: none;
+    align-items: center;
+    gap: 0.75rem;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    padding: 0 1rem;
+    background: linear-gradient(180deg, #0b0f19 0%, #141b2d 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    z-index: 1050;
+}
+
+.mobile-menu-btn {
+    background: none;
+    border: none;
+    color: #f3f4f6;
+    font-size: 1.4rem;
+    line-height: 1;
+    padding: 0.25rem 0.4rem;
+    cursor: pointer;
+}
+
+.mobile-menu-btn i {
+    display: inline-block;
+    transition: transform 0.25s ease;
+}
+
+.mobile-menu-btn.is-active i {
+    transform: rotate(90deg);
+}
+
+.mobile-topbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #fff;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    font-size: 0.95rem;
+}
+
+.mobile-topbar-brand i {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: #141b2d;
+    border: 1px solid rgba(59, 130, 246, 0.4);
+    color: #3b82f6;
+    font-size: 0.9rem;
+}
+
+.sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(1px);
+    z-index: 1040;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.sidebar-overlay.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Responsive breakpoint: below this, sidebar becomes an off-canvas drawer */
+@media (max-width: 991.98px) {
+    .mobile-topbar {
+        display: flex;
+    }
+
+    body {
+        margin-left: 0 !important;
+        padding-top: 56px;
+    }
+
+    .sidebar-container,
+    .sidebar-container.collapsed {
+        width: min(80vw, 280px);
+        transform: translateX(-100%);
+        box-shadow: none;
+        transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1),
+                    box-shadow 0.32s ease;
+    }
+
+    .sidebar-container.mobile-open {
+        transform: translateX(0);
+        box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Staggered fade/slide-in for nav links once the drawer is open */
+    .sidebar-container .sidebar-nav-link,
+    .sidebar-container .sos-button {
+        opacity: 0;
+        transform: translateX(-12px);
+    }
+
+    .sidebar-container.mobile-open .sidebar-nav-link,
+    .sidebar-container.mobile-open .sos-button {
+        animation: sidebar-link-in 0.32s ease forwards;
+    }
+
+    .sidebar-container.mobile-open .sidebar-nav-link:nth-of-type(1)  { animation-delay: 0.05s; }
+    .sidebar-container.mobile-open .sidebar-nav-link:nth-of-type(2)  { animation-delay: 0.08s; }
+    .sidebar-container.mobile-open .sidebar-nav-link:nth-of-type(3)  { animation-delay: 0.11s; }
+    .sidebar-container.mobile-open .sidebar-nav-link:nth-of-type(4)  { animation-delay: 0.14s; }
+    .sidebar-container.mobile-open .sidebar-nav-link:nth-of-type(5)  { animation-delay: 0.17s; }
+    .sidebar-container.mobile-open .sidebar-nav-link:nth-of-type(6)  { animation-delay: 0.20s; }
+    .sidebar-container.mobile-open .sidebar-nav-link:nth-of-type(7)  { animation-delay: 0.23s; }
+    .sidebar-container.mobile-open .sidebar-nav-link:nth-of-type(8)  { animation-delay: 0.26s; }
+    .sidebar-container.mobile-open .sos-button                       { animation-delay: 0.29s; }
+
+    @keyframes sidebar-link-in {
+        from { opacity: 0; transform: translateX(-12px); }
+        to   { opacity: 1; transform: translateX(0); }
+    }
+
+    /* Respect reduced-motion preference */
+    @media (prefers-reduced-motion: reduce) {
+        .sidebar-container .sidebar-nav-link,
+        .sidebar-container .sos-button {
+            opacity: 1;
+            transform: none;
+            animation: none;
+        }
+    }
+
+    .sidebar-container.collapsed .sidebar-text-show {
+        display: initial;
+    }
+
+    .sidebar-container.collapsed .sidebar-header {
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .sidebar-container.collapsed .sidebar-brand {
+        display: flex;
+        flex: 1;
+        justify-content: flex-start;
+        width: auto;
+        margin: 0;
+    }
+
+    .sidebar-container.collapsed .sidebar-icon {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: auto;
+        margin: 0;
+        text-align: left;
+    }
+
+    .sidebar-toggle {
+        display: none;
+    }
+
+    .sidebar-close-mobile {
+        display: block;
+    }
+}
+</style>
+
+<script>
+/* Sidebar toggle — this is the ONLY place this logic lives.
+   app.js intentionally excludes sidebar handling to avoid double-binding. */
+(function () {
+    function initSidebar() {
+        const toggle    = document.getElementById('sidebarToggle');
+        const container = document.querySelector('.sidebar-container');
+        if (!toggle || !container) return;
+
+        function setCollapsed(collapsed) {
+            container.classList.toggle('collapsed', collapsed);
+            document.body.classList.toggle('sidebar-collapsed', collapsed);
+            /* Rotate chevron icon */
+            const icon = toggle.querySelector('i');
+            if (icon) {
+                icon.style.transform = collapsed ? 'rotate(180deg)' : 'rotate(0deg)';
+            }
+            localStorage.setItem('sidebarCollapsed', collapsed);
+        }
+
+        toggle.addEventListener('click', function (e) {
+            e.stopPropagation(); /* Prevent bubbling to any global click handlers */
+            setCollapsed(!container.classList.contains('collapsed'));
+        });
+
+        /* Restore saved state on page load (desktop collapse only) */
+        const saved = localStorage.getItem('sidebarCollapsed') === 'true';
+        if (saved) setCollapsed(true);
+    }
+
+    function initMobileDrawer() {
+        const container   = document.getElementById('sidebarContainer');
+        const openBtn      = document.getElementById('mobileSidebarToggle');
+        const closeBtn      = document.getElementById('sidebarCloseMobile');
+        const overlay        = document.getElementById('sidebarOverlay');
+        if (!container || !openBtn || !overlay) return;
+
+        function openDrawer() {
+            container.classList.add('mobile-open');
+            overlay.classList.add('show');
+            openBtn.classList.add('is-active');
+            openBtn.setAttribute('aria-expanded', 'true');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeDrawer() {
+            container.classList.remove('mobile-open');
+            overlay.classList.remove('show');
+            openBtn.classList.remove('is-active');
+            openBtn.setAttribute('aria-expanded', 'false');
+            document.body.style.overflow = '';
+        }
+
+        openBtn.addEventListener('click', openDrawer);
+        if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+        overlay.addEventListener('click', closeDrawer);
+
+        /* Close the drawer whenever a nav link is tapped on mobile */
+        container.querySelectorAll('.sidebar-nav-link, .sos-button').forEach(function (el) {
+            el.addEventListener('click', function () {
+                if (window.innerWidth <= 991.98) closeDrawer();
+            });
+        });
+
+        /* If the viewport is resized up past the mobile breakpoint while
+           the drawer is open, reset state so desktop layout isn't stuck. */
+        window.addEventListener('resize', function () {
+            if (window.innerWidth > 991.98) closeDrawer();
+        });
+    }
+
+    function initBackupLink() {
+        const link = document.getElementById('sidebarBackupLink');
+        if (!link) return;
+
+        link.addEventListener('click', function (e) {
+            // app.js registers a document-level click listener (initPageTransitions)
+            // that intercepts every <a href> click for a fade transition, then does
+            // a REAL navigation to the href itself. Without stopping propagation here,
+            // that listener still fires on this same click and navigates the tab to
+            // /admin/backup for real, racing this handler's iframe-based download.
+            e.stopPropagation();
+            e.preventDefault();
+            if (link.dataset.downloading === 'true') return;
+            link.dataset.downloading = 'true';
+
+            const textEl = link.querySelector('.nav-text');
+            const originalText = textEl ? textEl.textContent : null;
+            if (textEl) textEl.textContent = 'Preparing backup…';
+            link.style.pointerEvents = 'none';
+            link.style.opacity = '0.6';
+
+            window.location.href = link.getAttribute('href');
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () {
+            initSidebar();
+            initMobileDrawer();
+            initBackupLink();
+        });
+    } else {
+        initSidebar();
+        initMobileDrawer();
+        initBackupLink();
+    }
+})();
+</script>

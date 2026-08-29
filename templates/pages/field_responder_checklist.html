@@ -1,0 +1,76 @@
+{% extends 'pages/base.html' %}
+{% block title %}Pre-Deployment Checklist | DICS AI{% endblock %}
+{% block content %}
+<h1 class="visually-hidden">Pre-Deployment Checklist</h1>
+<div class="container-fluid">
+  <div class="row justify-content-center">
+    <div class="col-lg-7">
+
+      <div class="section-header mb-4">
+        <span class="section-header-icon"><i class="bi bi-clipboard2-check-fill"></i></span>
+        <h4>ICS Pre-Deployment Checklist</h4>
+      </div>
+
+      <div class="card card-custom shadow-lg mb-4">
+        <div class="card-body">
+          <p class="text-muted small mb-4">
+            Complete all items below before deploying to the field. All items must be confirmed before you are cleared for deployment.
+          </p>
+          <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="vstack gap-3 mb-4">
+              {% for key, label in checklist_items %}
+              <div class="d-flex align-items-center gap-3 p-3 rounded"
+                style="background:{% if completed.get(key) %}rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25){% else %}rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08){% endif %};">
+                <div class="form-check form-check-lg mb-0">
+                  <input class="form-check-input" type="checkbox" name="{{ key }}" id="chk_{{ key }}"
+                    {% if completed.get(key) %}checked{% endif %}
+                    style="width:1.3em;height:1.3em;cursor:pointer;">
+                </div>
+                <label for="chk_{{ key }}" class="mb-0 fw-semibold" style="cursor:pointer;{% if completed.get(key) %}color:#86EFAC;{% endif %}">
+                  {{ label }}
+                </label>
+                {% if completed.get(key) %}
+                <i class="bi bi-check-circle-fill text-success ms-auto"></i>
+                {% endif %}
+              </div>
+              {% endfor %}
+            </div>
+
+            <div class="d-flex gap-3 flex-wrap">
+              <button type="submit" class="btn btn-success btn-lg px-4">
+                <i class="bi bi-clipboard2-check me-2"></i>Confirm Checklist
+              </button>
+              <a href="{{ url_for('responder.responder_tasks') }}" class="btn btn-outline-secondary btn-lg">
+                <i class="bi bi-list-task me-2"></i>Go to Tasks
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="card card-custom shadow-lg">
+        <div class="card-body">
+          <h6 class="text-muted fw-bold mb-3"><i class="bi bi-megaphone me-2"></i>Active Incidents to Deploy To</h6>
+          {% if active_responses %}
+          <div class="vstack gap-2">
+            {% for r in active_responses %}
+            <div class="p-3 rounded d-flex justify-content-between align-items-center" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);">
+              <div>
+                <div class="fw-semibold text-info">{{ r.incident.hazard_type|upper }} — {{ r.incident.location or 'Unknown' }}</div>
+                <div class="text-muted small">Priority: {{ r.priority_level }} · Commander: {{ r.commander.username }}</div>
+              </div>
+              <span class="badge badge-status-active">ACTIVE</span>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="text-muted small mb-0">No active incidents at this time.</p>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

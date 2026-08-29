@@ -1,0 +1,87 @@
+{% extends 'pages/base.html' %}
+{% block title %}Close Response #{{ response.incident_id }} | DICS AI{% endblock %}
+
+{% block content %}
+<h1 class="visually-hidden">Close Response #{{ response.incident_id }}</h1>
+{% set active_tab = 'close' %}
+{% include 'partials/response_header.html' %}
+
+<div class="row">
+    <div class="col-12 mb-4">
+        {% if response.status != 'CLOSED' %}
+        <div class="card card-custom" style="border-left:4px solid #EF4444 !important;">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <div class="icon-badge" style="background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.3);">
+                        <i class="bi bi-exclamation-octagon-fill"></i>
+                    </div>
+                    <h5 class="mb-0">Response Closure Protocol</h5>
+                </div>
+
+                <!-- Warning block -->
+                <div style="padding:1rem 1.25rem;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:8px;margin-bottom:1.5rem;">
+                    <h6 class="fw-bold mb-1" style="color:#FCA5A5;">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>Critical Warning
+                    </h6>
+                    <p class="text-muted small mb-0">
+                        Closing Response <strong class="text-white">#{{ response.incident_id }}</strong> will set its status to
+                        <strong class="text-white">CLOSED</strong>. This locks further resource allocations, task assignments,
+                        and situation reports. The parent incident alert will be deactivated.
+                        <strong class="text-white">This action is irreversible.</strong>
+                    </p>
+                </div>
+
+                <form method="POST" action="{{ url_for('commander.incident_response_close_page', response_id=response.id) }}" data-confirm="WARNING: Are you sure you want to permanently close this incident response?" data-confirm-title="Close incident response">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label class="form-label" for="notes">Final Closure Summary <span class="text-danger">*</span></label>
+                        <textarea id="notes" name="notes" class="form-control" rows="6"
+                            placeholder="Provide a summary of operations, damage findings, response effectiveness, and closure briefing..." required></textarea>
+                    </div>
+                    <div class="row mb-4">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="casualties">Total Confirmed Casualties <span class="text-danger">*</span></label>
+                            <input id="casualties" type="number" name="casualties" class="form-control" min="0" placeholder="e.g. 0, 5" required>
+                            <small class="text-muted">Final total casualty count for this response</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="evacuated">Total Confirmed Evacuations <span class="text-danger">*</span></label>
+                            <input id="evacuated" type="number" name="evacuated" class="form-control" min="0" placeholder="e.g. 100, 1500" required>
+                            <small class="text-muted">Final total evacuated person count</small>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-modern flex-grow-1 py-3 fw-bold"
+                                style="background:linear-gradient(135deg,#dc2626,#b91c1c);color:#fff;border:none;">
+                            <i class="bi bi-archive-fill me-2"></i>Finalize and Close Response
+                        </button>
+                        <a href="{{ url_for('commander.incident_response_detail', response_id=response.id) }}"
+                           class="btn btn-outline-secondary btn-modern flex-grow-1 py-3 text-center fw-bold">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {% else %}
+        <div class="card card-custom text-center">
+            <div class="card-body p-5">
+                <div style="width:72px;height:72px;border-radius:50%;background:rgba(16,185,129,0.15);border:2px solid rgba(16,185,129,0.4);display:flex;align-items:center;justify-content:center;margin:0 auto 1.5rem;">
+                    <i class="bi bi-check-circle-fill" style="color:#86EFAC;font-size:2rem;"></i>
+                </div>
+                <h4 class="text-white fw-bold mb-2">Operations Terminated</h4>
+                <p class="text-muted mb-4">
+                    This incident response was closed on
+                    <strong class="text-white">{{ response.closed_at.strftime('%b %d, %Y at %H:%M') if response.closed_at else 'unknown date' }}</strong>.
+                </p>
+                <a href="{{ url_for('commander.incident_commander_dashboard') }}" class="btn btn-primary-modern btn-modern px-5 py-2">
+                    <i class="bi bi-arrow-left me-2"></i>Return to Command Center
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

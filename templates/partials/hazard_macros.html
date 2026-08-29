@@ -1,0 +1,59 @@
+{# Shared hazard-type icon + risk-level badge markup.
+   Replaces raw emoji with the existing Bootstrap Icons + badge-low/mod/high
+   classes so hazard styling stays consistent across pages. #}
+
+{% macro hazard_icon_class(hazard_type) -%}
+    {%- set t = (hazard_type or '')|lower -%}
+    {%- if t == 'flood' -%}bi-water
+    {%- elif t == 'landslide' -%}bi-triangle-fill
+    {%- elif t == 'earthquake' -%}bi-broadcast-pin
+    {%- elif t == 'volcanic' -%}bi-cone-striped
+    {%- elif t == 'storm' -%}bi-cloud-lightning-rain-fill
+    {%- elif t == 'fire' -%}bi-fire
+    {%- else -%}bi-exclamation-triangle-fill
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro hazard_icon(hazard_type) -%}
+<i class="bi {{ hazard_icon_class(hazard_type) }}" aria-hidden="true"></i>
+{%- endmacro %}
+
+{% macro risk_badge(level) -%}
+    {%- set l = (level or '')|lower -%}
+    {%- if l == 'high' -%}
+    <span class="badge badge-high"><i class="bi bi-record-fill me-1"></i>HIGH</span>
+    {%- elif l == 'moderate' or l == 'mod' -%}
+    <span class="badge badge-mod"><i class="bi bi-record-fill me-1"></i>MOD</span>
+    {%- elif l in ['unknown', 'insufficient_data', 'insufficient-data', 'insufficient data'] -%}
+    <span class="badge badge-unknown"><i class="bi bi-question-circle-fill me-1"></i>UNKNOWN</span>
+    {%- else -%}
+    <span class="badge badge-low"><i class="bi bi-record-fill me-1"></i>LOW</span>
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro priority_badge(level, label=none) -%}
+    {%- set l = (level or '')|lower -%}
+    {%- if l == 'critical' -%}
+    <span class="priority-badge priority-critical"><span class="priority-badge-content"><i class="bi bi-record-fill"></i>{{ label or 'CRITICAL' }}</span></span>
+    {%- elif l == 'high' -%}
+    <span class="priority-badge priority-high"><span class="priority-badge-content"><i class="bi bi-record-fill"></i>{{ label or 'HIGH' }}</span></span>
+    {%- elif l == 'medium' or l == 'moderate' -%}
+    <span class="priority-badge priority-medium"><span class="priority-badge-content"><i class="bi bi-record-fill"></i>{{ label or 'MEDIUM' }}</span></span>
+    {%- else -%}
+    <span class="priority-badge priority-low"><span class="priority-badge-content"><i class="bi bi-record-fill"></i>{{ label or 'LOW' }}</span></span>
+    {%- endif -%}
+{%- endmacro %}
+
+{# incident.display_time is event_time (when the hazard actually happened,
+   per the source feed) if known, else created_at (when we logged it). When
+   the two differ by more than an hour -- e.g. a hazard-monitor incident
+   ingested well after the fact -- also show the logged time as a small
+   secondary line, so it's clear the top line is the real event time, not
+   "just now". fmt controls the primary line's strftime format; the
+   secondary line always uses a compact one to save space. #}
+{% macro event_time_cell(incident, fmt='%b %d, %Y %H:%M') -%}
+<span class="text-muted small">{{ incident.display_time.strftime(fmt) }}</span>
+{%- if incident.event_time and incident.created_at and (incident.created_at - incident.event_time).total_seconds()|abs > 3600 -%}
+<br><span class="text-muted" style="font-size:.68rem;opacity:.7;">Logged {{ incident.created_at.strftime('%b %d, %H:%M') }}</span>
+{%- endif -%}
+{%- endmacro %}

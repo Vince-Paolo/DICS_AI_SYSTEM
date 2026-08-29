@@ -1,0 +1,23 @@
+{# Shared "empty state" block: icon + title + subtitle + optional CTA.
+   Usage:
+     {% import 'partials/empty_state.html' as es %}
+     {{ es.render('bi-clipboard-data', 'No Reports Yet', 'You haven\'t submitted any incident reports.') }}
+     {{ es.render('bi-list-task', 'No Tasks Found', subtitle='...', cta_text='Add Task', cta_href='/x', variant='success') }}
+#}
+
+{% macro render(icon, title, subtitle=none, cta_text=none, cta_href=none, variant='primary', size='md') -%}
+<div class="empty-state {{ 'empty-state-sm' if size == 'sm' else '' }}">
+    <div class="icon-badge icon-badge-{{ variant }} empty-state-icon">
+        <i class="bi {{ icon }}" aria-hidden="true"></i>
+    </div>
+    <h5 class="mb-2">{{ title }}</h5>
+    {%- if subtitle %}
+    <p class="text-muted {{ 'mb-3' if cta_text else 'mb-0' }}">{{ subtitle }}</p>
+    {%- endif %}
+    {%- if cta_text and cta_href %}
+    <a href="{{ cta_href }}" class="btn btn-primary-modern btn-modern" style="width:auto;display:inline-block;">
+        <i class="bi bi-plus-circle me-2" aria-hidden="true"></i>{{ cta_text }}
+    </a>
+    {%- endif %}
+</div>
+{%- endmacro %}

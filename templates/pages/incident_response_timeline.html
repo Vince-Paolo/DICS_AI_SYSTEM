@@ -1,0 +1,56 @@
+{% extends 'pages/base.html' %}
+{% import 'partials/empty_state.html' as es %}
+{% block title %}Response #{{ response.incident_id }} Timeline | DICS AI{% endblock %}
+
+{% block content %}
+<h1 class="visually-hidden">Response #{{ response.incident_id }} Timeline</h1>
+{% set active_tab = 'timeline' %}
+{% include 'partials/response_header.html' %}
+
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="card card-custom">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <div class="icon-badge icon-badge-primary"><i class="bi bi-clock-history"></i></div>
+                    <h5 class="mb-0">Tactical Event Flow</h5>
+                    <span class="ms-2 text-muted small">({{ events|length }} events)</span>
+                </div>
+
+                {% if events %}
+                    <!-- Timeline track -->
+                    <div style="position:relative;padding-left:2.5rem;">
+                        <!-- Vertical line -->
+                        <div style="position:absolute;left:11px;top:0;bottom:0;width:2px;background:linear-gradient(180deg,rgba(59,130,246,0.5),rgba(59,130,246,0.05));border-radius:1px;"></div>
+
+                        {% for event in events %}
+                        <div style="position:relative;margin-bottom:1.75rem;">
+                            <!-- Dot -->
+                            <div class="{{ event.badge_class }}" style="position:absolute;left:-2.5rem;top:0.2rem;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.7rem;color:#fff;border:2px solid rgba(0,0,0,0.4);box-shadow:0 0 0 3px rgba(59,130,246,0.2);">
+                                <i class="bi {{ event.icon }}"></i>
+                            </div>
+
+                            <!-- Event Card -->
+                            <div style="padding:1rem 1.25rem;background:rgba(10,13,26,0.5);border:1px solid rgba(255,255,255,0.06);border-radius:10px;transition:border-color 0.2s;"
+                                 onmouseover="this.style.borderColor='rgba(59,130,246,0.25)'"
+                                 onmouseout="this.style.borderColor='rgba(255,255,255,0.06)'">
+                                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-1">
+                                    <h6 class="text-white fw-bold mb-0">{{ event.title }}</h6>
+                                    <span class="text-muted" style="font-size:0.75rem;font-family:monospace;">
+                                        <i class="bi bi-clock me-1"></i>{{ event.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}
+                                    </span>
+                                </div>
+                                <p class="text-muted mb-0 small" style="white-space:pre-line;line-height:1.6;">{{ event.details }}</p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    {{ es.render('bi-clock-history', 'No Events Logged', subtitle='No tactical events have been recorded for this response yet.') }}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

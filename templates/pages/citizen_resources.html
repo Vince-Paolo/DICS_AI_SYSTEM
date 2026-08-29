@@ -1,0 +1,410 @@
+{% extends 'pages/base.html' %}
+{% import 'partials/hazard_macros.html' as hz %}
+
+{% block title %}Resources & Emergency Info | DICS AI Citizen Portal{% endblock %}
+
+{% block content %}
+<h1 class="visually-hidden">Resources & Emergency Info | DICS AI Citizen Portal</h1>
+<div class="container-fluid">
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="section-header">
+                <span class="section-header-icon"><i class="bi bi-info-square"></i></span>
+                <h4>Emergency Resources & Information</h4>
+            </div>
+
+            <div class="row g-3 mb-4 citizen-highlight-row">
+                <div class="col-md-6 col-xl-6">
+                    <div class="card card-custom card-gradient-danger shadow-lg h-100">
+                        <div class="card-body d-flex flex-column p-3">
+                            <div class="d-flex align-items-center gap-2 mb-3">
+                                <div class="icon-badge" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.1)); color: var(--hazard-high); border: 1px solid rgba(239, 68, 68, 0.3);">
+                                    <i class="bi bi-telephone-fill"></i>
+                                </div>
+                                <h5 class="mb-0">Emergency Hotlines</h5>
+                            </div>
+                            <div class="vstack gap-3 flex-grow-1">
+                                <div class="info-tile info-tile-danger h-100">
+                                    <p class="small text-muted mb-1"><i class="bi bi-broadcast me-1"></i>National Emergency</p>
+                                    <p class="text-white fw-bold fs-5 mb-0">911</p>
+                                </div>
+                                <div class="info-tile info-tile-primary h-100">
+                                    <p class="small text-muted mb-1"><i class="bi bi-shield-fill me-1"></i>Calabarzon Police</p>
+                                    <p class="text-white fw-bold fs-5 mb-0">+63 2 8888-XXXX</p>
+                                </div>
+                                <div class="info-tile info-tile-danger h-100">
+                                    <p class="small text-muted mb-1"><i class="bi bi-fire me-1"></i>Fire Department</p>
+                                    <p class="text-white fw-bold fs-5 mb-0">(02) 427-8888</p>
+                                </div>
+                                <div class="info-tile info-tile-success h-100">
+                                    <p class="small text-muted mb-1"><i class="bi bi-heart-pulse-fill me-1"></i>Medical Emergency</p>
+                                    <p class="text-white fw-bold fs-5 mb-0">(02) 819-9999</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 col-xl-6">
+                    <div class="card card-custom card-gradient-primary shadow-lg h-100">
+                        <div class="card-body d-flex flex-column p-3">
+                            <div class="d-flex align-items-center gap-2 mb-3">
+                                <div class="icon-badge icon-badge-primary">
+                                    <i class="bi bi-building"></i>
+                                </div>
+                                <h5 class="mb-0">Local Response Centers</h5>
+                            </div>
+                            <div class="vstack gap-3 flex-grow-1">
+                                <div class="info-tile info-tile-primary h-100">
+                                    <p class="small text-muted mb-1"><i class="bi bi-geo-alt-fill me-1"></i>Cavite DMO</p>
+                                    <p class="text-white fw-bold small mb-0">123 Admin Avenue, Cavite City</p>
+                                </div>
+                                <div class="info-tile info-tile-primary h-100">
+                                    <p class="small text-muted mb-1"><i class="bi bi-geo-alt-fill me-1"></i>Laguna Emergency</p>
+                                    <p class="text-white fw-bold small mb-0">456 Safety Street, Santa Rosa</p>
+                                </div>
+                                <div class="info-tile info-tile-primary h-100">
+                                    <p class="small text-muted mb-1"><i class="bi bi-geo-alt-fill me-1"></i>Batangas Crisis</p>
+                                    <p class="text-white fw-bold small mb-0">789 Relief Road, Batangas City</p>
+                                </div>
+                                <div class="info-tile info-tile-primary h-100">
+                                    <p class="small text-muted mb-1"><i class="bi bi-cloud-sun-fill me-1"></i>PAGASA Office</p>
+                                    <p class="text-white fw-bold small mb-0">CALABARZON Region</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card card-custom shadow-lg mb-4">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <div class="icon-badge" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.1)); color: var(--hazard-high); border: 1px solid rgba(239, 68, 68, 0.3);">
+                            <i class="bi bi-map"></i>
+                        </div>
+                        <h5 class="mb-0">Evacuation Procedures</h5>
+                    </div>
+                    
+                    <ul class="nav nav-tabs nav-dark mb-4" role="tablist">
+                        <li class="nav-item">
+                            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#flood-evac">{{ hz.hazard_icon('flood') }} Flood</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#landslide-evac">{{ hz.hazard_icon('landslide') }} Landslide</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#earthquake-evac">{{ hz.hazard_icon('earthquake') }} Earthquake</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#volcanic-evac"><i class="bi bi-thermometer-sun" aria-hidden="true"></i> Volcanic</button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content">
+                        <div id="flood-evac" class="tab-pane fade show active">
+                            <h6 class="mb-3">Flood Evacuation Procedures</h6>
+                            <div class="alert-enhanced alert-enhanced-danger mb-3 p-3 rounded">
+                                <strong><i class="bi bi-exclamation-triangle-fill me-1"></i>Warning Signs:</strong> Heavy rainfall, rising water levels, unusual river flow
+                            </div>
+                            <ol class="small text-muted" style="padding-left: 1.5rem;">
+                                <li class="mb-2">Move to higher ground immediately if water level is rising</li>
+                                <li class="mb-2">Bring essential documents, medications, and valuables</li>
+                                <li class="mb-2">Follow designated evacuation routes posted in your area</li>
+                                <li class="mb-2">Head to nearest evacuation center or safe shelter</li>
+                                <li class="mb-2">Stay in contact with family and authorities</li>
+                                <li><strong style="color: var(--text-primary);">Never attempt to cross flooded areas - "Turn Around, Don't Drown"</strong></li>
+                            </ol>
+                        </div>
+
+                        <div id="landslide-evac" class="tab-pane fade">
+                            <h6 class="mb-3">Landslide Safety Measures</h6>
+                            <div class="alert-enhanced alert-enhanced-danger mb-3 p-3 rounded">
+                                <strong><i class="bi bi-exclamation-triangle-fill me-1"></i>Warning Signs:</strong> Ground cracks, tilting trees, unusual sounds from slopes
+                            </div>
+                            <ol class="small text-muted" style="padding-left: 1.5rem;">
+                                <li class="mb-2">Avoid areas at base of steep slopes or hills</li>
+                                <li class="mb-2">Stay away from areas showing signs of instability</li>
+                                <li class="mb-2">Keep away from roads passing through landslide-prone areas</li>
+                                <li class="mb-2">If near a slope, move sideways away from landslide path</li>
+                                <li class="mb-2">Listen for rumbling sounds or rockfall</li>
+                                <li><strong style="color: var(--text-primary);">Report unstable slopes to local authorities immediately</strong></li>
+                            </ol>
+                        </div>
+
+                        <div id="earthquake-evac" class="tab-pane fade">
+                            <h6 class="mb-3">Earthquake Safety & Response</h6>
+                            <div class="alert-enhanced alert-enhanced-danger mb-3 p-3 rounded">
+                                <strong><i class="bi bi-record-fill me-1"></i>Key Action:</strong> DROP, COVER, HOLD ON
+                            </div>
+                            <ol class="small text-muted" style="padding-left: 1.5rem;">
+                                <li class="mb-2"><strong style="color: var(--text-primary);">Drop</strong> to hands and knees immediately</li>
+                                <li class="mb-2"><strong style="color: var(--text-primary);">Cover</strong> under sturdy desk/table or against interior wall</li>
+                                <li class="mb-2"><strong style="color: var(--text-primary);">Hold on</strong> until shaking stops (typically 20-60 seconds)</li>
+                                <li class="mb-2">Stay away from windows and heavy objects that might fall</li>
+                                <li class="mb-2">After shaking stops, carefully exit if building is damaged</li>
+                                <li>Account for family members and move to designated shelter if needed</li>
+                            </ol>
+                        </div>
+
+                        <div id="volcanic-evac" class="tab-pane fade">
+                            <h6 class="mb-3">Volcanic Eruption Safety & Evacuation</h6>
+                            <div class="alert-enhanced alert-enhanced-danger mb-3 p-3 rounded">
+                                <strong><i class="bi bi-record-fill me-1"></i>Key Hazards:</strong> Ashfall, Lava Flow, Pyroclastic Surge, Lahar, Toxic Gas
+                            </div>
+                            <ol class="small text-muted" style="padding-left: 1.5rem;">
+                                <li class="mb-2">Monitor PHIVOLCS alerts — evacuate immediately upon Alert Level 4 or 5</li>
+                                <li class="mb-2">Wear N95 mask or damp cloth to protect from ashfall and toxic gases</li>
+                                <li class="mb-2">Evacuate away from river channels — lahars can travel far from the volcano</li>
+                                <li class="mb-2">Seal doors and windows with wet towels if ashfall occurs before evacuation</li>
+                                <li class="mb-2">Do not return home until PHIVOLCS and LGU declare it safe</li>
+                                <li class="mb-2">Bring goggles, long sleeves, and sturdy footwear to protect from ash burns</li>
+                                <li><strong style="color: var(--text-primary);">Never approach lava flows, craters, or active vents under any circumstances</strong></li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-4 citizen-highlight-row">
+                <div class="col-md-6 col-xl-6">
+                    <div class="card card-custom card-gradient-success shadow h-100">
+                        <div class="card-body d-flex flex-column p-3">
+                            <div class="d-flex align-items-center gap-2 mb-3">
+                                <div class="icon-badge icon-badge-success">
+                                    <i class="bi bi-bag-plus"></i>
+                                </div>
+                                <h5 class="mb-0">Emergency Kit Essentials</h5>
+                            </div>
+                            <div class="vstack gap-3 flex-grow-1">
+                                <div class="form-check info-tile info-tile-success h-100">
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" id="water">
+                                    <label class="form-check-label text-white" for="water"><i class="bi bi-droplet-fill me-1"></i>Water (1 gallon per person/day)</label>
+                                </div>
+                                <div class="form-check info-tile info-tile-success h-100">
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" id="food">
+                                    <label class="form-check-label text-white" for="food"><i class="bi bi-basket-fill me-1"></i>Non-perishable food (3-day supply)</label>
+                                </div>
+                                <div class="form-check info-tile info-tile-success h-100">
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" id="first-aid">
+                                    <label class="form-check-label text-white" for="first-aid"><i class="bi bi-bandaid-fill me-1"></i>First aid kit & medications</label>
+                                </div>
+                                <div class="form-check info-tile info-tile-success h-100">
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" id="flashlight">
+                                    <label class="form-check-label text-white" for="flashlight"><i class="bi bi-flashlight me-1"></i>Flashlight & batteries</label>
+                                </div>
+                                <div class="form-check info-tile info-tile-success h-100">
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" id="radio">
+                                    <label class="form-check-label text-white" for="radio"><i class="bi bi-broadcast me-1"></i>Battery/hand-crank radio</label>
+                                </div>
+                                <div class="form-check info-tile info-tile-success h-100">
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" id="documents">
+                                    <label class="form-check-label text-white" for="documents"><i class="bi bi-file-earmark-text-fill me-1"></i>Important documents (copies)</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 col-xl-6">
+                    <div class="card card-custom card-gradient-primary shadow h-100">
+                        <div class="card-body d-flex flex-column p-3">
+                            <div class="d-flex align-items-center gap-2 mb-3">
+                                <div class="icon-badge icon-badge-primary">
+                                    <i class="bi bi-people"></i>
+                                </div>
+                                <h5 class="mb-0">Family Preparedness</h5>
+                            </div>
+                            <div class="vstack gap-3 flex-grow-1">
+                                <div class="form-check info-tile info-tile-primary h-100">
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" id="plan">
+                                    <label class="form-check-label text-white" for="plan"><i class="bi bi-clipboard-data me-1"></i>Create evacuation plan</label>
+                                </div>
+                                <div class="form-check info-tile info-tile-primary h-100">
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" id="meetpoint">
+                                    <label class="form-check-label text-white" for="meetpoint"><i class="bi bi-geo-alt-fill me-1"></i>Identify family meeting point</label>
+                                </div>
+                                <div class="form-check info-tile info-tile-primary h-100">
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" id="contacts">
+                                    <label class="form-check-label text-white" for="contacts"><i class="bi bi-telephone-fill me-1"></i>Exchange emergency contacts</label>
+                                </div>
+                                <div class="form-check info-tile info-tile-primary h-100">
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" id="practice">
+                                    <label class="form-check-label text-white" for="practice"><i class="bi bi-arrow-repeat me-1"></i>Practice evacuation drills</label>
+                                </div>
+                                <div class="form-check info-tile info-tile-primary h-100">
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" id="routes">
+                                    <label class="form-check-label text-white" for="routes"><i class="bi bi-map-fill me-1"></i>Know multiple evacuation routes</label>
+                                </div>
+                                <div class="form-check info-tile info-tile-primary h-100">
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" id="apps">
+                                    <label class="form-check-label text-white" for="apps"><i class="bi bi-phone-fill me-1"></i>Install emergency alert apps</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card card-custom card-gradient-warning shadow-lg">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <div class="icon-badge icon-badge-warning">
+                            <i class="bi bi-bookmark-fill"></i>
+                        </div>
+                        <h5 class="mb-0">Quick Reference - During an Emergency</h5>
+                    </div>
+                    <div class="row g-4 small text-start">
+                        <div class="col-md-4">
+                            <div class="info-tile-lg info-tile-success h-100">
+                                <p class="mb-3"><strong style="color: #86EFAC; font-size: 1.1rem;"><i class="bi bi-check-circle-fill me-1"></i>BEFORE</strong></p>
+                                <ul class="text-muted mb-0 list-unstyled fs-6">
+                                    <li class="mb-2">Prepare emergency kit</li>
+                                    <li class="mb-2">Know evacuation routes</li>
+                                    <li>Have communication plan</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="info-tile-lg info-tile-warning h-100">
+                                <p class="mb-3"><strong style="color: #FCD34D; font-size: 1.1rem;"><i class="bi bi-lightning-fill me-1"></i>DURING</strong></p>
+                                <ul class="text-muted mb-0 list-unstyled fs-6">
+                                    <li class="mb-2">Stay calm & alert</li>
+                                    <li class="mb-2">Follow official orders</li>
+                                    <li>Move to safe area</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="info-tile-lg info-tile-primary h-100">
+                                <p class="mb-3"><strong style="color: #93C5FD; font-size: 1.1rem;"><i class="bi bi-arrow-repeat me-1"></i>AFTER</strong></p>
+                                <ul class="text-muted mb-0 list-unstyled fs-6">
+                                    <li class="mb-2">Account for family</li>
+                                    <li class="mb-2">Listen to authorities</li>
+                                    <li>Help neighbors safely</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<style>
+.form-check-input {
+    width: 1.1em;
+    height: 1.1em;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-radius: 4px;
+    cursor: pointer;
+    flex-shrink: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    transition: all 0.2s ease;
+    vertical-align: middle;
+    position: relative;
+    margin: 0.15em 0 0 0 !important; /* small top offset so the box lines up with the first line of text, not the wrapped block */
+}
+/* The checklist rows rely on Bootstrap's .form-check padding trick for wrapped-text
+   indentation, but the p-3 utility (!important) here strips that padding out, and
+   ms-0 removes the offsetting negative margin — so a second line of text was
+   falling back to the container's left edge instead of lining up under the first.
+   Switching the row itself to flex fixes this regardless of utility overrides. */
+.form-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+}
+.form-check-label {
+    flex: 1;
+    padding-left: 0;
+}
+
+/* ── Evacuation Procedures tab bar ──────────────────────────────
+   Bootstrap's default .nav-tabs is unstyled here (light-theme white
+   active tab, no borders on inactive items), and on narrow screens
+   it wraps into an uneven 3-then-1 row. Replace it with a themed,
+   horizontally-scrollable pill bar that always stays on one row. */
+.nav-dark {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    border-bottom: none;
+    gap: 0.5rem;
+    padding-bottom: 0.35rem;
+}
+
+.nav-dark::-webkit-scrollbar {
+    display: none;
+}
+
+.nav-dark .nav-item {
+    flex-shrink: 0;
+}
+
+.nav-dark .nav-link {
+    white-space: nowrap;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-muted, #9CA3AF);
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.nav-dark .nav-link:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.nav-dark .nav-link.active {
+    background: linear-gradient(135deg, #1E40AF, #1D4ED8);
+    color: #fff;
+    border-color: transparent;
+    box-shadow: 0 2px 10px rgba(29, 78, 216, 0.4);
+}
+
+@media (max-width: 575.98px) {
+    .nav-dark {
+        margin-left: -0.75rem;
+        margin-right: -0.75rem;
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
+}
+.form-check-input:checked {
+    background-color: #10B981 !important;
+    border-color: #10B981 !important;
+    background-image: none !important;
+}
+.form-check-input:checked::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 0.75em;
+    font-weight: 700;
+    line-height: 1;
+}
+.form-check-input:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.3);
+}
+.form-check-input:hover {
+    border-color: #10B981;
+    background-color: rgba(16, 185, 129, 0.15);
+}
+</style>
+{% endblock %}

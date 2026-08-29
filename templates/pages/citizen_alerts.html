@@ -1,0 +1,222 @@
+{% extends 'pages/base.html' %}
+{% import 'partials/hazard_macros.html' as hz %}
+{% import 'partials/empty_state.html' as es %}
+
+{% block title %}Emergency Alerts | DICS AI Citizen Portal{% endblock %}
+
+{% block content %}
+<h1 class="visually-hidden">Emergency Alerts | DICS AI Citizen Portal</h1>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+
+            <!-- Alert Stats -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <div class="stat-card card-gradient-danger h-100">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <div class="stat-label">Active Alerts</div>
+                                <div class="stat-value">{{ alert_count }}</div>
+                                <div class="stat-description">Currently active emergency alerts</div>
+                            </div>
+                            <div class="icon-badge icon-badge-danger">
+                                <i class="bi bi-exclamation-triangle-fill"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stat-card card-gradient-warning h-100">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <div class="stat-label">Your Zone</div>
+                                <div class="stat-value" style="font-size: 1.1rem;">{{ hz.risk_badge('moderate') }}</div>
+                                <div class="stat-description">Moderate Risk Level</div>
+                            </div>
+                            <div class="icon-badge icon-badge-warning">
+                                <i class="bi bi-shield-exclamation"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stat-card card-gradient-primary h-100">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <div class="stat-label">Last Update</div>
+                                <div class="stat-value" style="font-size: 1.75rem;">5m</div>
+                                <div class="stat-description">Information last refreshed</div>
+                            </div>
+                            <div class="icon-badge icon-badge-primary">
+                                <i class="bi bi-arrow-repeat"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Official Advisories: human-issued by EOC/Commander/Admin, distinct from
+                 the AI-flagged incidents below. See eoc.issue_alert / models.Alert. -->
+            <div class="card card-custom shadow-lg mb-4">
+                <div class="card-body p-4">
+                    <div class="section-header">
+                        <span class="section-header-icon"><i class="bi bi-megaphone-fill"></i></span>
+                        <h4>Official Advisories</h4>
+                    </div>
+
+                    {% if official_alerts %}
+                        <div class="vstack gap-3">
+                            {% for a in official_alerts %}
+                            <div style="padding:1rem;border-radius:8px;
+                                {% if a.severity == 'CRITICAL' %}background:rgba(239,68,68,0.1);border-left:3px solid #EF4444;
+                                {% elif a.severity == 'HIGH' %}background:rgba(239,68,68,0.06);border-left:3px solid #F87171;
+                                {% elif a.severity == 'MEDIUM' %}background:rgba(245,158,11,0.08);border-left:3px solid #F59E0B;
+                                {% else %}background:rgba(148,163,184,0.06);border-left:3px solid #94A3B8;{% endif %}"
+                                role="alert" aria-live="assertive">
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <strong>{{ a.title }}</strong>
+                                    <span style="font-size:0.68rem;font-weight:700;padding:0.2em 0.6em;border-radius:5px;
+                                        {% if a.severity in ['CRITICAL','HIGH'] %}background:rgba(239,68,68,0.15);color:#FCA5A5;
+                                        {% elif a.severity == 'MEDIUM' %}background:rgba(245,158,11,0.15);color:#FDE68A;
+                                        {% else %}background:rgba(148,163,184,0.15);color:#CBD5E1;{% endif %}">{{ a.severity }}</span>
+                                </div>
+                                <p class="mb-1 small">{{ a.message }}</p>
+                                <small class="text-muted"><i class="bi bi-clock me-1"></i>{{ a.created_at.strftime('%b %d, %Y %I:%M %p') }}</small>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        {{ es.render('bi-check-circle-fill', 'No Official Advisories', subtitle='No official alerts have been issued at this time.', variant='success', size='sm') }}
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Emergency Notifications -->
+            <div class="card card-custom shadow-lg mb-4">
+                <div class="card-body p-4">
+                    <div class="section-header">
+                        <span class="section-header-icon"><i class="bi bi-bell-fill"></i></span>
+                        <h4>Emergency Notifications</h4>
+                        <div class="ms-auto">
+                            <button class="btn btn-outline-primary btn-sm" onclick="location.reload()">
+                                <i class="bi bi-arrow-repeat me-2"></i>Refresh
+                            </button>
+                        </div>
+                    </div>
+
+                    {% if alerts %}
+                        <div class="vstack gap-3">
+                            {% for alert in alerts %}
+                                <div style="padding: 1rem; border-radius: 8px;
+                                    {% if alert.level|lower in ['unknown','insufficient_data','insufficient-data','insufficient data'] %}
+                                        background: rgba(148, 163, 184, 0.08); border-left: 3px solid #94A3B8;
+                                    {% elif alert.level|lower == 'high' %}
+                                        background: rgba(239, 68, 68, 0.08); border-left: 3px solid #EF4444;
+                                    {% elif alert.level|lower == 'moderate' %}
+                                        background: rgba(245, 158, 11, 0.08); border-left: 3px solid #F59E0B;
+                                    {% else %}
+                                        background: rgba(59, 130, 246, 0.08); border-left: 3px solid #3B82F6;
+                                    {% endif %}"
+                                    role="alert" aria-live="assertive">
+                                    <div class="d-flex align-items-start justify-content-between gap-3">
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex align-items-center gap-2 mb-2">
+                                                {% if alert.level|lower in ['unknown','insufficient_data','insufficient-data','insufficient data'] %}
+                                                    <span class="badge badge-unknown">
+                                                        <i class="bi bi-question-circle-fill me-1"></i>UNKNOWN
+                                                    </span>
+                                                {% elif alert.level|lower == 'high' %}
+                                                    <span class="badge badge-high">
+                                                        <i class="bi bi-exclamation-octagon-fill me-1"></i>CRITICAL
+                                                    </span>
+                                                {% elif alert.level|lower == 'moderate' %}
+                                                    <span class="badge badge-mod">
+                                                        <i class="bi bi-exclamation-triangle-fill me-1"></i>WARNING
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge" style="background: rgba(59,130,246,0.12); color: var(--accent-glow); border: 1px solid rgba(59,130,246,0.3); font-weight: 700;">
+                                                        <i class="bi bi-info-circle-fill me-1"></i>INFO
+                                                    </span>
+                                                {% endif %}
+                                                <strong>{{ hz.hazard_icon(alert.hazard_type) }} {{ alert.hazard_type|upper }}</strong>
+                                            </div>
+                                            <div class="small text-muted mb-2">
+                                                <i class="bi bi-geo-alt-fill me-1"></i>{{ alert.location or 'Location not available' }}
+                                            </div>
+                                            <p class="mb-2 small">{{ alert.message }}</p>
+                                            <div class="d-flex gap-3 align-items-center flex-wrap">
+                                                <small class="text-muted"><i class="bi bi-clock me-1"></i>{{ alert.created_at.strftime('%b %d, %Y %I:%M %p') if alert.created_at else 'N/A' }}</small>
+                                                <small class="text-muted"><i class="bi bi-speedometer2 me-1"></i>Risk Score: <strong class="text-info">{{ "%.0f"|format(alert.score|float(0)) }}%</strong></small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        {{ es.render('bi-check-circle-fill', 'No Active Alerts', subtitle='No active emergency alerts at this time. Stay safe and vigilant.', variant='success') }}
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Guidelines Section -->
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="card card-custom card-gradient-primary h-100">
+                        <div class="card-body p-4">
+                            <div class="d-flex align-items-center gap-2 mb-3">
+                                <div class="icon-badge icon-badge-primary">
+                                    <i class="bi bi-info-circle"></i>
+                                </div>
+                                <h5 class="mb-0">Alert Severity Levels</h5>
+                            </div>
+                            <div class="vstack gap-3">
+                                <div class="info-tile info-tile-danger">
+                                    <h6 class="mb-1" style="color: #FCA5A5;"><i class="bi bi-exclamation-octagon-fill me-2"></i>HIGH — Critical</h6>
+                                    <p class="small text-muted mb-0">Immediate threat to life. Evacuate now if ordered by authorities.</p>
+                                </div>
+                                <div class="info-tile info-tile-warning">
+                                    <h6 class="mb-1" style="color: #FCD34D;"><i class="bi bi-exclamation-triangle-fill me-2"></i>MODERATE — Warning</h6>
+                                    <p class="small text-muted mb-0">Significant danger present. Prepare for potential evacuation.</p>
+                                </div>
+                                <div class="info-tile info-tile-primary">
+                                    <h6 class="mb-1" style="color: #93C5FD;"><i class="bi bi-info-circle-fill me-2"></i>LOW — Info</h6>
+                                    <p class="small text-muted mb-0">Manageable risk level. Stay alert and monitor the situation.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card card-custom card-gradient-success h-100">
+                        <div class="card-body p-4">
+                            <div class="d-flex align-items-center gap-2 mb-3">
+                                <div class="icon-badge icon-badge-success">
+                                    <i class="bi bi-hand-thumbs-up"></i>
+                                </div>
+                                <h5 class="mb-0">What To Do</h5>
+                            </div>
+                            <div class="vstack gap-3">
+                                <div class="info-tile info-tile-success">
+                                    <h6 class="mb-1" style="color: #86EFAC;"><i class="bi bi-bell-fill me-2"></i>Stay Informed</h6>
+                                    <p class="small text-muted mb-0">Enable notifications and check this page regularly for real-time updates.</p>
+                                </div>
+                                <div class="info-tile info-tile-success">
+                                    <h6 class="mb-1" style="color: #86EFAC;"><i class="bi bi-sign-turn-right-fill me-2"></i>Know Your Routes</h6>
+                                    <p class="small text-muted mb-0">Know your evacuation routes and nearest designated evacuation center.</p>
+                                </div>
+                                <div class="info-tile info-tile-success">
+                                    <h6 class="mb-1" style="color: #86EFAC;"><i class="bi bi-shield-check me-2"></i>Follow Authorities</h6>
+                                    <p class="small text-muted mb-0">Always follow official guidance from DRRMO and local government units.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}

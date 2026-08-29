@@ -1,0 +1,179 @@
+{% extends 'pages/base.html' %}
+{% import 'partials/empty_state.html' as es %}
+{% block title %}Facility Directory | DICS AI{% endblock %}
+
+{% block content %}
+<h1 class="visually-hidden">Facility Directory</h1>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card card-custom">
+            <div class="card-body">
+                <div class="section-header mb-0">
+                    <span class="section-header-icon" style="color:#7DD3FC;"><i class="bi bi-building-fill"></i></span>
+                    <h4 class="mb-0">Facility Directory</h4>
+                </div>
+                <p class="text-muted mb-0 mt-2" style="padding-left:2.75rem;">
+                    Reference directory of hospitals, fire/police stations, evacuation centers, and other
+                    critical infrastructure for CALABARZON. Evacuation centers additionally track live
+                    capacity below.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 align-items-start">
+    <div class="col-lg-{{ '7' if can_manage else '12' }}">
+        <div class="card card-custom shadow-lg">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+                    <div class="icon-badge" style="background:rgba(125,211,252,0.15);color:#7DD3FC;border:1px solid rgba(125,211,252,0.3);">
+                        <i class="bi bi-list-ul"></i>
+                    </div>
+                    <h5 class="mb-0">Facilities</h5>
+                    <span class="text-muted small">({{ facilities|length }})</span>
+                    <form method="get" class="ms-auto">
+                        <select name="type" class="form-select form-select-sm" style="max-width:180px;" onchange="this.form.submit()">
+                            <option value="">All types</option>
+                            {% for t in facility_types %}
+                            <option value="{{ t }}" {% if facility_type_filter == t %}selected{% endif %}>{{ t }}</option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                </div>
+
+                {% if facilities %}
+                <div class="table-responsive">
+                    <table class="table table-enhanced align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>Address</th>
+                                <th>Evacuation Capacity</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for f in facilities %}
+                            <tr>
+                                <td><strong class="text-white" style="font-size:0.88rem;">{{ f.name }}</strong></td>
+                                <td><span class="text-muted small">{{ f.facility_type or '—' }}</span></td>
+                                <td><span class="text-muted small">{{ f.address or '—' }}</span></td>
+                                <td>
+                                    {% if f.evacuation_center %}
+                                        {% set ec = f.evacuation_center %}
+                                        <div class="d-flex align-items-center gap-2">
+                                            {% if ec.status == 'OPEN' %}
+                                                <span class="badge-status-active" style="font-size:0.68rem;">OPEN</span>
+                                            {% elif ec.status == 'FULL' %}
+                                                <span class="badge-status-pending" style="font-size:0.68rem;">FULL</span>
+                                            {% else %}
+                                                <span style="padding:0.25em 0.55em;background:rgba(107,114,128,0.15);color:#9CA3AF;border:1px solid rgba(107,114,128,0.3);border-radius:5px;font-size:0.68rem;font-weight:700;">CLOSED</span>
+                                            {% endif %}
+                                            <span class="text-info small">{{ ec.occupancy or 0 }}/{{ ec.capacity or '—' }}</span>
+                                            {% if can_manage %}
+                                            <form method="POST" action="{{ url_for('facilities.update_evacuation_center', center_id=ec.id) }}" class="d-flex align-items-center gap-1">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <input type="number" name="occupancy" value="{{ ec.occupancy or 0 }}" min="0" class="form-control form-control-sm" style="width:70px;font-size:0.72rem;">
+                                                <select name="status" class="form-select form-select-sm" style="width:90px;font-size:0.72rem;">
+                                                    <option value="OPEN" {% if ec.status=='OPEN' %}selected{% endif %}>Open</option>
+                                                    <option value="FULL" {% if ec.status=='FULL' %}selected{% endif %}>Full</option>
+                                                    <option value="CLOSED" {% if ec.status=='CLOSED' %}selected{% endif %}>Closed</option>
+                                                </select>
+                                                <button type="submit" class="btn btn-sm btn-outline-info" style="font-size:0.68rem;padding:0.2em 0.5em;">Save</button>
+                                            </form>
+                                            {% endif %}
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted small">—</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                    {{ es.render('bi-building', 'No Facilities Yet', subtitle='Add hospitals, stations, and evacuation centers on the right.') }}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {% if can_manage %}
+    <div class="col-lg-5">
+        <div class="card card-custom shadow-lg">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <div class="icon-badge" style="background:rgba(125,211,252,0.15);color:#7DD3FC;border:1px solid rgba(125,211,252,0.3);">
+                        <i class="bi bi-plus-circle-fill"></i>
+                    </div>
+                    <h5 class="mb-0">Add Facility</h5>
+                </div>
+                <form method="POST" action="{{ url_for('facilities.add_facility') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label class="form-label" style="font-size:0.82rem;" for="name">Name <span class="text-danger">*</span></label>
+                        <input id="name" type="text" name="name" class="form-control form-control-sm" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" style="font-size:0.82rem;" for="facility_type">Type <span class="text-danger">*</span></label>
+                        <select id="facility_type" name="facility_type" class="form-select form-select-sm" required onchange="document.getElementById('capacityField').style.display = this.value === 'Evacuation Center' ? 'block' : 'none';">
+                            <option value="">— Select Type —</option>
+                            {% for t in facility_types %}
+                            <option value="{{ t }}">{{ t }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3" id="capacityField" style="display:none;">
+                        <label class="form-label" style="font-size:0.82rem;" for="capacity">Evacuation Capacity</label>
+                        <input id="capacity" type="number" name="capacity" min="0" class="form-control form-control-sm" placeholder="e.g. 250">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" style="font-size:0.82rem;" for="address">Address</label>
+                        <input id="address" type="text" name="address" class="form-control form-control-sm">
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-4">
+                            <label class="form-label" style="font-size:0.82rem;" for="province_id">Province</label>
+                            <select id="province_id" name="province_id" class="form-select form-select-sm">
+                                <option value="">—</option>
+                                {% for p in provinces %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label" style="font-size:0.82rem;" for="municipality_id">Municipality</label>
+                            <select id="municipality_id" name="municipality_id" class="form-select form-select-sm">
+                                <option value="">—</option>
+                                {% for m in municipalities %}<option value="{{ m.id }}">{{ m.name }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label" style="font-size:0.82rem;" for="barangay_id">Barangay</label>
+                            <select id="barangay_id" name="barangay_id" class="form-select form-select-sm">
+                                <option value="">—</option>
+                                {% for b in barangays %}<option value="{{ b.id }}">{{ b.name }}</option>{% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-4">
+                        <div class="col-6">
+                            <label class="form-label" style="font-size:0.82rem;" for="latitude">Latitude</label>
+                            <input id="latitude" type="number" step="any" name="latitude" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label" style="font-size:0.82rem;" for="longitude">Longitude</label>
+                            <input id="longitude" type="number" step="any" name="longitude" class="form-control form-control-sm">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-modern w-100 py-2" style="background:linear-gradient(135deg,#0284C7,#38BDF8);color:#04121f;font-weight:700;border:none;">
+                        <i class="bi bi-plus-circle me-2"></i>Add Facility
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

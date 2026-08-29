@@ -1,0 +1,145 @@
+{% extends 'pages/base.html' %}
+{% import 'partials/hazard_macros.html' as hz %}
+{% import 'partials/empty_state.html' as es %}
+
+{% block title %}Incident History | DICS AI{% endblock %}
+
+{% block content %}
+<h1 class="visually-hidden">Incident History</h1>
+
+<!-- Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card card-custom">
+            <div class="card-body">
+                <div class="section-header">
+                    <span class="section-header-icon"><i class="bi bi-clock-history"></i></span>
+                    <h4>Incident History</h4>
+                </div>
+                <p class="text-muted mb-0">Review all saved hazard predictions and alert status.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Stats -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="stat-card card-gradient-primary">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-label">Total Incidents</div>
+                    <div class="stat-value">{{ incidents|length }}</div>
+                    <div class="stat-description">Recorded incident predictions</div>
+                </div>
+                <div class="icon-badge icon-badge-primary">
+                    <i class="bi bi-bar-chart-fill"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card card-gradient-danger">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-label">With Alerts</div>
+                    <div class="stat-value">{{ incidents|selectattr('alert')|list|length }}</div>
+                    <div class="stat-description">Incidents that triggered alerts</div>
+                </div>
+                <div class="icon-badge icon-badge-danger">
+                    <i class="bi bi-exclamation-octagon-fill"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card card-gradient-success">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-label">No Alert</div>
+                    <div class="stat-value">{{ incidents|rejectattr('alert')|list|length }}</div>
+                    <div class="stat-description">Incidents below alert threshold</div>
+                </div>
+                <div class="icon-badge icon-badge-success">
+                    <i class="bi bi-check-circle-fill"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Incidents Table Card -->
+<div class="card card-custom shadow-lg mb-4">
+    <div class="card-body p-4">
+        <div class="d-flex align-items-center gap-2 mb-4">
+            <div class="icon-badge icon-badge-primary">
+                <i class="bi bi-table"></i>
+            </div>
+            <h5 class="mb-0">Prediction Log</h5>
+            <div class="ms-auto">
+                <button class="btn btn-outline-primary btn-sm" onclick="location.reload()">
+                    <i class="bi bi-arrow-repeat me-2"></i>Refresh
+                </button>
+            </div>
+        </div>
+
+        {% if incidents %}
+            <div class="table-responsive">
+                <table class="table table-enhanced table-mobile-stack align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th class="text-nowrap">Date &amp; Time</th>
+                            <th class="text-nowrap">Hazard</th>
+                            <th class="text-nowrap">Risk Level</th>
+                            <th class="text-nowrap">Score</th>
+                            <th class="text-nowrap">Alert</th>
+                            <th>Message</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for incident in incidents %}
+                            <tr>
+                                <td data-label="Date & Time" class="text-nowrap"><small class="text-muted">{{ incident.created_at.strftime('%b %d, %Y %I:%M %p') }}</small></td>
+                                <td data-label="Hazard">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="text-info">{{ hz.hazard_icon(incident.hazard_type) }}</span>
+                                        <strong>{{ incident.hazard_type|upper }}</strong>
+                                    </div>
+                                </td>
+                                <td data-label="Risk Level" class="text-nowrap">
+                                    {{ hz.risk_badge(incident.level) }}
+                                </td>
+                                <td data-label="Score"><strong class="text-info">{{ '%.1f'|format(incident.score|float(0)) }}%</strong></td>
+                                <td data-label="Alert">
+                                    {% if incident.alert %}
+                                        <span class="badge badge-status-active">
+                                            <i class="bi bi-exclamation-circle-fill me-1"></i>Yes
+                                        </span>
+                                    {% else %}
+                                        <span class="badge badge-status-pending" style="background: rgba(16,185,129,0.15) !important; border-color: rgba(16,185,129,0.4) !important; color: #86EFAC !important;">
+                                            <i class="bi bi-check-circle-fill me-1"></i>No
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td data-label="Message"><span class="text-muted small">{{ incident.message }}</span></td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-enhanced alert-enhanced-info mb-0">
+                {{ es.render('bi-clipboard-data', 'No Incidents Recorded', subtitle='No hazard predictions have been saved yet.') }}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Footer Action -->
+<div class="d-flex gap-2">
+    <a href="/dashboard" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
+    </a>
+</div>
+
+{% endblock %}

@@ -1,0 +1,98 @@
+{% extends 'pages/base.html' %}
+{% import 'partials/empty_state.html' as es %}
+{% block title %}Resource Requests | EOC | DICS AI{% endblock %}
+
+{% block content %}
+<h1 class="visually-hidden">Resource Requests | EOC</h1>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card card-custom">
+            <div class="card-body">
+                <div class="section-header mb-0">
+                    <span class="section-header-icon" style="color:#7DD3FC;"><i class="bi bi-inbox-fill"></i></span>
+                    <h4 class="mb-0">Resource Requests</h4>
+                    <span class="ms-auto">
+                        <span style="padding:0.3em 0.85em;background:rgba(245,158,11,0.12);color:#FCD34D;border:1px solid rgba(245,158,11,0.35);border-radius:20px;font-size:0.78rem;font-weight:700;">
+                            {{ open_count }} OPEN
+                        </span>
+                    </span>
+                </div>
+                <p class="text-muted mb-0 mt-2" style="padding-left:2.75rem;">
+                    Requests submitted by agency coordinators for resources they don't already control.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card card-custom mb-3 p-3">
+    <div class="d-flex gap-2 flex-wrap">
+        {% for s in ['OPEN', 'APPROVED', 'DENIED', 'FULFILLED', 'ALL'] %}
+        <a href="{{ url_for('eoc.eoc_resource_requests', status=s) }}"
+           class="btn btn-sm {{ 'btn-warning' if status_filter == s else 'btn-outline-secondary' }}">{{ s.title() }}</a>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="card card-custom shadow-lg">
+    <div class="card-body p-4">
+        {% if requests %}
+        <div class="table-responsive">
+            <table class="table table-enhanced align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Agency</th><th>Incident</th><th>Type</th><th>Qty</th><th>Status</th>
+                        {% if status_filter == 'OPEN' or status_filter == 'ALL' %}<th class="text-center">Decide</th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in requests %}
+                    <tr>
+                        <td><span style="color:#FCD34D;font-size:0.82rem;font-weight:600;">{{ r.agency or '—' }}</span></td>
+                        <td><span class="text-info small">#{{ r.incident_id }}</span></td>
+                        <td><strong class="text-white" style="font-size:0.85rem;">{{ r.resource_type }}</strong></td>
+                        <td><strong class="text-info">{{ r.quantity }}</strong></td>
+                        <td>
+                            {% if r.status == 'OPEN' %}
+                                <span class="badge-status-pending" style="font-size:0.68rem;">OPEN</span>
+                            {% elif r.status == 'APPROVED' %}
+                                <span class="badge-status-active" style="font-size:0.68rem;">APPROVED</span>
+                            {% elif r.status == 'FULFILLED' %}
+                                <span class="badge-status-resolved" style="font-size:0.68rem;">FULFILLED</span>
+                            {% else %}
+                                <span style="padding:0.25em 0.55em;background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.3);border-radius:5px;font-size:0.68rem;font-weight:700;">DENIED</span>
+                            {% endif %}
+                        </td>
+                        {% if r.status == 'OPEN' %}
+                        <td class="text-center">
+                            <form method="POST" action="{{ url_for('eoc.eoc_decide_resource_request', request_id=r.id) }}" class="d-flex gap-1 align-items-center justify-content-center">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="text" name="notes" placeholder="notes (optional)" class="form-control form-control-sm" style="width:120px;font-size:0.72rem;">
+                                <button type="submit" name="decision" value="APPROVED" class="btn btn-sm btn-outline-success" style="font-size:0.68rem;">Approve</button>
+                                <button type="submit" name="decision" value="DENIED" class="btn btn-sm btn-outline-danger" style="font-size:0.68rem;">Deny</button>
+                            </form>
+                        </td>
+                        {% elif status_filter == 'ALL' %}
+                        <td class="text-center">
+                            {% if r.status == 'APPROVED' %}
+                            <form method="POST" action="{{ url_for('eoc.eoc_decide_resource_request', request_id=r.id) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" name="decision" value="FULFILLED" class="btn btn-sm btn-outline-info" style="font-size:0.68rem;">Mark Fulfilled</button>
+                            </form>
+                            {% else %}
+                            <span class="text-muted small">—</span>
+                            {% endif %}
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+            {{ es.render('bi-inbox', 'No Requests', subtitle='Resource requests from agency coordinators will appear here.') }}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,174 @@
+{% extends 'pages/base.html' %}
+{% import 'partials/empty_state.html' as es %}
+{% block title %}Response #{{ response.incident_id }} Resources | DICS AI{% endblock %}
+
+{% block content %}
+<h1 class="visually-hidden">Response #{{ response.incident_id }} Resources</h1>
+{% set active_tab = 'resources' %}
+{% include 'partials/response_header.html' %}
+
+<div class="row">
+    <!-- Resources List -->
+    <div class="col-lg-8 mb-4">
+        <div class="card card-custom h-100">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <div class="icon-badge icon-badge-success"><i class="bi bi-boxes"></i></div>
+                    <h5 class="mb-0">Allocated Logistics & Resources</h5>
+                    <span class="ms-2 text-muted small">({{ resources|length }} total)</span>
+                </div>
+
+                {% if resources %}
+                    <div class="table-responsive">
+                        <table class="table table-enhanced align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Resource Type</th>
+                                    <th>Agency</th>
+                                    <th>Qty</th>
+                                    <th>Status</th>
+                                    <th>Location</th>
+                                    <th class="text-center">Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for resource in resources %}
+                                <tr>
+                                    <td>
+                                        <strong class="text-white">{{ resource.resource_type }}</strong><br>
+                                        <span class="text-muted small">Allocated {{ resource.allocated_at.strftime('%b %d, %H:%M') }}</span>
+                                    </td>
+                                    <td><span style="color:#86EFAC;font-weight:600;">{{ resource.agency }}</span></td>
+                                    <td><strong class="text-warning fs-5">{{ resource.quantity }}</strong></td>
+                                    <td>
+                                        {% if response.status != 'CLOSED' %}
+                                            <form method="POST" action="{{ url_for('commander.update_resource', response_id=response.id, resource_id=resource.id) }}">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <input type="hidden" name="location" value="{{ resource.location or '' }}">
+                                                <select name="status" class="form-select form-select-sm" style="max-width:140px;" onchange="this.form.submit()">
+                                                    <option value="AVAILABLE" {% if resource.status == 'AVAILABLE' %}selected{% endif %}>AVAILABLE</option>
+                                                    <option value="DEPLOYED" {% if resource.status == 'DEPLOYED' %}selected{% endif %}>DEPLOYED</option>
+                                                    <option value="RETURNING" {% if resource.status == 'RETURNING' %}selected{% endif %}>RETURNING</option>
+                                                    <option value="UNAVAILABLE" {% if resource.status == 'UNAVAILABLE' %}selected{% endif %}>UNAVAILABLE</option>
+                                                </select>
+                                            </form>
+                                        {% else %}
+                                            {% if resource.status == 'DEPLOYED' %}
+                                                <span class="badge-status-active" style="font-size:0.72rem;">DEPLOYED</span>
+                                            {% else %}
+                                                <span class="badge-status-resolved" style="font-size:0.72rem;">{{ resource.status }}</span>
+                                            {% endif %}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if response.status != 'CLOSED' %}
+                                            <form method="POST" action="{{ url_for('commander.update_resource', response_id=response.id, resource_id=resource.id) }}">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <input type="hidden" name="status" value="{{ resource.status }}">
+                                                <input type="text" name="location" class="form-control form-control-sm" style="min-width:130px;"
+                                                       placeholder="Assign sector…" value="{{ resource.location or '' }}" onchange="this.form.submit()">
+                                            </form>
+                                        {% else %}
+                                            <span class="text-muted small">{{ resource.location or 'N/A' }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="collapse" data-bs-target="#res-{{ resource.id }}"
+                                                aria-expanded="false" aria-controls="res-{{ resource.id }}" aria-label="Toggle operational notes for this resource">
+                                            <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr class="collapse" id="res-{{ resource.id }}">
+                                    <td colspan="6" style="background:rgba(16,185,129,0.04);border-left:3px solid rgba(16,185,129,0.3);padding:1rem 1.25rem;">
+                                        <div class="text-muted small mb-1" style="text-transform:uppercase;letter-spacing:0.05em;">Operational Notes</div>
+                                        <div class="text-white" style="white-space:pre-line;font-size:0.9rem;">{{ resource.notes or 'No operational notes attached.' }}</div>
+                                        <div class="text-muted small mt-2">
+                                            {% if resource.deployed_at %}
+                                                Deployment: {{ resource.deployed_at.strftime('%b %d, %Y %H:%M') }}
+                                            {% else %}
+                                                Resource currently on standby.
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    {{ es.render('bi-boxes', 'No Resources Allocated', subtitle='No tactical resources have been allocated yet.') }}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Allocate Resource Form -->
+    <div class="col-lg-4 mb-4">
+        <div class="card card-custom h-100">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <div class="icon-badge icon-badge-success"><i class="bi bi-plus-circle-fill"></i></div>
+                    <h5 class="mb-0">Allocate Resource</h5>
+                </div>
+
+                {% if response.status != 'CLOSED' %}
+                    <form method="POST" action="{{ url_for('commander.allocate_resource', response_id=response.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="mb-3">
+                            <label class="form-label" for="resource_type">Resource Type <span class="text-danger">*</span></label>
+                            <select id="resource_type" name="resource_type" class="form-select" required>
+                                <option value="">— Select Resource Type —</option>
+                                <option value="Personnel">Personnel (Emergency Teams)</option>
+                                <option value="Vehicles">Vehicles (Ambulances/Trucks)</option>
+                                <option value="Medical Equipment">Medical Equipment</option>
+                                <option value="Rescue Equipment">Rescue Equipment</option>
+                                <option value="Shelters">Shelters (Mobile/Tents)</option>
+                                <option value="Food Supplies">Food Supplies</option>
+                                <option value="Water">Water Logistics</option>
+                                <option value="Generators">Generators & Power</option>
+                                <option value="Communications Equipment">Communications</option>
+                                <option value="Heavy Equipment">Heavy Machinery</option>
+                                <option value="Other">Other Resource</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="agency">Provider Agency <span class="text-danger">*</span></label>
+                            <select id="agency" name="agency" class="form-select" required>
+                                <option value="">— Select Source Agency —</option>
+                                {% for a in agencies %}
+                                <option value="{{ a.name }}">{{ a.name }}</option>
+                                {% endfor %}
+                            </select>
+                            {% if not agencies %}
+                                <small class="text-warning d-block mt-1">No agencies are registered yet. Contact an administrator to add agencies first.</small>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="quantity">Quantity <span class="text-danger">*</span></label>
+                            <input id="quantity" type="number" name="quantity" class="form-control" min="1" value="1" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="location">Initial Deployment Location</label>
+                            <input id="location" type="text" name="location" class="form-control" placeholder="e.g., Zone C Shelter, Sector 2 Highway">
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label" for="notes">Operational Notes</label>
+                            <textarea id="notes" name="notes" class="form-control" rows="3" placeholder="Condition reports, radio channels, staging instructions..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-success-modern btn-modern w-100 py-2">
+                            <i class="bi bi-check-circle me-2"></i>Allocate Resource
+                        </button>
+                    </form>
+                {% else %}
+                    <div style="padding:2rem;text-align:center;background:rgba(107,114,128,0.08);border-radius:8px;border:1px solid rgba(107,114,128,0.2);">
+                        <i class="bi bi-lock-fill text-muted fs-2 d-block mb-2"></i>
+                        <span class="text-muted">This incident response is closed. Resource allocation is locked.</span>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

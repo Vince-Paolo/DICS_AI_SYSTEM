@@ -1,0 +1,67 @@
+{% extends 'pages/base.html' %}
+{% import 'partials/empty_state.html' as es %}
+{% block title %}Evacuation Centers | DICS AI Citizen Portal{% endblock %}
+
+{% block content %}
+<h1 class="visually-hidden">Evacuation Centers</h1>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card card-custom">
+            <div class="card-body">
+                <div class="section-header mb-0">
+                    <span class="section-header-icon"><i class="bi bi-houses-fill"></i></span>
+                    <h4 class="mb-0">Evacuation Centers</h4>
+                </div>
+                <p class="text-muted mb-0 mt-2" style="padding-left:2.75rem;">
+                    Where to go, and whether there's still room. Updated by EOC staff as centers fill up.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if centers %}
+<div class="row g-3">
+    {% for center in centers %}
+    <div class="col-md-6 col-xl-4">
+        <div class="card card-custom shadow-lg h-100">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-start justify-content-between mb-2">
+                    <h5 class="mb-0">{{ center.facility.name }}</h5>
+                    {% if center.status == 'OPEN' %}
+                        <span class="badge-status-active" style="font-size:0.68rem;">OPEN</span>
+                    {% elif center.status == 'FULL' %}
+                        <span class="badge-status-pending" style="font-size:0.68rem;">FULL</span>
+                    {% else %}
+                        <span style="padding:0.25em 0.55em;background:rgba(107,114,128,0.15);color:#9CA3AF;border:1px solid rgba(107,114,128,0.3);border-radius:5px;font-size:0.68rem;font-weight:700;">CLOSED</span>
+                    {% endif %}
+                </div>
+                {% if center.facility.address %}
+                <p class="text-muted small mb-3"><i class="bi bi-geo-alt me-1"></i>{{ center.facility.address }}</p>
+                {% endif %}
+                {% set capacity = center.capacity or 0 %}
+                {% set occupancy = center.occupancy or 0 %}
+                {% set pct = ((occupancy / capacity * 100) if capacity else 0) | round(0, 'floor') %}
+                <div class="d-flex justify-content-between small text-muted mb-1">
+                    <span>Occupancy</span>
+                    <span>{{ occupancy }} / {{ capacity or '—' }}</span>
+                </div>
+                <div class="progress" style="height:8px;background:rgba(255,255,255,0.08);">
+                    <div class="progress-bar" role="progressbar"
+                         style="width:{{ pct if pct <= 100 else 100 }}%;background:{% if pct >= 90 %}#EF4444{% elif pct >= 60 %}#F59E0B{% else %}#10B981{% endif %};"
+                         aria-valuenow="{{ pct }}" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card card-custom">
+    <div class="card-body">
+        {{ es.render('bi-houses', 'No Evacuation Centers Listed Yet', subtitle='EOC staff will publish evacuation centers here as they are designated.') }}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

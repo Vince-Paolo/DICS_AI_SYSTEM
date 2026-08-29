@@ -1,0 +1,3105 @@
+/* /static/css/style.css */
+
+:root {
+    --bg-main: #0B0F19;         /* Deep Operations Midnight Blue */
+    --bg-card: #141B2D;         /* Sleek Dark Slate for Telemetry Cards */
+    --bg-nav: #080B14;          /* Pure Command Top Bar Background */
+    --text-primary: #F3F4F6;    /* Highly Visible Off-White */
+    --text-muted: #9CA3AF;      /* Muted Gray for Secondary Framework Data */
+    
+    /* Hazard Operational Tiers */
+    --hazard-low: #10B981;      /* Emerald Green - Stable Telemetry */
+    --hazard-mod: #F59E0B;      /* Amber / Orange - Active System Watch */
+    --hazard-high: #EF4444;     /* Crimson Red - Force Outbreak Warning */
+    --accent-glow: #3B82F6;     /* Matrix UI Blue */
+    --border-color: rgba(255, 255, 255, 0.07);
+}
+
+body {
+    background-color: var(--bg-main) !important;
+    color: var(--text-primary) !important;
+    font-family: 'SF Pro Display', -apple-system, 'Segoe UI', Roboto, sans-serif;
+    letter-spacing: 0.01em;
+    line-height: 1.6;
+    font-size: 0.98rem;
+}
+
+.skip-link {
+    position: absolute;
+    top: -3rem;
+    left: 1rem;
+    z-index: 1100;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    background: var(--accent-glow);
+    color: #fff;
+    font-weight: 700;
+    text-decoration: none;
+    transition: top 0.2s ease;
+}
+
+.skip-link:focus {
+    top: 1rem;
+}
+
+main {
+    scroll-margin-top: 1rem;
+}
+
+a:hover,
+a:focus-visible,
+button:focus-visible,
+.btn:focus-visible,
+.btn-modern:focus-visible,
+.btn-brand:focus-visible,
+.btn-primary-modern:focus-visible,
+.btn-success-modern:focus-visible,
+.sidebar-nav-link:focus-visible,
+.mobile-menu-btn:focus-visible,
+.sidebar-toggle:focus-visible,
+.sidebar-close-mobile:focus-visible,
+.photo-dropzone:focus-visible,
+.photo-preview-remove:focus-visible,
+.form-control:focus-visible,
+.form-select:focus-visible {
+    outline: 2px solid var(--accent-glow);
+    outline-offset: 2px;
+}
+
+.modal-surface {
+    background: linear-gradient(180deg, rgba(20, 27, 45, 0.98), rgba(10, 13, 26, 0.98));
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 1rem;
+    color: var(--text-primary);
+}
+
+.toast-container .toast {
+    min-width: 20rem;
+    border-radius: 0.75rem;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+}
+
+/* Strategic Header & Navbar Override */
+.navbar-custom {
+    background-color: var(--bg-nav) !important;
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+}
+.navbar-custom .navbar-brand {
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: #ffffff !important;
+    text-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+}
+.navbar-custom .nav-link {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 500;
+    color: var(--text-muted) !important;
+}
+.navbar-custom .nav-link:hover, 
+.navbar-custom .nav-item.active .nav-link {
+    color: #ffffff !important;
+}
+
+/* Command Console Cards */
+.card-custom {
+    background: linear-gradient(180deg, rgba(20, 27, 45, 0.95), rgba(12, 18, 33, 0.98)) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.26) !important;
+    color: var(--text-primary) !important;
+    margin-bottom: 1.25rem;
+}
+.card-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #DDE7FF;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 0.7rem;
+    margin-bottom: 1rem;
+}
+
+/* Card Body Text Improvements */
+.card-custom .card-body {
+    color: var(--text-primary) !important;
+}
+.card-custom .card-body p {
+    color: #D1D5DB !important;
+}
+.card-custom .card-body small {
+    color: #B3B9C4 !important;
+    font-weight: 500;
+}
+
+/* List Groups - Dark Theme */
+.list-group {
+    background-color: transparent !important;
+}
+.list-group-item {
+    background-color: rgba(20, 27, 45, 0.6) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    color: #D1D5DB !important;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+.list-group-item:hover {
+    background-color: rgba(59, 130, 246, 0.12) !important;
+    border-color: rgba(59, 130, 246, 0.3) !important;
+    color: #ffffff !important;
+}
+.list-group-flush .list-group-item {
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
+}
+.list-group-flush .list-group-item:first-child {
+    border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Scrollable Forecast Feed */
+#forecastFeed {
+    max-height: 300px;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+#forecastFeed::-webkit-scrollbar {
+    width: 6px;
+}
+#forecastFeed::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+}
+#forecastFeed::-webkit-scrollbar-thumb {
+    background: rgba(59, 130, 246, 0.5);
+    border-radius: 10px;
+}
+#forecastFeed::-webkit-scrollbar-thumb:hover {
+    background: rgba(59, 130, 246, 0.8);
+}
+
+/* Tables in Dark Theme */
+.table {
+    color: var(--text-primary) !important;
+}
+.table thead th {
+    background-color: rgba(10, 13, 26, 0.8) !important;
+    color: #E0E7FF !important;
+    border-bottom: 2px solid var(--border-color) !important;
+    font-weight: 700;
+}
+.table tbody td {
+    background-color: transparent !important;
+    color: #D1D5DB !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+.table tbody th {
+    background-color: transparent !important;
+    color: #E0E7FF !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    font-weight: 700;
+}
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(59, 130, 246, 0.05) !important;
+}
+.table-striped tbody tr:hover {
+    background-color: rgba(59, 130, 246, 0.12) !important;
+}
+.table-borderless {
+    color: var(--text-primary) !important;
+}
+.table-borderless tbody th {
+    background-color: transparent !important;
+    color: #E0E7FF !important;
+    font-weight: 700;
+    padding: 0.85rem 1rem;
+}
+.table-borderless tbody td {
+    background-color: transparent !important;
+    color: #D1D5DB !important;
+    padding: 0.85rem 1rem;
+}
+.table-borderless tbody tr:nth-of-type(odd) {
+    background-color: rgba(59, 130, 246, 0.05) !important;
+}
+.table-borderless tbody tr:hover {
+    background-color: rgba(59, 130, 246, 0.12) !important;
+}
+.form-label {
+    color: #D1D5DB !important;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+.form-label::after {
+    color: var(--hazard-high);
+}
+
+/* Neutralize default browser fieldset/legend chrome so grouped radio/checkbox
+   controls can use <fieldset>/<legend> for accessible grouping while matching
+   the existing .form-label look */
+fieldset.form-group-fieldset {
+    border: 0;
+    padding: 0;
+    margin: 0 0 1rem;
+    min-width: 0;
+}
+fieldset.form-group-fieldset legend {
+    color: #D1D5DB !important;
+    font-weight: 600;
+    font-size: 0.82rem;
+    float: none;
+    width: auto;
+    margin-bottom: 0.5rem;
+    padding: 0;
+}
+
+/* Badge Text Brightness */
+.badge-light {
+    color: var(--bg-main) !important;
+    font-weight: 700;
+}
+
+/* Uppercase/Label Text */
+.text-uppercase {
+    color: #E0E7FF !important;
+    font-weight: 700;
+}
+.text-uppercase.text-muted {
+    color: #B3B9C4 !important;
+    font-weight: 600;
+}
+
+/* Improved Text Visibility Across Cards */
+.card h5, .card h6 {
+    color: var(--text-primary) !important;
+    font-weight: 700;
+}
+.card .text-muted {
+    color: #B3B9C4 !important;
+}
+h2, h3, h4 {
+    color: var(--text-primary) !important;
+}
+
+/* Page Descriptions */
+.text-muted {
+    color: #B3B9C4 !important;
+}
+p.text-muted {
+    color: #B3B9C4 !important;
+    font-weight: 500;
+}
+.form-control, .form-select {
+    background-color: #0A0D1A !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-primary) !important;
+    border-radius: 6px;
+    padding: 0.6rem 0.75rem;
+}
+.form-control:focus, .form-select:focus {
+    border-color: var(--accent-glow) !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+}
+.form-control::placeholder {
+    color: #7B8494;
+}
+
+/* Systems Data Tables */
+.table-custom {
+    color: var(--text-primary) !important;
+}
+.table-custom thead th {
+    background-color: #0A0D1A !important;
+    color: #E0E7FF !important;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 700;
+    border-bottom: 2px solid var(--border-color) !important;
+    padding: 0.75rem 1rem;
+}
+.table-custom tbody td {
+    border-bottom: 1px solid var(--border-color) !important;
+    padding: 0.85rem 1rem;
+    background-color: transparent !important;
+    color: #D1D5DB !important;
+    font-weight: 500;
+}
+.table-custom tbody tr:hover {
+    background-color: rgba(59, 130, 246, 0.08) !important;
+}
+
+/* Action Interface Buttons */
+.btn-brand {
+    background: linear-gradient(135deg, #2563EB, #1D4ED8) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.82rem;
+    letter-spacing: 0.05em;
+    border-radius: 10px;
+    box-shadow: 0 6px 16px rgba(29, 78, 216, 0.22);
+    transition: all 0.2s ease;
+}
+.btn-brand:hover {
+    background: linear-gradient(135deg, #3B82F6, #2563EB) !important;
+    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.28);
+}
+
+/* Hazard Operational Level Badges */
+.badge-low { background: rgba(16, 185, 129, 0.12); color: var(--hazard-low); border: 1px solid rgba(16, 185, 129, 0.3); font-weight: 700; }
+.badge-mod { background: rgba(245, 158, 11, 0.12); color: var(--hazard-mod); border: 1px solid rgba(245, 158, 11, 0.3); font-weight: 700; }
+.badge-high { background: rgba(239, 68, 68, 0.12); color: var(--hazard-high); border: 1px solid rgba(239, 68, 68, 0.3); font-weight: 700; animation: hazard-pulse 2s infinite; }
+.badge-unknown { background: rgba(148, 163, 184, 0.12); color: #CBD5E1; border: 1px solid rgba(148, 163, 184, 0.55); font-weight: 700; }
+
+.quality-badge {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 0.45rem;
+    padding: 0.14rem 0.58rem;
+    border-radius: 999px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+.quality-live {
+    background: rgba(16, 185, 129, 0.12);
+    color: #86efac;
+    border: 1px solid rgba(16, 185, 129, 0.45);
+}
+.quality-estimated {
+    background: rgba(245, 158, 11, 0.12);
+    color: #fcd34d;
+    border: 1px solid rgba(245, 158, 11, 0.45);
+}
+.quality-proxy {
+    background: rgba(56, 189, 248, 0.12);
+    color: #7dd3fc;
+    border: 1px solid rgba(56, 189, 248, 0.45);
+}
+.quality-unavailable {
+    background: rgba(148, 163, 184, 0.12);
+    color: #cbd5e1;
+    border: 1px solid rgba(148, 163, 184, 0.55);
+}
+
+@keyframes hazard-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.3); }
+    70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+/* Custom Alert Styles - Match Dark Theme */
+.alert {
+    background-color: rgba(30, 30, 30, 0.8) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 6px;
+    color: var(--text-primary) !important;
+}
+.alert-danger {
+    border-left: 4px solid var(--hazard-high) !important;
+    background-color: rgba(239, 68, 68, 0.08) !important;
+    color: #FCA5A5 !important;
+}
+.alert-success {
+    border-left: 4px solid var(--hazard-low) !important;
+    background-color: rgba(16, 185, 129, 0.08) !important;
+    color: #86EFAC !important;
+}
+.alert-info {
+    border-left: 4px solid var(--accent-glow) !important;
+    background-color: rgba(59, 130, 246, 0.08) !important;
+    color: #93C5FD !important;
+}
+
+/* Telemetry Map & Layout Enhancements */
+#map {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.6);
+}
+.leaflet-container {
+    background: #090D16 !important;
+}
+
+.hazard-marker-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 1.05rem;
+    text-shadow: 0 0 6px rgba(0, 0, 0, 0.35);
+    border: 2px solid rgba(255, 255, 255, 0.85);
+}
+.hazard-marker-icon.high {
+    background: #dc2626;
+}
+.hazard-marker-icon.moderate {
+    background: #f59e0b;
+}
+.hazard-marker-icon.low {
+    background: #10b981;
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+    background: rgba(15, 23, 42, 0.96);
+    color: #ffffff;
+    border-radius: 0.75rem;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+}
+.leaflet-popup-content {
+    margin: 0.8rem 1rem;
+}
+
+/* Sidebar Card Styling - Dark Theme */
+.sidebar-card {
+    background-color: var(--bg-card) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 10px !important;
+    color: var(--text-primary) !important;
+}
+.sidebar-card .card-body {
+    padding: 1.5rem;
+}
+.sidebar-card h5 {
+    color: var(--text-primary) !important;
+    font-weight: 700;
+}
+.sidebar-card .text-muted {
+    color: #B3B9C4 !important;
+    font-weight: 500;
+}
+.sidebar-card .small.text-muted {
+    color: #9EACBD !important;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+}
+
+/* Sidebar Menu Styling */
+.sidebar-menu .list-group-item {
+    background-color: transparent !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    color: var(--text-primary) !important;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    margin-bottom: 0.25rem;
+    border-radius: 6px;
+}
+.sidebar-menu .list-group-item:hover {
+    background-color: rgba(59, 130, 246, 0.15) !important;
+    border-color: var(--accent-glow) !important;
+    color: #ffffff !important;
+    transform: translateX(4px);
+}
+.sidebar-menu .list-group-item.active {
+    background-color: var(--accent-glow) !important;
+    border-color: var(--accent-glow) !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
+}
+.sidebar-menu .list-group-item i {
+    opacity: 0.9;
+}
+
+/* SOS Button Emergency Styling */
+.sos-button {
+    background: #DC3545 !important;
+    color: #ffffff !important;
+    border: 2px solid rgba(220, 53, 69, 0.5) !important;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgba(220, 53, 69, 0.6);
+    animation: sos-pulse 2s infinite;
+    transition: all 0.3s ease;
+}
+
+.sos-button:hover {
+    background: #A71930 !important;
+    box-shadow: 0 0 30px rgba(220, 53, 69, 0.8);
+    transform: scale(1.05);
+}
+
+@keyframes sos-pulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 20px rgba(220, 53, 69, 0.6);
+    }
+    50% {
+        transform: scale(1.03);
+        box-shadow: 0 0 30px rgba(220, 53, 69, 0.8);
+    }
+}
+
+/* ===== ENHANCED UX/UI IMPROVEMENTS ===== */
+
+/* Enhanced Card Styling with Gradients */
+.card-gradient-primary {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(29, 78, 216, 0.1)) !important;
+    border: 1px solid rgba(59, 130, 246, 0.3) !important;
+}
+
+.card-gradient-success {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.1)) !important;
+    border: 1px solid rgba(16, 185, 129, 0.3) !important;
+}
+
+.card-gradient-warning {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.1)) !important;
+    border: 1px solid rgba(245, 158, 11, 0.3) !important;
+}
+
+.card-gradient-danger {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(220, 38, 38, 0.1)) !important;
+    border: 1px solid rgba(239, 68, 68, 0.3) !important;
+}
+
+.card-gradient-info {
+    background: linear-gradient(135deg, rgba(96, 165, 250, 0.15), rgba(37, 99, 235, 0.08)) !important;
+    border: 1px solid rgba(96, 165, 250, 0.3) !important;
+}
+
+.card-gradient-purple {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(109, 40, 217, 0.08)) !important;
+    border: 1px solid rgba(139, 92, 246, 0.3) !important;
+}
+
+.card-gradient-cyan {
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.15), rgba(8, 145, 178, 0.08)) !important;
+    border: 1px solid rgba(6, 182, 212, 0.3) !important;
+}
+
+/* Enhanced Form Controls */
+.form-control, .form-select {
+    background-color: rgba(10, 13, 26, 0.8) !important;
+    border: 2px solid var(--border-color) !important;
+    color: var(--text-primary) !important;
+    transition: all 0.3s ease !important;
+    font-weight: 500;
+}
+
+.form-select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%239CA3AF' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e") !important;
+}
+
+.form-control:focus, .form-select:focus {
+    background-color: rgba(10, 13, 26, 0.95) !important;
+    border-color: var(--accent-glow) !important;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25) !important;
+    color: var(--text-primary) !important;
+}
+
+/* ── Validation states ──────────────────────────────────────
+   Gated behind `.was-validated` (added by JS on blur/submit — see
+   app.js initFormValidation) or the explicit `.is-valid`/`.is-invalid`
+   classes it toggles, so fields don't flash red the instant someone
+   starts typing — only once they've actually attempted the field. */
+.was-validated .form-control:valid,
+.form-control.is-valid {
+    border-color: var(--hazard-low) !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%2310B981' d='M2.3 6.73L.6 4.53c-.4-1.04.46-1.4 1.1-.8l1.1 1.4 3.4-3.8c.6-.63 1.6-.27 1.2.7l-4 4.6c-.43.5-.8.4-1.1.1z'/%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat !important;
+    background-position: right calc(0.375em + 0.1875rem) center !important;
+    background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem) !important;
+    padding-right: calc(1.5em + 0.75rem) !important;
+}
+
+.was-validated .form-control:invalid,
+.form-control.is-invalid {
+    border-color: var(--hazard-high) !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23ef4444' viewBox='0 0 12 12'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.9h-.4z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23ef4444' stroke='none'/%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat !important;
+    background-position: right calc(0.375em + 0.1875rem) center !important;
+    background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem) !important;
+    padding-right: calc(1.5em + 0.75rem) !important;
+}
+
+/* Selects layer the validation icon alongside the dropdown arrow
+   instead of replacing it — a select always needs its arrow visible. */
+.was-validated .form-select:valid,
+.form-select.is-valid {
+    border-color: var(--hazard-low) !important;
+    background-image:
+        url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%239CA3AF' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e"),
+        url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%2310B981' d='M2.3 6.73L.6 4.53c-.4-1.04.46-1.4 1.1-.8l1.1 1.4 3.4-3.8c.6-.63 1.6-.27 1.2.7l-4 4.6c-.43.5-.8.4-1.1.1z'/%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat, no-repeat !important;
+    background-position: right 0.75rem center, right 2.5rem center !important;
+    background-size: 16px 12px, calc(0.75em + 0.375rem) calc(0.75em + 0.375rem) !important;
+}
+
+.was-validated .form-select:invalid,
+.form-select.is-invalid {
+    border-color: var(--hazard-high) !important;
+    background-image:
+        url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%239CA3AF' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e"),
+        url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23ef4444' viewBox='0 0 12 12'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.9h-.4z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23ef4444' stroke='none'/%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat, no-repeat !important;
+    background-position: right 0.75rem center, right 2.5rem center !important;
+    background-size: 16px 12px, calc(0.75em + 0.375rem) calc(0.75em + 0.375rem) !important;
+}
+
+/* Helper text shown under a field once it's been validated */
+.invalid-feedback, .valid-feedback {
+    display: none;
+    font-size: 0.8rem;
+    margin-top: 0.4rem;
+    font-weight: 500;
+}
+.invalid-feedback { color: var(--hazard-high); }
+.valid-feedback { color: var(--hazard-low); }
+
+.was-validated .form-control:invalid ~ .invalid-feedback,
+.was-validated .form-select:invalid ~ .invalid-feedback,
+.form-control.is-invalid ~ .invalid-feedback,
+.form-select.is-invalid ~ .invalid-feedback {
+    display: block;
+}
+.was-validated .form-control:valid ~ .valid-feedback,
+.was-validated .form-select:valid ~ .valid-feedback,
+.form-control.is-valid ~ .valid-feedback,
+.form-select.is-valid ~ .valid-feedback {
+    display: block;
+}
+
+/* Enhanced Input Labels */
+.form-label {
+    color: #E0E7FF !important;
+    font-weight: 700 !important;
+    font-size: 0.95rem !important;
+    letter-spacing: 0.02em;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+}
+
+/* Form Section Headers */
+.form-section-header {
+    border-top: 2px solid var(--border-color);
+    padding-top: 1.5rem;
+    margin-top: 2rem;
+    margin-bottom: 1.5rem;
+}
+
+.form-section-header h5 {
+    color: var(--accent-glow);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Enhanced Button Styles */
+.btn-modern {
+    border: none !important;
+    border-radius: 8px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    padding: 0.75rem 1.5rem !important;
+    min-width: 2.4rem !important;
+    min-height: 2.4rem !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    position: relative;
+    overflow: hidden;
+    white-space: nowrap !important;
+}
+
+.btn-modern::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.btn-modern:hover::before {
+    width: 300px;
+    height: 300px;
+}
+
+.btn-primary-modern {
+    background: linear-gradient(135deg, #1E40AF, #1D4ED8) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 15px rgba(29, 78, 216, 0.3);
+    white-space: nowrap !important;
+}
+
+.btn-primary-modern:hover {
+    background: linear-gradient(135deg, #2563EB, #1E40AF) !important;
+    box-shadow: 0 8px 25px rgba(37, 99, 235, 0.5);
+    transform: translateY(-2px);
+}
+
+.btn-success-modern {
+    background: linear-gradient(135deg, #059669, #10B981) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+    white-space: nowrap !important;
+}
+
+.btn-success-modern:hover {
+    background: linear-gradient(135deg, #10B981, #34D399) !important;
+    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5);
+    transform: translateY(-2px);
+}
+
+/* Enhanced Status Badges */
+.badge-status-pending {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.1)) !important;
+    color: #FCD34D !important;
+    border: 1px solid rgba(245, 158, 11, 0.5) !important;
+    font-weight: 700;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    white-space: nowrap !important;
+    display: inline-flex !important;
+    align-items: center !important;
+}
+
+.badge-status-active {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(37, 99, 235, 0.1)) !important;
+    color: #93C5FD !important;
+    border: 1px solid rgba(59, 130, 246, 0.5) !important;
+    font-weight: 700;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    animation: pulse-blue 2s infinite;
+    white-space: nowrap !important;
+    display: inline-flex !important;
+    align-items: center !important;
+}
+
+.badge-status-resolved {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.1)) !important;
+    color: #86EFAC !important;
+    border: 1px solid rgba(16, 185, 129, 0.5) !important;
+    font-weight: 700;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    white-space: nowrap !important;
+    display: inline-flex !important;
+    align-items: center !important;
+}
+
+@keyframes pulse-blue {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+
+/* Stat Card Styling */
+.stat-card {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(29, 78, 216, 0.05)) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 10px !important;
+    padding: 1.5rem !important;
+    transition: all 0.3s ease !important;
+    container-type: inline-size; /* lets us size children off the card's real width, not the viewport's */
+    overflow: hidden; /* safety net in case content ever exceeds the card before a container-query tier catches it */
+}
+
+.stat-card:hover {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(29, 78, 216, 0.1)) !important;
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(59, 130, 246, 0.2) !important;
+}
+
+.stat-card > .d-flex {
+    min-width: 0; /* let text shrink/wrap instead of forcing the row (and the icon with it) wider than the card */
+}
+
+.stat-card > .d-flex > div:first-child {
+    min-width: 0;
+    overflow: hidden;
+}
+
+.stat-value {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--accent-glow);
+    line-height: 1;
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #B3B9C4;
+    margin-top: 0.5rem;
+}
+
+.stat-description {
+    font-size: 0.8rem;
+    color: #9CA3AF;
+    margin-top: 0.25rem;
+}
+
+/* Stat card icon badges: sized off the CARD's own width via a container
+   query, not the viewport (vw units can't know a fixed-width sidebar is
+   eating part of the window, so they kept sizing icons for more room
+   than the card actually had once the sidebar was expanded). */
+.stat-card .icon-badge {
+    width: 48px;
+    height: 48px;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+@container (max-width: 190px) {
+    .stat-card .icon-badge {
+        width: 38px;
+        height: 38px;
+        font-size: 1.15rem;
+        border-radius: 8px;
+    }
+    .stat-card .stat-value {
+        font-size: 1.85rem;
+    }
+    .stat-card .stat-label {
+        font-size: 0.7rem;
+    }
+    .stat-card .stat-description {
+        font-size: 0.72rem;
+    }
+    .stat-card {
+        padding: 1rem !important;
+    }
+}
+
+@container (max-width: 140px) {
+    .stat-card .icon-badge {
+        width: 30px;
+        height: 30px;
+        font-size: 0.95rem;
+        border-radius: 7px;
+    }
+    .stat-card .stat-value {
+        font-size: 1.5rem;
+    }
+    .stat-card {
+        padding: 0.8rem !important;
+    }
+}
+
+/* Fallback for browsers without container query support: fall back to the
+   old viewport-based tiers so icons still shrink on small phones, where a
+   fixed sidebar isn't a factor anyway. */
+@supports not (container-type: inline-size) {
+    @media (max-width: 767.98px) {
+        .stat-card {
+            padding: 1rem !important;
+        }
+        .stat-card .icon-badge {
+            width: 36px;
+            height: 36px;
+            font-size: 1.1rem;
+        }
+        .stat-value {
+            font-size: 1.85rem;
+        }
+        .stat-label {
+            font-size: 0.7rem;
+        }
+        .stat-description {
+            font-size: 0.72rem;
+        }
+    }
+}
+
+/* Enhanced Table Styling */
+.table-enhanced tbody tr {
+    transition: all 0.2s ease;
+}
+
+.table-enhanced tbody tr:hover {
+    background-color: rgba(59, 130, 246, 0.15) !important;
+    box-shadow: inset -4px 0 0 rgba(59, 130, 246, 0.5);
+}
+
+/* Icon Badge Enhancement */
+.icon-badge {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+/* Ensure highlight cards are balanced with consistent height */
+.card-custom.h-100 {
+    min-height: 100%;
+    margin-bottom: 0 !important; /* cancel the default 1.5rem so h-100 works in flex rows */
+}
+
+/* Cards inside a flex-column container must not add margin that breaks height matching */
+.d-flex.flex-column > .card-custom {
+    margin-bottom: 0 !important;
+}
+
+.card-custom.h-100 .card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.card-custom.h-100 .card-body > .vstack,
+.card-custom.h-100 .card-body > .row,
+.card-custom.h-100 .card-body > .alert-enhanced,
+.card-custom.h-100 .card-body > .card-custom {
+    flex: 1;
+}
+
+.card-custom.h-100 .card-body .vstack {
+    flex: 1;
+}
+
+.card-custom.h-100 .card-body .vstack > .mb-3,
+.card-custom.h-100 .card-body .vstack > .p-3,
+.card-custom.h-100 .card-body .vstack > .form-check {
+    min-height: 4rem;
+}
+
+.card-custom .section-header,
+.card-custom .d-flex.align-items-center.gap-2.mb-4 {
+    margin-bottom: 1rem;
+}
+
+.card-custom .card-body h5 {
+    margin-bottom: 0.75rem;
+    font-size: 1.05rem;
+}
+
+.card-custom .card-body p,
+.card-custom .card-body ul,
+.card-custom .card-body ol,
+.card-custom .card-body li {
+    color: #d1d5db;
+}
+
+@media (min-width: 992px) {
+    .citizen-highlight-row > .col-md-6 {
+        display: flex;
+    }
+    .citizen-highlight-row > .col-md-6 > .card {
+        flex: 1;
+    }
+}
+
+.icon-badge-primary {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(29, 78, 216, 0.1));
+    color: var(--accent-glow);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.icon-badge-success {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.1));
+    color: var(--hazard-low);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.icon-badge-warning {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.1));
+    color: var(--hazard-mod);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+/* Checkbox & Radio Enhancement */
+.form-check-input {
+    width: 1.25rem;
+    height: 1.25rem;
+    border: 2px solid var(--border-color);
+    background-color: rgba(10, 13, 26, 0.8);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.form-check-input:checked {
+    background-color: var(--accent-glow) !important;
+    border-color: var(--accent-glow) !important;
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
+}
+
+.form-check-label {
+    color: #D1D5DB !important;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color 0.2s ease;
+    margin-left: 0.5rem;
+}
+
+.form-check-input:checked ~ .form-check-label {
+    color: var(--text-primary) !important;
+}
+
+/* Section Header Styling */
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.section-header h4 {
+    margin: 0;
+    font-weight: 800;
+    font-size: 1.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-primary);
+}
+
+.section-header-icon {
+    font-size: 1.5rem;
+    color: var(--accent-glow);
+}
+
+.status-banner {
+    background: rgba(15, 23, 42, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 1rem;
+    padding: 1.25rem 1.5rem;
+}
+
+.status-banner .status-label {
+    display: inline-block;
+    margin-bottom: 0.35rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #94a3b8;
+}
+
+.status-banner .status-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.65rem;
+    margin-bottom: 0.5rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.status-banner .status-detail {
+    color: #cbd5e1;
+    line-height: 1.6;
+    max-width: 52rem;
+}
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.38rem 0.85rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.status-pill i {
+    font-size: 0.85rem;
+}
+
+.status-pill-danger {
+    background: rgba(248, 113, 113, 0.12);
+    color: #fecdd3;
+    border: 1px solid rgba(248, 113, 113, 0.2);
+}
+
+.status-pill-warning {
+    background: rgba(245, 158, 11, 0.12);
+    color: #fef3c7;
+    border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.status-pill-success {
+    background: rgba(16, 185, 129, 0.12);
+    color: #bbf7d0;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.status-pill-info {
+    background: rgba(59, 130, 246, 0.12);
+    color: #bfdbfe;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+/* Alert Message Enhancement */
+.alert-enhanced {
+    border-radius: 8px;
+    border-left: 4px solid;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.alert-enhanced-success {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.05));
+    border-color: var(--hazard-low);
+    color: #86EFAC;
+}
+
+.alert-enhanced-info {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(37, 99, 235, 0.05));
+    border-color: var(--accent-glow);
+    color: #93C5FD;
+}
+
+.alert-enhanced-warning {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(217, 119, 6, 0.05));
+    border-color: var(--hazard-mod);
+    color: #FCD34D;
+}
+
+.alert-enhanced-danger {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.05));
+    border-color: var(--hazard-high);
+    color: #FCA5A5;
+}
+
+/* Floating Action Button */
+.fab {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 1.5rem;
+}
+
+.fab-primary {
+    background: linear-gradient(135deg, #1E40AF, #1D4ED8);
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(29, 78, 216, 0.4);
+}
+
+.fab-primary:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(29, 78, 216, 0.6);
+}
+
+/* Progress Indicator */
+.progress-step {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.progress-step-number {
+    min-width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(59, 130, 246, 0.2);
+    border: 2px solid var(--accent-glow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: var(--accent-glow);
+}
+
+.progress-step-content h6 {
+    margin: 0;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.progress-step-content p {
+    margin: 0.25rem 0 0 0;
+    font-size: 0.85rem;
+    color: #B3B9C4;
+}
+/* Custom thin scrollbar for dark UI */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px; /* Makes the scrollbar very thin */
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02); /* Very subtle track background */
+    border-radius: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15); /* Semi-transparent white thumb */
+    border-radius: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.25); /* Slightly brighter on hover */
+}
+/* Firefox compatibility */
+.custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.15) rgba(255, 255, 255, 0.02);
+}
+
+/* ============================================================
+   DICS AI — ENHANCED ANIMATIONS & TRANSITIONS
+   ============================================================ */
+
+/* ── Reduced Motion Safety ─────────────────────────────────── */
+/* ── Form field pairs: auto-fit grid instead of viewport breakpoints ──
+   col-md/col-lg breakpoints fire off the raw window width and can drift
+   with the user's root font-size/zoom (Bootstrap's breakpoints are em-based).
+   Neither accounts for the fixed sidebar eating real width either. Grid
+   auto-fit reflows based on the ACTUAL space left for the field, so it
+   can't get out of sync with what's really available. */
+.form-pair-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 0 1.5rem;
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.form-pair-grid > div {
+    margin-bottom: 1.5rem;
+}
+
+.form-pair-grid > .form-pair-field {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Wraps each field's interactive content + caption/button so both sides
+   of a pair stretch to match the taller one (the grid row is already
+   equal height; this makes the actual card fill it, and mt-auto on a
+   trailing button pins it to a shared bottom edge). */
+.field-card {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+/* ── Location map preview ────────────────────────────────── */
+.location-preview {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 220px;
+}
+
+.location-preview-map {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    overflow: hidden;
+    flex: 1;
+    width: 100%;
+    min-height: 220px;
+}
+
+.location-preview-empty {
+    border: 2px dashed var(--border-color);
+    border-radius: 10px;
+    padding: 1.5rem 1rem;
+    text-align: center;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.location-preview-empty .icon-badge {
+    width: 44px;
+    height: 44px;
+    font-size: 1.25rem;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Leaflet's own CSS resets get overridden by the dark theme's global
+   `* { box-sizing }` and image rules elsewhere, so pin them back down
+   inside the preview specifically. */
+.location-preview-map img {
+    max-width: none !important;
+}
+
+.location-manual-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.location-manual-row .form-control {
+    flex: 1;
+}
+
+.location-manual-row .btn {
+    flex-shrink: 0;
+}
+
+/* ── Photo evidence dropzone ─────────────────────────────── */
+.photo-dropzone {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    border: 2px dashed var(--border-color);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.02);
+    padding: 2rem 1.25rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.photo-dropzone:hover,
+.photo-dropzone:focus-visible {
+    border-color: rgba(59, 130, 246, 0.5);
+    background: rgba(59, 130, 246, 0.04);
+}
+
+.photo-dropzone.is-dragover {
+    border-color: var(--accent-glow);
+    background: rgba(59, 130, 246, 0.08);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.photo-dropzone.has-file {
+    padding: 0.75rem;
+    cursor: default;
+    text-align: left;
+}
+
+.photo-dropzone-empty .icon-badge {
+    width: 56px;
+    height: 56px;
+    font-size: 1.6rem;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.photo-dropzone-empty p.fw-semibold {
+    color: var(--text-primary);
+}
+
+.photo-dropzone-preview {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+}
+
+.photo-dropzone-preview img {
+    width: 64px;
+    height: 64px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.photo-preview-info {
+    min-width: 0;
+    flex: 1;
+}
+
+.photo-preview-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.photo-preview-size {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.photo-preview-remove {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid var(--border-color);
+    background: rgba(239, 68, 68, 0.1);
+    color: #FCA5A5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.photo-preview-remove:hover {
+    background: rgba(239, 68, 68, 0.2);
+    transform: scale(1.08);
+}
+
+/* ── Form action buttons: stack on very small screens instead of ─────
+   squeezing "Submit Report" + "Cancel" into a cramped uneven-flex row */
+.form-actions-row {
+    flex-wrap: wrap;
+}
+
+@media (max-width: 480px) {
+    .form-actions-row {
+        flex-direction: column;
+    }
+    .form-actions-row > .btn {
+        flex: 1 1 100% !important;
+        width: 100%;
+    }
+}
+
+/* ============================================================
+   COMPREHENSIVE RESPONSIVE BUTTON & BADGE FIXES
+   ============================================================ */
+
+/* ── Mobile Devices: max-width 767px ──────────────────────── */
+@media (max-width: 767.98px) {
+    /* Stat cards: better mobile layout */
+    .row.g-3 {
+        gap: 0.75rem !important;
+    }
+    
+    .stat-card {
+        padding: 0.9rem !important;
+    }
+    
+    .stat-value {
+        font-size: 1.85rem !important;
+    }
+    
+    .stat-label {
+        font-size: 0.65rem !important;
+        margin-top: 0.3rem !important;
+    }
+    
+    .stat-description {
+        font-size: 0.65rem !important;
+        margin-top: 0.15rem !important;
+    }
+    
+    .stat-card .icon-badge {
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 1.1rem !important;
+    }
+    
+    /* Button scaling for mobile */
+    .btn, .btn-sm, .btn-lg {
+        font-size: 0.75rem !important;
+        padding: 0.5rem 0.9rem !important;
+    }
+    
+    .btn-modern {
+        padding: 0.6rem 1rem !important;
+        font-size: 0.75rem !important;
+    }
+    
+    .btn-primary-modern, .btn-success-modern {
+        padding: 0.6rem 1rem !important;
+        font-size: 0.75rem !important;
+    }
+    
+    /* Small buttons (action buttons in tables) */
+    .btn-sm {
+        padding: 0.35rem 0.65rem !important;
+        font-size: 0.7rem !important;
+    }
+    
+    /* Badge scaling */
+    .badge {
+        font-size: 0.65rem !important;
+        padding: 0.3em 0.5em !important;
+    }
+    
+    .badge-status-pending, 
+    .badge-status-active, 
+    .badge-status-resolved {
+        padding: 0.4em 0.65em !important;
+        font-size: 0.68rem !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        margin: 0.25rem 0 !important;
+    }
+    
+    .priority-badge {
+        padding: 0.3em 0.55em !important;
+        font-size: 0.65em !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        margin: 0.25rem 0 !important;
+        white-space: nowrap !important;
+    }
+    
+    /* Icons in badges/buttons */
+    .bi {
+        font-size: 0.8em !important;
+    }
+    
+    /* Reduce padding in cards */
+    .card-body {
+        padding: 1rem !important;
+    }
+    
+    .card-custom .card-body {
+        padding: 0.9rem !important;
+    }
+    
+    /* Section headers responsive */
+    .section-header {
+        gap: 0.5rem !important;
+        margin-bottom: 1rem !important;
+        padding-bottom: 0.75rem !important;
+    }
+    
+    .section-header h4 {
+        font-size: 1.05rem !important;
+    }
+    
+    /* Icon badges general */
+    .icon-badge {
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 1.1rem !important;
+    }
+    
+    .icon-badge-primary, 
+    .icon-badge-success, 
+    .icon-badge-warning {
+        width: 32px !important;
+        height: 32px !important;
+        font-size: 0.95rem !important;
+    }
+    
+    /* Form controls on mobile */
+    .form-select, .form-control {
+        font-size: 0.85rem !important;
+        padding: 0.5rem 0.6rem !important;
+    }
+    
+    .form-select-sm, .form-control-sm {
+        font-size: 0.75rem !important;
+        padding: 0.35rem 0.5rem !important;
+    }
+    
+    /* Reduce margins for tighter layouts */
+    .mb-4 { margin-bottom: 1rem !important; }
+    .mb-3 { margin-bottom: 0.75rem !important; }
+    .my-4 { margin-top: 1rem !important; margin-bottom: 1rem !important; }
+    
+    /* Header sizing (also applies to Bootstrap's .h1-.h6 utility classes, so a
+       heading's visual size no longer has to match its semantic tag level) */
+    h2, .h2 { font-size: 1.25rem !important; }
+    h3, .h3 { font-size: 1.1rem !important; }
+    h4, .h4 { font-size: 1rem !important; }
+    h5, .h5 { font-size: 0.95rem !important; }
+    h6, .h6 { font-size: 0.85rem !important; }
+    
+    /* Table font scaling */
+    .table {
+        font-size: 0.8rem !important;
+    }
+    
+    .table thead th {
+        padding: 0.5rem 0.5rem !important;
+        font-size: 0.7rem !important;
+    }
+    
+    .table tbody td {
+        padding: 0.5rem 0.5rem !important;
+    }
+    
+    /* Action cell buttons */
+    .table-enhanced tbody td .btn {
+        margin-top: 0.3rem !important;
+    }
+    
+    /* Flex gaps on mobile */
+    .gap-2 { gap: 0.4rem !important; }
+    .gap-3 { gap: 0.75rem !important; }
+}
+
+/* ── Tablet: 768px - 991px ────────────────────────────────── */
+@media (min-width: 768px) and (max-width: 991.98px) {
+    .stat-card {
+        padding: 1.1rem !important;
+    }
+    
+    .stat-value {
+        font-size: 2rem !important;
+    }
+    
+    .stat-label {
+        font-size: 0.75rem !important;
+    }
+    
+    .stat-description {
+        font-size: 0.72rem !important;
+    }
+    
+    .stat-card .icon-badge {
+        width: 40px !important;
+        height: 40px !important;
+        font-size: 1.2rem !important;
+    }
+    
+    /* Buttons on tablet */
+    .btn {
+        font-size: 0.78rem !important;
+        padding: 0.55rem 1rem !important;
+    }
+    
+    .btn-sm {
+        padding: 0.4rem 0.75rem !important;
+        font-size: 0.72rem !important;
+    }
+    
+    .btn-modern {
+        padding: 0.65rem 1.2rem !important;
+        font-size: 0.78rem !important;
+    }
+    
+    /* Badges on tablet */
+    .badge {
+        font-size: 0.7rem !important;
+    }
+    
+    .badge-status-pending, 
+    .badge-status-active, 
+    .badge-status-resolved {
+        padding: 0.4em 0.6em !important;
+        font-size: 0.68rem !important;
+    }
+    
+    .priority-badge {
+        padding: 0.27em 0.5em !important;
+        font-size: 0.68em !important;
+    }
+    
+    /* Form elements on tablet */
+    .form-select, .form-control {
+        font-size: 0.88rem !important;
+    }
+    
+    .card-body {
+        padding: 1.25rem !important;
+    }
+}
+
+/* ── Desktop: 992px and up ────────────────────────────────── */
+@media (min-width: 992px) {
+    .btn {
+        font-size: 0.85rem !important;
+        padding: 0.75rem 1.5rem !important;
+    }
+    
+    .btn-sm {
+        padding: 0.45rem 0.9rem !important;
+        font-size: 0.75rem !important;
+    }
+    
+    .badge {
+        font-size: 0.75rem !important;
+    }
+    
+    .priority-badge {
+        padding: 0.3em 0.6em !important;
+        font-size: 0.75em !important;
+    }
+}
+
+/* ── Ultra-small screens: max 480px ────────────────────── */
+@media (max-width: 480px) {
+    /* Extra aggressive scaling for phones */
+    .container-fluid {
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+    }
+    
+    .container {
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+    }
+    
+    .row.g-3 {
+        gap: 0.5rem !important;
+    }
+    
+    .col-md-3, .col-lg-4, .col-lg-5, .col-lg-7 {
+        padding-left: 0.25rem !important;
+        padding-right: 0.25rem !important;
+    }
+    
+    .card, .card-custom {
+        margin-bottom: 0.75rem !important;
+    }
+    
+    .card-body, .card-custom .card-body {
+        padding: 0.75rem !important;
+    }
+    
+    .btn-modern {
+        padding: 0.5rem 0.85rem !important;
+        font-size: 0.7rem !important;
+        letter-spacing: 0.02em !important;
+    }
+    
+    .stat-value {
+        font-size: 1.5rem !important;
+    }
+    
+    .stat-label {
+        font-size: 0.6rem !important;
+    }
+}
+
+/* ── Stat card row responsive layout ──────────────────── */
+@media (max-width: 1199.98px) {
+    .row.g-3 .col-md-3 {
+        flex: 0 0 calc(50% - 0.375rem) !important;
+        max-width: calc(50% - 0.375rem) !important;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .row.g-3 .col-md-3 {
+        flex: 0 0 100% !important;
+        max-width: 100% !important;
+    }
+}
+
+/* ── Mobile card layout improvements ──────────────────── */
+@media (max-width: 767.98px) {
+    /* Ensure badges in mobile cards don't overlap with text */
+    .table-mobile-stack td .priority-badge,
+    .table-mobile-stack td .badge-status-active,
+    .table-mobile-stack td .badge-status-pending,
+    .table-mobile-stack td .badge-status-resolved {
+        display: block !important;
+        margin-bottom: 0.3rem !important;
+        margin-top: 0.15rem !important;
+    }
+    
+    /* Ensure text after badges is on a new line */
+    .table-mobile-stack td strong,
+    .table-mobile-stack td .text-muted {
+        display: block;
+        margin-top: 0.2rem;
+    }
+    
+    /* Separate cell content with clear vertical spacing */
+    .table-mobile-stack td > * {
+        margin-bottom: 0.2rem;
+    }
+    
+    .table-mobile-stack td > *:last-child {
+        margin-bottom: 0;
+    }
+}
+@media (max-width: 991.98px) {
+    .badge-status-pending, 
+    .badge-status-active, 
+    .badge-status-resolved,
+    .priority-badge {
+        display: inline-flex !important;
+        align-items: center !important;
+        white-space: nowrap !important;
+        word-break: keep-all !important;
+    }
+}
+
+/* ── Responsive button groups and card actions ────────── */
+@media (max-width: 767.98px) {
+    .d-flex.align-items-center.gap-2,
+    .d-flex.align-items-start.gap-2 {
+        flex-wrap: wrap !important;
+        gap: 0.5rem !important;
+    }
+    
+    .d-flex.gap-3 {
+        gap: 0.75rem !important;
+    }
+    
+    /* Make card action buttons stack better */
+    .card .d-flex.align-items-center.justify-content-between {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+    }
+    
+    /* Button text truncation */
+    .btn, .badge {
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+    
+    /* Prevent button overflow in tight spaces */
+    .btn {
+        max-width: 100% !important;
+    }
+}
+
+/* ── Special handling for "LIVE" badges and status indicators ── */
+@media (max-width: 767.98px) {
+    .badge-status-active {
+        white-space: nowrap !important;
+        min-width: fit-content !important;
+    }
+    
+    .d-flex.gap-2 .badge {
+        flex-shrink: 0 !important;
+    }
+}
+
+/* ── Tighter card/body padding on small screens so forms have more ───
+   usable width instead of losing it to fixed rem padding meant for
+   desktop card layouts */
+@media (max-width: 575.98px) {
+    .card-custom .card-body {
+        padding: 1rem !important;
+    }
+    .form-section-header {
+        margin-top: 1.5rem;
+        padding-top: 1rem;
+    }
+    .btn-modern {
+        padding: 0.7rem 1rem !important;
+        letter-spacing: 0.02em !important;
+    }
+    .section-header h4 {
+        font-size: 1.05rem;
+    }
+    /* Desktop-sized gaps between sections waste screen a phone can't spare */
+    .mb-5 {
+        margin-bottom: 2rem !important;
+    }
+    /* Bigger tap area around each checkbox row without inflating the
+       checkbox itself, so lists like "Assistance Needed" are easier to
+       tap accurately on a touchscreen */
+    .form-check {
+        padding-top: 0.35rem;
+        padding-bottom: 0.35rem;
+    }
+    .form-check-label {
+        padding-top: 0.1rem;
+    }
+}
+
+/* ── Tablet: sidebar is already off-canvas below 991.98px (matches the
+   drawer breakpoint in sidebar.html), so content gets the full viewport
+   width here — but desktop-scaled paddings/gaps are still oversized for
+   a touch device with no fixed sidebar to justify them. */
+@media (min-width: 576px) and (max-width: 991.98px) {
+    .card-custom .card-body {
+        padding: 1.5rem !important;
+    }
+    .mb-5 {
+        margin-bottom: 2.5rem !important;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* ── Page Entry: fade + lift ─────────────────────────────── */
+@keyframes dics-page-enter {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.container > * {
+    animation: dics-page-enter 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Stagger every direct child so they cascade in */
+.container > *:nth-child(1)  { animation-delay: 0.05s; }
+.container > *:nth-child(2)  { animation-delay: 0.10s; }
+.container > *:nth-child(3)  { animation-delay: 0.15s; }
+.container > *:nth-child(4)  { animation-delay: 0.20s; }
+.container > *:nth-child(5)  { animation-delay: 0.25s; }
+
+/* ============================================================
+   PRIORITY BADGE RESPONSIVE STYLING
+   ============================================================ */
+
+/* Base priority badge styles */
+.priority-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.3em 0.6em;
+    border-radius: 6px;
+    font-size: 0.75em;
+    font-weight: 700;
+    white-space: nowrap !important;
+    text-transform: uppercase;
+    transition: all 0.2s ease;
+    word-break: keep-all !important;
+}
+
+.priority-critical {
+    background: rgba(239, 68, 68, 0.2);
+    color: #FCA5A5;
+    border: 1px solid rgba(239, 68, 68, 0.5);
+}
+
+.priority-high {
+    background: rgba(245, 158, 11, 0.2);
+    color: #FCD34D;
+    border: 1px solid rgba(245, 158, 11, 0.5);
+}
+
+.priority-medium {
+    background: rgba(59, 130, 246, 0.2);
+    color: #93C5FD;
+    border: 1px solid rgba(59, 130, 246, 0.5);
+}
+
+.priority-low {
+    background: rgba(16, 185, 129, 0.2);
+    color: #86EFAC;
+    border: 1px solid rgba(16, 185, 129, 0.5);
+}
+
+/* ============================================================
+   RESPONSIVE TABLE IMPROVEMENTS
+   ============================================================ */
+
+/* Enhanced responsive behavior for tables */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
+    -ms-overflow-style: -ms-autohiding-scrollbar;
+}
+
+/* Ensure table doesn't get squeezed into breaking text character-by-character */
+.table-responsive .table {
+    margin-bottom: 0;
+    min-width: 550px;
+}
+
+/* Improve table visibility on all screens */
+.table-enhanced {
+    table-layout: auto;
+    width: 100%;
+    min-width: 550px;
+}
+
+.table-enhanced thead th {
+    white-space: nowrap;
+    vertical-align: middle;
+    word-break: keep-all;
+}
+
+.table-enhanced tbody td {
+    vertical-align: middle;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    min-width: 0;
+}
+
+/* Prevent text from breaking into individual characters */
+.table-enhanced tbody td > * {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+/* Ensure table cells don't get too narrow */
+.table-enhanced thead th {
+    min-width: 80px;
+}
+
+.table-enhanced tbody td {
+    min-width: 60px;
+}
+
+/* User column should have more space */
+.table-enhanced tbody td:first-child {
+    min-width: 140px;
+}
+
+/* Role, Status, Agency columns need proper space */
+.table-enhanced thead th:nth-child(2),
+.table-enhanced thead th:nth-child(3),
+.table-enhanced thead th:nth-child(4) {
+    min-width: 100px;
+}
+
+.table-enhanced tbody td:nth-child(2),
+.table-enhanced tbody td:nth-child(3),
+.table-enhanced tbody td:nth-child(4) {
+    min-width: 90px;
+}
+
+/* Alert Log table specific rules - Date & Time column */
+.table-enhanced thead th:nth-child(1) {
+    min-width: 150px;
+}
+
+.table-enhanced tbody td:nth-child(1) {
+    min-width: 150px;
+    white-space: nowrap;
+}
+
+/* Alert Log - Hazard column (prevent text wrapping with emoji) */
+.table-enhanced thead th:nth-child(2) {
+    min-width: 130px;
+}
+
+.table-enhanced tbody td:nth-child(2) {
+    min-width: 130px;
+    white-space: nowrap;
+}
+
+.table-enhanced tbody td:nth-child(2) .d-flex {
+    white-space: nowrap;
+    flex-wrap: nowrap;
+    gap: 0.4rem;
+}
+
+.table-enhanced tbody td:nth-child(2) strong {
+    white-space: nowrap;
+}
+
+/* Alert Log - Risk Level column (prevent badge wrapping) */
+.table-enhanced thead th:nth-child(3) {
+    min-width: 110px;
+}
+
+.table-enhanced tbody td:nth-child(3) {
+    min-width: 110px;
+    white-space: nowrap;
+}
+
+.table-enhanced tbody td:nth-child(3) span {
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+}
+
+/* Alert Log - Score column */
+.table-enhanced thead th:nth-child(4) {
+    min-width: 70px;
+}
+
+.table-enhanced tbody td:nth-child(4) {
+    min-width: 70px;
+    white-space: nowrap;
+}
+
+/* Alert Log - Message column (allow wrapping but with proper spacing) */
+.table-enhanced thead th:nth-child(5) {
+    min-width: 200px;
+}
+
+.table-enhanced tbody td:nth-child(5) {
+    min-width: 200px;
+    word-wrap: break-word;
+}
+
+/* Incident History - 6 column table (with Alert status column) */
+.table-enhanced thead th:nth-child(5) {
+    min-width: 80px;
+}
+
+.table-enhanced tbody td:nth-child(5) {
+    min-width: 80px;
+    white-space: nowrap;
+}
+
+.table-enhanced tbody td:nth-child(5) span {
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+}
+
+/* Incident History - Message column (6th column) */
+.table-enhanced thead th:nth-child(6) {
+    min-width: 180px;
+}
+
+.table-enhanced tbody td:nth-child(6) {
+    min-width: 180px;
+    word-wrap: break-word;
+}
+
+/* Prevent text wrapping in action button cells */
+.table-enhanced tbody td .btn,
+.table-enhanced tbody td .badge-status-active,
+.table-enhanced tbody td .badge-status-pending,
+.table-enhanced tbody td .priority-badge {
+    white-space: nowrap !important;
+}
+
+/* ── Mobile table improvements: allow horizontal scroll instead of breaking text ── */
+@media (max-width: 767.98px) {
+    /* Regular tables: allow horizontal scroll on mobile */
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border-radius: 8px;
+    }
+    
+    /* Ensure table doesn't break text into characters */
+    .table {
+        min-width: 600px;
+        margin-bottom: 0;
+    }
+    
+    .table thead th {
+        white-space: nowrap;
+        font-size: 0.7rem;
+        padding: 0.65rem 0.5rem;
+    }
+    
+    .table tbody td {
+        white-space: nowrap;
+        font-size: 0.75rem;
+        padding: 0.65rem 0.5rem;
+    }
+    
+    /* User management table specifics */
+    .table-enhanced {
+        min-width: 700px;
+    }
+    
+    .table-enhanced tbody td:first-child {
+        min-width: 180px;
+        white-space: normal;
+    }
+    
+    .table-enhanced tbody td:first-child .d-flex {
+        white-space: nowrap;
+    }
+    
+    .table-enhanced tbody td:first-child .fw-bold,
+    .table-enhanced tbody td:first-child small {
+        display: block;
+        white-space: normal;
+    }
+    
+    /* Alert Log table on mobile */
+    .table-enhanced tbody td:nth-child(1),
+    .table-enhanced tbody td:nth-child(2),
+    .table-enhanced tbody td:nth-child(3),
+    .table-enhanced tbody td:nth-child(4),
+    .table-enhanced tbody td:nth-child(5),
+    .table-enhanced tbody td:nth-child(6) {
+        white-space: nowrap;
+    }
+    
+    /* Ensure all table columns maintain minimum widths on mobile */
+    .table-enhanced thead th:nth-child(n) {
+        min-width: 100px;
+    }
+    
+    .table-enhanced tbody td:nth-child(n) {
+        min-width: 100px;
+    }
+    
+    /* Role, Agency, Status badges stay inline */
+    .table-enhanced tbody td:nth-child(2),
+    .table-enhanced tbody td:nth-child(3),
+    .table-enhanced tbody td:nth-child(4),
+    .table-enhanced tbody td:nth-child(5),
+    .table-enhanced tbody td:nth-child(6) {
+        white-space: nowrap;
+        min-width: 100px;
+    }
+}
+@media (max-width: 767.98px) {
+    /* Hide table headers on mobile, convert to card-style layout */
+    .table-mobile-stack thead {
+        display: none;
+    }
+    
+    .table-mobile-stack tbody,
+    .table-mobile-stack tr,
+    .table-mobile-stack td {
+        display: block;
+        width: 100%;
+    }
+    
+    .table-mobile-stack tr {
+        margin-bottom: 1.5rem;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        padding: 1.25rem;
+        background-color: rgba(20, 27, 45, 0.6);
+    }
+    
+    .table-mobile-stack td {
+        padding: 1rem 0;
+        text-align: left;
+        border: none;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+    
+    .table-mobile-stack td::before {
+        content: attr(data-label);
+        position: static;
+        font-weight: 700;
+        color: #B3B9C4;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-bottom: 0.35rem;
+        display: block;
+    }
+    
+    .table-mobile-stack td:first-child::before {
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Ensure badges display properly stacked */
+    .table-mobile-stack .priority-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.35em 0.6em !important;
+        font-size: 0.68em !important;
+        margin: 0.2em 0 !important;
+        white-space: nowrap !important;
+        word-break: keep-all !important;
+    }
+    
+    .table-mobile-stack .badge-status-active {
+        display: inline-flex !important;
+        align-items: center !important;
+        padding: 0.4em 0.7em !important;
+        font-size: 0.68rem !important;
+        white-space: nowrap !important;
+    }
+    
+    /* Ensure action buttons are full width */
+    .table-mobile-stack .btn-sm {
+        width: 100%;
+        margin-top: 1rem;
+        font-size: 0.75rem !important;
+        padding: 0.6rem 1rem !important;
+    }
+    
+    /* Hide less critical columns on very small screens */
+    .table-mobile-hide-sm {
+        display: none !important;
+    }
+    
+    /* Make text more readable */
+    .table-mobile-stack td strong {
+        display: inline;
+        color: var(--text-primary);
+        font-weight: 700;
+    }
+    
+    .table-mobile-stack .text-muted {
+        font-size: 0.78rem;
+        color: #9CA3AF;
+    }
+    
+    .table-mobile-stack .small {
+        font-size: 0.75rem;
+    }
+    
+    /* Prevent label from being too wide */
+    .table-mobile-stack td[data-label]::before {
+        min-width: auto;
+        max-width: 100%;
+    }
+    
+    /* Add proper spacing between rows */
+    .table-mobile-stack tbody tr {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+}
+
+/* ── Tablet: Optimize for medium screens ──────────────────────────── */
+@media (min-width: 768px) and (max-width: 991.98px) {
+    .table-responsive {
+        font-size: 0.9rem;
+        overflow-x: auto;
+    }
+    
+    .table {
+        min-width: 600px;
+    }
+    
+    .table-enhanced {
+        min-width: 650px;
+    }
+    
+    .table-enhanced thead th {
+        padding: 0.65rem 0.75rem;
+        font-size: 0.8rem;
+        white-space: nowrap;
+        word-break: keep-all;
+    }
+    
+    .table-enhanced tbody td {
+        padding: 0.7rem 0.75rem;
+        font-size: 0.85rem;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+    
+    /* Prevent user column text from breaking into characters */
+    .table-enhanced tbody td:first-child {
+        min-width: 180px;
+        white-space: normal;
+    }
+    
+    /* Priority badges scale for tablet */
+    .priority-badge {
+        padding: 0.28em 0.55em;
+        font-size: 0.7em;
+    }
+    
+    /* Incident History & Alert Log table columns on tablet */
+    .table-enhanced thead th:nth-child(1) { min-width: 140px; }
+    .table-enhanced thead th:nth-child(2) { min-width: 120px; }
+    .table-enhanced thead th:nth-child(3) { min-width: 100px; }
+    .table-enhanced thead th:nth-child(4) { min-width: 70px; }
+    .table-enhanced thead th:nth-child(5) { min-width: 90px; }
+    .table-enhanced thead th:nth-child(6) { min-width: 150px; }
+    
+    .table-enhanced tbody td:nth-child(2),
+    .table-enhanced tbody td:nth-child(3),
+    .table-enhanced tbody td:nth-child(4),
+    .table-enhanced tbody td:nth-child(5) {
+        white-space: nowrap;
+        min-width: auto;
+    }
+    
+    /* Optionally hide less important columns */
+    .table-hide-tablet {
+        display: none !important;
+    }
+}
+
+/* ── Desktop: Default sizing ──────────────────────────────────────── */
+@media (min-width: 992px) {
+    .priority-badge {
+        padding: 0.3em 0.6em;
+        font-size: 0.75em;
+    }
+    
+    .table-enhanced thead th {
+        padding: 0.75rem 1rem;
+    }
+    
+    .table-enhanced tbody td {
+        padding: 0.85rem 1rem;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        word-break: break-word;
+    }
+    
+    /* Prevent text from breaking character-by-character */
+    .table-enhanced tbody td > * {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+    
+    /* Ensure user column has proper width */
+    .table-enhanced thead th:first-child {
+        min-width: 200px;
+    }
+    
+    .table-enhanced tbody td:first-child {
+        min-width: 200px;
+    }
+}
+
+/* ── Ensure priority status cells don't break on any screen ────────── */
+.priority-status-cell {
+    min-width: fit-content;
+    overflow-wrap: break-word;
+}
+
+/* Prevent badge text from breaking mid-word */
+.priority-badge {
+    word-break: keep-all;
+}
+
+/* Fix for inline badges that might have emoji or special chars */
+.priority-badge-content {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3em;
+    justify-content: center;
+}
+
+/* Ensure action cells are always clickable on mobile */
+@media (max-width: 767.98px) {
+    .table-mobile-stack .text-center {
+        text-align: left;
+    }
+    
+    .table-mobile-stack a.btn,
+    .table-mobile-stack button.btn {
+        font-size: 0.85rem;
+        padding: 0.5rem 1rem;
+    }
+}
+
+/* ── Ultra-small mobile: 480px and below ──────────────── */
+@media (max-width: 480px) {
+    /* Extra aggressive spacing for tiny screens */
+    .table-mobile-stack tr {
+        padding: 1rem;
+        margin-bottom: 1.25rem;
+    }
+    
+    .table-mobile-stack td {
+        padding: 0.9rem 0;
+        margin-bottom: 0.1rem;
+    }
+    
+    .table-mobile-stack td::before {
+        font-size: 0.7rem;
+        margin-bottom: 0.4rem;
+        font-weight: 700;
+    }
+    
+    /* Stack badges vertically on ultra-small */
+    .table-mobile-stack .priority-badge {
+        display: flex !important;
+        padding: 0.4em 0.65em !important;
+        font-size: 0.65em !important;
+        margin: 0.3em 0 !important;
+    }
+    
+    .table-mobile-stack .badge-status-active {
+        display: flex !important;
+        padding: 0.4em 0.65em !important;
+        font-size: 0.65rem !important;
+    }
+    
+    /* Make buttons more touch-friendly */
+    .table-mobile-stack .btn-sm {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.73rem !important;
+        padding: 0.65rem 1rem !important;
+        margin-top: 1.2rem;
+    }
+    
+    /* Better text spacing */
+    .table-mobile-stack td strong {
+        display: block;
+        margin-bottom: 0.15rem;
+    }
+}
+.container > *:nth-child(n+6){ animation-delay: 0.30s; }
+
+/* ── Card entrance (stagger within rows) ────────────────── */
+@keyframes dics-card-enter {
+    from { opacity: 0; transform: translateY(20px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+
+.row > [class*="col"] {
+    animation: dics-card-enter 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.row > [class*="col"]:nth-child(1) { animation-delay: 0.08s; }
+.row > [class*="col"]:nth-child(2) { animation-delay: 0.16s; }
+.row > [class*="col"]:nth-child(3) { animation-delay: 0.24s; }
+.row > [class*="col"]:nth-child(4) { animation-delay: 0.32s; }
+.row > [class*="col"]:nth-child(n+5){ animation-delay: 0.40s; }
+
+/* ── Card hover: subtle lift + glow ─────────────────────── */
+.card-custom {
+    transition:
+        transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+        box-shadow 0.25s ease,
+        border-color 0.25s ease !important;
+    will-change: transform;
+}
+
+.card-custom:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 40px rgba(59, 130, 246, 0.15),
+                0 4px 12px rgba(0, 0, 0, 0.4) !important;
+    border-color: rgba(59, 130, 246, 0.25) !important;
+}
+
+/* Stat cards get a bit more spring */
+.stat-card {
+    transition:
+        transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+        box-shadow 0.3s ease,
+        background 0.3s ease !important;
+}
+
+.stat-card:hover {
+    transform: translateY(-6px) scale(1.01);
+}
+
+/* ── Sidebar nav link transitions ───────────────────────── */
+.sidebar-nav-link {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    transition:
+        background 0.2s ease,
+        color 0.2s ease,
+        border-left-color 0.2s ease,
+        padding-left 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+        box-shadow 0.2s ease !important;
+    min-height: 2.4rem;
+    padding: 0.65rem 1rem;
+    border-left: 3px solid transparent;
+    color: var(--text-muted) !important;
+    overflow: hidden;
+}
+
+.sidebar-nav-link:hover,
+.sidebar-nav-link:focus-visible {
+    padding-left: 1.35rem;
+    color: var(--text-primary) !important;
+}
+
+.sidebar-nav-link .nav-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sidebar-nav-link .badge {
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.sidebar-nav-link.active {
+    background: rgba(59, 130, 246, 0.16);
+    color: #ffffff !important;
+    border-left-color: var(--accent-glow);
+}
+
+.sidebar-nav-link.active i,
+.sidebar-nav-link.active .nav-text,
+.sidebar-nav-link.active .badge {
+    color: #ffffff !important;
+}
+
+.mobile-menu-btn,
+.sidebar-toggle,
+.sidebar-close-mobile,
+.photo-preview-remove,
+.btn-close {
+    min-width: 2.4rem !important;
+    min-height: 2.4rem !important;
+    padding: 0.5rem !important;
+}
+
+.sidebar-nav-link i {
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s ease;
+}
+
+.sidebar-nav-link:hover i {
+    transform: scale(1.2);
+    color: #3b82f6;
+}
+
+.sidebar-nav-link.active i {
+    animation: dics-icon-ping 3s ease infinite;
+}
+
+@keyframes dics-icon-ping {
+    0%, 100% { filter: drop-shadow(0 0 0px rgba(59,130,246,0)); }
+    50%       { filter: drop-shadow(0 0 5px rgba(59,130,246,0.7)); }
+}
+
+/* Sidebar collapse / expand: smooth width + icon rotation */
+.sidebar-container {
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+body {
+    transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+#sidebarToggle i {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-container.collapsed #sidebarToggle i {
+    transform: rotate(180deg);
+}
+
+/* ── Button micro-interactions ───────────────────────────── */
+.btn {
+    transition:
+        background 0.2s ease,
+        box-shadow 0.2s ease,
+        transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1),
+        border-color 0.2s ease !important;
+}
+
+.btn:not(:disabled):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+}
+
+.btn:not(:disabled):active {
+    transform: translateY(0) scale(0.97);
+    box-shadow: none;
+}
+
+/* Brand / modern buttons keep their own lift */
+.btn-brand:hover,
+.btn-primary-modern:hover,
+.btn-success-modern:hover {
+    transform: translateY(-3px) !important;
+}
+
+/* ── Ripple on click ─────────────────────────────────────── */
+.btn {
+    position: relative;
+    overflow: hidden;
+}
+
+.btn .dics-ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(0);
+    animation: dics-ripple-expand 0.55s linear;
+    pointer-events: none;
+}
+
+@keyframes dics-ripple-expand {
+    to { transform: scale(4); opacity: 0; }
+}
+
+/* ── Table row slide-in ──────────────────────────────────── */
+@keyframes dics-row-in {
+    from { opacity: 0; transform: translateX(-8px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+.table tbody tr {
+    animation: dics-row-in 0.3s ease both;
+    transition: background 0.18s ease, box-shadow 0.18s ease !important;
+}
+
+/* Progressive delay for first 10 rows */
+.table tbody tr:nth-child(1)  { animation-delay: 0.05s; }
+.table tbody tr:nth-child(2)  { animation-delay: 0.10s; }
+.table tbody tr:nth-child(3)  { animation-delay: 0.15s; }
+.table tbody tr:nth-child(4)  { animation-delay: 0.20s; }
+.table tbody tr:nth-child(5)  { animation-delay: 0.25s; }
+.table tbody tr:nth-child(6)  { animation-delay: 0.28s; }
+.table tbody tr:nth-child(7)  { animation-delay: 0.31s; }
+.table tbody tr:nth-child(8)  { animation-delay: 0.33s; }
+.table tbody tr:nth-child(n+9){ animation-delay: 0.35s; }
+
+/* ── List-group item slide ───────────────────────────────── */
+.list-group-item {
+    transition:
+        background 0.2s ease,
+        border-color 0.2s ease,
+        color 0.2s ease,
+        transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+/* ── Badge pulse (active/live data) ─────────────────────── */
+@keyframes dics-badge-live {
+    0%, 100% { opacity: 1;   box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5); }
+    50%       { opacity: 0.85; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0); }
+}
+
+.badge-status-active {
+    animation: dics-badge-live 2.5s ease infinite !important;
+}
+
+/* ── Flash alert slide-down ──────────────────────────────── */
+@keyframes dics-alert-drop {
+    from { opacity: 0; transform: translateY(-12px) scaleY(0.9); }
+    to   { opacity: 1; transform: translateY(0) scaleY(1); }
+}
+
+.alert {
+    animation: dics-alert-drop 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+    transform-origin: top;
+}
+
+/* ── Navbar link underline sweep ────────────────────────── */
+.navbar-custom .nav-link {
+    position: relative;
+    transition: color 0.2s ease !important;
+}
+
+.navbar-custom .nav-link::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    width: 0;
+    height: 2px;
+    background: var(--accent-glow);
+    border-radius: 2px;
+    transition: width 0.25s ease, left 0.25s ease;
+}
+
+.navbar-custom .nav-link:hover::after,
+.navbar-custom .nav-item.active .nav-link::after {
+    width: 80%;
+    left: 10%;
+}
+
+/* ── Form focus transitions ──────────────────────────────── */
+.form-control,
+.form-select {
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.25s ease,
+        background-color 0.2s ease !important;
+}
+
+/* ── Icon badge bounce on hover ─────────────────────────── */
+.icon-badge {
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+}
+
+.icon-badge:hover {
+    transform: scale(1.12) rotate(-4deg);
+}
+
+/* ── Hazard badge: pulsing ring sharpened ───────────────── */
+@keyframes dics-hazard-ring {
+    0%   { box-shadow: 0 0 0 0   rgba(239, 68, 68, 0.55); }
+    60%  { box-shadow: 0 0 0 7px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0   rgba(239, 68, 68, 0); }
+}
+
+.badge-high {
+    animation: dics-hazard-ring 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
+}
+
+/* ── SOS button: breathing glow ─────────────────────────── */
+@keyframes dics-sos-breathe {
+    0%, 100% {
+        box-shadow: 0 0 12px rgba(220, 38, 38, 0.5),
+                    0 0 0 0 rgba(220, 38, 38, 0.6);
+    }
+    50% {
+        box-shadow: 0 0 24px rgba(220, 38, 38, 0.8),
+                    0 0 0 8px rgba(220, 38, 38, 0);
+    }
+}
+
+.sos-button {
+    animation: dics-sos-breathe 2s ease-in-out infinite !important;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease !important;
+}
+
+.sos-button:hover {
+    transform: scale(1.04) !important;
+}
+
+/* ── Skeleton shimmer for loading states ─────────────────── */
+@keyframes dics-shimmer {
+    0%   { background-position: -400px 0; }
+    100% { background-position:  400px 0; }
+}
+
+.dics-skeleton {
+    background: linear-gradient(
+        90deg,
+        rgba(255,255,255,0.04) 25%,
+        rgba(255,255,255,0.09) 50%,
+        rgba(255,255,255,0.04) 75%
+    );
+    background-size: 800px 100%;
+    animation: dics-shimmer 1.5s infinite linear;
+    border-radius: 6px;
+    min-height: 1em;
+}
+
+/* ── Section header slide-in from left ───────────────────── */
+@keyframes dics-section-enter {
+    from { opacity: 0; transform: translateX(-12px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+.section-header {
+    animation: dics-section-enter 0.4s cubic-bezier(0.22, 1, 0.36, 1) both 0.1s;
+}
+
+/* ── Tooltip fade for sidebar collapsed ─────────────────── */
+.sidebar-container.collapsed .sidebar-nav-link::before {
+    transition: opacity 0.18s ease !important;
+}
+
+/* ── Modal entrance ──────────────────────────────────────── */
+.modal.fade .modal-dialog {
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+                opacity 0.3s ease !important;
+    transform: translateY(-20px) scale(0.97) !important;
+}
+
+.modal.show .modal-dialog {
+    transform: translateY(0) scale(1) !important;
+}
+
+/* ── Auth shell (login / register) ─────────────────────── */
+.auth-shell {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2.5rem 1rem;
+}
+.auth-card {
+    width: 100%;
+    max-width: 440px;
+    background: var(--bg-main);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    overflow: hidden;
+}
+.auth-tier-bar {
+    height: 3px;
+    display: flex;
+}
+.auth-tier-bar span {
+    flex: 1;
+}
+.auth-tier-bar .t-low  { background: var(--hazard-low); }
+.auth-tier-bar .t-mod  { background: var(--hazard-mod); }
+.auth-tier-bar .t-high { background: var(--hazard-high); }
+
+.auth-header {
+    position: relative;
+    padding: 2.5rem 2rem 1.75rem;
+    text-align: center;
+    overflow: hidden;
+}
+.auth-grid-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 90px;
+    opacity: 0.35;
+    pointer-events: none;
+}
+.auth-brand-mark {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.85rem;
+}
+.auth-brand-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 6px;
+    background: var(--bg-card);
+    border: 1px solid rgba(59, 130, 246, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: var(--accent-glow);
+}
+.auth-brand-name {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: 0.02em;
+}
+.auth-brand-name .accent { color: var(--accent-glow); }
+.auth-subtitle {
+    position: relative;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+}
+
+.auth-body {
+    padding: 0 2rem 2rem;
+}
+.auth-label {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.4rem;
+}
+.auth-body .form-control {
+    margin-bottom: 1rem;
+}
+.btn-auth {
+    background: var(--accent-glow) !important;
+    color: #06101F !important;
+    border: none !important;
+    font-weight: 600;
+    font-size: 0.85rem;
+    letter-spacing: 0.04em;
+    border-radius: 8px;
+    padding: 0.7rem;
+    transition: background 0.2s ease;
+}
+.btn-auth:hover {
+    background: #5B9BF5 !important;
+    color: #06101F !important;
+}
+.auth-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1.1rem;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+.auth-footer a {
+    color: var(--accent-glow);
+    text-decoration: none;
+    font-weight: 500;
+}
+.auth-footer a:hover {
+    text-decoration: underline;
+}
+
+/* ── Info tile: color-coded callout used inside cards ──── */
+.info-tile {
+    padding: 1rem;
+    border-radius: 8px;
+    border-left: 3px solid transparent;
+}
+.info-tile-primary { background: rgba(59, 130, 246, 0.08); border-left-color: #3B82F6; }
+.info-tile-success { background: rgba(16, 185, 129, 0.08); border-left-color: #10B981; }
+.info-tile-warning { background: rgba(245, 158, 11, 0.08); border-left-color: #F59E0B; }
+.info-tile-danger  { background: rgba(239, 68, 68, 0.08);  border-left-color: #EF4444; }
+.info-tile-purple  { background: rgba(139, 92, 246, 0.08); border-left-color: #8B5CF6; }
+.info-tile-cyan    { background: rgba(6, 182, 212, 0.08);  border-left-color: #06B6D4; }
+
+/* Larger padding variant, used for quick-reference style tiles */
+.info-tile-lg {
+    padding: 1.5rem;
+    border-radius: 8px;
+    border-left: 3px solid transparent;
+}
+
+/* ── Additional icon-badge color variants ──────────────── */
+.icon-badge-danger {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.1));
+    color: var(--hazard-high);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.icon-badge-purple {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(109, 40, 217, 0.1));
+    color: #C4B5FD;
+    border: 1px solid rgba(139, 92, 246, 0.3);
+}
+.icon-badge-cyan {
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(8, 145, 178, 0.1));
+    color: #67E8F9;
+    border: 1px solid rgba(6, 182, 212, 0.3);
+}
+
+/* ── Shared empty-state block ──────────────────────────── */
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+}
+.empty-state-icon {
+    margin: 0 auto 1rem;
+    width: 56px;
+    height: 56px;
+    font-size: 1.5rem;
+}
+.empty-state h5 {
+    margin-bottom: 0.5rem;
+}
+.empty-state-sm {
+    padding: 2rem 1rem;
+}
+.empty-state-sm .empty-state-icon {
+    width: 44px;
+    height: 44px;
+    font-size: 1.2rem;
+    margin-bottom: 0.75rem;
+}
+.empty-state-sm h5 {
+    font-size: 0.95rem;
+}
+
+/* ── Map loading pill: shown until async pins resolve ────── */
+.map-container-wrap {
+    position: relative;
+}
+.map-loading-pill {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    z-index: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.85rem;
+    background: rgba(11, 15, 25, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+    color: var(--text-primary);
+    font-size: 0.78rem;
+    font-weight: 500;
+    backdrop-filter: blur(4px);
+    transition: opacity 0.25s ease;
+}
+.map-loading-pill.is-hidden {
+    opacity: 0;
+    pointer-events: none;
+}

@@ -1,0 +1,246 @@
+{% extends 'pages/base.html' %}
+{% block title %}Response #{{ response.incident_id }} Overview | DICS AI{% endblock %}
+
+{% block content %}
+<h1 class="visually-hidden">Response #{{ response.incident_id }} Overview</h1>
+{% set active_tab = 'dashboard' %}
+{% include 'partials/response_header.html' %}
+
+<!-- Operational Stats -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card card-gradient-primary h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-label">Tasks Completed</div>
+                    <div class="stat-value">{{ completed_tasks }}/{{ total_tasks }}</div>
+                    <div class="progress mt-2" style="height:5px;background:rgba(255,255,255,0.08);border-radius:3px;">
+                        <div class="progress-bar" role="progressbar"
+                             style="width:{{ task_completion_pct }}%;background:linear-gradient(90deg,#3B82F6,#60A5FA);border-radius:3px;">
+                        </div>
+                    </div>
+                </div>
+                <div class="icon-badge icon-badge-primary"><i class="bi bi-list-check"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card card-gradient-success h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-label">Resources Deployed</div>
+                    <div class="stat-value">{{ deployed_resources }}</div>
+                    <div class="stat-description">Units in active operations</div>
+                </div>
+                <div class="icon-badge icon-badge-success"><i class="bi bi-truck"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card card-gradient-danger h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-label">Casualties Reported</div>
+                    <div class="stat-value">{{ total_casualties }}</div>
+                    <div class="stat-description">Total cumulative count</div>
+                </div>
+                <div class="icon-badge" style="background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.3);">
+                    <i class="bi bi-activity"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card card-gradient-info h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-label">Evacuated Persons</div>
+                    <div class="stat-value">{{ total_evacuated }}</div>
+                    <div class="stat-description">Moved to safety</div>
+                </div>
+                <div class="icon-badge icon-badge-primary"><i class="bi bi-people-fill"></i></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Content -->
+<div class="row">
+    <!-- Left: Summary & Telemetry -->
+    <div class="col-lg-8 mb-4">
+        <div class="card card-custom h-100">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <div class="icon-badge icon-badge-primary"><i class="bi bi-clipboard-data"></i></div>
+                    <h5 class="mb-0">Incident Summary & Telemetry</h5>
+                </div>
+
+                <!-- Risk + Status row -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <div style="padding:1rem;background:rgba(239,68,68,0.07);border-radius:8px;border-left:3px solid #EF4444;">
+                            <span class="text-muted d-block small mb-1" style="text-transform:uppercase;letter-spacing:0.05em;">Risk Assessment</span>
+                            <div class="d-flex align-items-center gap-2">
+                                <h2 class="fw-bold mb-0" style="color:#FCA5A5;">{{ "%.2f"|format(response.incident.score|float(0)) }}</h2>
+                                <span style="padding:0.3em 0.6em;background:rgba(239,68,68,0.2);color:#FCA5A5;border:1px solid rgba(239,68,68,0.5);border-radius:5px;font-size:0.75em;font-weight:700;text-transform:uppercase;">
+                                    {{ response.incident.level }}
+                                </span>
+                            </div>
+                            <span class="text-muted small mt-2 d-block">DICS disaster risk calculation</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div style="padding:1rem;background:rgba(16,185,129,0.07);border-radius:8px;border-left:3px solid #10B981;">
+                            <span class="text-muted d-block small mb-1" style="text-transform:uppercase;letter-spacing:0.05em;">Response Status</span>
+                            <h3 class="fw-bold mb-0 text-white">{{ response.status }}</h3>
+                            <span class="text-muted small mt-2 d-block">Initiated {{ response.started_at.strftime('%b %d, %Y %H:%M') }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Telemetry sensors -->
+                <div class="row g-2 mb-4">
+                    <div class="col-6 col-md-3">
+                        <div style="padding:0.85rem;background:rgba(59,130,246,0.07);border:1px solid rgba(59,130,246,0.15);border-radius:8px;text-align:center;">
+                            <i class="bi bi-cloud-rain text-info fs-4 d-block mb-1"></i>
+                            <div class="text-muted" style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;">Rainfall</div>
+                            <strong class="text-white">{{ response.incident.rainfall_mm }} mm</strong>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div style="padding:0.85rem;background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.15);border-radius:8px;text-align:center;">
+                            <i class="bi bi-moisture text-warning fs-4 d-block mb-1"></i>
+                            <div class="text-muted" style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;">Humidity</div>
+                            <strong class="text-white">{{ response.incident.humidity_pct }}%</strong>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div style="padding:0.85rem;background:rgba(59,130,246,0.07);border:1px solid rgba(59,130,246,0.15);border-radius:8px;text-align:center;">
+                            <i class="bi bi-water text-primary fs-4 d-block mb-1"></i>
+                            <div class="text-muted" style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;">River Level</div>
+                            <strong class="text-white">{{ response.incident.river_level_m }} m</strong>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div style="padding:0.85rem;background:rgba(139,92,246,0.07);border:1px solid rgba(139,92,246,0.15);border-radius:8px;text-align:center;">
+                            <i class="bi bi-people fs-4 d-block mb-1" style="color:#C4B5FD;"></i>
+                            <div class="text-muted" style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;">Pop. Density</div>
+                            <strong class="text-white">{{ response.incident.population_density }}/km²</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Situation summary -->
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <span style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--accent-glow);">Situation Overview</span>
+                    <div style="flex:1;height:1px;background:rgba(255,255,255,0.06);"></div>
+                </div>
+                <div style="padding:1rem;background:rgba(10,13,26,0.6);border:1px solid rgba(255,255,255,0.06);border-radius:8px;color:#D1D5DB;white-space:pre-line;font-size:0.9rem;line-height:1.65;">
+                    {{ response.situation_summary or 'No current summary reports have been generated yet.' }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Quick Actions + Leadership -->
+    <div class="col-lg-4 mb-4">
+        <!-- Quick Actions -->
+        <div class="card card-custom mb-4">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <div class="icon-badge" style="background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.3);">
+                        <i class="bi bi-lightning-charge-fill"></i>
+                    </div>
+                    <h5 class="mb-0">Quick Actions</h5>
+                </div>
+                <div class="d-flex flex-column gap-2">
+                    <a href="{{ url_for('commander.incident_response_tasks', response_id=response.id) }}"
+                       class="btn btn-primary-modern btn-modern py-3 d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-list-task me-2"></i>Assign Agency Task</span>
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                    <a href="{{ url_for('commander.incident_response_resources', response_id=response.id) }}"
+                       class="btn btn-success-modern btn-modern py-3 d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-boxes me-2"></i>Allocate Resource</span>
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                    <a href="{{ url_for('commander.incident_response_reports', response_id=response.id) }}"
+                       class="btn btn-modern py-3 d-flex justify-content-between align-items-center"
+                       style="background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border:none;">
+                        <span><i class="bi bi-file-text me-2"></i>Create SitRep</span>
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Leadership & Operations -->
+        <div class="card card-custom">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <div class="icon-badge icon-badge-primary"><i class="bi bi-person-lines-fill"></i></div>
+                    <h5 class="mb-0">Leadership</h5>
+                </div>
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <div style="width:48px;height:48px;border-radius:50%;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <i class="bi bi-person-badge-fill" style="color:#93C5FD;font-size:1.2rem;"></i>
+                    </div>
+                    <div>
+                        <span class="d-block text-muted" style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.05em;">Incident Commander</span>
+                        <strong class="text-white">{{ response.commander.full_name or response.commander.username }}</strong>
+                        <span class="d-block text-muted small">{{ response.commander.agency or 'Emergency Operations' }}</span>
+                    </div>
+                </div>
+                <div style="height:1px;background:rgba(255,255,255,0.06);margin-bottom:1rem;"></div>
+                <div class="d-flex align-items-center gap-3">
+                    <div style="width:48px;height:48px;border-radius:50%;background:rgba(6,182,212,0.12);border:1px solid rgba(6,182,212,0.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <i class="bi bi-telephone-fill" style="color:#67E8F9;font-size:1.1rem;"></i>
+                    </div>
+                    <div>
+                        <span class="d-block text-muted" style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.05em;">Command Hotline</span>
+                        <strong class="text-white">{{ response.commander.contact_number or 'N/A' }}</strong>
+                        <span class="d-block text-muted small">{{ response.commander.email }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card card-custom mt-4">
+    <div class="card-body p-4">
+        <div class="d-flex align-items-center gap-2 mb-4">
+            <div class="icon-badge icon-badge-warning"><i class="bi bi-journal-check"></i></div>
+            <h5 class="mb-0">Post-Incident Evaluation</h5>
+        </div>
+        {% if response.status in ['CLOSED', 'RESOLVED'] %}
+            <form method="post" action="{{ url_for('commander.post_incident_evaluation', response_id=response.id) }}" class="row g-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="col-12">
+                    <label class="form-label" for="lessons_learned">Lessons learned</label>
+                    <textarea id="lessons_learned" class="form-control" name="lessons_learned" rows="4" placeholder="What went well or what should improve?">{{ (post_incident_report.lessons_learned if post_incident_report else '') }}</textarea>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="response_rating">Response rating (1-5)</label>
+                    <select id="response_rating" class="form-select" name="response_rating">
+                        <option value="">Select rating</option>
+                        {% for rating in range(1, 6) %}
+                            <option value="{{ rating }}" {% if post_incident_report and post_incident_report.response_rating == rating %}selected{% endif %}>{{ rating }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12">
+                    <label class="form-label" for="recommendations">Recommendations</label>
+                    <textarea id="recommendations" class="form-control" name="recommendations" rows="3" placeholder="Recommended improvements for future responses">{{ (post_incident_report.recommendations if post_incident_report else '') }}</textarea>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary-modern">Save evaluation</button>
+                </div>
+            </form>
+        {% else %}
+            <div class="alert alert-info mb-0">Close or resolve this response to unlock the post-incident evaluation form.</div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

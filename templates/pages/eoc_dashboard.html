@@ -1,0 +1,398 @@
+{% extends 'pages/base.html' %}
+{% import 'partials/hazard_macros.html' as hz %}
+{% import 'partials/empty_state.html' as es %}
+
+{% block title %}EOC Command Dashboard | DICS AI{% endblock %}
+
+{% block content %}
+<h1 class="visually-hidden">EOC Command Dashboard</h1>
+
+<!-- Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card card-custom">
+            <div class="card-body">
+                <div class="section-header mb-0">
+                    <span class="section-header-icon" style="color:#C4B5FD;"><i class="bi bi-display-fill"></i></span>
+                    <h4 class="mb-0">EOC Command Dashboard</h4>
+                    <span class="ms-auto">
+                        <span class="badge-status-active px-3 py-2" style="font-size:0.8rem;">
+                            <i class="bi bi-circle-fill me-1" style="font-size:0.5rem; vertical-align:middle;"></i>MONITORING ALL INCIDENTS
+                        </span>
+                    </span>
+                </div>
+                <p class="text-muted mb-0 mt-2" style="padding-left:2.75rem;">System-wide view across every active incident, response, and resource in the region.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Command Status Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card card-gradient-danger h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-label">Active Responses</div>
+                    <div class="stat-value">{{ total_active }}</div>
+                    <div class="stat-description">Being managed right now</div>
+                </div>
+                <div class="icon-badge" style="background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.3);">
+                    <i class="bi bi-fire"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card card-gradient-warning h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-label">Critical / High Alerts</div>
+                    <div class="stat-value">{{ total_critical }}</div>
+                    <div class="stat-description">Across all incidents</div>
+                </div>
+                <div class="icon-badge icon-badge-warning">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card card-gradient-primary h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-label">Open Tasks</div>
+                    <div class="stat-value">{{ total_tasks }}</div>
+                    <div class="stat-description">Pending or in progress</div>
+                </div>
+                <div class="icon-badge icon-badge-primary">
+                    <i class="bi bi-list-task"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <a href="{{ url_for('eoc.eoc_resource_monitoring') }}" class="text-decoration-none">
+        <div class="stat-card card-gradient-purple h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-label">Resources Deployed</div>
+                    <div class="stat-value">{{ total_resources }}</div>
+                    <div class="stat-description">Units in the field</div>
+                </div>
+                <div class="icon-badge" style="background:rgba(139,92,246,0.15);color:#C4B5FD;border:1px solid rgba(139,92,246,0.3);">
+                    <i class="bi bi-truck"></i>
+                </div>
+            </div>
+        </div>
+        </a>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Active Incident Responses (system-wide) -->
+    <div class="col-lg-8">
+        <div class="card card-custom shadow-lg h-100">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <div class="icon-badge" style="background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.3);">
+                        <i class="bi bi-shield-check"></i>
+                    </div>
+                    <h5 class="mb-0">Active Incident Responses</h5>
+                    <span class="ms-2 badge badge-status-active" style="font-size:0.7rem;">LIVE</span>
+                    <a href="{{ url_for('eoc.eoc_incident_monitoring') }}" class="ms-auto btn btn-sm btn-outline-light" style="font-size:0.75rem;">
+                        <i class="bi bi-binoculars-fill me-1"></i>Full Incident Log
+                    </a>
+                </div>
+
+                {% if active_responses %}
+                    <div class="table-responsive">
+                        <table class="table table-enhanced table-mobile-stack align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Incident</th>
+                                    <th>Hazard</th>
+                                    <th>Location</th>
+                                    <th class="table-hide-tablet">Commander</th>
+                                    <th>Priority</th>
+                                    <th class="table-hide-tablet">Started</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for response in active_responses %}
+                                <tr>
+                                    <td data-label="Incident"><strong class="text-white">#{{ response.incident_id }}</strong></td>
+                                    <td data-label="Hazard">
+                                        <span class="priority-badge priority-critical">
+                                            {{ response.incident.hazard_type }}
+                                        </span>
+                                    </td>
+                                    <td data-label="Location"><span class="text-muted small">{{ response.incident.location or 'Unknown' }}</span></td>
+                                    <td data-label="Commander" class="table-hide-tablet"><span class="text-muted small">{{ response.commander.full_name or response.commander.username }}</span></td>
+                                    <td data-label="Priority" class="priority-status-cell">
+                                        {{ hz.priority_badge(response.priority_level, label=response.priority_level if response.priority_level not in ['CRITICAL','HIGH'] else none) }}
+                                    </td>
+                                    <td data-label="Started" class="table-hide-tablet"><span class="text-muted small">{{ response.started_at.strftime('%b %d, %H:%M') }}</span></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    {{ es.render('bi-shield-check', 'No Active Responses', subtitle='All clear — no incidents currently being managed anywhere in the region.', variant='success') }}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Hazard Type Breakdown -->
+    <div class="col-lg-4">
+        <div class="card card-custom shadow-lg h-100">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <div class="icon-badge icon-badge-primary">
+                        <i class="bi bi-bar-chart-fill"></i>
+                    </div>
+                    <h5 class="mb-0">Hazard Breakdown</h5>
+                </div>
+
+                {% if hazard_breakdown %}
+                    {% set max_count = hazard_breakdown[0][1] %}
+                    {% for hazard_type, count in hazard_breakdown %}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted small text-uppercase">{{ hazard_type }}</span>
+                            <span class="text-white small fw-bold">{{ count }}</span>
+                        </div>
+                        <div style="height:6px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden;">
+                            <div style="height:100%;width:{{ (count / max_count * 100) if max_count else 0 }}%;background:linear-gradient(90deg,#8B5CF6,#6D28D9);border-radius:4px;"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    <div class="text-muted small mt-3 pt-2 border-top-custom">
+                        {{ total_incidents_all }} incidents logged system-wide
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <div style="font-size:2rem;margin-bottom:0.5rem;opacity:0.4;"><i class="bi bi-bar-chart"></i></div>
+                        <p class="text-muted mb-0 small">No incident data yet.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Critical Incidents Requiring Response -->
+<div class="card card-custom shadow-lg mb-4">
+    <div class="card-body p-4">
+        <div class="d-flex align-items-center gap-2 mb-4">
+            <div class="icon-badge icon-badge-warning">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+            </div>
+            <h5 class="mb-0">Critical Incidents Requiring Response</h5>
+        </div>
+
+        {% if critical_incidents %}
+            <div class="table-responsive">
+                <table class="table table-enhanced align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Hazard</th>
+                            <th>Location</th>
+                            <th>Risk Level</th>
+                            <th>Score</th>
+                            <th>Status</th>
+                            <th>Detected</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for incident in critical_incidents %}
+                        <tr>
+                            <td><strong class="text-white">#{{ incident.id }}</strong></td>
+                            <td>
+                                <span style="padding:0.3em 0.6em;background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.4);border-radius:6px;font-size:0.75em;font-weight:700;text-transform:uppercase;">
+                                    {{ incident.hazard_type }}
+                                </span>
+                            </td>
+                            <td><span class="text-muted small">{{ incident.location or 'Unknown' }}</span></td>
+                            <td>
+                                {{ hz.priority_badge(incident.level, label=incident.level if incident.level != 'CRITICAL' else none) }}
+                            </td>
+                            <td><strong class="text-info">{{ "%.2f"|format(incident.score|float(0)) }}%</strong></td>
+                            <td>
+                                {% if incident.response %}
+                                    <span class="badge-status-active" style="font-size:0.72rem;">RESPONSE ACTIVE</span>
+                                {% else %}
+                                    <span class="badge-status-resolved" style="font-size:0.72rem;">AWAITING COMMANDER</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ hz.event_time_cell(incident, fmt='%b %d, %H:%M') }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            {{ es.render('bi-check-circle', 'No Critical Incidents', subtitle='Nothing at CRITICAL or HIGH risk level right now.', variant='success') }}
+        {% endif %}
+    </div>
+</div>
+
+<!-- Live Incident Feed -->
+<div class="card card-custom shadow-lg mb-4">
+    <div class="card-body p-4">
+        <div class="d-flex align-items-center gap-2 mb-4">
+            <div class="icon-badge" style="background:rgba(59,130,246,0.15);color:#93C5FD;border:1px solid rgba(59,130,246,0.3);">
+                <i class="bi bi-activity"></i>
+            </div>
+            <h5 class="mb-0">Live Incident Feed</h5>
+            <span class="ms-2 badge badge-status-active" style="font-size:0.7rem;">LATEST</span>
+        </div>
+
+        {% if recent_incidents %}
+            <div class="table-responsive">
+                <table class="table table-enhanced align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Hazard</th>
+                            <th>Location</th>
+                            <th>Level</th>
+                            <th>Alert</th>
+                            <th>Logged</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for incident in recent_incidents %}
+                        <tr>
+                            <td><strong class="text-white">#{{ incident.id }}</strong></td>
+                            <td><span class="text-muted small text-uppercase">{{ incident.hazard_type }}</span></td>
+                            <td><span class="text-muted small">{{ incident.location or 'Unknown' }}</span></td>
+                            <td><span class="text-muted small">{{ incident.level }}</span></td>
+                            <td>
+                                {% if incident.alert %}
+                                    <span class="badge-status-active" style="font-size:0.72rem;">ACTIVE</span>
+                                {% else %}
+                                    <span class="badge-status-resolved" style="font-size:0.72rem;">INACTIVE</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ hz.event_time_cell(incident, fmt='%b %d, %H:%M') }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            {{ es.render('bi-inbox', 'No Incidents Logged Yet', subtitle='Incoming reports and sensor data will appear here in real time.') }}
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // ── Emergency SOS real-time alert ────────────────────────
+    // Polls for citizen SOS incidents nobody has verified yet, so a
+    // staffer actually watching this dashboard gets alerted the moment
+    // one comes in rather than only finding it on the next manual page
+    // check. Stops alerting for a given incident the moment ANY EOC
+    // staffer verifies it (see /eoc/sos-incidents/pending) -- that's a
+    // real action taken, not a per-browser "seen it" flag, so a genuine
+    // emergency can't get silently marked handled without anyone acting.
+    const POLL_INTERVAL_MS = 8000;
+    const alertedIds = new Set();
+    const originalTitle = document.title;
+    let titleFlashTimer = null;
+    let notificationPermissionAsked = false;
+
+    const banner = document.createElement('div');
+    banner.id = 'sosAlertBanner';
+    banner.setAttribute('role', 'alert');
+    banner.style.cssText = 'display:none; position:sticky; top:0; z-index:1050; background:#dc2626; color:#fff; padding:0.85rem 1.25rem; margin-bottom:1rem; border-radius:0.5rem; box-shadow:0 4px 14px rgba(220,38,38,0.4); display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap;';
+    const mainContent = document.querySelector('.container-fluid') || document.body;
+    mainContent.insertBefore(banner, mainContent.firstChild);
+
+    function playAlertTone() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            [0, 0.3, 0.6].forEach(function (delay) {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'square';
+                osc.frequency.value = 880;
+                gain.gain.value = 0.15;
+                osc.connect(gain).connect(ctx.destination);
+                osc.start(ctx.currentTime + delay);
+                osc.stop(ctx.currentTime + delay + 0.2);
+            });
+        } catch (e) { /* audio not available -- visual/notification alerts still fire */ }
+    }
+
+    function flashTabTitle(count) {
+        if (titleFlashTimer) return;
+        let showAlert = true;
+        titleFlashTimer = setInterval(function () {
+            document.title = showAlert ? ('\uD83D\uDEA8 (' + count + ') NEW SOS' : originalTitle);
+            showAlert = !showAlert;
+        }, 1000);
+    }
+
+    function stopFlashingTitle() {
+        if (titleFlashTimer) {
+            clearInterval(titleFlashTimer);
+            titleFlashTimer = null;
+            document.title = originalTitle;
+        }
+    }
+
+    function renderBanner(incidents) {
+        if (incidents.length === 0) {
+            banner.style.display = 'none';
+            stopFlashingTitle();
+            return;
+        }
+        const latest = incidents[0];
+        banner.style.display = 'flex';
+        banner.innerHTML =
+            '<span><i class="bi bi-exclamation-octagon-fill me-2"></i><strong>' + incidents.length +
+            ' Emergency SOS awaiting verification</strong> &mdash; latest: ' +
+            (latest.location || 'Location unavailable') + '</span>' +
+            '<a href="/admin/alerts" class="btn btn-light btn-sm fw-bold">View &amp; Verify \u2192</a>';
+        flashTabTitle(incidents.length);
+    }
+
+    function checkForSos() {
+        fetch('/eoc/sos-incidents/pending')
+            .then(function (response) { return response.ok ? response.json() : { incidents: [] }; })
+            .then(function (data) {
+                const incidents = data.incidents || [];
+                renderBanner(incidents);
+
+                const freshOnes = incidents.filter(function (i) { return !alertedIds.has(i.id); });
+                if (freshOnes.length > 0) {
+                    freshOnes.forEach(function (i) { alertedIds.add(i.id); });
+                    playAlertTone();
+                    if ('Notification' in window) {
+                        if (Notification.permission === 'granted') {
+                            new Notification('\uD83D\uDEA8 Emergency SOS', {
+                                body: freshOnes.length + ' new SOS report(s). Latest: ' + (freshOnes[0].location || 'Location unavailable'),
+                            });
+                        } else if (Notification.permission !== 'denied' && !notificationPermissionAsked) {
+                            notificationPermissionAsked = true;
+                            Notification.requestPermission();
+                        }
+                    }
+                }
+            })
+            .catch(function () { /* a failed poll shouldn't stop future polling */ });
+    }
+
+    checkForSos();
+    setInterval(checkForSos, POLL_INTERVAL_MS);
+});
+</script>
+{% endblock %}

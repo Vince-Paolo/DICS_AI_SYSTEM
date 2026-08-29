@@ -1,0 +1,35 @@
+{% extends 'pages/base.html' %}
+
+{% block title %}Login | DICS AI{% endblock %}
+
+{% block content %}
+<h1 class="visually-hidden">Login</h1>
+<div class="auth-shell">
+    <div class="auth-card">
+        {% include 'partials/auth_header.html' %}
+
+        <div class="auth-body">
+            {% if error %}
+                <div class="alert alert-danger rounded-3">{{ error }}</div>
+            {% endif %}
+
+            <form method="post" action="/">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <label class="auth-label" for="username">Username</label>
+                <input type="text" class="form-control" id="username" name="username" placeholder="Enter username" required>
+
+                <label class="auth-label" for="password">Password</label>
+                <input type="password" class="form-control" id="password" name="password" placeholder="Enter password" required>
+
+                <button class="btn btn-auth w-100 mt-1" type="submit">Sign in</button>
+            </form>
+
+            <div class="auth-footer">
+                <span>v2.4 &middot; Region IV-A</span>
+                <a href="/register">Register new account</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

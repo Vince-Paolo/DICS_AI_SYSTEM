@@ -1,0 +1,260 @@
+{% extends 'pages/base.html' %}
+{% import 'partials/hazard_macros.html' as hz %}
+{% import 'partials/empty_state.html' as es %}
+
+{% block title %}Incident Commander Center | DICS AI{% endblock %}
+
+{% block content %}
+<h1 class="visually-hidden">Incident Commander Center</h1>
+
+<!-- Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card card-custom">
+            <div class="card-body">
+                <div class="section-header mb-0">
+                    <span class="section-header-icon text-danger"><i class="bi bi-exclamation-octagon-fill"></i></span>
+                    <h4 class="mb-0">Incident Commander Center</h4>
+                    <span class="ms-auto">
+                        <span class="badge-status-active px-3 py-2" style="font-size:0.8rem;">
+                            <i class="bi bi-circle-fill me-1" style="font-size:0.5rem; vertical-align:middle;"></i>LIVE OPERATIONS
+                        </span>
+                    </span>
+                </div>
+                <p class="text-muted mb-0 mt-2" style="padding-left:2.75rem;">Real-time incident response coordination and resource management.</p>
+
+                {% set live_incidents = total_active|int %}
+                <div class="status-banner mt-4">
+                    <div class="d-flex flex-column flex-lg-row align-items-start gap-4">
+                        <div class="d-flex align-items-start gap-3">
+                            <div class="icon-badge icon-badge-danger">
+                                <i class="bi bi-activity"></i>
+                            </div>
+                            <div>
+                                <div class="status-label">Current priority</div>
+                                <div class="status-title">
+                                    {% if live_incidents > 0 %}
+                                        <span>{{ live_incidents }} active incident{{ 's' if live_incidents != 1 else '' }} are underway.</span>
+                                        <span class="status-pill status-pill-danger"><i class="bi bi-lightning-fill"></i> Active</span>
+                                    {% else %}
+                                        <span>No active incidents at this time.</span>
+                                        <span class="status-pill status-pill-success"><i class="bi bi-check-circle-fill"></i> Standby</span>
+                                    {% endif %}
+                                </div>
+                                <div class="status-detail">
+                                    {% if live_incidents > 0 %}
+                                        Focus on incident status, resource assignment, and the next operational task for your team.
+                                    {% else %}
+                                        Monitor incoming reports and keep response plans ready for rapid activation.
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex flex-column gap-2 ms-auto align-items-stretch align-items-lg-end">
+                            {% if active_responses and active_responses|length > 0 %}
+                                <a href="{{ url_for('commander.incident_response_detail', response_id=active_responses[0].id) }}" class="btn btn-primary-modern btn-modern px-4">Open Active Response</a>
+                            {% else %}
+                                <a href="#" class="btn btn-primary-modern btn-modern px-4 disabled">Review Incident Reports</a>
+                            {% endif %}
+                            <div class="d-flex gap-2 flex-wrap justify-content-lg-end">
+                                {% if active_responses and active_responses|length > 0 %}
+                                    <a href="{{ url_for('commander.incident_response_tasks', response_id=active_responses[0].id) }}" class="btn btn-outline-light btn-sm px-4">Review Tasks</a>
+                                    <a href="{{ url_for('commander.incident_response_resources', response_id=active_responses[0].id) }}" class="btn btn-outline-light btn-sm px-4">Check Resources</a>
+                                {% else %}
+                                    <a href="#" class="btn btn-outline-light btn-sm px-4 disabled">Review Tasks</a>
+                                    <a href="#" class="btn btn-outline-light btn-sm px-4 disabled">Check Resources</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Command Status Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card card-gradient-danger h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-label">Active Incidents</div>
+                    <div class="stat-value">{{ total_active }}</div>
+                    <div class="stat-description">Responses in progress</div>
+                </div>
+                <div class="icon-badge" style="background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.3);">
+                    <i class="bi bi-fire"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card card-gradient-warning h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-label">Critical Alerts</div>
+                    <div class="stat-value">{{ total_critical }}</div>
+                    <div class="stat-description">Requiring immediate action</div>
+                </div>
+                <div class="icon-badge icon-badge-warning">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card card-gradient-primary h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-label">Pending Tasks</div>
+                    <div class="stat-value">{{ total_tasks }}</div>
+                    <div class="stat-description">Awaiting completion</div>
+                </div>
+                <div class="icon-badge icon-badge-primary">
+                    <i class="bi bi-list-task"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card card-gradient-success h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-label">Resources Deployed</div>
+                    <div class="stat-value">{{ total_resources }}</div>
+                    <div class="stat-description">Units in the field</div>
+                </div>
+                <div class="icon-badge icon-badge-success">
+                    <i class="bi bi-truck"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Active Incident Responses -->
+<div class="card card-custom shadow-lg mb-4">
+    <div class="card-body p-4">
+        <div class="d-flex align-items-center gap-2 mb-4">
+            <div class="icon-badge" style="background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.3);">
+                <i class="bi bi-shield-check"></i>
+            </div>
+            <h5 class="mb-0">Active Incident Responses</h5>
+            <span class="ms-2 badge badge-status-active" style="font-size:0.7rem;">LIVE</span>
+        </div>
+
+        {% if active_responses %}
+            <div class="table-responsive">
+                <table class="table table-enhanced table-mobile-stack align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Incident</th>
+                            <th>Hazard</th>
+                            <th>Location</th>
+                            <th>Status</th>
+                            <th>Priority</th>
+                            <th class="table-hide-tablet">Started</th>
+                            <th class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for response in active_responses %}
+                        <tr>
+                            <td data-label="Incident"><strong class="text-white">#{{ response.incident_id }}</strong></td>
+                            <td data-label="Hazard">
+                                <span class="priority-badge priority-critical">
+                                    {{ response.incident.hazard_type }}
+                                </span>
+                            </td>
+                            <td data-label="Location"><span class="text-muted small">{{ response.incident.location or 'Unknown' }}</span></td>
+                            <td data-label="Status"><span class="badge-status-active text-uppercase" style="font-size:0.72rem;">{{ response.status }}</span></td>
+                            <td data-label="Priority" class="priority-status-cell">
+                                {{ hz.priority_badge(response.priority_level, label=response.priority_level if response.priority_level not in ['CRITICAL','HIGH'] else none) }}
+                            </td>
+                            <td data-label="Started" class="table-hide-tablet"><span class="text-muted small">{{ response.started_at.strftime('%b %d, %Y %H:%M') }}</span></td>
+                            <td data-label="Action" class="text-center">
+                                <a href="{{ url_for('commander.incident_response_detail', response_id=response.id) }}" class="btn btn-sm btn-primary-modern btn-modern">
+                                    <i class="bi bi-eye me-1"></i>View
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            {{ es.render('bi-shield-check', 'No Active Responses', subtitle='All clear — no incidents currently being managed.', variant='success') }}
+        {% endif %}
+    </div>
+</div>
+
+<!-- Critical Incidents Requiring Response -->
+<div class="card card-custom shadow-lg mb-4">
+    <div class="card-body p-4">
+        <div class="d-flex align-items-center gap-2 mb-4">
+            <div class="icon-badge icon-badge-warning">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+            </div>
+            <h5 class="mb-0">Critical Incidents Requiring Response</h5>
+        </div>
+
+        {% if critical_incidents %}
+            <div class="table-responsive">
+                <table class="table table-enhanced align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Hazard</th>
+                            <th>Location</th>
+                            <th>Risk Level</th>
+                            <th>Score</th>
+                            <th>Alert</th>
+                            <th>Detected</th>
+                            <th class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for incident in critical_incidents %}
+                            {% if not incident.response %}
+                            <tr>
+                                <td><strong class="text-white">#{{ incident.id }}</strong></td>
+                                <td>
+                                    <span style="padding:0.3em 0.6em;background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.4);border-radius:6px;font-size:0.75em;font-weight:700;text-transform:uppercase;">
+                                        {{ incident.hazard_type }}
+                                    </span>
+                                </td>
+                                <td><span class="text-muted small">{{ incident.location or 'Unknown' }}</span></td>
+                                <td>
+                                    {{ hz.priority_badge(incident.level, label=incident.level if incident.level != 'CRITICAL' else none) }}
+                                </td>
+                                <td><strong class="text-info">{{ "%.2f"|format(incident.score|float(0)) }}%</strong></td>
+                                <td>
+                                    {% if incident.alert %}
+                                        <span class="badge-status-active" style="font-size:0.72rem;">ACTIVE</span>
+                                    {% else %}
+                                        <span class="badge-status-resolved" style="font-size:0.72rem;">INACTIVE</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ hz.event_time_cell(incident, fmt='%b %d, %H:%M') }}</td>
+                                <td class="text-center">
+                                    <form method="POST" action="{{ url_for('commander.activate_incident_response', incident_id=incident.id) }}" style="display:inline;" data-confirm="Activate incident response for #{{ incident.id }}?" data-confirm-title="Activate response">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-sm" style="background:linear-gradient(135deg,#dc2626,#b91c1c);color:#fff;border:none;font-weight:600;border-radius:6px;padding:0.35rem 0.75rem;">
+                                            <i class="bi bi-play-fill me-1"></i>Activate
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            {{ es.render('bi-check-circle', 'No Critical Incidents Pending', subtitle='All critical incidents have active responses.', variant='success') }}
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

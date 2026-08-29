@@ -1,0 +1,22 @@
+{% extends 'pages/base.html' %}
+
+{% block title %}Server Error{% endblock %}
+
+{% block content %}
+<h1 class="visually-hidden">Server Error</h1>
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-5 text-center">
+                <div class="display-1 fw-bold text-danger mb-3">500</div>
+                <h2 class="h4 mb-3">Something went wrong on our side.</h2>
+                <p class="text-muted mb-4">The system hit an unexpected issue while processing your request. Please try again shortly, or return to the dashboard.</p>
+                <div class="d-flex justify-content-center gap-2 flex-wrap">
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-primary">Go to Dashboard</a>
+                    <a href="{{ url_for('login') }}" class="btn btn-outline-secondary">Back to Login</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,127 @@
+{% extends 'pages/base.html' %}
+{% import 'partials/empty_state.html' as es %}
+{% block title %}Official Alerts | DICS AI{% endblock %}
+
+{% block content %}
+<h1 class="visually-hidden">Official Alerts</h1>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card card-custom">
+            <div class="card-body">
+                <div class="section-header mb-0">
+                    <span class="section-header-icon" style="color:#FCA5A5;"><i class="bi bi-megaphone-fill"></i></span>
+                    <h4 class="mb-0">Official Alerts</h4>
+                </div>
+                <p class="text-muted mb-0 mt-2" style="padding-left:2.75rem;">
+                    Human-issued, citizen-facing advisories. Separate from the automatic AI risk flag
+                    on the <a href="{{ url_for('admin.admin_alerts') }}" style="color:#7DD3FC;">Incident Verification</a> page --
+                    that's an internal signal, this is what actually gets published.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card card-custom mb-3 p-3">
+    <div class="d-flex gap-2 flex-wrap">
+        {% for s in ['ACTIVE', 'RESOLVED', 'ALL'] %}
+        <a href="{{ url_for('eoc.official_alerts', status=s) }}"
+           class="btn btn-sm {{ 'btn-danger' if status_filter == s else 'btn-outline-secondary' }}">{{ s.title() }}</a>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="row g-4 align-items-start">
+    <div class="col-lg-{{ '7' if can_issue else '12' }}">
+        <div class="card card-custom shadow-lg">
+            <div class="card-body p-4">
+                {% if alerts %}
+                <div class="vstack gap-3">
+                    {% for a in alerts %}
+                    <div style="padding:1rem;border-radius:8px;
+                        {% if a.severity == 'CRITICAL' %}background:rgba(239,68,68,0.1);border-left:3px solid #EF4444;
+                        {% elif a.severity == 'HIGH' %}background:rgba(239,68,68,0.06);border-left:3px solid #F87171;
+                        {% elif a.severity == 'MEDIUM' %}background:rgba(245,158,11,0.08);border-left:3px solid #F59E0B;
+                        {% else %}background:rgba(148,163,184,0.06);border-left:3px solid #94A3B8;{% endif %}">
+                        <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                            <div>
+                                <strong class="text-white">{{ a.title }}</strong>
+                                <span class="ms-2" style="font-size:0.68rem;font-weight:700;padding:0.2em 0.6em;border-radius:5px;
+                                    {% if a.severity in ['CRITICAL','HIGH'] %}background:rgba(239,68,68,0.15);color:#FCA5A5;
+                                    {% elif a.severity == 'MEDIUM' %}background:rgba(245,158,11,0.15);color:#FDE68A;
+                                    {% else %}background:rgba(148,163,184,0.15);color:#CBD5E1;{% endif %}">{{ a.severity }}</span>
+                                {% if a.status == 'RESOLVED' %}
+                                <span class="ms-1" style="font-size:0.68rem;padding:0.2em 0.6em;border-radius:5px;background:rgba(16,185,129,0.12);color:#86EFAC;">RESOLVED</span>
+                                {% endif %}
+                            </div>
+                            <span class="text-muted" style="font-size:0.72rem;">{{ a.created_at.strftime('%b %d, %I:%M %p') }}</span>
+                        </div>
+                        <p class="text-muted mb-2 mt-2" style="font-size:0.85rem;">{{ a.message }}</p>
+                        {% if a.incident_id %}
+                        <span class="text-muted small">Linked incident: #{{ a.incident_id }}</span>
+                        {% endif %}
+                        {% if can_issue and a.status == 'ACTIVE' %}
+                        <form method="POST" action="{{ url_for('eoc.resolve_alert', alert_id=a.id) }}" class="mt-2">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-outline-secondary" style="font-size:0.72rem;">Mark Resolved</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                    {{ es.render('bi-megaphone', 'No Alerts', subtitle='Published alerts will appear here.') }}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {% if can_issue %}
+    <div class="col-lg-5">
+        <div class="card card-custom shadow-lg">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <div class="icon-badge" style="background:rgba(252,165,165,0.15);color:#FCA5A5;border:1px solid rgba(252,165,165,0.3);">
+                        <i class="bi bi-plus-circle-fill"></i>
+                    </div>
+                    <h5 class="mb-0">Issue Alert</h5>
+                </div>
+                <form method="POST" action="{{ url_for('eoc.issue_alert') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label class="form-label" style="font-size:0.82rem;" for="title">Title <span class="text-danger">*</span></label>
+                        <input id="title" type="text" name="title" class="form-control form-control-sm" placeholder="e.g. Flood Warning — Barangay X" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" style="font-size:0.82rem;" for="message">Message <span class="text-danger">*</span></label>
+                        <textarea id="message" name="message" rows="4" class="form-control form-control-sm" placeholder="What's happening, where, and what should residents do." required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" style="font-size:0.82rem;" for="severity">Severity</label>
+                        <select id="severity" name="severity" class="form-select form-select-sm">
+                            <option value="LOW">Low</option>
+                            <option value="MEDIUM" selected>Medium</option>
+                            <option value="HIGH">High</option>
+                            <option value="CRITICAL">Critical</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label" style="font-size:0.82rem;" for="incident_id">Linked Incident (optional)</label>
+                        <select id="incident_id" name="incident_id" class="form-select form-select-sm">
+                            <option value="">— None —</option>
+                            {% for inc in recent_incidents %}
+                            <option value="{{ inc.id }}">#{{ inc.id }} – {{ inc.hazard_type }} ({{ inc.location or 'unspecified' }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-modern w-100 py-2" style="background:linear-gradient(135deg,#DC2626,#F87171);color:#1a0505;font-weight:700;border:none;">
+                        <i class="bi bi-megaphone-fill me-2"></i>Publish Alert
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

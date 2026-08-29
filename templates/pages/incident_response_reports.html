@@ -1,0 +1,135 @@
+{% extends 'pages/base.html' %}
+{% import 'partials/empty_state.html' as es %}
+{% block title %}Response #{{ response.incident_id }} SitReps | DICS AI{% endblock %}
+
+{% block content %}
+<h1 class="visually-hidden">Response #{{ response.incident_id }} SitReps</h1>
+{% set active_tab = 'reports' %}
+{% include 'partials/response_header.html' %}
+
+<div class="row">
+    <!-- SitRep Log -->
+    <div class="col-lg-8 mb-4">
+        <div class="card card-custom h-100">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <div class="icon-badge icon-badge-warning"><i class="bi bi-file-text"></i></div>
+                    <h5 class="mb-0">Situation Reports Log</h5>
+                    <span class="ms-2 text-muted small">({{ reports|length }} submitted)</span>
+                </div>
+
+                {% if reports %}
+                    <div class="vstack gap-3">
+                        {% for report in reports %}
+                        <div style="padding:1.25rem;background:rgba(10,13,26,0.5);border-radius:10px;
+                                    border-left:4px solid
+                                    {%- if report.report_type == 'ALERT' %} #EF4444
+                                    {%- elif report.report_type == 'MILESTONE' %} #10B981
+                                    {%- elif report.report_type == 'CLOSURE' %} #6B7280
+                                    {%- else %} #F59E0B
+                                    {%- endif %};">
+                            <div class="d-flex justify-content-between align-items-start gap-3 mb-2">
+                                <div>
+                                    <h5 class="text-white fw-bold mb-1">{{ report.title }}</h5>
+                                    <p class="text-muted small mb-0">
+                                        <i class="bi bi-person-fill me-1"></i>{{ report.reporter.username }}
+                                        <span class="mx-2 opacity-50">|</span>
+                                        <i class="bi bi-clock me-1"></i>{{ report.created_at.strftime('%b %d, %Y %H:%M') }}
+                                    </p>
+                                </div>
+                                <span style="flex-shrink:0;padding:0.35em 0.75em;border-radius:5px;font-size:0.72em;font-weight:700;text-transform:uppercase;
+                                    background:
+                                    {%- if report.report_type == 'ALERT' %} rgba(239,68,68,0.2); color:#FCA5A5; border:1px solid rgba(239,68,68,0.4)
+                                    {%- elif report.report_type == 'MILESTONE' %} rgba(16,185,129,0.2); color:#86EFAC; border:1px solid rgba(16,185,129,0.4)
+                                    {%- elif report.report_type == 'CLOSURE' %} rgba(107,114,128,0.2); color:#9CA3AF; border:1px solid rgba(107,114,128,0.4)
+                                    {%- else %} rgba(245,158,11,0.2); color:#FCD34D; border:1px solid rgba(245,158,11,0.4)
+                                    {%- endif %};">
+                                    {{ report.report_type }}
+                                </span>
+                            </div>
+
+                            <p class="text-white mb-3" style="white-space:pre-line;font-size:0.9rem;line-height:1.65;">{{ report.content }}</p>
+
+                            {% if report.affected_areas or report.casualties or report.evacuated %}
+                            <div class="d-flex flex-wrap gap-3" style="padding:0.65rem 1rem;background:rgba(255,255,255,0.03);border-radius:6px;border:1px solid rgba(255,255,255,0.06);">
+                                {% if report.affected_areas %}
+                                    <div class="small"><span class="text-muted me-1">Affected Sectors:</span><strong class="text-white">{{ report.affected_areas }}</strong></div>
+                                {% endif %}
+                                {% if report.casualties %}
+                                    <div class="small"><span class="text-muted me-1">Casualties:</span><strong style="color:#FCA5A5;">+{{ report.casualties }}</strong></div>
+                                {% endif %}
+                                {% if report.evacuated %}
+                                    <div class="small"><span class="text-muted me-1">Evacuated:</span><strong style="color:#86EFAC;">+{{ report.evacuated }}</strong></div>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    {{ es.render('bi-inbox', 'No SitReps Yet', subtitle='No situation reports have been submitted for this incident.') }}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Create SitRep Form -->
+    <div class="col-lg-4 mb-4">
+        <div class="card card-custom h-100">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <div class="icon-badge icon-badge-warning"><i class="bi bi-plus-circle-fill"></i></div>
+                    <h5 class="mb-0">Create Situation Report</h5>
+                </div>
+
+                {% if response.status != 'CLOSED' %}
+                    <form method="POST" action="{{ url_for('commander.create_situation_report', response_id=response.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="mb-3">
+                            <label class="form-label" for="title">Report Title <span class="text-danger">*</span></label>
+                            <input id="title" type="text" name="title" class="form-control" placeholder="e.g., Tactical Briefing, Sector B Progress" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="report_type">Report Type</label>
+                            <select id="report_type" name="report_type" class="form-select">
+                                <option value="UPDATE" selected>Status Update (Routine)</option>
+                                <option value="ALERT">Emergency Alert (Critical)</option>
+                                <option value="MILESTONE">Operational Milestone</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="content">Update Narrative <span class="text-danger">*</span></label>
+                            <textarea id="content" name="content" class="form-control" rows="5"
+                                placeholder="Describe the current operational status, weather updates, flood levels, rescue operations..." required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="affected_areas">Affected Areas</label>
+                            <input id="affected_areas" type="text" name="affected_areas" class="form-control" placeholder="e.g., Zone A Central, Bridge Area">
+                        </div>
+                        <div class="row mb-4">
+                            <div class="col-6">
+                                <label class="form-label" for="casualties">New Casualties</label>
+                                <input id="casualties" type="number" name="casualties" class="form-control" min="0" placeholder="0">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label" for="evacuated">New Evacuations</label>
+                                <input id="evacuated" type="number" name="evacuated" class="form-control" min="0" placeholder="0">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-modern w-100 py-2 fw-bold"
+                                style="background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border:none;">
+                            <i class="bi bi-check-circle me-2"></i>Submit SitRep
+                        </button>
+                    </form>
+                {% else %}
+                    <div style="padding:2rem;text-align:center;background:rgba(107,114,128,0.08);border-radius:8px;border:1px solid rgba(107,114,128,0.2);">
+                        <i class="bi bi-lock-fill text-muted fs-2 d-block mb-2"></i>
+                        <span class="text-muted">This incident response is closed. Report creation is locked.</span>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

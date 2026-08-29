@@ -1,0 +1,194 @@
+{% extends 'pages/base.html' %}
+{% block title %}Report #{{ incident.id }} Details | DICS AI{% endblock %}
+{% block content %}
+<h1 class="visually-hidden">Report #{{ incident.id }} Details</h1>
+<div class="container-fluid">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+
+      <!-- Back -->
+      <div class="mb-3">
+        <a href="{{ url_for('citizen.citizen_status') }}" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-arrow-left me-1"></i>Back to My Reports
+        </a>
+      </div>
+
+      <!-- Header -->
+      <div class="card card-custom shadow-lg mb-4">
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div>
+              <h4 class="mb-1 fw-bold text-info">
+                <i class="bi bi-file-earmark-text me-2"></i>Report #{{ incident.id }}
+              </h4>
+              <span class="text-muted small">Submitted on {{ incident.created_at.strftime('%B %d, %Y at %I:%M %p') }}</span>
+            </div>
+            <div>
+              {% if incident.status == 'VERIFIED' %}
+                <span class="badge" style="background:rgba(16,185,129,0.15);color:#86EFAC;border:1px solid rgba(16,185,129,0.4);border-radius:8px;padding:.5em 1em;font-size:.85em;">
+                  <i class="bi bi-check-circle-fill me-1"></i>Verified — Awaiting Response
+                </span>
+              {% elif incident.status == 'ACTIVE' or incident.response %}
+                <span class="badge badge-status-active" style="padding:.5em 1em;font-size:.85em;">
+                  <i class="bi bi-shield-fill-check me-1"></i>Response Activated
+                </span>
+              {% elif incident.status == 'CLOSED' or incident.status == 'RESOLVED' %}
+                <span class="badge" style="background:rgba(99,102,241,0.15);color:#a5b4fc;border:1px solid rgba(99,102,241,0.4);border-radius:8px;padding:.5em 1em;font-size:.85em;">
+                  <i class="bi bi-archive-fill me-1"></i>Resolved
+                </span>
+              {% elif incident.alert %}
+                <span class="badge badge-status-active" style="padding:.5em 1em;font-size:.85em;">
+                  <i class="bi bi-exclamation-circle-fill me-1"></i>Alert Issued
+                </span>
+              {% else %}
+                <span class="badge badge-status-pending" style="padding:.5em 1em;font-size:.85em;">
+                  <i class="bi bi-hourglass-split me-1"></i>Submitted — Under Review
+                </span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Status progress tracker -->
+      <div class="card card-custom shadow-lg mb-4">
+        <div class="card-body">
+          <h6 class="text-muted mb-3 fw-bold"><i class="bi bi-diagram-3 me-2"></i>Report Progress</h6>
+          <div class="d-flex align-items-center gap-0 flex-wrap">
+            {% set stages = [('Submitted', 'NEW'), ('Verified', 'VERIFIED'), ('Response Active', 'ACTIVE'), ('Resolved', 'CLOSED')] %}
+            {% set current = incident.status %}
+            {% for label, stage in stages %}
+              {% set is_done = (stage == 'NEW') or
+                               (stage == 'VERIFIED' and current in ['VERIFIED','ACTIVE','CLOSED','RESOLVED']) or
+                               (stage == 'ACTIVE' and (current in ['ACTIVE','CLOSED','RESOLVED'] or incident.response)) or
+                               (stage == 'CLOSED' and current in ['CLOSED','RESOLVED']) %}
+              <div class="d-flex align-items-center">
+                <div class="text-center" style="min-width:90px;">
+                  <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-1"
+                    style="width:34px;height:34px;
+                    {% if is_done %}background:rgba(16,185,129,0.2);border:2px solid #10b981;color:#86efac;
+                    {% else %}background:rgba(255,255,255,0.05);border:2px solid rgba(255,255,255,0.15);color:#6b7280;{% endif %}">
+                    <i class="bi {% if is_done %}bi-check-lg{% else %}bi-circle{% endif %}" style="font-size:.85rem;"></i>
+                  </div>
+                  <div style="font-size:.7rem;{% if is_done %}color:#86efac;{% else %}color:#6b7280;{% endif %}">{{ label }}</div>
+                </div>
+                {% if not loop.last %}
+                  <div style="flex:1;height:2px;min-width:20px;background:{% if is_done %}rgba(16,185,129,0.4){% else %}rgba(255,255,255,0.1){% endif %};margin-bottom:18px;"></div>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Incident details -->
+      <div class="card card-custom shadow-lg mb-4">
+        <div class="card-body">
+          <h6 class="text-muted fw-bold mb-3"><i class="bi bi-info-circle me-2"></i>Incident Details</h6>
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <div class="p-3 rounded" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);">
+                <div class="text-muted small mb-1">Hazard Type</div>
+                <div class="fw-bold text-info">{{ incident.hazard_type|upper }}</div>
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <div class="p-3 rounded" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);">
+                <div class="text-muted small mb-1">Severity / Level</div>
+                <div class="fw-bold
+                  {% if incident.level|lower in ['high','critical'] %}text-danger
+                  {% elif incident.level|lower == 'moderate' %}text-warning
+                  {% elif incident.level|lower in ['unknown','insufficient_data','insufficient-data','insufficient data'] %}text-secondary
+                  {% else %}text-success{% endif %}">
+                  {{ incident.level|upper if incident.level else (citizen_rep.severity|upper if citizen_rep else 'N/A') }}
+                </div>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="p-3 rounded" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);">
+                <div class="text-muted small mb-1">Location</div>
+                <div class="fw-bold">{{ incident.location or 'Not specified' }}</div>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="p-3 rounded" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);">
+                <div class="text-muted small mb-1">Description</div>
+                <div>{{ incident.message or 'No description provided.' }}</div>
+              </div>
+            </div>
+            {% if citizen_rep %}
+            <div class="col-sm-6">
+              <div class="p-3 rounded" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);">
+                <div class="text-muted small mb-1">People Affected</div>
+                <div class="fw-bold">{{ citizen_rep.affected_people or '—' }}</div>
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <div class="p-3 rounded" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);">
+                <div class="text-muted small mb-1">Injuries Reported</div>
+                <div class="fw-bold">{{ citizen_rep.injuries or '—' }}</div>
+              </div>
+            </div>
+            {% if citizen_rep.anonymous %}
+            <div class="col-12">
+              <span class="badge" style="background:rgba(99,102,241,0.15);color:#a5b4fc;border:1px solid rgba(99,102,241,0.4);border-radius:6px;padding:.35em .7em;">
+                <i class="bi bi-person-fill-slash me-1"></i>Submitted anonymously
+              </span>
+            </div>
+            {% endif %}
+            {% if citizen_rep.gps_latitude and citizen_rep.gps_longitude %}
+            <div class="col-12">
+              <div class="p-3 rounded" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);">
+                <div class="text-muted small mb-1"><i class="bi bi-geo-alt me-1"></i>GPS Coordinates Captured</div>
+                <div class="fw-bold text-success font-monospace">{{ "%.4f"|format(citizen_rep.gps_latitude) }}, {{ "%.4f"|format(citizen_rep.gps_longitude) }}</div>
+                <div class="text-muted small mt-1"><i class="bi bi-check-circle-fill text-success me-1"></i>Location data was transmitted to authorities</div>
+              </div>
+            </div>
+            {% endif %}
+            {% if citizen_rep.photo_filename %}
+            <div class="col-12">
+              <div class="p-3 rounded" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);">
+                <div class="text-muted small mb-2"><i class="bi bi-image me-1"></i>Photo Attached</div>
+                <img src="{{ url_for('serve_upload', filename=citizen_rep.photo_filename) }}"
+                     alt="Incident photo" class="img-fluid rounded" style="max-height:300px;">
+              </div>
+            </div>
+            {% endif %}
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Verification info -->
+      {% if incident.verified_by_id and incident.verifier %}
+      <div class="card card-custom shadow-lg mb-4">
+        <div class="card-body">
+          <h6 class="text-success fw-bold mb-2"><i class="bi bi-patch-check-fill me-2"></i>Report Verified</h6>
+          <p class="text-muted small mb-0">
+            Your report was reviewed and verified by an authorized administrator.
+            A response team has been notified.
+          </p>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Response info -->
+      {% if incident.response %}
+      <div class="card card-custom shadow-lg mb-4">
+        <div class="card-body">
+          <h6 class="text-info fw-bold mb-2"><i class="bi bi-shield-fill-check me-2"></i>Response Team Activated</h6>
+          <p class="text-muted small mb-1">An Incident Commander has activated a response for your report.</p>
+          <div class="d-flex gap-3 mt-2 flex-wrap">
+            <span class="text-muted small"><i class="bi bi-clock me-1"></i>Started: {{ incident.response.started_at.strftime('%b %d, %Y %I:%M %p') }}</span>
+            <span class="small fw-bold {% if incident.response.status == 'CLOSED' %}text-secondary{% else %}text-success{% endif %}">
+              Status: {{ incident.response.status }}
+            </span>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+{% endblock %}
