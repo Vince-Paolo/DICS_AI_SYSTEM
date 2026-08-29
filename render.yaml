@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: dics-ai-system
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    # Single worker: the app starts its APScheduler job and does lazy DB
+    # init from a @app.before_request hook using in-process flags. With
+    # multiple gunicorn workers each process would start its own copy of
+    # the scheduler, duplicating hazard-monitoring jobs.
+    startCommand: gunicorn app:app --workers 1 --bind 0.0.0.0:$PORT
+    envVars:
+      # Paste your Neon connection string here when creating the Blueprint.
+      # Render will prompt you for this since it's marked sync: false.
+      # Get it from the Neon console -> your project -> Connection Details.
+      # Use the "Pooled connection" string, and make sure it starts with
+      # postgresql:// (Neon's dashboard sometimes shows postgres:// --
+      # either works, app.py normalizes it either way).
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: SESSION_COOKIE_SECURE
+        value: "true"

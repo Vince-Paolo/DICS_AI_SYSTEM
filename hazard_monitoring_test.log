@@ -1,0 +1,23 @@
+2026-08-13 14:41:38,658 - tzlocal - DEBUG - Looking up time zone info from registry
+2026-08-13 14:41:39,686 - app - INFO - Earthquake monitoring: created alert for M5.0 near 7 km NW of Cabacao, Philippines
+2026-08-13 14:41:44,325 - app - INFO - GDACS flood monitoring: no Philippine flood events found
+2026-08-13 14:41:45,660 - app - INFO - EONET volcano monitoring: no open events near Calabarzon
+2026-08-13 14:41:45,660 - app - INFO - Hazard monitoring skipped for Lipa: no weather data
+2026-08-13 14:41:45,661 - app - INFO - Hazard monitoring skipped for Batangas: no weather data
+2026-08-13 14:41:45,662 - app - INFO - Hazard monitoring skipped for Tanauan: no weather data
+2026-08-13 14:41:45,663 - app - INFO - Hazard monitoring skipped for Calamba: no weather data
+2026-08-13 14:41:45,663 - app - INFO - Hazard monitoring skipped for San Pablo: no weather data
+2026-08-13 14:41:45,663 - app - INFO - Hazard monitoring skipped for Lucena: no weather data
+2026-08-13 14:41:45,664 - app - INFO - Hazard monitoring skipped for Tagaytay: no weather data
+2026-08-13 14:41:45,664 - app - INFO - Hazard monitoring skipped for Imus: no weather data
+2026-08-13 14:41:45,664 - app - INFO - Hazard monitoring skipped for Dasmariñas: no weather data
+2026-08-13 14:41:45,664 - app - INFO - Hazard monitoring skipped for Cavite: no weather data
+2026-08-13 14:41:45,664 - app - INFO - Hazard monitoring skipped for Taytay: no weather data
+2026-08-13 14:41:45,665 - app - INFO - Hazard monitoring skipped for Antipolo: no weather data
+2026-08-13 14:41:45,665 - app - INFO - Hazard monitoring skipped for Quezon: no weather data
+2026-08-13 14:41:45,665 - app - INFO - Hazard monitoring skipped for Rizal: no weather data
+2026-08-13 14:41:45,665 - app - INFO - Hazard monitoring skipped for Carmona: no weather data
+2026-08-13 14:41:45,665 - app - INFO - Hazard monitoring skipped for Alaminos: no weather data
+2026-08-13 14:41:45,665 - app - INFO - Hazard monitoring skipped for Nagcarlan: no weather data
+2026-08-13 14:41:45,665 - app - INFO - Hazard monitoring skipped for San Fernando: no weather data
+2026-08-13 14:41:45,665 - app - INFO - Hazard monitoring: no high-risk incidents created
