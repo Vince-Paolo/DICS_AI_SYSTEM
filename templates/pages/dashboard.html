@@ -113,23 +113,25 @@
     <div class="col-lg-5">
         <div class="card card-custom h-100">
             <div class="card-body">
-                <h5 class="card-title">Accounts by Role</h5>
-                <div class="pt-2">
-                    <canvas id="roleChart" height="220"></canvas>
+                <h5 class="card-title text-center">Accounts by Role</h5>
+                <div class="role-chart-content">
+                    <div class="role-chart-frame">
+                        <canvas id="roleChart" height="220"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
     <div class="col-lg-7">
-        <div class="card card-custom h-100">
+        <div class="card card-custom recent-accounts-card h-100">
             <div class="card-body">
-                <h5 class="card-title d-flex align-items-center justify-content-between">
-                    Recently Added Accounts
+                <h5 class="card-title recent-accounts-title">
+                    <span>Recently Added Accounts</span>
                     <a href="{{ url_for('admin.manage_users') }}" class="small text-decoration-none">View all &rarr;</a>
                 </h5>
                 {% if recent_users %}
                 <div class="table-responsive">
-                    <table class="table table-custom align-middle mb-0">
+                    <table class="table table-custom recent-accounts-table align-middle mb-0">
                         <thead>
                             <tr>
                                 <th>Username</th>
@@ -190,8 +192,22 @@ if (roleCtx) {
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'nearest',
+                intersect: true
+            },
+            hover: {
+                mode: 'nearest',
+                intersect: true
+            },
+            layout: { padding: 8 },
             plugins: {
-                legend: { position: 'bottom', labels: { color: '#9CA3AF', boxWidth: 12, font: { size: 11 } } }
+                legend: {
+                    position: 'bottom',
+                    align: 'center',
+                    labels: { color: '#9CA3AF', boxWidth: 12, padding: 10, font: { size: 11 } }
+                }
             }
         }
     });

@@ -97,8 +97,9 @@
 
                 <form method="POST" action="{{ url_for('coordinator.coordinator_submit_report') }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="required-legend"><span class="required-indicator" aria-hidden="true">*</span> Required field</div>
                     <div class="mb-3">
-                        <label class="form-label" style="font-size:0.82rem;" for="response_id">Active Response <span class="text-danger">*</span></label>
+                        <label class="form-label required" style="font-size:0.82rem;" for="response_id">Active Response <span class="required-indicator" aria-hidden="true">*</span></label>
                         <select id="response_id" name="response_id" class="form-select form-select-sm" required>
                             <option value="">— Select Active Response —</option>
                             {% for resp in active_responses %}
@@ -107,7 +108,7 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label" style="font-size:0.82rem;" for="title">Report Title <span class="text-danger">*</span></label>
+                        <label class="form-label required" style="font-size:0.82rem;" for="title">Report Title <span class="required-indicator" aria-hidden="true">*</span></label>
                         <input id="title" type="text" name="title" class="form-control form-control-sm" placeholder="e.g., Fire Suppression – 60% Containment" required>
                     </div>
                     <fieldset class="mb-3 form-group-fieldset">
@@ -122,7 +123,7 @@
                         </div>
                     </fieldset>
                     <div class="mb-3">
-                        <label class="form-label" style="font-size:0.82rem;" for="content">Situation Report <span class="text-danger">*</span></label>
+                        <label class="form-label required" style="font-size:0.82rem;" for="content">Situation Report <span class="required-indicator" aria-hidden="true">*</span></label>
                         <textarea id="content" name="content" class="form-control form-control-sm" rows="5" placeholder="Describe current conditions, actions taken, challenges encountered, and immediate needs..." required></textarea>
                     </div>
                     <div class="mb-3">

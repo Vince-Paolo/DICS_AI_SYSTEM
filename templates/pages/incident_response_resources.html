@@ -115,8 +115,9 @@
                 {% if response.status != 'CLOSED' %}
                     <form method="POST" action="{{ url_for('commander.allocate_resource', response_id=response.id) }}">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="required-legend"><span class="required-indicator" aria-hidden="true">*</span> Required field</div>
                         <div class="mb-3">
-                            <label class="form-label" for="resource_type">Resource Type <span class="text-danger">*</span></label>
+                            <label class="form-label required" for="resource_type">Resource Type <span class="required-indicator" aria-hidden="true">*</span></label>
                             <select id="resource_type" name="resource_type" class="form-select" required>
                                 <option value="">— Select Resource Type —</option>
                                 <option value="Personnel">Personnel (Emergency Teams)</option>
@@ -133,7 +134,7 @@
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label" for="agency">Provider Agency <span class="text-danger">*</span></label>
+                            <label class="form-label required" for="agency">Provider Agency <span class="required-indicator" aria-hidden="true">*</span></label>
                             <select id="agency" name="agency" class="form-select" required>
                                 <option value="">— Select Source Agency —</option>
                                 {% for a in agencies %}
@@ -145,7 +146,7 @@
                             {% endif %}
                         </div>
                         <div class="mb-3">
-                            <label class="form-label" for="quantity">Quantity <span class="text-danger">*</span></label>
+                            <label class="form-label required" for="quantity">Quantity <span class="required-indicator" aria-hidden="true">*</span></label>
                             <input id="quantity" type="number" name="quantity" class="form-control" min="1" value="1" required>
                         </div>
                         <div class="mb-3">

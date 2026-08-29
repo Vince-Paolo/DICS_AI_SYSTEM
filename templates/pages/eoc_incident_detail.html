@@ -78,8 +78,9 @@
                 </div>
                 <form method="POST" action="{{ url_for('eoc.log_incident_report', incident_id=incident.id) }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="required-legend"><span class="required-indicator" aria-hidden="true">*</span> Required field</div>
                     <div class="mb-3">
-                        <label class="form-label" style="font-size:0.82rem;" for="title">Title <span class="text-danger">*</span></label>
+                        <label class="form-label required" style="font-size:0.82rem;" for="title">Title <span class="required-indicator" aria-hidden="true">*</span></label>
                         <input id="title" type="text" name="title" class="form-control form-control-sm" required>
                     </div>
                     <div class="mb-3">
@@ -92,7 +93,7 @@
                         </select>
                     </div>
                     <div class="mb-4">
-                        <label class="form-label" style="font-size:0.82rem;" for="content">Content <span class="text-danger">*</span></label>
+                        <label class="form-label required" style="font-size:0.82rem;" for="content">Content <span class="required-indicator" aria-hidden="true">*</span></label>
                         <textarea id="content" name="content" rows="4" class="form-control form-control-sm" required></textarea>
                     </div>
                     <button type="submit" class="btn btn-modern w-100 py-2" style="background:linear-gradient(135deg,#0284C7,#38BDF8);color:#04121f;font-weight:700;border:none;">

@@ -22,9 +22,10 @@
 
                     <form method="POST" action="{{ url_for('commander.allocate_resource', response_id=response.id) }}">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="required-legend"><span class="required-indicator" aria-hidden="true">*</span> Required field</div>
                         <!-- Resource Type -->
                         <div class="mb-3">
-                            <label for="resource_type" class="form-label text-success fw-bold">Resource Type *</label>
+                            <label for="resource_type" class="form-label required text-success fw-bold">Resource Type <span class="required-indicator" aria-hidden="true">*</span></label>
                             <select name="resource_type" id="resource_type" class="form-select bg-dark text-light border-secondary" required>
                                 <option value="">-- Select Resource Type --</option>
                                 <option value="Personnel">Personnel</option>

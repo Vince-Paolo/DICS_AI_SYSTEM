@@ -93,8 +93,9 @@
                 </div>
                 <form method="POST" action="{{ url_for('coordinator.coordinator_submit_resource_request') }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="required-legend"><span class="required-indicator" aria-hidden="true">*</span> Required field</div>
                     <div class="mb-3">
-                        <label class="form-label" style="font-size:0.82rem;" for="incident_id">Incident <span class="text-danger">*</span></label>
+                        <label class="form-label required" style="font-size:0.82rem;" for="incident_id">Incident <span class="required-indicator" aria-hidden="true">*</span></label>
                         <select id="incident_id" name="incident_id" class="form-select form-select-sm" required>
                             <option value="">— Select Incident —</option>
                             {% for inc in active_incidents %}
@@ -103,11 +104,11 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label" style="font-size:0.82rem;" for="resource_type">Resource Type <span class="text-danger">*</span></label>
+                        <label class="form-label required" style="font-size:0.82rem;" for="resource_type">Resource Type <span class="required-indicator" aria-hidden="true">*</span></label>
                         <input id="resource_type" type="text" name="resource_type" class="form-control form-control-sm" placeholder="e.g. Rescue Boat" required>
                     </div>
                     <div class="mb-4">
-                        <label class="form-label" style="font-size:0.82rem;" for="quantity">Quantity <span class="text-danger">*</span></label>
+                        <label class="form-label required" style="font-size:0.82rem;" for="quantity">Quantity <span class="required-indicator" aria-hidden="true">*</span></label>
                         <input id="quantity" type="number" name="quantity" min="1" class="form-control form-control-sm" required>
                     </div>
                     <button type="submit" class="btn btn-modern w-100 py-2" style="background:linear-gradient(135deg,#DC2626,#F87171);color:#1a0505;font-weight:700;border:none;">

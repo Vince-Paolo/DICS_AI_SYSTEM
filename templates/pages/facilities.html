@@ -113,12 +113,13 @@
                 </div>
                 <form method="POST" action="{{ url_for('facilities.add_facility') }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="required-legend"><span class="required-indicator" aria-hidden="true">*</span> Required field</div>
                     <div class="mb-3">
-                        <label class="form-label" style="font-size:0.82rem;" for="name">Name <span class="text-danger">*</span></label>
+                        <label class="form-label required" style="font-size:0.82rem;" for="name">Name <span class="required-indicator" aria-hidden="true">*</span></label>
                         <input id="name" type="text" name="name" class="form-control form-control-sm" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label" style="font-size:0.82rem;" for="facility_type">Type <span class="text-danger">*</span></label>
+                        <label class="form-label required" style="font-size:0.82rem;" for="facility_type">Type <span class="required-indicator" aria-hidden="true">*</span></label>
                         <select id="facility_type" name="facility_type" class="form-select form-select-sm" required onchange="document.getElementById('capacityField').style.display = this.value === 'Evacuation Center' ? 'block' : 'none';">
                             <option value="">— Select Type —</option>
                             {% for t in facility_types %}

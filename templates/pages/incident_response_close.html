@@ -33,19 +33,20 @@
 
                 <form method="POST" action="{{ url_for('commander.incident_response_close_page', response_id=response.id) }}" data-confirm="WARNING: Are you sure you want to permanently close this incident response?" data-confirm-title="Close incident response">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="required-legend"><span class="required-indicator" aria-hidden="true">*</span> Required field</div>
                     <div class="mb-3">
-                        <label class="form-label" for="notes">Final Closure Summary <span class="text-danger">*</span></label>
+                        <label class="form-label required" for="notes">Final Closure Summary <span class="required-indicator" aria-hidden="true">*</span></label>
                         <textarea id="notes" name="notes" class="form-control" rows="6"
                             placeholder="Provide a summary of operations, damage findings, response effectiveness, and closure briefing..." required></textarea>
                     </div>
                     <div class="row mb-4">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label" for="casualties">Total Confirmed Casualties <span class="text-danger">*</span></label>
+                            <label class="form-label required" for="casualties">Total Confirmed Casualties <span class="required-indicator" aria-hidden="true">*</span></label>
                             <input id="casualties" type="number" name="casualties" class="form-control" min="0" placeholder="e.g. 0, 5" required>
                             <small class="text-muted">Final total casualty count for this response</small>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label" for="evacuated">Total Confirmed Evacuations <span class="text-danger">*</span></label>
+                            <label class="form-label required" for="evacuated">Total Confirmed Evacuations <span class="required-indicator" aria-hidden="true">*</span></label>
                             <input id="evacuated" type="number" name="evacuated" class="form-control" min="0" placeholder="e.g. 100, 1500" required>
                             <small class="text-muted">Final total evacuated person count</small>
                         </div>

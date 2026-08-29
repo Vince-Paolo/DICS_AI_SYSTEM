@@ -121,8 +121,9 @@
 
                 <form method="POST" action="{{ url_for('coordinator.coordinator_allocate_resource') }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="required-legend"><span class="required-indicator" aria-hidden="true">*</span> Required field</div>
                     <div class="mb-3">
-                        <label class="form-label" style="font-size:0.82rem;" for="response_id">Active Response <span class="text-danger">*</span></label>
+                        <label class="form-label required" style="font-size:0.82rem;" for="response_id">Active Response <span class="required-indicator" aria-hidden="true">*</span></label>
                         <select id="response_id" name="response_id" class="form-select form-select-sm" required>
                             <option value="">— Select Active Response —</option>
                             {% for resp in active_responses %}
@@ -131,7 +132,7 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label" style="font-size:0.82rem;" for="agency">Agency <span class="text-danger">*</span></label>
+                        <label class="form-label required" style="font-size:0.82rem;" for="agency">Agency <span class="required-indicator" aria-hidden="true">*</span></label>
                         <select id="agency" name="agency" class="form-select form-select-sm" required>
                             <option value="">— Select Agency —</option>
                             <option value="Fire Department">Fire Department</option>
@@ -145,7 +146,7 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label" style="font-size:0.82rem;" for="resource_type">Resource Type <span class="text-danger">*</span></label>
+                        <label class="form-label required" style="font-size:0.82rem;" for="resource_type">Resource Type <span class="required-indicator" aria-hidden="true">*</span></label>
                         <select id="resource_type" name="resource_type" class="form-select form-select-sm" required>
                             <option value="">— Select Type —</option>
                             <optgroup label="Personnel">
@@ -175,7 +176,7 @@
                     </div>
                     <div class="row g-2 mb-3">
                         <div class="col-5">
-                            <label class="form-label" style="font-size:0.82rem;" for="quantity">Quantity <span class="text-danger">*</span></label>
+                            <label class="form-label required" style="font-size:0.82rem;" for="quantity">Quantity <span class="required-indicator" aria-hidden="true">*</span></label>
                             <input id="quantity" type="number" name="quantity" class="form-control form-control-sm" min="1" placeholder="0" required>
                         </div>
                         <div class="col-7">

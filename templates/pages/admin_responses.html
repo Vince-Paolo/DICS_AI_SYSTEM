@@ -66,15 +66,15 @@
               <td data-label="Tasks" class="table-hide-tablet"><span class="badge bg-secondary">{{ r.tasks|length }} tasks</span></td>
               <td data-label="Resources" class="table-hide-tablet"><span class="badge bg-secondary">{{ r.resources|length }} resources</span></td>
               <td data-label="Started" class="table-hide-tablet"><span class="text-muted small">{{ r.started_at.strftime('%b %d %H:%M') }}</span></td>
-              <td data-label="Transfer">
-                <form method="POST" action="{{ url_for('eoc.transfer_commander', response_id=r.id) }}" class="d-flex gap-2 align-items-center">
+              <td data-label="Transfer" class="response-transfer-cell">
+                <form method="POST" action="{{ url_for('eoc.transfer_commander', response_id=r.id) }}" class="response-transfer-form d-flex gap-2 align-items-center">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <select name="commander_id" class="form-select form-select-sm bg-dark text-light border-secondary" style="min-width:130px;">
+                  <select name="commander_id" class="response-transfer-select form-select form-select-sm bg-dark text-light border-secondary">
                     {% for c in commanders %}
                       <option value="{{ c.id }}" {% if c.id == r.commander_id %}selected{% endif %}>{{ c.username }}</option>
                     {% endfor %}
                   </select>
-                  <button type="submit" class="btn btn-outline-warning btn-sm">Transfer</button>
+                  <button type="submit" class="response-transfer-button btn btn-outline-warning btn-sm">Transfer</button>
                 </form>
               </td>
             </tr>

@@ -278,16 +278,17 @@
                 </div>
                 <form method="POST" action="/admin/users/add">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="required-legend"><span class="required-indicator" aria-hidden="true">*</span> Required field</div>
                     <div class="mb-3">
-                        <label class="form-label" for="username"><i class="bi bi-person me-1"></i>Username <span class="text-danger">*</span></label>
+                        <label class="form-label required" for="username"><i class="bi bi-person me-1"></i>Username <span class="required-indicator" aria-hidden="true">*</span></label>
                         <input id="username" type="text" class="form-control" name="username" placeholder="e.g. jdelacruz" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label" for="email"><i class="bi bi-envelope me-1"></i>Email <span class="text-danger">*</span></label>
+                        <label class="form-label required" for="email"><i class="bi bi-envelope me-1"></i>Email <span class="required-indicator" aria-hidden="true">*</span></label>
                         <input id="email" type="email" class="form-control" name="email" placeholder="email@example.com" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label" for="password"><i class="bi bi-lock me-1"></i>Password <span class="text-danger">*</span></label>
+                        <label class="form-label required" for="password"><i class="bi bi-lock me-1"></i>Password <span class="required-indicator" aria-hidden="true">*</span></label>
                         <input id="password" type="password" class="form-control" name="password" placeholder="Minimum 8 characters" required>
                     </div>
                     <div class="mb-3">
@@ -311,7 +312,7 @@
                         <small class="text-muted">Required for Agency Coordinator and Field Responder — this is how tasks assigned by a commander reach them.</small>
                     </div>
                     <div class="mb-4">
-                        <label class="form-label" for="role"><i class="bi bi-shield me-1"></i>Role <span class="text-danger">*</span></label>
+                        <label class="form-label required" for="role"><i class="bi bi-shield me-1"></i>Role <span class="required-indicator" aria-hidden="true">*</span></label>
                         <select id="role" class="form-select" name="role" required>
                             <option value="citizen">Citizen</option>
                             <option value="field_responder">Field Responder</option>

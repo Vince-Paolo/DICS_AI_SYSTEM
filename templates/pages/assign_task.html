@@ -22,9 +22,10 @@
 
                     <form method="POST" action="{{ url_for('commander.assign_task', response_id=response.id) }}">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="required-legend"><span class="required-indicator" aria-hidden="true">*</span> Required field</div>
                         <!-- Agency Selection -->
                         <div class="mb-3">
-                            <label for="agency" class="form-label text-info fw-bold">Assign To Agency *</label>
+                            <label for="agency" class="form-label required text-info fw-bold">Assign To Agency <span class="required-indicator" aria-hidden="true">*</span></label>
                             <select name="agency" id="agency" class="form-select bg-dark text-light border-secondary" required>
                                 <option value="">-- Select Agency --</option>
                                 {% for agency in agencies %}

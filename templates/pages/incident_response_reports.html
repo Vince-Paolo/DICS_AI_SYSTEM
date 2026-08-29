@@ -85,8 +85,9 @@
                 {% if response.status != 'CLOSED' %}
                     <form method="POST" action="{{ url_for('commander.create_situation_report', response_id=response.id) }}">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="required-legend"><span class="required-indicator" aria-hidden="true">*</span> Required field</div>
                         <div class="mb-3">
-                            <label class="form-label" for="title">Report Title <span class="text-danger">*</span></label>
+                            <label class="form-label required" for="title">Report Title <span class="required-indicator" aria-hidden="true">*</span></label>
                             <input id="title" type="text" name="title" class="form-control" placeholder="e.g., Tactical Briefing, Sector B Progress" required>
                         </div>
                         <div class="mb-3">
@@ -98,7 +99,7 @@
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label" for="content">Update Narrative <span class="text-danger">*</span></label>
+                            <label class="form-label required" for="content">Update Narrative <span class="required-indicator" aria-hidden="true">*</span></label>
                             <textarea id="content" name="content" class="form-control" rows="5"
                                 placeholder="Describe the current operational status, weather updates, flood levels, rescue operations..." required></textarea>
                         </div>

@@ -19,15 +19,14 @@
         <!-- Sidebar Header -->
         <div class="sidebar-header">
             <div class="sidebar-brand">
-                <div class="sidebar-icon" style="display:flex; align-items:center; justify-content:center;"><i class="bi bi-geo-alt-fill"></i></div>
                 <div class="sidebar-text-content sidebar-text-show">
                     <h6 class="mb-0 fw-bold">DICS <span style="color:#3b82f6;">AI</span></h6>
                     <small class="text-muted-custom">Crisis Response</small>
                 </div>
             </div>
-            <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar" aria-controls="sidebarContainer" aria-expanded="true"
-                    onclick="this.blur()">
-                <i class="bi bi-chevron-left"></i>
+            <button class="sidebar-toggle" id="sidebarToggle" aria-label="Collapse sidebar" aria-controls="sidebarContainer" aria-expanded="true"
+                    title="Collapse sidebar" onclick="this.blur()">
+                <i class="bi bi-x-lg"></i>
             </button>
             <button class="sidebar-close-mobile" id="sidebarCloseMobile" aria-label="Close menu">
                 <i class="bi bi-x-lg"></i>
@@ -280,6 +279,16 @@
     </div>
 </div>
 
+{% if session.role == 'citizen' %}
+<button class="btn btn-danger sos-button sos-button-floating" 
+        onclick="triggerSOS()" 
+        aria-label="Emergency SOS" 
+        aria-live="assertive">
+    <i class="bi bi-exclamation-octagon-fill" aria-hidden="true"></i>
+    <span class="visually-hidden">Emergency SOS</span>
+</button>
+{% endif %}
+
 <style>
 /* Sidebar Variables */
 :root {
@@ -298,6 +307,7 @@
     left: 0;
     top: 0;
     height: 100vh;
+    height: 100dvh;
     width: var(--sidebar-width);
     transition: width var(--sidebar-transition);
     z-index: 1060; /* must stay above .mobile-topbar (1050) and .sidebar-overlay (1040) so links are clickable when open as a drawer */
@@ -380,21 +390,28 @@
 }
 
 .sidebar-toggle {
-    background: none;
-    border: none;
-    padding: 0.25rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 0.55rem;
     margin-left: 0.6rem;
-    color: rgba(255, 255, 255, 0.4);
+    color: rgba(255, 255, 255, 0.85);
     font-size: 1rem;
     cursor: pointer;
     flex-shrink: 0;
-    transition: color 0.2s ease, text-shadow 0.2s ease, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
     line-height: 1;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
 }
 
 .sidebar-toggle:hover {
-    color: #3b82f6;
-    text-shadow: 0 0 8px rgba(59, 130, 246, 0.7);
+    color: #ffffff;
+    background: rgba(59, 130, 246, 0.12);
+    border-color: rgba(59, 130, 246, 0.4);
+    box-shadow: 0 0 18px rgba(59, 130, 246, 0.22);
 }
 
 .sidebar-toggle:focus {
@@ -404,11 +421,19 @@
 .sidebar-toggle:focus-visible {
     outline: 2px solid #3b82f6;
     outline-offset: 2px;
-    border-radius: 4px;
+    border-radius: 10px;
 }
 
-.sidebar-container.collapsed .sidebar-toggle i {
-    transform: rotate(180deg);
+.sidebar-toggle i {
+    display: block;
+    font-size: 1.15rem;
+    transition: transform 0.2s ease;
+}
+
+.sidebar-container.collapsed .sidebar-toggle {
+    margin-left: 0;
+    width: 40px;
+    height: 40px;
 }
 
 .sidebar-close-mobile {
@@ -653,6 +678,21 @@
     font-size: 1.1rem;
 }
 
+.sos-button-floating {
+    display: none;
+    position: fixed;
+    right: 1rem;
+    bottom: calc(1rem + env(safe-area-inset-bottom));
+    width: 3.75rem;
+    height: 3.75rem;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    border-radius: 50%;
+    z-index: 1070;
+}
+
 @keyframes sos-pulse {
     0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
     50% { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
@@ -748,6 +788,10 @@ body.sidebar-collapsed {
         display: flex;
     }
 
+    .sos-button-floating {
+        display: inline-flex;
+    }
+
     body {
         margin-left: 0 !important;
         padding-top: 56px;
@@ -756,6 +800,8 @@ body.sidebar-collapsed {
     .sidebar-container,
     .sidebar-container.collapsed {
         width: min(80vw, 280px);
+        height: 100vh;
+        height: 100dvh;
         transform: translateX(-100%);
         box-shadow: none;
         transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1),
@@ -765,6 +811,22 @@ body.sidebar-collapsed {
     .sidebar-container.mobile-open {
         transform: translateX(0);
         box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
+    }
+
+    .sidebar-wrapper {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.35) transparent;
+        -ms-overflow-style: auto;
+    }
+
+    .sidebar-wrapper::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+
+    .sidebar-wrapper::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.35);
+        border-radius: 999px;
     }
 
     /* Staggered fade/slide-in for nav links once the drawer is open */
@@ -779,6 +841,11 @@ body.sidebar-collapsed {
         animation: sidebar-link-in 0.32s ease forwards;
     }
 
+    .sidebar-container.mobile-open .sos-button:not(.sos-button-floating) {
+        opacity: 1;
+        transform: none;
+    }
+
     .sidebar-container.mobile-open .sidebar-nav-link:nth-of-type(1)  { animation-delay: 0.05s; }
     .sidebar-container.mobile-open .sidebar-nav-link:nth-of-type(2)  { animation-delay: 0.08s; }
     .sidebar-container.mobile-open .sidebar-nav-link:nth-of-type(3)  { animation-delay: 0.11s; }
@@ -787,6 +854,14 @@ body.sidebar-collapsed {
     .sidebar-container.mobile-open .sidebar-nav-link:nth-of-type(6)  { animation-delay: 0.20s; }
     .sidebar-container.mobile-open .sidebar-nav-link:nth-of-type(7)  { animation-delay: 0.23s; }
     .sidebar-container.mobile-open .sidebar-nav-link:nth-of-type(8)  { animation-delay: 0.26s; }
+    .sidebar-container.mobile-open .sidebar-nav-link:nth-of-type(9)  { animation-delay: 0.29s; }
+    .sidebar-container.mobile-open .sidebar-nav-link:nth-of-type(10) { animation-delay: 0.32s; }
+    .sidebar-container.mobile-open .sidebar-nav-link:nth-of-type(11) { animation-delay: 0.35s; }
+    .sidebar-container.mobile-open .sidebar-nav-link:nth-of-type(12) { animation-delay: 0.38s; }
+    .sidebar-container.mobile-open .sidebar-nav-link:nth-of-type(13) { animation-delay: 0.41s; }
+    .sidebar-container.mobile-open .sidebar-nav-link:nth-of-type(14) { animation-delay: 0.44s; }
+    .sidebar-container.mobile-open .sidebar-nav-link:nth-of-type(15) { animation-delay: 0.47s; }
+    .sidebar-container.mobile-open .sidebar-nav-link:nth-of-type(16) { animation-delay: 0.50s; }
     .sidebar-container.mobile-open .sos-button                       { animation-delay: 0.29s; }
 
     @keyframes sidebar-link-in {
@@ -810,6 +885,8 @@ body.sidebar-collapsed {
 
     .sidebar-container.collapsed .sidebar-header {
         display: flex;
+        flex-direction: row;
+        align-items: center;
         justify-content: space-between;
     }
 
@@ -819,6 +896,10 @@ body.sidebar-collapsed {
         justify-content: flex-start;
         width: auto;
         margin: 0;
+    }
+
+    .sidebar-container.collapsed .sidebar-toggle {
+        display: none;
     }
 
     .sidebar-container.collapsed .sidebar-icon {
@@ -852,12 +933,15 @@ body.sidebar-collapsed {
         function setCollapsed(collapsed) {
             container.classList.toggle('collapsed', collapsed);
             document.body.classList.toggle('sidebar-collapsed', collapsed);
-            /* Rotate chevron icon */
+
             const icon = toggle.querySelector('i');
             if (icon) {
-                icon.style.transform = collapsed ? 'rotate(180deg)' : 'rotate(0deg)';
+                icon.className = collapsed ? 'bi bi-list' : 'bi bi-x-lg';
             }
+
             toggle.setAttribute('aria-expanded', String(!collapsed));
+            toggle.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+            toggle.setAttribute('title', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
             localStorage.setItem('sidebarCollapsed', collapsed);
         }
 
