@@ -1,13 +1,31 @@
 import json
+from datetime import datetime, timezone
 
-from flask import Blueprint, flash, redirect, render_template, request, session, url_for
+from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for
 
 from models import db, User, Incident, AIRecommendation, AuditEvent
 from services.realtime_data import get_earthquake_data
+from services.aftershock import forecast_for_event
 from ai.decision_support import predict_hazard
 from services import permissions as permission_service
 
 ai_bp = Blueprint('ai', __name__)
+
+
+def _latest_aftershock_forecast(earthquake_data):
+    if not earthquake_data:
+        return None
+
+    event = earthquake_data[0]
+    try:
+        event_time = datetime.fromtimestamp(
+            float(event.get('time')) / 1000,
+            timezone.utc,
+        ).replace(tzinfo=None)
+    except (TypeError, ValueError, OSError):
+        event_time = None
+
+    return forecast_for_event(event.get('magnitude'), event_time)
 
 
 @ai_bp.route('/ai-prediction', methods=['GET', 'POST'])
@@ -36,6 +54,7 @@ def ai_prediction():
             humidity_pct=humidity_pct,
             population_density=population_density,
             earthquake_data=earthquake_data,
+            aftershock_forecast=_latest_aftershock_forecast(earthquake_data),
         )
 
         user = User.query.filter_by(username=session['username']).first()
@@ -51,12 +70,12 @@ def ai_prediction():
                 level=prediction.get('level'),
                 message=prediction.get('message', 'Manual incident report created.'),
                 alert=prediction.get('alert', False),
-                status='REVIEWED' if prediction else 'NEW',
+                status='NEW',
                 reported_by='ai_prediction',
             )
             db.session.add(incident)
             try:
-                if prediction:
+                if prediction is not None:
                     ai_recommendation = AIRecommendation(
                         incident=incident,
                         user_id=user.id,
@@ -86,7 +105,8 @@ def ai_prediction():
                 db.session.commit()
             except Exception as e:
                 db.session.rollback()
-                flash(str(e), 'error')
+                current_app.logger.exception('Failed to save AI prediction')
+                flash('Unable to save the AI prediction. Please try again.', 'error')
 
     total_active_alerts = Incident.query.filter_by(alert=True).count()
     total_incidents = Incident.query.count()

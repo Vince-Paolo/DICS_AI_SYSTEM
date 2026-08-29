@@ -1,25 +1,75 @@
 import os
 import secrets
+from io import BytesIO
 
 from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for
+from PIL import Image, UnidentifiedImageError
+from sqlalchemy.orm.exc import StaleDataError
 from werkzeug.utils import secure_filename
 
 from models import db, User, IncidentResponse, Task, IncidentMessage, utcnow
-from blueprints.common import is_field_responder
 from services import permissions as permission_service
 
 responder_bp = Blueprint('responder', __name__)
 
+ALLOWED_MEDIA_EXTENSIONS = {
+    '.jpg': {'mimetypes': {'image/jpeg'}, 'format': 'JPEG'},
+    '.jpeg': {'mimetypes': {'image/jpeg'}, 'format': 'JPEG'},
+    '.png': {'mimetypes': {'image/png'}, 'format': 'PNG'},
+    '.webp': {'mimetypes': {'image/webp'}, 'format': 'WEBP'},
+    '.mp4': {'mimetypes': {'video/mp4'}, 'format': 'MP4'},
+}
+INLINE_MEDIA_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp'}
+
+
+def _validate_media_upload(media_file):
+    if not media_file or not getattr(media_file, 'filename', None):
+        return None
+
+    filename = secure_filename(media_file.filename)
+    if not filename:
+        return None
+
+    ext = os.path.splitext(filename)[1].lower()
+    media_type = ALLOWED_MEDIA_EXTENSIONS.get(ext)
+    if not media_type or (media_file.mimetype or '').lower() not in media_type['mimetypes']:
+        return None
+
+    max_bytes = current_app.config.get('MAX_UPLOAD_SIZE_BYTES', 16 * 1024 * 1024)
+    media_bytes = media_file.read()
+    if not media_bytes or len(media_bytes) > max_bytes:
+        return None
+
+    if ext in INLINE_MEDIA_EXTENSIONS:
+        try:
+            with Image.open(BytesIO(media_bytes)) as image:
+                actual_format = image.format
+                image.verify()
+        except (UnidentifiedImageError, OSError, ValueError):
+            return None
+        if actual_format != media_type['format']:
+            return None
+    elif media_bytes[4:8] != b'ftyp':
+        return None
+
+    return media_bytes, filename
+
+
+def _current_responder():
+    user = permission_service.current_user_for_roles('RESPONDER')
+    if user:
+        return user
+    if not permission_service.is_authenticated():
+        return redirect(url_for('login'))
+    flash('Field responder access required.', 'danger')
+    return redirect(url_for('dashboard'))
+
 
 @responder_bp.route('/responder-dashboard')
 def responder_dashboard():
-    if 'username' not in session:
-        return redirect(url_for('login'))
-
-    user = User.query.filter_by(username=session['username']).first()
-    if not user or not permission_service.user_has_any_role(user, 'RESPONDER'):
-        flash('Field responder access required.', 'danger')
-        return redirect(url_for('dashboard'))
+    user = _current_responder()
+    if not isinstance(user, User):
+        return user
 
     session['agency'] = user.agency or 'FIELD UNIT'
     my_tasks = Task.query.filter_by(assigned_to_agency=user.agency or '').order_by(Task.created_at.desc()).all()
@@ -41,13 +91,9 @@ def responder_dashboard():
 
 @responder_bp.route('/responder-tasks')
 def responder_tasks():
-    if 'username' not in session:
-        return redirect(url_for('login'))
-
-    user = User.query.filter_by(username=session['username']).first()
-    if not user or not permission_service.user_has_any_role(user, 'RESPONDER'):
-        flash('Field responder access required.', 'danger')
-        return redirect(url_for('dashboard'))
+    user = _current_responder()
+    if not isinstance(user, User):
+        return user
 
     status_filter = request.args.get('status', '').upper()
     query = Task.query.filter_by(assigned_to_agency=user.agency or '')
@@ -76,13 +122,9 @@ def responder_tasks():
 @responder_bp.route('/responder-checklist', methods=['GET', 'POST'])
 def responder_checklist():
     """ICS pre-deployment checklist for field responders."""
-    if 'username' not in session:
-        return redirect(url_for('login'))
-
-    user = User.query.filter_by(username=session['username']).first()
-    if not user or not permission_service.user_has_any_role(user, 'RESPONDER'):
-        flash('Field responder access required.', 'danger')
-        return redirect(url_for('dashboard'))
+    user = _current_responder()
+    if not isinstance(user, User):
+        return user
 
     checklist_items = [
         ('ppe', 'Personal Protective Equipment (PPE) donned and inspected'),
@@ -116,13 +158,9 @@ def responder_checklist():
 
 @responder_bp.route('/responder-report', methods=['GET', 'POST'])
 def responder_report():
-    if 'username' not in session:
-        return redirect(url_for('login'))
-
-    user = User.query.filter_by(username=session['username']).first()
-    if not user or not permission_service.user_has_any_role(user, 'RESPONDER'):
-        flash('Field responder access required.', 'danger')
-        return redirect(url_for('dashboard'))
+    user = _current_responder()
+    if not isinstance(user, User):
+        return user
 
     active_responses = IncidentResponse.query.filter_by(status='ACTIVE').order_by(IncidentResponse.started_at.desc()).all()
 
@@ -168,7 +206,8 @@ def responder_report():
             db.session.commit()
         except Exception as e:
             db.session.rollback()
-            flash(str(e), 'error')
+            current_app.logger.exception('Responder operation failed')
+            flash('Unable to complete the responder operation. Please try again.', 'error')
             return redirect(url_for('responder.responder_report'))
 
         upload_dir = current_app.config['UPLOAD_FOLDER']
@@ -176,12 +215,18 @@ def responder_report():
         uploaded_files = request.files.getlist('media')
         saved_files = []
         for media_file in uploaded_files:
-            if media_file and media_file.filename:
-                filename = secure_filename(media_file.filename)
-                if filename:
-                    saved_name = f"{user.id}_{secrets.token_hex(6)}_{filename}"
-                    media_file.save(os.path.join(upload_dir, saved_name))
-                    saved_files.append(saved_name)
+            validated_media = _validate_media_upload(media_file)
+            if not validated_media:
+                if media_file and media_file.filename:
+                    safe_filename = secure_filename(media_file.filename) or 'invalid filename'
+                    flash(f'Attachment rejected: {safe_filename}.', 'warning')
+                continue
+
+            media_bytes, filename = validated_media
+            saved_name = f"{user.id}_{secrets.token_hex(6)}_{filename}"
+            with open(os.path.join(upload_dir, saved_name), 'wb') as saved_file:
+                saved_file.write(media_bytes)
+            saved_files.append(saved_name)
 
         if saved_files:
             report.content = f"{report.content}\nAttachments: {', '.join(saved_files)}"
@@ -189,7 +234,8 @@ def responder_report():
                 db.session.commit()
             except Exception as e:
                 db.session.rollback()
-                flash(str(e), 'error')
+                current_app.logger.exception('Responder operation failed')
+                flash('Unable to complete the responder operation. Please try again.', 'error')
                 return redirect(url_for('responder.responder_report'))
 
         flash('Field report submitted successfully.', 'success')
@@ -200,15 +246,11 @@ def responder_report():
 
 @responder_bp.route('/responder-task/<int:task_id>/update', methods=['POST'])
 def responder_update_task(task_id):
-    if 'username' not in session:
-        return redirect(url_for('login'))
+    user = _current_responder()
+    if not isinstance(user, User):
+        return user
 
-    user = User.query.filter_by(username=session['username']).first()
-    if not user or not permission_service.user_has_any_role(user, 'RESPONDER'):
-        flash('Field responder access required.', 'danger')
-        return redirect(url_for('dashboard'))
-
-    task = Task.query.get_or_404(task_id)
+    task = db.get_or_404(Task, task_id)
     if task.assigned_to_agency != (user.agency or ''):
         flash('You can only update tasks assigned to your unit.', 'danger')
         return redirect(url_for('responder.responder_tasks'))
@@ -222,9 +264,14 @@ def responder_update_task(task_id):
             task.completed_at = None
         try:
             db.session.commit()
+        except StaleDataError:
+            db.session.rollback()
+            flash('This task was updated by another user. Reload and try again.', 'warning')
+            return redirect(url_for('responder.responder_tasks'))
         except Exception as e:
             db.session.rollback()
-            flash(str(e), 'error')
+            current_app.logger.exception('Responder operation failed')
+            flash('Unable to complete the responder operation. Please try again.', 'error')
             return redirect(url_for('responder.responder_tasks'))
         flash('Task status updated.', 'success')
     else:

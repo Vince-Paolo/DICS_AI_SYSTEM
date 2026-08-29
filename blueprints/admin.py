@@ -1,14 +1,16 @@
 import glob
 import os
 import sqlite3
+import subprocess
 from datetime import datetime
 
-from flask import Blueprint, flash, redirect, render_template, request, session, url_for, send_file
-from werkzeug.security import check_password_hash, generate_password_hash
+from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for, send_file
+from werkzeug.security import generate_password_hash
 
 from models import AuditEvent, db, User, Incident, IncidentResponse, Task, Resource, Agency, utcnow
 from blueprints.common import is_admin, is_eoc_staff
 from services import permissions as permission_service
+from services.passwords import verify_and_migrate
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -129,11 +131,13 @@ def add_user():
             db.session.commit()
         except Exception as e:
             db.session.rollback()
-            flash(str(e), 'error')
+            current_app.logger.exception('Failed to create user')
+            flash('Unable to create user. Please try again.', 'error')
             return redirect(url_for('admin.manage_users'))
         flash(f'User "{username}" created successfully.', 'success')
     except Exception as e:
-        flash(f'Error creating user: {str(e)}', 'error')
+        current_app.logger.exception('Failed to create user')
+        flash('Unable to create user. Please try again.', 'error')
 
     return redirect(url_for('admin.manage_users'))
 
@@ -145,7 +149,7 @@ def update_user(user_id):
         flash('Admin access required.', 'danger')
         return redirect(url_for('dashboard'))
 
-    user = User.query.get_or_404(user_id)
+    user = db.get_or_404(User, user_id)
 
     try:
         if user.role == 'admin' and request.form.get('role') != 'admin':
@@ -175,11 +179,13 @@ def update_user(user_id):
             db.session.commit()
         except Exception as e:
             db.session.rollback()
-            flash(str(e), 'error')
+            current_app.logger.exception('Failed to update user')
+            flash('Unable to update user. Please try again.', 'error')
             return redirect(url_for('admin.manage_users'))
         flash(f'User "{user.username}" updated successfully.', 'success')
     except Exception as e:
-        flash(f'Error updating user: {str(e)}', 'error')
+        current_app.logger.exception('Failed to update user')
+        flash('Unable to update user. Please try again.', 'error')
 
     return redirect(url_for('admin.manage_users'))
 
@@ -191,7 +197,7 @@ def toggle_user_status(user_id):
         flash('Admin access required.', 'danger')
         return redirect(url_for('dashboard'))
 
-    user = User.query.get_or_404(user_id)
+    user = db.get_or_404(User, user_id)
 
     try:
         if user.role == 'admin' and not user.is_disabled:
@@ -205,12 +211,14 @@ def toggle_user_status(user_id):
             db.session.commit()
         except Exception as e:
             db.session.rollback()
-            flash(str(e), 'error')
+            current_app.logger.exception('Failed to toggle user status')
+            flash('Unable to update user status. Please try again.', 'error')
             return redirect(url_for('admin.manage_users'))
         status = 'disabled' if user.is_disabled else 'enabled'
         flash(f'User "{user.username}" {status} successfully.', 'success')
     except Exception as e:
-        flash(f'Error toggling user status: {str(e)}', 'error')
+        current_app.logger.exception('Failed to toggle user status')
+        flash('Unable to update user status. Please try again.', 'error')
 
     return redirect(url_for('admin.manage_users'))
 
@@ -239,34 +247,18 @@ def admin_responses():
 
 
 def verify_admin_password(user, password):
-    if user is None or not password:
-        return False
-
-    stored = user.password
-    if not stored:
-        return False
-
-    try:
-        if check_password_hash(stored, password):
-            return True
-    except (ValueError, TypeError):
-        pass
-
-    if stored == password:
-        user.password = generate_password_hash(password)
-        try:
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-            return False
-        return True
-
-    return False
+    return verify_and_migrate(
+        user,
+        password,
+        commit=db.session.commit,
+        rollback=db.session.rollback,
+        log=current_app.logger,
+    )
 
 
 @admin_bp.route('/admin/backup', methods=['GET', 'POST'])
 def export_backup():
-    """Export SQLite database as a downloadable backup file"""
+    """Export a backup of the database configured for this deployment."""
     if not permission_service.is_admin():
         flash('Admin access required.', 'danger')
         return redirect(url_for('admin.manage_users'))
@@ -281,16 +273,42 @@ def export_backup():
         return redirect(url_for('admin.manage_users'))
 
     try:
-        db_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'instance', 'database.db')
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        backup_filename = f'dics_ai_backup_{timestamp}.db'
-        backup_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'instance', backup_filename)
+        backup_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'instance')
+        database_uri = str(db.engine.url.render_as_string(hide_password=False))
+        database_dialect = db.engine.dialect.name
 
-        src = sqlite3.connect(db_path)
-        dst = sqlite3.connect(backup_path)
-        src.backup(dst)
-        dst.close()
-        src.close()
+        if database_dialect == 'postgresql':
+            backup_filename = f'dics_ai_backup_{timestamp}.dump'
+            backup_path = os.path.join(backup_dir, backup_filename)
+            subprocess.run(
+                [
+                    'pg_dump',
+                    '--format=custom',
+                    '--no-owner',
+                    '--no-privileges',
+                    f'--file={backup_path}',
+                    f'--dbname={database_uri}',
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        elif database_dialect == 'sqlite':
+            backup_filename = f'dics_ai_backup_{timestamp}.db'
+            backup_path = os.path.join(backup_dir, backup_filename)
+            db_path = db.engine.url.database
+            src = sqlite3.connect(db_path)
+            try:
+                dst = sqlite3.connect(backup_path)
+                try:
+                    src.backup(dst)
+                finally:
+                    dst.close()
+            finally:
+                src.close()
+        else:
+            raise RuntimeError('Unsupported database engine for backup')
 
         audit_event = AuditEvent(
             user_id=user.id,
@@ -302,8 +320,10 @@ def export_backup():
         db.session.add(audit_event)
         db.session.commit()
 
-        backup_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'instance')
-        backup_files = sorted(glob.glob(os.path.join(backup_dir, 'dics_ai_backup_*.db')))
+        backup_files = sorted(
+            glob.glob(os.path.join(backup_dir, 'dics_ai_backup_*.db'))
+            + glob.glob(os.path.join(backup_dir, 'dics_ai_backup_*.dump'))
+        )
         if len(backup_files) > 3:
             for old_backup in backup_files[:-3]:
                 os.unlink(old_backup)
@@ -315,5 +335,6 @@ def export_backup():
             mimetype='application/octet-stream'
         )
     except Exception as e:
-        flash(f'Backup failed: {str(e)}', 'error')
+        current_app.logger.exception('Failed to create backup')
+        flash('Backup could not be created. Please try again.', 'error')
         return redirect(url_for('admin.manage_users'))

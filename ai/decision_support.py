@@ -37,10 +37,13 @@ import json
 import os
 import re
 import urllib.error
+import logging
 import urllib.request
 from pathlib import Path
 
 from models import Agency
+
+logger = logging.getLogger(__name__)
 
 # --- .env loading (same convention as services/realtime_data.py) ---------
 
@@ -358,10 +361,7 @@ def _fallback_response(hazard_type, reason):
         'type': hazard_type or 'unknown',
         'score': 0.0,
         'level': 'INSUFFICIENT_DATA',
-        'message': (
-            f'AI hazard assessment unavailable ({reason}). Falling back to manual '
-            'review -- please assess this reading directly and retry shortly.'
-        ),
+        'message': 'AI hazard assessment is temporarily unavailable. Please use manual review and retry shortly.',
         'alert': False,
         'recommended_agencies': [],
         'recommended_resources': [],
@@ -403,7 +403,8 @@ def assess_hazard(hazard_type, rainfall_mm, river_level_m, humidity_pct,
         result = _parse_ai_response(raw, hazard_type)
     except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError,
             ValueError, KeyError, json.JSONDecodeError) as exc:
-        return _fallback_response(hazard_type, str(exc))
+        logger.exception('AI hazard assessment failed')
+        return _fallback_response(hazard_type, None)
 
     result['provider'] = AI_PROVIDER
     result['model'] = model

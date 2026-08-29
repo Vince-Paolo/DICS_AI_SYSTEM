@@ -1,4 +1,5 @@
-from flask import Blueprint, flash, redirect, render_template, request, session, url_for
+from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for
+from sqlalchemy.orm.exc import StaleDataError
 
 from models import db, User, Incident, IncidentResponse, Task, Resource, IncidentMessage, ResourceRequest, AuditEvent, utcnow
 from blueprints.common import (
@@ -16,8 +17,14 @@ coordinator_bp = Blueprint('coordinator', __name__)
 def _agency_response_ids(agency):
     if not agency:
         return []
-    task_response_ids = {t.incident_response_id for t in Task.query.filter_by(assigned_to_agency=agency).all()}
-    resource_response_ids = {r.incident_response_id for r in Resource.query.filter_by(agency=agency).all()}
+    task_response_ids = {
+        response_id for (response_id,) in
+        db.session.query(Task.incident_response_id).filter_by(assigned_to_agency=agency).all()
+    }
+    resource_response_ids = {
+        response_id for (response_id,) in
+        db.session.query(Resource.incident_response_id).filter_by(agency=agency).all()
+    }
     return list(task_response_ids.union(resource_response_ids))
 
 
@@ -32,15 +39,19 @@ def coordinator_dashboard():
     my_tasks = Task.query.join(IncidentResponse).filter(
         Task.assigned_to_agency == agency,
         IncidentResponse.status.in_(['ACTIVE', 'MONITORING'])
-    ).order_by(Task.created_at.desc()).all() if agency else []
+    ).order_by(Task.created_at.desc()).limit(6).all() if agency else []
 
-    pending_count = sum(1 for t in my_tasks if t.status in ('PENDING', 'IN_PROGRESS'))
+    pending_count = Task.query.join(IncidentResponse).filter(
+        Task.assigned_to_agency == agency,
+        Task.status.in_(('PENDING', 'IN_PROGRESS')),
+        IncidentResponse.status.in_(['ACTIVE', 'MONITORING'])
+    ).count() if agency else 0
 
     agency_response_ids = _agency_response_ids(agency)
     active_responses = IncidentResponse.query.filter(
         IncidentResponse.status.in_(['ACTIVE', 'MONITORING']),
         IncidentResponse.id.in_(agency_response_ids)
-    ).order_by(IncidentResponse.started_at.desc()).all() if agency_response_ids else []
+    ).order_by(IncidentResponse.started_at.desc()).limit(4).all() if agency_response_ids else []
 
     deployed_resources = Resource.query.filter_by(status='DEPLOYED', agency=agency).count() if agency else 0
     active_incidents = IncidentResponse.query.filter(
@@ -73,14 +84,15 @@ def coordinator_tasks():
     status_filter = request.args.get('status')
     priority_filter = request.args.get('priority')
 
-    query = Task.query.filter_by(assigned_to_agency=agency) if agency else Task.query
+    query = Task.query.filter_by(assigned_to_agency=agency) if agency else Task.query.filter(Task.id == -1)
 
     if status_filter:
         query = query.filter(Task.status == status_filter)
     if priority_filter:
         query = query.filter(Task.priority == priority_filter)
 
-    tasks = query.order_by(Task.created_at.desc()).all()
+    page = max(request.args.get('page', 1, type=int), 1)
+    tasks = query.order_by(Task.created_at.desc()).paginate(page=page, per_page=25, error_out=False)
     return render_template('pages/coordinator_tasks.html', tasks=tasks)
 
 
@@ -90,7 +102,7 @@ def coordinator_update_task(task_id):
         flash('Access denied.', 'error')
         return redirect(url_for('login'))
 
-    task = Task.query.get_or_404(task_id)
+    task = db.get_or_404(Task, task_id)
     agency = get_coordinator_agency()
     if not agency or task.assigned_to_agency != agency:
         flash('You can only update tasks assigned to your agency.', 'error')
@@ -105,9 +117,14 @@ def coordinator_update_task(task_id):
             task.completed_at = utcnow()
         try:
             db.session.commit()
+        except StaleDataError:
+            db.session.rollback()
+            flash('This task was updated by another user. Reload and try again.', 'warning')
+            return redirect(referrer or url_for('coordinator.coordinator_tasks'))
         except Exception as e:
             db.session.rollback()
-            flash(str(e), 'error')
+            current_app.logger.exception('Coordinator operation failed')
+            flash('Unable to complete the coordinator operation. Please try again.', 'error')
             return redirect(referrer or url_for('coordinator.coordinator_tasks'))
         flash(f'Task "{task.title}" updated to {new_status}.', 'success')
 
@@ -209,7 +226,7 @@ def coordinator_allocate_resource():
         flash('Quantity must be at least 1.', 'error')
         return redirect(url_for('coordinator.coordinator_resources'))
 
-    response = IncidentResponse.query.get_or_404(response_id)
+    response = db.get_or_404(IncidentResponse, response_id)
     user = current_user()
     if not user_agency_has_response(user, response):
         flash('You can only allocate resources to responses that include your agency.', 'error')
@@ -230,7 +247,8 @@ def coordinator_allocate_resource():
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        flash(str(e), 'error')
+        current_app.logger.exception('Failed to allocate resource')
+        flash('Unable to allocate the resource. Please try again.', 'error')
         return redirect(url_for('coordinator.coordinator_resources'))
     flash(f'{quantity}x {resource_type} ({agency}) allocated to Response #{response.incident_id}.', 'success')
     return redirect(url_for('coordinator.coordinator_resources'))
@@ -242,7 +260,7 @@ def coordinator_update_resource(resource_id):
         flash('Access denied.', 'error')
         return redirect(url_for('login'))
 
-    resource = Resource.query.get_or_404(resource_id)
+    resource = db.get_or_404(Resource, resource_id)
     agency = get_coordinator_agency()
     if not agency or resource.agency != agency:
         flash('You can only update resources allocated to your agency.', 'error')
@@ -257,9 +275,14 @@ def coordinator_update_resource(resource_id):
             resource.deployed_at = utcnow()
         try:
             db.session.commit()
+        except StaleDataError:
+            db.session.rollback()
+            flash('This resource was updated by another user. Reload and try again.', 'warning')
+            return redirect(referrer or url_for('coordinator.coordinator_resources'))
         except Exception as e:
             db.session.rollback()
-            flash(str(e), 'error')
+            current_app.logger.exception('Coordinator operation failed')
+            flash('Unable to complete the coordinator operation. Please try again.', 'error')
             return redirect(referrer or url_for('coordinator.coordinator_resources'))
         flash(f'Resource status updated to {new_status}.', 'success')
 
@@ -312,7 +335,7 @@ def coordinator_submit_report():
 
     user = User.query.filter_by(username=session['username']).first()
     agency = get_coordinator_agency()
-    response = IncidentResponse.query.get_or_404(response_id)
+    response = db.get_or_404(IncidentResponse, response_id)
 
     if not agency:
         flash('Coordinator agency is not configured.', 'error')
@@ -343,7 +366,8 @@ def coordinator_submit_report():
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        flash(str(e), 'error')
+        current_app.logger.exception('Coordinator operation failed')
+        flash('Unable to complete the coordinator operation. Please try again.', 'error')
         return redirect(referrer or url_for('coordinator.coordinator_reports'))
     flash(f'Broadcast message "{title}" submitted successfully.', 'success')
 
@@ -381,7 +405,7 @@ def coordinator_response_detail(response_id):
         flash('Access denied.', 'error')
         return redirect(url_for('login'))
 
-    response = IncidentResponse.query.get_or_404(response_id)
+    response = db.get_or_404(IncidentResponse, response_id)
     user = current_user()
     if not can_view_response(response):
         flash('Access denied.', 'error')
@@ -448,7 +472,7 @@ def coordinator_submit_resource_request():
         flash('Incident, resource type, and a valid quantity are required.', 'error')
         return redirect(url_for('coordinator.coordinator_resource_requests'))
 
-    incident = Incident.query.get_or_404(incident_id)
+    incident = db.get_or_404(Incident, incident_id)
 
     resource_request = ResourceRequest(
         incident_id=incident.id,
@@ -471,7 +495,8 @@ def coordinator_submit_resource_request():
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        flash(str(e), 'error')
+        current_app.logger.exception('Coordinator operation failed')
+        flash('Unable to complete the coordinator operation. Please try again.', 'error')
         return redirect(url_for('coordinator.coordinator_resource_requests'))
 
     flash(f'Resource request for {quantity}x {resource_type} submitted.', 'success')

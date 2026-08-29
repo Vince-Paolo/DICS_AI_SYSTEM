@@ -1,17 +1,8 @@
-from flask import session
-
-from models import User
 import services.permissions as permission_service
 
 
 def current_user():
-    if 'username' not in session:
-        return None
-    return User.query.filter_by(username=session['username']).first()
-
-
-def has_role(*roles):
-    return 'role' in session and session.get('role') in roles
+    return permission_service.current_user()
 
 
 def is_admin():

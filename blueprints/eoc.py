@@ -1,4 +1,4 @@
-from flask import Blueprint, flash, redirect, render_template, request, session, url_for
+from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, session, url_for
 
 from models import AuditEvent, db, Incident, IncidentResponse, Resource, ResourceRequest, Alert, Report, User, Task, utcnow
 from blueprints.common import is_eoc_staff, current_user
@@ -178,7 +178,7 @@ def toggle_alert(incident_id):
         flash('EOC staff access required.', 'danger')
         return redirect(url_for('dashboard'))
 
-    incident = Incident.query.get_or_404(incident_id)
+    incident = db.get_or_404(Incident, incident_id)
     incident.alert = not incident.alert
     verifier = User.query.filter_by(username=session['username']).first()
     try:
@@ -197,7 +197,8 @@ def toggle_alert(incident_id):
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        flash(str(e), 'error')
+        current_app.logger.exception('EOC operation failed')
+        flash('Unable to complete the EOC operation. Please try again.', 'error')
         return redirect(url_for('admin.admin_alerts'))
     flash('Alert status updated.', 'success')
     return redirect(url_for('admin.admin_alerts'))
@@ -210,7 +211,7 @@ def verify_incident(incident_id):
         flash('EOC staff access required.', 'danger')
         return redirect(url_for('dashboard'))
 
-    incident = Incident.query.get_or_404(incident_id)
+    incident = db.get_or_404(Incident, incident_id)
     verifier = User.query.filter_by(username=session['username']).first()
     incident.status = 'VERIFIED'
     incident.verified_by_id = verifier.id if verifier else None
@@ -230,7 +231,8 @@ def verify_incident(incident_id):
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        flash(str(e), 'error')
+        current_app.logger.exception('EOC operation failed')
+        flash('Unable to complete the EOC operation. Please try again.', 'error')
         return redirect(url_for('admin.admin_alerts'))
 
     flash('Incident marked as verified.', 'success')
@@ -244,7 +246,7 @@ def assign_commander(incident_id):
         flash('EOC staff access required.', 'danger')
         return redirect(url_for('admin.admin_alerts'))
 
-    incident = Incident.query.get_or_404(incident_id)
+    incident = db.get_or_404(Incident, incident_id)
 
     existing = IncidentResponse.query.filter_by(incident_id=incident_id).first()
     if existing:
@@ -256,7 +258,7 @@ def assign_commander(incident_id):
         flash('Please select a commander.', 'error')
         return redirect(url_for('admin.admin_alerts'))
 
-    commander = User.query.get(commander_id)
+    commander = db.session.get(User, commander_id)
     if not commander or commander.role != 'incident_commander':
         flash('Invalid commander selected.', 'error')
         return redirect(url_for('admin.admin_alerts'))
@@ -285,7 +287,8 @@ def assign_commander(incident_id):
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        flash(f'Error assigning commander: {str(e)}', 'error')
+        current_app.logger.exception('Failed to assign commander')
+        flash('Unable to assign the commander. Please try again.', 'error')
         return redirect(url_for('admin.admin_alerts'))
 
     flash(f'Commander "{commander.full_name or commander.username}" assigned to incident #{incident_id}.', 'success')
@@ -299,14 +302,14 @@ def transfer_commander(response_id):
         flash('EOC staff access required.', 'danger')
         return redirect(url_for('admin.admin_responses'))
 
-    response = IncidentResponse.query.get_or_404(response_id)
+    response = db.get_or_404(IncidentResponse, response_id)
     new_commander_id = request.form.get('commander_id', type=int)
 
     if not new_commander_id:
         flash('Please select a commander.', 'error')
         return redirect(url_for('admin.admin_responses'))
 
-    new_commander = User.query.get(new_commander_id)
+    new_commander = db.session.get(User, new_commander_id)
     if not new_commander or new_commander.role != 'incident_commander':
         flash('Invalid commander selected.', 'error')
         return redirect(url_for('admin.admin_responses'))
@@ -329,7 +332,8 @@ def transfer_commander(response_id):
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        flash(f'Transfer failed: {str(e)}', 'error')
+        current_app.logger.exception('Failed to transfer commander')
+        flash('Unable to transfer the commander. Please try again.', 'error')
         return redirect(url_for('admin.admin_responses'))
 
     flash(f'Response #{response_id} transferred from {old_commander_name} to {new_commander.username}.', 'success')
@@ -345,6 +349,11 @@ def eoc_resource_requests():
 
     status_filter = request.args.get('status', 'OPEN').strip().upper()
     query = ResourceRequest.query
+    user = current_user()
+    if permission_service.is_commander():
+        query = query.join(Incident).join(IncidentResponse).filter(
+            IncidentResponse.commander_id == user.id
+        )
     if status_filter and status_filter != 'ALL':
         query = query.filter(ResourceRequest.status == status_filter)
     requests_ = query.order_by(ResourceRequest.created_at.desc()).all()
@@ -365,7 +374,11 @@ def eoc_decide_resource_request(request_id):
         flash('You do not have permission to decide resource requests.', 'danger')
         return redirect(url_for('dashboard'))
 
-    resource_request = ResourceRequest.query.get_or_404(request_id)
+    resource_request = db.get_or_404(ResourceRequest, request_id)
+    if permission_service.is_commander():
+        response = resource_request.incident.response if resource_request.incident else None
+        if not response or response.commander_id != user.id:
+            abort(403)
     decision = request.form.get('decision', '').strip().upper()
     notes = request.form.get('notes', '').strip()
 
@@ -394,7 +407,8 @@ def eoc_decide_resource_request(request_id):
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        flash(str(e), 'error')
+        current_app.logger.exception('EOC operation failed')
+        flash('Unable to complete the EOC operation. Please try again.', 'error')
         return redirect(url_for('eoc.eoc_resource_requests'))
 
     flash(f'Request #{resource_request.id} marked {decision.title()}.', 'success')
@@ -471,7 +485,8 @@ def issue_alert():
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        flash(str(e), 'error')
+        current_app.logger.exception('EOC operation failed')
+        flash('Unable to complete the EOC operation. Please try again.', 'error')
         return redirect(url_for('eoc.official_alerts'))
 
     flash(f'Alert "{title}" published.', 'success')
@@ -485,7 +500,7 @@ def resolve_alert(alert_id):
         flash('You do not have permission to resolve alerts.', 'danger')
         return redirect(url_for('dashboard'))
 
-    alert = Alert.query.get_or_404(alert_id)
+    alert = db.get_or_404(Alert, alert_id)
     alert.status = 'RESOLVED'
     try:
         db.session.flush()
@@ -499,7 +514,8 @@ def resolve_alert(alert_id):
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        flash(str(e), 'error')
+        current_app.logger.exception('EOC operation failed')
+        flash('Unable to complete the EOC operation. Please try again.', 'error')
         return redirect(url_for('eoc.official_alerts'))
 
     flash('Alert resolved.', 'success')
@@ -516,7 +532,7 @@ def eoc_incident_detail(incident_id):
         flash('EOC Staff access required.', 'danger')
         return redirect(url_for('dashboard'))
 
-    incident = Incident.query.get_or_404(incident_id)
+    incident = db.get_or_404(Incident, incident_id)
     reports = Report.query.filter_by(incident_id=incident.id).order_by(Report.created_at.desc()).all()
 
     return render_template('pages/eoc_incident_detail.html',
@@ -533,7 +549,7 @@ def log_incident_report(incident_id):
         flash('You do not have permission to log incident reports.', 'danger')
         return redirect(url_for('eoc.eoc_incident_detail', incident_id=incident_id))
 
-    incident = Incident.query.get_or_404(incident_id)
+    incident = db.get_or_404(Incident, incident_id)
     title = request.form.get('title', '').strip()
     content = request.form.get('content', '').strip()
     report_type = request.form.get('report_type', 'GENERAL').strip().upper()
@@ -565,7 +581,8 @@ def log_incident_report(incident_id):
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        flash(str(e), 'error')
+        current_app.logger.exception('EOC operation failed')
+        flash('Unable to complete the EOC operation. Please try again.', 'error')
         return redirect(url_for('eoc.eoc_incident_detail', incident_id=incident_id))
 
     flash(f'Report "{title}" logged.', 'success')

@@ -8,6 +8,7 @@ from PIL import Image, UnidentifiedImageError
 from werkzeug.utils import secure_filename
 
 from models import Barangay, Municipality, Province, db, User, Incident, CitizenReport, Alert, utcnow
+from services.permissions import can_view_incident
 from services.realtime_data import get_earthquake_data
 
 citizen_bp = Blueprint('citizen', __name__)
@@ -129,12 +130,12 @@ def citizen_report():
         # location that points at inconsistent province/municipality/
         # barangay rows.
         if municipality_id:
-            municipality = Municipality.query.get(municipality_id)
+            municipality = db.session.get(Municipality, municipality_id)
             if not municipality or (province_id and municipality.province_id != province_id):
                 flash('Selected municipality does not match the selected province.', 'error')
                 return redirect(url_for('citizen.citizen_report'))
         if barangay_id:
-            barangay = Barangay.query.get(barangay_id)
+            barangay = db.session.get(Barangay, barangay_id)
             if not barangay or (municipality_id and barangay.municipality_id != municipality_id):
                 flash('Selected barangay does not match the selected municipality.', 'error')
                 return redirect(url_for('citizen.citizen_report'))
@@ -205,7 +206,8 @@ def citizen_report():
                     db.session.commit()
                 except Exception as e:
                     db.session.rollback()
-                    flash(str(e), 'error')
+                    current_app.logger.exception('Failed to save duplicate citizen report')
+                    flash('Unable to save your report. Please try again.', 'error')
                     return redirect(url_for('citizen.citizen_report'))
                 flash(
                     'A similar report for this barangay was submitted recently. Your report has been recorded, but no duplicate incident was created.',
@@ -235,12 +237,14 @@ def citizen_report():
                 db.session.commit()
             except Exception as e:
                 db.session.rollback()
-                flash(str(e), 'error')
+                current_app.logger.exception('Failed to save citizen incident')
+                flash('Unable to save your report. Please try again.', 'error')
                 return redirect(url_for('citizen.citizen_report'))
             flash('Incident report submitted successfully. Authorities have been notified.', 'success')
             return redirect(url_for('citizen.citizen_status'))
         except Exception as e:
-            flash(f'Error submitting report: {str(e)}', 'error')
+            current_app.logger.exception('Failed to submit citizen report')
+            flash('Unable to submit your report. Please try again.', 'error')
 
     incidents = Incident.query.filter_by(user_id=user.id).order_by(Incident.created_at.desc()).all()
     total_incidents = len(incidents)
@@ -334,10 +338,10 @@ def citizen_report_detail(incident_id):
     if not user:
         return redirect(url_for('logout'))
 
-    incident = Incident.query.get_or_404(incident_id)
+    incident = db.get_or_404(Incident, incident_id)
 
     # Security: citizen can only view their own reports
-    if incident.user_id != user.id:
+    if not can_view_incident(user, incident):
         flash('You can only view your own reports.', 'danger')
         return redirect(url_for('citizen.citizen_status'))
 
@@ -426,4 +430,5 @@ def emergency_sos():
         }), 200
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'message': f'Error creating emergency alert: {str(e)}'}), 500
+        current_app.logger.exception('Failed to create emergency alert')
+        return jsonify({'success': False, 'message': 'Unable to send emergency alert. Please try again.'}), 500

@@ -1,6 +1,7 @@
 from datetime import datetime
 
-from flask import Blueprint, flash, redirect, render_template, request, session, url_for
+from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for
+from sqlalchemy.orm.exc import StaleDataError
 
 from models import (
     AuditEvent,
@@ -61,8 +62,6 @@ def list_facilities():
     facilities = query.order_by(Facility.name).all()
 
     provinces = Province.query.order_by(Province.name).all()
-    municipalities = Municipality.query.order_by(Municipality.name).all()
-    barangays = Barangay.query.order_by(Barangay.name).all()
 
     return render_template(
         'pages/facilities.html',
@@ -70,8 +69,6 @@ def list_facilities():
         facility_types=FACILITY_TYPES,
         facility_type_filter=facility_type_filter,
         provinces=provinces,
-        municipalities=municipalities,
-        barangays=barangays,
         can_manage=permission_service.can_manage_facilities(_current_user()),
     )
 
@@ -91,9 +88,29 @@ def add_facility():
     barangay_id = request.form.get('barangay_id', type=int)
     latitude = request.form.get('latitude', type=float)
     longitude = request.form.get('longitude', type=float)
+    capacity = request.form.get('capacity', type=int) if facility_type == 'Evacuation Center' else None
 
     if not name or not facility_type:
         flash('Facility name and type are required.', 'error')
+        return redirect(url_for('facilities.list_facilities'))
+    if facility_type == 'Evacuation Center' and capacity is not None and capacity < 0:
+        flash('Evacuation center capacity cannot be negative.', 'error')
+        return redirect(url_for('facilities.list_facilities'))
+
+    if barangay_id:
+        barangay = db.session.get(Barangay, barangay_id)
+        if not barangay or (municipality_id and barangay.municipality_id != municipality_id):
+            flash('Please select a barangay within the selected municipality.', 'error')
+            return redirect(url_for('facilities.list_facilities'))
+        municipality_id = barangay.municipality_id
+    if municipality_id:
+        municipality = db.session.get(Municipality, municipality_id)
+        if not municipality or (province_id and municipality.province_id != province_id):
+            flash('Please select a municipality within the selected province.', 'error')
+            return redirect(url_for('facilities.list_facilities'))
+        province_id = municipality.province_id
+    if province_id and not db.session.get(Province, province_id):
+        flash('Please select a valid province.', 'error')
         return redirect(url_for('facilities.list_facilities'))
 
     facility = Facility(
@@ -114,7 +131,6 @@ def add_facility():
         # An "Evacuation Center" facility gets its capacity-tracking row created
         # in the same step, rather than requiring a second form/action.
         if facility_type == 'Evacuation Center':
-            capacity = request.form.get('capacity', type=int)
             evacuation_center = EvacuationCenter(
                 facility_id=facility.id,
                 capacity=capacity,
@@ -128,7 +144,8 @@ def add_facility():
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        flash(str(e), 'error')
+        current_app.logger.exception('Facility operation failed')
+        flash('Unable to complete the facility operation. Please try again.', 'error')
         return redirect(url_for('facilities.list_facilities'))
 
     flash(f'Facility "{name}" added.', 'success')
@@ -144,12 +161,21 @@ def update_evacuation_center(center_id):
         flash('You do not have permission to update evacuation centers.', 'danger')
         return redirect(url_for('facilities.list_facilities'))
 
-    center = EvacuationCenter.query.get_or_404(center_id)
+    center = db.get_or_404(EvacuationCenter, center_id)
     occupancy = request.form.get('occupancy', type=int)
     status = request.form.get('status', '').strip().upper()
 
     if occupancy is not None:
-        center.occupancy = max(0, occupancy)
+        if occupancy < 0:
+            flash('Evacuation center occupancy cannot be negative.', 'error')
+            return redirect(url_for('facilities.list_facilities'))
+        if center.capacity is not None and occupancy > center.capacity:
+            flash(
+                f'Occupancy cannot exceed this center\'s capacity of {center.capacity}.',
+                'error',
+            )
+            return redirect(url_for('facilities.list_facilities'))
+        center.occupancy = occupancy
     if status in ('OPEN', 'FULL', 'CLOSED'):
         center.status = status
 
@@ -161,9 +187,14 @@ def update_evacuation_center(center_id):
             f'occupancy={center.occupancy}/{center.capacity} by {user.username}.',
         )
         db.session.commit()
+    except StaleDataError:
+        db.session.rollback()
+        flash('This evacuation center was updated by another user. Reload and try again.', 'warning')
+        return redirect(url_for('facilities.list_facilities'))
     except Exception as e:
         db.session.rollback()
-        flash(str(e), 'error')
+        current_app.logger.exception('Evacuation center operation failed')
+        flash('Unable to complete the evacuation center operation. Please try again.', 'error')
         return redirect(url_for('facilities.list_facilities'))
 
     flash('Evacuation center updated.', 'success')
