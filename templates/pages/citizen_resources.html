@@ -86,23 +86,23 @@
                         <h5 class="mb-0">Evacuation Procedures</h5>
                     </div>
                     
-                    <ul class="nav nav-tabs nav-dark mb-4" role="tablist">
+                    <ul class="nav nav-tabs nav-dark mb-4" role="tablist" aria-label="Evacuation procedures">
                         <li class="nav-item">
-                            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#flood-evac">{{ hz.hazard_icon('flood') }} Flood</button>
+                            <button class="nav-link active" id="flood-evac-tab" role="tab" aria-selected="true" aria-controls="flood-evac" data-bs-toggle="tab" data-bs-target="#flood-evac">{{ hz.hazard_icon('flood') }} Flood</button>
                         </li>
                         <li class="nav-item">
-                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#landslide-evac">{{ hz.hazard_icon('landslide') }} Landslide</button>
+                            <button class="nav-link" id="landslide-evac-tab" role="tab" aria-selected="false" aria-controls="landslide-evac" data-bs-toggle="tab" data-bs-target="#landslide-evac">{{ hz.hazard_icon('landslide') }} Landslide</button>
                         </li>
                         <li class="nav-item">
-                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#earthquake-evac">{{ hz.hazard_icon('earthquake') }} Earthquake</button>
+                            <button class="nav-link" id="earthquake-evac-tab" role="tab" aria-selected="false" aria-controls="earthquake-evac" data-bs-toggle="tab" data-bs-target="#earthquake-evac">{{ hz.hazard_icon('earthquake') }} Earthquake</button>
                         </li>
                         <li class="nav-item">
-                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#volcanic-evac"><i class="bi bi-thermometer-sun" aria-hidden="true"></i> Volcanic</button>
+                            <button class="nav-link" id="volcanic-evac-tab" role="tab" aria-selected="false" aria-controls="volcanic-evac" data-bs-toggle="tab" data-bs-target="#volcanic-evac"><i class="bi bi-thermometer-sun" aria-hidden="true"></i> Volcanic</button>
                         </li>
                     </ul>
 
                     <div class="tab-content">
-                        <div id="flood-evac" class="tab-pane fade show active">
+                        <div id="flood-evac" class="tab-pane fade show active" role="tabpanel" aria-labelledby="flood-evac-tab" tabindex="0">
                             <h6 class="mb-3">Flood Evacuation Procedures</h6>
                             <div class="alert-enhanced alert-enhanced-danger mb-3 p-3 rounded">
                                 <strong><i class="bi bi-exclamation-triangle-fill me-1"></i>Warning Signs:</strong> Heavy rainfall, rising water levels, unusual river flow
@@ -117,7 +117,7 @@
                             </ol>
                         </div>
 
-                        <div id="landslide-evac" class="tab-pane fade">
+                        <div id="landslide-evac" class="tab-pane fade" role="tabpanel" aria-labelledby="landslide-evac-tab" tabindex="0">
                             <h6 class="mb-3">Landslide Safety Measures</h6>
                             <div class="alert-enhanced alert-enhanced-danger mb-3 p-3 rounded">
                                 <strong><i class="bi bi-exclamation-triangle-fill me-1"></i>Warning Signs:</strong> Ground cracks, tilting trees, unusual sounds from slopes
@@ -132,7 +132,7 @@
                             </ol>
                         </div>
 
-                        <div id="earthquake-evac" class="tab-pane fade">
+                        <div id="earthquake-evac" class="tab-pane fade" role="tabpanel" aria-labelledby="earthquake-evac-tab" tabindex="0">
                             <h6 class="mb-3">Earthquake Safety & Response</h6>
                             <div class="alert-enhanced alert-enhanced-danger mb-3 p-3 rounded">
                                 <strong><i class="bi bi-record-fill me-1"></i>Key Action:</strong> DROP, COVER, HOLD ON
@@ -147,7 +147,7 @@
                             </ol>
                         </div>
 
-                        <div id="volcanic-evac" class="tab-pane fade">
+                        <div id="volcanic-evac" class="tab-pane fade" role="tabpanel" aria-labelledby="volcanic-evac-tab" tabindex="0">
                             <h6 class="mb-3">Volcanic Eruption Safety & Evacuation</h6>
                             <div class="alert-enhanced alert-enhanced-danger mb-3 p-3 rounded">
                                 <strong><i class="bi bi-record-fill me-1"></i>Key Hazards:</strong> Ashfall, Lava Flow, Pyroclastic Surge, Lahar, Toxic Gas

@@ -13,15 +13,14 @@
     {% block extra_head %}{% endblock %}
 </head>
 <body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
-{% if request.endpoint not in ['login', 'register'] %}
+{% if request.endpoint not in ['login', 'register', 'forgot_password', 'reset_password'] %}
     {% include 'partials/sidebar.html' %}
 {% endif %}
-<main id="main-content" class="container{% if request.endpoint not in ['login', 'register'] %} pt-4{% endif %} mb-4" tabindex="-1">
+<main id="main-content" class="container{% if request.endpoint not in ['login', 'register', 'forgot_password', 'reset_password'] %} pt-4{% endif %} mb-4" tabindex="-1">
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
-                <div class="alert alert-{{ 'danger' if category == 'error' else 'secondary' }} bg-dark text-white border-secondary alert-dismissible fade show font-monospace" role="alert">
+                <div class="alert alert-{{ 'danger' if category == 'error' else 'secondary' }} bg-dark text-white border-secondary alert-dismissible fade show font-monospace" role="{{ 'alert' if category in ['error', 'danger'] else 'status' }}" aria-live="{{ 'assertive' if category in ['error', 'danger'] else 'polite' }}" aria-atomic="true">
                     <i class="bi bi-info-square-fill me-2 text-info"></i> {{ message }}
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
@@ -32,6 +31,7 @@
     {% block content %}{% endblock %}
 </main>
 
+<div id="pageStatus" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
 <div class="toast-container position-fixed bottom-0 end-0 p-3" id="appToastContainer" aria-live="polite" aria-atomic="true"></div>
 
 <div class="modal fade" id="globalConfirmModal" tabindex="-1" aria-labelledby="globalConfirmTitle" aria-hidden="true">

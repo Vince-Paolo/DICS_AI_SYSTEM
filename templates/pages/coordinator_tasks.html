@@ -61,7 +61,7 @@
             </a>
             {% endif %}
             <div class="ms-auto d-flex gap-2 align-items-center">
-                <span class="text-muted small">{{ tasks|length }} task(s) found</span>
+                <span class="text-muted small">{{ tasks.total }} task(s) found</span>
             </div>
         </form>
     </div>
@@ -158,6 +158,20 @@
             </div>
         {% else %}
             {{ es.render('bi-list-task', 'No Tasks Found', subtitle='No task assignments match your current filters.') }}
+        {% endif %}
+
+        {% if tasks.pages > 1 %}
+        <nav aria-label="Task pages" class="mt-4">
+            <ul class="pagination pagination-sm justify-content-center mb-0">
+                <li class="page-item {% if not tasks.has_prev %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('coordinator.coordinator_tasks', page=tasks.prev_num, status=request.args.get('status'), priority=request.args.get('priority')) if tasks.has_prev else '#' }}" aria-label="Previous page">Previous</a>
+                </li>
+                <li class="page-item active" aria-current="page"><span class="page-link">Page {{ tasks.page }} of {{ tasks.pages }}</span></li>
+                <li class="page-item {% if not tasks.has_next %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('coordinator.coordinator_tasks', page=tasks.next_num, status=request.args.get('status'), priority=request.args.get('priority')) if tasks.has_next else '#' }}" aria-label="Next page">Next</a>
+                </li>
+            </ul>
+        </nav>
         {% endif %}
     </div>
 </div>

@@ -137,23 +137,21 @@
                     <div class="row g-2 mb-3">
                         <div class="col-4">
                             <label class="form-label" style="font-size:0.82rem;" for="province_id">Province</label>
-                            <select id="province_id" name="province_id" class="form-select form-select-sm">
+                            <select id="facility_province_id" name="province_id" class="form-select form-select-sm">
                                 <option value="">—</option>
                                 {% for p in provinces %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}
                             </select>
                         </div>
                         <div class="col-4">
                             <label class="form-label" style="font-size:0.82rem;" for="municipality_id">Municipality</label>
-                            <select id="municipality_id" name="municipality_id" class="form-select form-select-sm">
-                                <option value="">—</option>
-                                {% for m in municipalities %}<option value="{{ m.id }}">{{ m.name }}</option>{% endfor %}
+                            <select id="facility_municipality_id" name="municipality_id" class="form-select form-select-sm" disabled>
+                                <option value="">Select province first</option>
                             </select>
                         </div>
                         <div class="col-4">
                             <label class="form-label" style="font-size:0.82rem;" for="barangay_id">Barangay</label>
-                            <select id="barangay_id" name="barangay_id" class="form-select form-select-sm">
-                                <option value="">—</option>
-                                {% for b in barangays %}<option value="{{ b.id }}">{{ b.name }}</option>{% endfor %}
+                            <select id="facility_barangay_id" name="barangay_id" class="form-select form-select-sm" disabled>
+                                <option value="">Select municipality first</option>
                             </select>
                         </div>
                     </div>
@@ -176,4 +174,74 @@
     </div>
     {% endif %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const provinceSelect = document.getElementById('facility_province_id');
+    const municipalitySelect = document.getElementById('facility_municipality_id');
+    const barangaySelect = document.getElementById('facility_barangay_id');
+    if (!provinceSelect || !municipalitySelect || !barangaySelect) return;
+
+    function resetSelect(select, label) {
+        select.innerHTML = '';
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = label;
+        select.appendChild(option);
+        select.disabled = true;
+    }
+
+    function loadOptions(select, items, label) {
+        resetSelect(select, label);
+        items.forEach(function (item) {
+            const option = document.createElement('option');
+            option.value = item.id;
+            option.textContent = item.name;
+            select.appendChild(option);
+        });
+        select.disabled = false;
+    }
+
+    provinceSelect.addEventListener('change', function () {
+        resetSelect(barangaySelect, 'Select municipality first');
+        if (!provinceSelect.value) {
+            resetSelect(municipalitySelect, 'Select province first');
+            return;
+        }
+        resetSelect(municipalitySelect, 'Loading municipalities...');
+        fetch('/api/municipalities/' + provinceSelect.value)
+            .then(function (response) {
+                if (!response.ok) throw new Error('Municipalities unavailable');
+                return response.json();
+            })
+            .then(function (data) {
+                loadOptions(municipalitySelect, data.municipalities || [], 'Select municipality');
+            })
+            .catch(function () {
+                resetSelect(municipalitySelect, 'Unable to load municipalities');
+            });
+    });
+
+    municipalitySelect.addEventListener('change', function () {
+        if (!municipalitySelect.value) {
+            resetSelect(barangaySelect, 'Select municipality first');
+            return;
+        }
+        resetSelect(barangaySelect, 'Loading barangays...');
+        fetch('/api/barangays/' + municipalitySelect.value)
+            .then(function (response) {
+                if (!response.ok) throw new Error('Barangays unavailable');
+                return response.json();
+            })
+            .then(function (data) {
+                loadOptions(barangaySelect, data.barangays || [], 'Select barangay');
+            })
+            .catch(function () {
+                resetSelect(barangaySelect, 'Unable to load barangays');
+            });
+    });
+});
+</script>
 {% endblock %}

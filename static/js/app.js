@@ -105,6 +105,44 @@ function initAccessibleConfirmations() {
     });
 }
 
+function initRequiredFieldIndicators() {
+    document.querySelectorAll('form').forEach(form => {
+        const hasRequiredFields = Array.from(form.querySelectorAll('input, select, textarea')).some(field => field.hasAttribute('required'));
+        if (!hasRequiredFields) return;
+
+        if (!form.querySelector('.required-legend')) {
+            const legend = document.createElement('div');
+            legend.className = 'required-legend';
+            legend.innerHTML = '<span class="required-indicator" aria-hidden="true">*</span> Required field';
+            form.insertBefore(legend, form.firstChild);
+        }
+
+        form.querySelectorAll('label[for]').forEach(label => {
+            if (label.textContent.includes('*') || label.querySelector('.required-indicator')) return;
+            const field = form.querySelector(`#${CSS.escape(label.getAttribute('for'))}`);
+            if (!field || !field.hasAttribute('required')) return;
+            label.classList.add('required');
+            const marker = document.createElement('span');
+            marker.className = 'required-indicator';
+            marker.setAttribute('aria-hidden', 'true');
+            marker.textContent = '*';
+            label.appendChild(marker);
+        });
+
+        form.querySelectorAll('label').forEach(label => {
+            if (label.querySelector('.required-indicator') || label.textContent.includes('*')) return;
+            const field = label.querySelector('input, select, textarea');
+            if (!field || !field.hasAttribute('required')) return;
+            label.classList.add('required');
+            const marker = document.createElement('span');
+            marker.className = 'required-indicator';
+            marker.setAttribute('aria-hidden', 'true');
+            marker.textContent = '*';
+            label.appendChild(marker);
+        });
+    });
+}
+
 async function triggerSOS() {
     const confirmed = await requestConfirmation({
         title: 'Send SOS alert',
@@ -237,16 +275,27 @@ function initAutoFlash() {
 function initFormValidation() {
     Array.from(document.querySelectorAll('.needs-validation')).forEach(form => {
         Array.from(form.querySelectorAll('input, textarea, select')).forEach(field => {
+            field.setAttribute('aria-invalid', field.checkValidity() ? 'false' : 'true');
             field.addEventListener('blur',  () => form.classList.add('was-validated'));
             field.addEventListener('input', () => {
                 if (form.classList.contains('was-validated')) {
-                    field.classList.toggle('is-valid',   field.checkValidity());
-                    field.classList.toggle('is-invalid', !field.checkValidity());
+                    const valid = field.checkValidity();
+                    field.classList.toggle('is-valid', valid);
+                    field.classList.toggle('is-invalid', !valid);
+                    field.setAttribute('aria-invalid', String(!valid));
                 }
             });
         });
         form.addEventListener('submit', e => {
-            if (!form.checkValidity()) { e.preventDefault(); e.stopPropagation(); }
+            if (!form.checkValidity()) {
+                e.preventDefault();
+                e.stopPropagation();
+                const firstInvalid = form.querySelector(':invalid');
+                if (firstInvalid) {
+                    firstInvalid.setAttribute('aria-invalid', 'true');
+                    firstInvalid.focus();
+                }
+            }
             form.classList.add('was-validated');
         }, false);
     });
@@ -288,6 +337,7 @@ window.addEventListener('DOMContentLoaded', function () {
     initScrollReveal();
     initNavbarScroll();
     initAutoFlash();
+    initRequiredFieldIndicators();
     initFormValidation();
     initPageTransitions();
 

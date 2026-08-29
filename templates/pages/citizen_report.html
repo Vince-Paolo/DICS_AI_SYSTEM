@@ -11,38 +11,6 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-12">
-            <!-- Quick Stats -->
-            <div class="row g-3 mb-5">
-                <div class="col-md-6">
-                    <div class="stat-card card-gradient-primary">
-                        <div class="d-flex align-items-center justify-content-between">
-                            <div>
-                                <div class="stat-label">Your Reports</div>
-                                <div class="stat-value">{{ total_incidents }}</div>
-                                <div class="stat-description">Total incident reports submitted</div>
-                            </div>
-                            <div class="icon-badge icon-badge-primary">
-                                <i class="bi bi-file-earmark-text"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="stat-card card-gradient-warning">
-                        <div class="d-flex align-items-center justify-content-between">
-                            <div>
-                                <div class="stat-label">Pending Review</div>
-                                <div class="stat-value">{{ pending_count }}</div>
-                                <div class="stat-description">Awaiting authority response</div>
-                            </div>
-                            <div class="icon-badge icon-badge-warning">
-                                <i class="bi bi-hourglass-split"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Report Form Card -->
             <div class="card card-custom shadow-lg">
                 <div class="card-body">
@@ -51,7 +19,7 @@
                         <h4>Report an Incident</h4>
                     </div>
 
-                    <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
+                    <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate id="incidentReportForm">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <!-- Incident Details Section -->
                         <div class="form-section-header">
@@ -260,7 +228,7 @@
                                         <div class="location-preview-map d-none" id="locationPreviewMap"></div>
                                     </div>
 
-                                    <small id="gpsStatus" class="text-muted d-block mt-2 mb-2">Allow browser location access to capture GPS automatically.</small>
+                                    <small id="gpsStatus" class="text-muted d-block mt-2 mb-2" role="status" aria-live="polite" aria-atomic="true">Allow browser location access to capture GPS automatically.</small>
 
                                     <div class="location-manual-row">
                                         <input type="text" class="form-control form-control-sm" id="manualLocationInput"
@@ -286,14 +254,46 @@
 
                         <!-- Action Buttons -->
                         <div class="d-flex gap-2 mt-5 pt-3 border-top border-secondary form-actions-row">
-                            <button type="submit" class="btn btn-primary-modern btn-modern" style="flex: 1;">
-                                <i class="bi bi-check-circle me-2"></i>Submit Report
+                            <button type="submit" id="submitReportBtn" class="btn btn-primary-modern btn-modern" style="flex: 1;">
+                                <i class="bi bi-check-circle me-2"></i><span id="submitReportBtnText">Submit Report</span>
                             </button>
                             <a href="/dashboard" class="btn btn-outline-secondary" style="flex: 0.5;">
                                 <i class="bi bi-x-circle me-2"></i>Cancel
                             </a>
                         </div>
                     </form>
+                </div>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="row g-3 mt-4 mb-5">
+                <div class="col-md-6">
+                    <div class="stat-card card-gradient-primary">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <div class="stat-label">Your Reports</div>
+                                <div class="stat-value">{{ total_incidents }}</div>
+                                <div class="stat-description">Total incident reports submitted</div>
+                            </div>
+                            <div class="icon-badge icon-badge-primary">
+                                <i class="bi bi-file-earmark-text"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="stat-card card-gradient-warning">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <div class="stat-label">Pending Review</div>
+                                <div class="stat-value">{{ pending_count }}</div>
+                                <div class="stat-description">Awaiting authority response</div>
+                            </div>
+                            <div class="icon-badge icon-badge-warning">
+                                <i class="bi bi-hourglass-split"></i>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -580,6 +580,24 @@ document.addEventListener('DOMContentLoaded', function () {
         removeBtn.addEventListener('click', function (e) {
             e.stopPropagation();
             clearPreview();
+        });
+    }
+
+    // ── Duplicate submission protection ──────────────────────
+    const incidentForm = document.getElementById('incidentReportForm');
+    const submitReportBtn = document.getElementById('submitReportBtn');
+    const submitReportBtnText = document.getElementById('submitReportBtnText');
+
+    if (incidentForm && submitReportBtn) {
+        incidentForm.addEventListener('submit', function (e) {
+            // Prevent double submission by disabling the button
+            if (submitReportBtn.disabled) {
+                e.preventDefault();
+                return;
+            }
+
+            submitReportBtn.disabled = true;
+            submitReportBtnText.textContent = 'Submitting your report...';
         });
     }
 });

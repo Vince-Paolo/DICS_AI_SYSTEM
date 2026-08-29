@@ -12,7 +12,7 @@
 </div>
 
 <!-- Overlay shown behind the sidebar when it's open as a mobile drawer -->
-<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<div class="sidebar-overlay" id="sidebarOverlay" aria-hidden="true"></div>
 
 <div class="sidebar-container" id="sidebarContainer">
     <div class="sidebar-wrapper">
@@ -25,7 +25,7 @@
                     <small class="text-muted-custom">Crisis Response</small>
                 </div>
             </div>
-            <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar"
+            <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar" aria-controls="sidebarContainer" aria-expanded="true"
                     onclick="this.blur()">
                 <i class="bi bi-chevron-left"></i>
             </button>
@@ -40,7 +40,7 @@
                 <i class="bi bi-collection-play me-2"></i>Main
             </div>
 
-            <nav class="sidebar-nav">
+            <nav class="sidebar-nav" aria-label="Primary navigation">
                 {% if session.role == 'admin' %}
                 {# ── ADMIN LINKS ── #}
                 <a href="/dashboard" class="sidebar-nav-link {{ 'active' if request.path == '/dashboard' else '' }}" data-tooltip="Dashboard" aria-label="Dashboard">
@@ -60,6 +60,7 @@
 
                 {% elif session.role == 'agency_coordinator' %}
                 {# ── AGENCY COORDINATOR LINKS ── #}
+                <div class="menu-subgroup-label sidebar-text-show">Operations</div>
                 <a href="/coordinator" class="sidebar-nav-link {{ 'active' if request.path == '/coordinator' else '' }}" data-tooltip="Coordinator Hub" aria-label="Coordinator Hub">
                     <i class="bi bi-building-check"></i>
                     <span class="nav-text sidebar-text-show">Coordinator Hub</span>
@@ -80,82 +81,84 @@
                     <i class="bi bi-send-plus-fill"></i>
                     <span class="nav-text sidebar-text-show">Request from EOC</span>
                 </a>
+
+                <div class="menu-subgroup-label sidebar-text-show">Monitoring</div>
                 <a href="/coordinator/reports" class="sidebar-nav-link {{ 'active' if request.path == '/coordinator/reports' else '' }}" data-tooltip="Situation Reports" aria-label="Situation Reports">
                     <i class="bi bi-file-earmark-bar-graph-fill"></i>
                     <span class="nav-text sidebar-text-show">Situation Reports</span>
                 </a>
+                <a href="/hazard-map" class="sidebar-nav-link {{ 'active' if request.path == '/hazard-map' else '' }}" data-tooltip="Hazard Map" aria-label="Hazard Map">
+                    <i class="bi bi-pin-map-fill"></i>
+                    <span class="nav-text sidebar-text-show">Hazard Map</span>
+                </a>
+                <a href="/all-alerts" class="sidebar-nav-link {{ 'active' if request.path == '/all-alerts' else '' }}" data-tooltip="Hazard Feed" aria-label="Hazard Feed">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <span class="nav-text sidebar-text-show">Hazard Feed</span>
+                </a>
+
+                <div class="menu-subgroup-label sidebar-text-show">Alerts &amp; Comms</div>
                 <a href="/coordinator/comms" class="sidebar-nav-link {{ 'active' if request.path == '/coordinator/comms' else '' }}" data-tooltip="Comm Center" aria-label="Comm Center">
                     <i class="bi bi-chat-dots-fill"></i>
                     <span class="nav-text sidebar-text-show">Comm Center</span>
                 </a>
-                <a href="/hazard-map" class="sidebar-nav-link {{ 'active' if request.path == '/hazard-map' else '' }}" data-tooltip="Hazard Map" aria-label="Hazard Map">
-                    <i class="bi bi-pin-map-fill"></i>
-                    <span class="nav-text sidebar-text-show">Hazard Map</span>
-                </a>
-                <a href="/all-alerts" class="sidebar-nav-link {{ 'active' if request.path == '/all-alerts' else '' }}" data-tooltip="Active Alerts" aria-label="Active Alerts">
-                    <i class="bi bi-exclamation-triangle-fill"></i>
-                    <span class="nav-text sidebar-text-show">Active Alerts</span>
-                </a>
 
                 {% elif session.role == 'incident_commander' %}
                 {# ── INCIDENT COMMANDER LINKS ── #}
+                <div class="menu-subgroup-label sidebar-text-show">Operations</div>
                 <a href="/incident-commander-dashboard" class="sidebar-nav-link {{ 'active' if request.path == '/incident-commander-dashboard' or request.path.startswith('/incident-response/') else '' }}" data-tooltip="Command Center" aria-label="Command Center">
                     <i class="bi bi-person-badge-fill"></i>
                     <span class="nav-text sidebar-text-show">Command Center</span>
                 </a>
-
-                <a href="/hazard-map" class="sidebar-nav-link {{ 'active' if request.path == '/hazard-map' else '' }}" data-tooltip="Hazard Map" aria-label="Hazard Map">
-                    <i class="bi bi-pin-map-fill"></i>
-                    <span class="nav-text sidebar-text-show">Hazard Map</span>
-                </a>
-
-                <a href="/all-alerts" class="sidebar-nav-link {{ 'active' if request.path == '/all-alerts' else '' }}" data-tooltip="Active Alerts" aria-label="Active Alerts">
-                    <i class="bi bi-exclamation-triangle-fill"></i>
-                    <span class="nav-text sidebar-text-show">Active Alerts</span>
-                </a>
-
-                <a href="/eoc/alerts" class="sidebar-nav-link {{ 'active' if request.path == '/eoc/alerts' else '' }}" data-tooltip="Official Alerts" aria-label="Official Alerts">
-                    <i class="bi bi-megaphone-fill"></i>
-                    <span class="nav-text sidebar-text-show">Official Alerts</span>
-                </a>
-
                 <a href="/eoc/resource-requests" class="sidebar-nav-link {{ 'active' if request.path == '/eoc/resource-requests' else '' }}" data-tooltip="Resource Requests" aria-label="Resource Requests">
                     <i class="bi bi-inbox-fill"></i>
                     <span class="nav-text sidebar-text-show">Resource Requests</span>
                 </a>
-
                 <a href="/all-incidents" class="sidebar-nav-link {{ 'active' if request.path == '/all-incidents' else '' }}" data-tooltip="Incident History" aria-label="Incident History">
                     <i class="bi bi-clock-history"></i>
                     <span class="nav-text sidebar-text-show">Incident History</span>
                 </a>
 
+                <div class="menu-subgroup-label sidebar-text-show">Monitoring</div>
+                <a href="/hazard-map" class="sidebar-nav-link {{ 'active' if request.path == '/hazard-map' else '' }}" data-tooltip="Hazard Map" aria-label="Hazard Map">
+                    <i class="bi bi-pin-map-fill"></i>
+                    <span class="nav-text sidebar-text-show">Hazard Map</span>
+                </a>
+                <a href="/all-alerts" class="sidebar-nav-link {{ 'active' if request.path == '/all-alerts' else '' }}" data-tooltip="Hazard Feed" aria-label="Hazard Feed">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <span class="nav-text sidebar-text-show">Hazard Feed</span>
+                </a>
                 <a href="/protocols" class="sidebar-nav-link {{ 'active' if request.path == '/protocols' else '' }}" data-tooltip="ICS Protocols" aria-label="ICS Protocols">
                     <i class="bi bi-file-text"></i>
                     <span class="nav-text sidebar-text-show">ICS Protocols</span>
                 </a>
 
+                <div class="menu-subgroup-label sidebar-text-show">Alerts &amp; Comms</div>
+                <a href="/eoc/alerts" class="sidebar-nav-link {{ 'active' if request.path == '/eoc/alerts' else '' }}" data-tooltip="Published Alerts" aria-label="Published Alerts">
+                    <i class="bi bi-megaphone-fill"></i>
+                    <span class="nav-text sidebar-text-show">Published Alerts</span>
+                </a>
+
                 {% elif session.role == 'eoc_staff' %}
                 {# ── EOC STAFF LINKS ── #}
+                <div class="menu-subgroup-label sidebar-text-show">Overview</div>
                 <a href="/eoc-dashboard" class="sidebar-nav-link {{ 'active' if request.path == '/eoc-dashboard' else '' }}" data-tooltip="Command Dashboard" aria-label="Command Dashboard">
                     <i class="bi bi-display-fill"></i>
                     <span class="nav-text sidebar-text-show">Dashboard</span>
                 </a>
-
-                <a href="/hazard-map" class="sidebar-nav-link {{ 'active' if request.path == '/hazard-map' else '' }}" data-tooltip="Heat Maps" aria-label="Heat Maps">
-                    <i class="bi bi-pin-map-fill"></i>
-                    <span class="nav-text sidebar-text-show">Hazard Map</span>
-                </a>
-
                 <a href="/analytics" class="sidebar-nav-link {{ 'active' if request.path == '/analytics' else '' }}" data-tooltip="Analytics" aria-label="Analytics">
                     <i class="bi bi-graph-up"></i>
                     <span class="nav-text sidebar-text-show">Analytics</span>
                 </a>
 
+                <div class="menu-subgroup-label sidebar-text-show">Monitoring</div>
+                <a href="/hazard-map" class="sidebar-nav-link {{ 'active' if request.path == '/hazard-map' else '' }}" data-tooltip="Heat Maps" aria-label="Heat Maps">
+                    <i class="bi bi-pin-map-fill"></i>
+                    <span class="nav-text sidebar-text-show">Hazard Map</span>
+                </a>
                 <a href="/eoc/incidents" class="sidebar-nav-link {{ 'active' if request.path == '/eoc/incidents' else '' }}" data-tooltip="Incident Monitoring" aria-label="Incident Monitoring">
                     <i class="bi bi-binoculars-fill"></i>
                     <span class="nav-text sidebar-text-show">Incidents</span>
                 </a>
-
                 <a href="/eoc/resources" class="sidebar-nav-link {{ 'active' if request.path == '/eoc/resources' else '' }}" data-tooltip="Resource Monitoring" aria-label="Resource Monitoring">
                     <i class="bi bi-truck"></i>
                     <span class="nav-text sidebar-text-show">Resources</span>
@@ -170,25 +173,23 @@
                     <i class="bi bi-shield-fill-exclamation"></i>
                     <span class="nav-text sidebar-text-show">Operations</span>
                 </a>
-
-                <a href="/all-alerts" class="sidebar-nav-link {{ 'active' if request.path == '/all-alerts' else '' }}" data-tooltip="Active Alerts" aria-label="Active Alerts">
-                    <i class="bi bi-exclamation-triangle-fill"></i>
-                    <span class="nav-text sidebar-text-show">Active Alerts</span>
-                </a>
-
-                <a href="/eoc/alerts" class="sidebar-nav-link {{ 'active' if request.path == '/eoc/alerts' else '' }}" data-tooltip="Official Alerts" aria-label="Official Alerts">
-                    <i class="bi bi-megaphone-fill"></i>
-                    <span class="nav-text sidebar-text-show">Official Alerts</span>
-                </a>
-
                 <a href="/eoc/resource-requests" class="sidebar-nav-link {{ 'active' if request.path == '/eoc/resource-requests' else '' }}" data-tooltip="Resource Requests" aria-label="Resource Requests">
                     <i class="bi bi-inbox-fill"></i>
                     <span class="nav-text sidebar-text-show">Resource Requests</span>
                 </a>
-
                 <a href="/facilities" class="sidebar-nav-link {{ 'active' if request.path == '/facilities' else '' }}" data-tooltip="Facility Directory" aria-label="Facility Directory">
                     <i class="bi bi-building-fill"></i>
                     <span class="nav-text sidebar-text-show">Facilities</span>
+                </a>
+
+                <div class="menu-subgroup-label sidebar-text-show">Alerts &amp; Comms</div>
+                <a href="/all-alerts" class="sidebar-nav-link {{ 'active' if request.path == '/all-alerts' else '' }}" data-tooltip="Hazard Feed" aria-label="Hazard Feed">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <span class="nav-text sidebar-text-show">Hazard Feed</span>
+                </a>
+                <a href="/eoc/alerts" class="sidebar-nav-link {{ 'active' if request.path == '/eoc/alerts' else '' }}" data-tooltip="Published Alerts" aria-label="Published Alerts">
+                    <i class="bi bi-megaphone-fill"></i>
+                    <span class="nav-text sidebar-text-show">Published Alerts</span>
                 </a>
 
                 {% elif session.role == 'field_responder' %}
@@ -856,6 +857,7 @@ body.sidebar-collapsed {
             if (icon) {
                 icon.style.transform = collapsed ? 'rotate(180deg)' : 'rotate(0deg)';
             }
+            toggle.setAttribute('aria-expanded', String(!collapsed));
             localStorage.setItem('sidebarCollapsed', collapsed);
         }
 
@@ -881,7 +883,10 @@ body.sidebar-collapsed {
             overlay.classList.add('show');
             openBtn.classList.add('is-active');
             openBtn.setAttribute('aria-expanded', 'true');
+            container.setAttribute('aria-hidden', 'false');
+            overlay.setAttribute('aria-hidden', 'false');
             document.body.style.overflow = 'hidden';
+            if (closeBtn) closeBtn.focus();
         }
 
         function closeDrawer() {
@@ -889,12 +894,20 @@ body.sidebar-collapsed {
             overlay.classList.remove('show');
             openBtn.classList.remove('is-active');
             openBtn.setAttribute('aria-expanded', 'false');
+            container.setAttribute('aria-hidden', 'true');
+            overlay.setAttribute('aria-hidden', 'true');
             document.body.style.overflow = '';
+            openBtn.focus();
         }
 
         openBtn.addEventListener('click', openDrawer);
         if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
         overlay.addEventListener('click', closeDrawer);
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && container.classList.contains('mobile-open')) {
+                closeDrawer();
+            }
+        });
 
         /* Close the drawer whenever a nav link is tapped on mobile */
         container.querySelectorAll('.sidebar-nav-link, .sos-button').forEach(function (el) {

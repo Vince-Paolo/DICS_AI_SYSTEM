@@ -46,7 +46,7 @@
                                     {% if critical_incidents > 0 %}
                                         Prioritize critical response briefs, reallocate resources, and confirm field communications.
                                     {% else %}
-                                        Keep your team aligned and review pending task assignments to maintain preparedness.
+                                        Keep your team aligned and review open task assignments to maintain preparedness.
                                     {% endif %}
                                 </div>
                             </div>
@@ -73,7 +73,7 @@
                 <div>
                     <div class="stat-label">My Assignments</div>
                     <div class="stat-value">{{ my_tasks|length }}</div>
-                    <div class="stat-description">Active task assignments</div>
+                    <div class="stat-description">Tasks in open responses</div>
                 </div>
                 <div class="icon-badge" style="background:rgba(56,189,248,0.15);color:#7DD3FC;border:1px solid rgba(56,189,248,0.3);">
                     <i class="bi bi-clipboard2-check-fill"></i>
@@ -85,9 +85,9 @@
         <div class="stat-card card-gradient-warning h-100">
             <div class="d-flex align-items-center justify-content-between">
                 <div>
-                    <div class="stat-label">Pending Tasks</div>
+                    <div class="stat-label">Open Tasks</div>
                     <div class="stat-value">{{ pending_count }}</div>
-                    <div class="stat-description">Awaiting action</div>
+                    <div class="stat-description">Pending or in progress</div>
                 </div>
                 <div class="icon-badge icon-badge-warning">
                     <i class="bi bi-hourglass-split"></i>
@@ -113,7 +113,7 @@
         <div class="stat-card card-gradient-danger h-100">
             <div class="d-flex align-items-center justify-content-between">
                 <div>
-                    <div class="stat-label">Active Incidents</div>
+                    <div class="stat-label">Open Responses</div>
                     <div class="stat-value">{{ active_incidents }}</div>
                     <div class="stat-description">Responses in progress</div>
                 </div>
@@ -174,7 +174,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for task in my_tasks[:6] %}
+                                {% for task in my_tasks %}
                                 <tr>
                                     <td data-label="Task">
                                         <strong class="text-white" style="font-size:0.9rem;">{{ task.title }}</strong><br>
@@ -233,12 +233,12 @@
                     <div class="icon-badge" style="background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.3);">
                         <i class="bi bi-shield-exclamation"></i>
                     </div>
-                    <h5 class="mb-0" style="font-size:1rem;">Active Responses</h5>
-                    <span class="ms-2 badge badge-status-active" style="font-size:0.65rem;">LIVE</span>
+                    <h5 class="mb-0" style="font-size:1rem;">Open Responses</h5>
+                    <span class="ms-2 badge badge-status-active" style="font-size:0.65rem;">ACTIVE / MONITORING</span>
                 </div>
 
                 {% if active_responses %}
-                    {% for resp in active_responses[:4] %}
+                    {% for resp in active_responses %}
                     <div class="d-flex align-items-start gap-3 mb-3" style="padding:0.75rem;background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.15);border-radius:8px;border-left:3px solid rgba(239,68,68,0.5);">
                         <div class="flex-grow-1">
                             <div class="d-flex align-items-center gap-2 mb-1">
@@ -257,7 +257,7 @@
                 {% else %}
                     <div class="text-center py-3">
                         <i class="bi bi-shield-check text-muted fs-3 d-block mb-2"></i>
-                        <span class="text-muted small">No active responses.</span>
+                        <span class="text-muted small">No open responses.</span>
                     </div>
                 {% endif %}
             </div>
@@ -278,7 +278,7 @@
                     <div class="mb-3">
                         <label class="form-label" style="font-size:0.82rem;" for="response_id">Incident Response</label>
                         <select id="response_id" name="response_id" class="form-select form-select-sm" required>
-                            <option value="">— Select Active Response —</option>
+                            <option value="">— Select Open Response —</option>
                             {% for resp in active_responses %}
                                 <option value="{{ resp.id }}">#{{ resp.incident_id }} – {{ resp.incident.hazard_type }}</option>
                             {% endfor %}

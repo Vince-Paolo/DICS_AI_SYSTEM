@@ -93,7 +93,7 @@
                     </div>
                 </div>
 
-                <form method="POST" action="{{ url_for('responder.responder_report') }}" enctype="multipart/form-data">
+                <form id="field-report-form" method="POST" action="{{ url_for('responder.responder_report') }}" enctype="multipart/form-data">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                     <div class="row g-3">
@@ -185,6 +185,9 @@
                             <a href="{{ url_for('responder.responder_dashboard') }}" class="btn btn-sm" style="color:#9CA3AF;border:1px solid rgba(255,255,255,0.1);background:transparent;align-self:center;">
                                 Cancel
                             </a>
+                        </div>
+                        <div class="col-12">
+                            <div id="offline-status" class="small text-muted" role="status" aria-live="polite"></div>
                         </div>
                     </div>
                 </form>
@@ -303,6 +306,200 @@ function handleDrop(e) {
     const files = e.dataTransfer.files;
     document.getElementById('media-input').files = files;
     previewFiles(files);
+}
+
+const REPORT_DB_NAME = 'dics-field-report-outbox';
+const REPORT_STORE_NAME = 'reports';
+const REPORT_DRAFT_KEY = 'dics-field-report-draft';
+
+function reportStatus(message, type = 'muted') {
+    const status = document.getElementById('offline-status');
+    if (!status) return;
+    status.className = 'small text-' + type;
+    status.textContent = message;
+}
+
+function openReportDatabase() {
+    return new Promise((resolve, reject) => {
+        if (!window.indexedDB) {
+            reject(new Error('IndexedDB is unavailable'));
+            return;
+        }
+        const request = indexedDB.open(REPORT_DB_NAME, 1);
+        request.onupgradeneeded = () => {
+            if (!request.result.objectStoreNames.contains(REPORT_STORE_NAME)) {
+                request.result.createObjectStore(REPORT_STORE_NAME, { keyPath: 'id' });
+            }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error || new Error('Unable to open offline storage'));
+    });
+}
+
+function saveQueuedReport(record) {
+    return openReportDatabase().then(db => new Promise((resolve, reject) => {
+        const transaction = db.transaction(REPORT_STORE_NAME, 'readwrite');
+        transaction.objectStore(REPORT_STORE_NAME).put(record);
+        transaction.oncomplete = () => { db.close(); resolve(); };
+        transaction.onerror = () => { db.close(); reject(transaction.error); };
+    }));
+}
+
+function getQueuedReports() {
+    return openReportDatabase().then(db => new Promise((resolve, reject) => {
+        const request = db.transaction(REPORT_STORE_NAME, 'readonly')
+            .objectStore(REPORT_STORE_NAME).getAll();
+        request.onsuccess = () => { db.close(); resolve(request.result || []); };
+        request.onerror = () => { db.close(); reject(request.error); };
+    }));
+}
+
+function deleteQueuedReport(id) {
+    return openReportDatabase().then(db => new Promise((resolve, reject) => {
+        const transaction = db.transaction(REPORT_STORE_NAME, 'readwrite');
+        transaction.objectStore(REPORT_STORE_NAME).delete(id);
+        transaction.oncomplete = () => { db.close(); resolve(); };
+        transaction.onerror = () => { db.close(); reject(transaction.error); };
+    }));
+}
+
+async function formToQueuedReport(form) {
+    const formData = new FormData(form);
+    const fields = {};
+    const files = [];
+    for (const [name, value] of formData.entries()) {
+        if (value instanceof File) {
+            if (value.size) {
+                files.push({
+                    name: value.name,
+                    type: value.type,
+                    lastModified: value.lastModified,
+                    data: await value.arrayBuffer(),
+                });
+            }
+        } else {
+            fields[name] = value;
+        }
+    }
+    const id = window.crypto && window.crypto.randomUUID
+        ? window.crypto.randomUUID()
+        : 'report-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+    return { id, fields, files, queuedAt: Date.now() };
+}
+
+function saveDraft(form) {
+    const values = {};
+    form.querySelectorAll('input:not([type="file"]), textarea, select').forEach(field => {
+        if (field.name) values[field.name] = field.value;
+    });
+    try {
+        localStorage.setItem(REPORT_DRAFT_KEY, JSON.stringify(values));
+    } catch (error) {
+        // Draft recovery is best effort; submission queue remains authoritative.
+    }
+}
+
+function restoreDraft(form) {
+    try {
+        const values = JSON.parse(localStorage.getItem(REPORT_DRAFT_KEY) || '{}');
+        Object.entries(values).forEach(([name, value]) => {
+            const field = form.elements.namedItem(name);
+            if (field && !field.value) field.value = value;
+        });
+    } catch (error) {
+        // Ignore malformed or unavailable local draft data.
+    }
+}
+
+function clearDraft() {
+    try { localStorage.removeItem(REPORT_DRAFT_KEY); } catch (error) { }
+}
+
+async function sendQueuedReport(record) {
+    const body = new FormData();
+    Object.entries(record.fields).forEach(([name, value]) => body.append(name, value));
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    if (csrfToken) body.set('csrf_token', csrfToken);
+    record.files.forEach(file => body.append(
+        'media', new Blob([file.data], { type: file.type }), file.name
+    ));
+    const response = await fetch('{{ url_for('responder.responder_report') }}', {
+        method: 'POST', body, credentials: 'same-origin', redirect: 'follow',
+    });
+    if (!response.ok) throw new Error('Server rejected the queued report');
+}
+
+async function flushReportQueue() {
+    if (!navigator.onLine) return;
+    let queuedReports;
+    try {
+        queuedReports = await getQueuedReports();
+    } catch (error) {
+        return;
+    }
+    for (const record of queuedReports.sort((a, b) => a.queuedAt - b.queuedAt)) {
+        try {
+            await sendQueuedReport(record);
+            await deleteQueuedReport(record.id);
+        } catch (error) {
+            reportStatus('Queued report is waiting for a reliable connection.', 'warning');
+            return;
+        }
+    }
+    if (queuedReports.length) reportStatus('Queued field reports sent.', 'success');
+}
+
+async function submitFieldReport(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const submitButton = form.querySelector('button[type="submit"]');
+    if (submitButton) submitButton.disabled = true;
+    saveDraft(form);
+
+    try {
+        const record = await formToQueuedReport(form);
+        if (!navigator.onLine) {
+            await saveQueuedReport(record);
+            clearDraft();
+            form.reset();
+            document.getElementById('file-preview').innerHTML = '';
+            reportStatus('No connection. Report saved on this device and queued for delivery.', 'warning');
+            return;
+        }
+
+        const response = await fetch(form.action, {
+            method: 'POST', body: new FormData(form),
+            credentials: 'same-origin', redirect: 'follow',
+        });
+        if (!response.ok) throw new Error('Server rejected the report');
+        clearDraft();
+        window.location.assign(response.url);
+    } catch (error) {
+        if (!navigator.onLine || error instanceof TypeError) {
+            try {
+                await saveQueuedReport(await formToQueuedReport(form));
+                clearDraft();
+                reportStatus('Connection lost. Report saved on this device and queued for delivery.', 'warning');
+            } catch (queueError) {
+                reportStatus('Connection lost. Keep this page open and retry when online.', 'danger');
+            }
+        } else {
+            reportStatus('Report could not be submitted. Your draft remains saved.', 'danger');
+        }
+    } finally {
+        if (submitButton) submitButton.disabled = false;
+    }
+}
+
+const fieldReportForm = document.getElementById('field-report-form');
+if (fieldReportForm) {
+    restoreDraft(fieldReportForm);
+    fieldReportForm.addEventListener('input', () => saveDraft(fieldReportForm));
+    fieldReportForm.addEventListener('change', () => saveDraft(fieldReportForm));
+    fieldReportForm.addEventListener('submit', submitFieldReport);
+    window.addEventListener('online', flushReportQueue);
+    flushReportQueue();
+    reportStatus(navigator.onLine ? 'Online. Reports submit normally.' : 'Offline. Reports will be queued on this device.', navigator.onLine ? 'muted' : 'warning');
 }
 </script>
 {% endblock %}

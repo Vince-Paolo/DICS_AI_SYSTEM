@@ -75,6 +75,12 @@
                     This incident response was closed on
                     <strong class="text-white">{{ response.closed_at.strftime('%b %d, %Y at %H:%M') if response.closed_at else 'unknown date' }}</strong>.
                 </p>
+                <form method="POST" action="{{ url_for('commander.reopen_incident_response', response_id=response.id) }}" data-confirm="Reopen this incident response and resume active operations?" data-confirm-title="Reopen incident response">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-warning btn-modern px-5 py-2">
+                        <i class="bi bi-arrow-counterclockwise me-2"></i>Reopen Response
+                    </button>
+                </form>
                 <a href="{{ url_for('commander.incident_commander_dashboard') }}" class="btn btn-primary-modern btn-modern px-5 py-2">
                     <i class="bi bi-arrow-left me-2"></i>Return to Command Center
                 </a>

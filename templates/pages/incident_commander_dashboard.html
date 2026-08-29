@@ -107,7 +107,7 @@
         <div class="stat-card card-gradient-primary h-100">
             <div class="d-flex align-items-center justify-content-between">
                 <div>
-                    <div class="stat-label">Pending Tasks</div>
+                    <div class="stat-label">Open Tasks</div>
                     <div class="stat-value">{{ total_tasks }}</div>
                     <div class="stat-description">Awaiting completion</div>
                 </div>
@@ -133,15 +133,15 @@
     </div>
 </div>
 
-<!-- Active Incident Responses -->
+<!-- Open Incident Responses -->
 <div class="card card-custom shadow-lg mb-4">
     <div class="card-body p-4">
         <div class="d-flex align-items-center gap-2 mb-4">
             <div class="icon-badge" style="background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.3);">
                 <i class="bi bi-shield-check"></i>
             </div>
-            <h5 class="mb-0">Active Incident Responses</h5>
-            <span class="ms-2 badge badge-status-active" style="font-size:0.7rem;">LIVE</span>
+            <h5 class="mb-0">Open Incident Responses</h5>
+            <span class="ms-2 badge badge-status-active" style="font-size:0.7rem;">ACTIVE / MONITORING</span>
         </div>
 
         {% if active_responses %}
@@ -168,7 +168,7 @@
                                 </span>
                             </td>
                             <td data-label="Location"><span class="text-muted small">{{ response.incident.location or 'Unknown' }}</span></td>
-                            <td data-label="Status"><span class="badge-status-active text-uppercase" style="font-size:0.72rem;">{{ response.status }}</span></td>
+                            <td data-label="Status"><span class="badge-status-{{ 'active' if response.status == 'ACTIVE' else 'pending' }} text-uppercase" style="font-size:0.72rem;">{{ response.status }}</span></td>
                             <td data-label="Priority" class="priority-status-cell">
                                 {{ hz.priority_badge(response.priority_level, label=response.priority_level if response.priority_level not in ['CRITICAL','HIGH'] else none) }}
                             </td>
@@ -184,19 +184,19 @@
                 </table>
             </div>
         {% else %}
-            {{ es.render('bi-shield-check', 'No Active Responses', subtitle='All clear — no incidents currently being managed.', variant='success') }}
+            {{ es.render('bi-shield-check', 'No Open Responses', subtitle='All clear — no incidents currently being managed.', variant='success') }}
         {% endif %}
     </div>
 </div>
 
-<!-- Critical Incidents Requiring Response -->
+<!-- High-Priority Incidents Requiring Response -->
 <div class="card card-custom shadow-lg mb-4">
     <div class="card-body p-4">
         <div class="d-flex align-items-center gap-2 mb-4">
             <div class="icon-badge icon-badge-warning">
                 <i class="bi bi-exclamation-triangle-fill"></i>
             </div>
-            <h5 class="mb-0">Critical Incidents Requiring Response</h5>
+            <h5 class="mb-0">High-Priority Incidents Requiring Response</h5>
         </div>
 
         {% if critical_incidents %}
@@ -252,7 +252,7 @@
                 </table>
             </div>
         {% else %}
-            {{ es.render('bi-check-circle', 'No Critical Incidents Pending', subtitle='All critical incidents have active responses.', variant='success') }}
+            {{ es.render('bi-check-circle', 'No High-Priority Incidents Pending', subtitle='All high-priority incidents have active responses.', variant='success') }}
         {% endif %}
     </div>
 </div>

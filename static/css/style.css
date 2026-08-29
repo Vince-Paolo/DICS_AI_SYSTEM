@@ -233,8 +233,31 @@ button:focus-visible,
     font-weight: 600;
     font-size: 0.9rem;
 }
+.form-label.required .required-indicator,
+.form-label .required-indicator {
+    color: var(--hazard-high) !important;
+    font-weight: 700;
+    margin-left: 0.2rem;
+}
 .form-label::after {
     color: var(--hazard-high);
+}
+
+.required-legend {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0 0 1rem;
+    color: var(--text-muted, #9CA3AF);
+    font-size: 0.76rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+.required-legend .required-indicator {
+    color: var(--hazard-high) !important;
+    font-size: 0.9rem;
+    line-height: 1;
 }
 
 /* Neutralize default browser fieldset/legend chrome so grouped radio/checkbox
@@ -751,15 +774,15 @@ p.text-muted {
 }
 
 .btn-success-modern {
-    background: linear-gradient(135deg, #059669, #10B981) !important;
+    background: linear-gradient(135deg, #065F46, #047857) !important;
     color: #ffffff !important;
-    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+    box-shadow: 0 4px 15px rgba(6, 95, 70, 0.3);
     white-space: nowrap !important;
 }
 
 .btn-success-modern:hover {
-    background: linear-gradient(135deg, #10B981, #34D399) !important;
-    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5);
+    background: linear-gradient(135deg, #059669, #047857) !important;
+    box-shadow: 0 8px 25px rgba(6, 95, 70, 0.5);
     transform: translateY(-2px);
 }
 
@@ -1516,26 +1539,33 @@ p.text-muted {
         font-size: 1.1rem !important;
     }
     
-    /* Button scaling for mobile */
+    /* Button scaling for mobile — prioritize tap targets for field users */
     .btn, .btn-sm, .btn-lg {
-        font-size: 0.75rem !important;
-        padding: 0.5rem 0.9rem !important;
+        font-size: 0.85rem !important;
+        padding: 0.6rem 1rem !important;
+        min-height: 44px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
     
     .btn-modern {
-        padding: 0.6rem 1rem !important;
-        font-size: 0.75rem !important;
+        padding: 0.75rem 1.1rem !important;
+        font-size: 0.85rem !important;
+        min-height: 44px !important;
     }
     
     .btn-primary-modern, .btn-success-modern {
-        padding: 0.6rem 1rem !important;
-        font-size: 0.75rem !important;
+        padding: 0.75rem 1.1rem !important;
+        font-size: 0.85rem !important;
+        min-height: 44px !important;
     }
     
-    /* Small buttons (action buttons in tables) */
+    /* Small buttons (action buttons in tables) — maintain 44px tap target */
     .btn-sm {
-        padding: 0.35rem 0.65rem !important;
-        font-size: 0.7rem !important;
+        padding: 0.5rem 0.85rem !important;
+        font-size: 0.8rem !important;
+        min-height: 44px !important;
     }
     
     /* Badge scaling */
@@ -2478,7 +2508,11 @@ p.text-muted {
     .table-mobile-stack a.btn,
     .table-mobile-stack button.btn {
         font-size: 0.85rem;
-        padding: 0.5rem 1rem;
+        padding: 0.6rem 1rem;
+        min-height: 44px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
 }
 
