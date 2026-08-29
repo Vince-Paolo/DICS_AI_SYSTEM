@@ -1,0 +1,147 @@
+{
+  "calabarzon_batangas_offshore": {
+    "geometry": "circle",
+    "center_lat": 13.71,
+    "center_lon": 120.57,
+    "region_radius_km": 60.0,
+    "omori": {
+      "K": 29.233,
+      "c": 0.0011,
+      "p": 0.45
+    },
+    "gr": {
+      "a": 2.754,
+      "b": 0.97
+    },
+    "spatial": {
+      "D0": 2.7061,
+      "L_km": 4.05,
+      "r90_km": 35.5,
+      "fit_valid_to_km": 50.0
+    },
+    "productivity_a": -1.67,
+    "is_proxy": false,
+    "source": "2021-07-24 04:48:00 M6.6 015 km S 28\u00b0 W of Calatagan (Batangas) (PHIVOLCS catalog, 90day window, 100km radius, Mc=2.0, n=568)",
+    "calibrated_at": "2026-07-12T14:59:46.867028+00:00"
+  },
+  "occidental_mindoro_auto": {
+    "geometry": "circle",
+    "center_lat": 14.05,
+    "center_lon": 119.11,
+    "region_radius_km": 60.0,
+    "omori": {
+      "K": 142.634,
+      "c": 0.6084,
+      "p": 0.898
+    },
+    "gr": {
+      "a": 2.91,
+      "b": 0.618
+    },
+    "spatial": {
+      "D0": 0.2591,
+      "L_km": 36.747,
+      "r90_km": 39.3,
+      "fit_valid_to_km": 50.0
+    },
+    "productivity_a": -1.67,
+    "is_proxy": false,
+    "source": "2022-03-14 05:05:00 M6.4 111 km N 79\u00b0 W of Lubang (Occidental Mindoro) (PHIVOLCS catalog, 90day window, 100km radius, Mc=2.0, n=812)",
+    "calibrated_at": "2026-07-12T14:59:46.959040+00:00"
+  },
+  "cagayan_auto": {
+    "geometry": "circle",
+    "center_lat": 19.27,
+    "center_lon": 121.15,
+    "region_radius_km": 60.0,
+    "omori": {
+      "K": 10.708,
+      "c": 0.1272,
+      "p": 1.163
+    },
+    "gr": {
+      "a": 2.267,
+      "b": 0.611
+    },
+    "spatial": {
+      "D0": 0.2408,
+      "L_km": 9.587,
+      "r90_km": 35.1,
+      "fit_valid_to_km": 50.0
+    },
+    "productivity_a": -1.67,
+    "is_proxy": false,
+    "source": "2023-09-12 19:03:00 M6.3 019 km N 18\u00b0 W of Dalupiri Island (Calayan) (Cagayan) (PHIVOLCS catalog, 90day window, 100km radius, Mc=2.0, n=185)",
+    "calibrated_at": "2026-07-12T14:59:47.038840+00:00"
+  },
+  "zambales_auto": {
+    "geometry": "circle",
+    "center_lat": 15.02,
+    "center_lon": 120.34,
+    "region_radius_km": 60.0,
+    "omori": {
+      "K": 20.009,
+      "c": 0.0,
+      "p": 0.537
+    },
+    "gr": {
+      "a": 2.107,
+      "b": 0.986
+    },
+    "spatial": {
+      "D0": 0.2777,
+      "L_km": 7.376,
+      "r90_km": 24.2,
+      "fit_valid_to_km": 50.0
+    },
+    "productivity_a": -1.67,
+    "is_proxy": false,
+    "source": "2019-04-22 17:11:00 M6.1 018 km N 58\u00b0 E of Castillejos (Zambales) (PHIVOLCS catalog, 90day window, 100km radius, Mc=2.0, n=128)",
+    "calibrated_at": "2026-07-12T14:59:47.150725+00:00"
+  },
+  "masbate_auto": {
+    "geometry": "circle",
+    "center_lat": 12.32,
+    "center_lon": 123.75,
+    "region_radius_km": 60.0,
+    "omori": {
+      "K": 16.692,
+      "c": 0.0,
+      "p": 0.715
+    },
+    "gr": {
+      "a": 2.318,
+      "b": 0.573
+    },
+    "spatial": {
+      "D0": 0.477,
+      "L_km": 9.016,
+      "r90_km": 22.7,
+      "fit_valid_to_km": 50.0
+    },
+    "productivity_a": -1.67,
+    "is_proxy": false,
+    "source": "2023-02-16 02:10:00 M6.0 011 km S 20\u00b0 W of Batuan (Masbate) (PHIVOLCS catalog, 90day window, 100km radius, Mc=2.0, n=208)",
+    "calibrated_at": "2026-07-12T14:59:47.244164+00:00"
+  },
+  "ilocos_norte_auto": {
+    "geometry": "circle",
+    "center_lat": 19.09,
+    "center_lon": 120.5,
+    "region_radius_km": 60.0,
+    "omori": {
+      "K": 2.649,
+      "c": 0.0,
+      "p": 0.997
+    },
+    "gr": {
+      "a": 2.137,
+      "b": 0.597
+    },
+    "spatial": null,
+    "productivity_a": -1.67,
+    "is_proxy": false,
+    "source": "2025-09-02 10:29:00 M5.1 066 km N 14\u00b0 W of Burgos (Ilocos Norte) (PHIVOLCS catalog, 90day window, 100km radius, Mc=2.0, n=137)",
+    "calibrated_at": "2026-07-12T14:59:48.273595+00:00"
+  }
+}
