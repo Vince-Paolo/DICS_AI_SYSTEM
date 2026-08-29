@@ -1,4 +1,6 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+
+from sqlalchemy import text
 
 from services.realtime_data import (
     get_all_weather_data,
@@ -9,6 +11,7 @@ from services.realtime_data import (
 )
 from ai.decision_support import predict_hazard
 from models import db, Incident, utcnow
+from services.aftershock import forecast_for_event
 
 # Earthquake severity is judged from real USGS magnitude readings, not the
 # rainfall/river/soil-moisture AI decision support call (which has no
@@ -81,7 +84,7 @@ def _parse_epoch_millis(raw_value):
     if raw_value is None:
         return None
     try:
-        return datetime.utcfromtimestamp(float(raw_value) / 1000)
+        return datetime.fromtimestamp(float(raw_value) / 1000, timezone.utc).replace(tzinfo=None)
     except (TypeError, ValueError, OSError):
         return None
 
@@ -115,6 +118,7 @@ def monitor_earthquakes(app):
         raw_event_id = quake.get("event_id")
         external_event_id = f"usgs:{raw_event_id}" if raw_event_id else None
         event_time = _parse_epoch_millis(quake.get("time"))
+        aftershock_forecast = forecast_for_event(magnitude, event_time)
 
         # De-dupe on the quake's own USGS event id when available, not on a
         # wall-clock window: get_earthquake_data() has no guarantee the same
@@ -150,7 +154,10 @@ def monitor_earthquakes(app):
             population_density=0,
             score=_magnitude_to_score(magnitude),
             level=_magnitude_to_level(magnitude),
-            message=f"Magnitude {magnitude:.1f} earthquake detected near {location}.",
+            message=(
+                f"Magnitude {magnitude:.1f} earthquake detected near {location}."
+                + (f" {aftershock_forecast['message']}" if aftershock_forecast else '')
+            )[:255],
             alert=True,
             status='ACTIVE',
             reported_by='system',
@@ -313,10 +320,39 @@ def monitor_volcanoes_eonet(app):
     return created_any
 
 
+_HAZARD_MONITOR_LOCK_KEY = 82463917
+
+
 def monitor_hazards():
+    """Run one monitor cycle, allowing only one Postgres worker to proceed."""
     from app import app
 
     with app.app_context():
+        if db.engine.dialect.name == 'postgresql':
+            # A module-level flag cannot coordinate separate Gunicorn workers.
+            # Keep the advisory-lock connection open for the whole cycle.
+            with db.engine.connect() as lock_connection:
+                acquired = lock_connection.execute(
+                    text('SELECT pg_try_advisory_lock(:key)'),
+                    {'key': _HAZARD_MONITOR_LOCK_KEY},
+                ).scalar()
+                if not acquired:
+                    app.logger.info('Hazard monitoring skipped: another worker owns the monitor lock')
+                    return
+                try:
+                    _monitor_hazards_once(app)
+                finally:
+                    lock_connection.execute(
+                        text('SELECT pg_advisory_unlock(:key)'),
+                        {'key': _HAZARD_MONITOR_LOCK_KEY},
+                    )
+                    lock_connection.commit()
+            return
+
+        _monitor_hazards_once(app)
+
+
+def _monitor_hazards_once(app):
         monitor_earthquakes(app)
         monitor_floods_gdacs(app)
         monitor_volcanoes_eonet(app)

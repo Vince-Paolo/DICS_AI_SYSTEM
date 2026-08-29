@@ -2,11 +2,13 @@ import os
 import glob
 import sqlite3
 import threading
-from datetime import datetime
+import secrets
+from datetime import datetime, timedelta, timezone
 from flask import Flask, current_app, render_template, request, redirect, url_for, session, flash, send_from_directory
 from sqlalchemy import text
 from flask_wtf.csrf import CSRFProtect, generate_csrf
-from werkzeug.security import generate_password_hash, check_password_hash
+from flask_migrate import Migrate
+from werkzeug.security import check_password_hash, generate_password_hash
 from flask_apscheduler import APScheduler
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -15,50 +17,16 @@ from models import db, User, Incident, IncidentResponse, Task, Resource, Citizen
 from scheduler import monitor_hazards
 from services.realtime_data import get_all_weather_data, get_weather_data, get_earthquake_data
 from services import permissions as permission_service
+from services.passwords import verify_and_migrate
 from ai.decision_support import predict_hazard
 from seed.demo_data import seed_geography_data
 
 from blueprints.admin import admin_bp
-from blueprints.commander import (
-    commander_bp,
-    incident_commander_dashboard,
-    incident_response_tasks,
-    incident_response_resources,
-    incident_response_reports,
-    incident_response_timeline,
-    incident_response_close_page,
-    assign_task,
-    allocate_resource,
-    create_situation_report,
-    update_task,
-    update_resource,
-)
-from blueprints.coordinator import (
-    coordinator_bp,
-    coordinator_dashboard,
-    coordinator_tasks,
-    coordinator_team,
-    coordinator_resources,
-    coordinator_reports,
-    coordinator_comms,
-    coordinator_submit_report,
-    coordinator_update_task,
-    coordinator_update_resource,
-    coordinator_allocate_resource,
-    coordinator_quick_report,
-    coordinator_response_detail,
-)
-from blueprints.responder import (
-    responder_bp,
-    responder_dashboard,
-    responder_tasks,
-    responder_checklist,
-    responder_report,
-    responder_update_task,
-    responder_complete_task,
-)
-from blueprints.eoc import eoc_bp, eoc_dashboard, eoc_incident_monitoring, eoc_resource_monitoring
-from blueprints.citizen import citizen_bp, citizen_report, citizen_status, citizen_resources, citizen_alerts, citizen_dashboard
+from blueprints.commander import commander_bp
+from blueprints.coordinator import coordinator_bp
+from blueprints.responder import responder_bp
+from blueprints.eoc import eoc_bp
+from blueprints.citizen import citizen_bp
 from blueprints.ai import ai_bp
 from blueprints.facilities import facilities_bp
 
@@ -118,6 +86,36 @@ app.config['PROPAGATE_EXCEPTIONS'] = False
 app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE', 'false').lower() == 'true'
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['ENABLE_HSTS'] = os.environ.get('ENABLE_HSTS', 'false').lower() == 'true'
+
+
+@app.after_request
+def add_security_headers(response):
+    response.headers.setdefault(
+        'Content-Security-Policy',
+        "default-src 'self'; "
+        "base-uri 'self'; "
+        "object-src 'none'; "
+        "frame-ancestors 'none'; "
+        "form-action 'self'; "
+        "script-src 'self' 'unsafe-inline' "
+        "https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com; "
+        "style-src 'self' 'unsafe-inline' "
+        "https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com; "
+        "font-src 'self' https://cdn.jsdelivr.net data:; "
+        "img-src 'self' data: blob: https://tile.openstreetmap.org https://*.tile.openstreetmap.org; "
+        "connect-src 'self' https://nominatim.openstreetmap.org; "
+        "media-src 'self' blob:; "
+        "worker-src 'self' blob:"
+    )
+    response.headers.setdefault('X-Frame-Options', 'DENY')
+    response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+    if app.config['ENABLE_HSTS'] and request.is_secure:
+        response.headers.setdefault(
+            'Strict-Transport-Security',
+            'max-age=31536000; includeSubDomains'
+        )
+    return response
 
 csrf = CSRFProtect(app)
 
@@ -137,6 +135,7 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'].update({
 })
 
 db.init_app(app)
+migrate = Migrate(app, db, directory=os.path.join(base_dir, 'migrations'))
 
 if app.config['SQLALCHEMY_DATABASE_URI'].startswith('postgresql:'):
     from sqlalchemy import event as _sa_event
@@ -188,50 +187,6 @@ app.register_blueprint(facilities_bp)
 # real-time alert on the EOC dashboard (see /eoc/sos-incidents/pending),
 # which repeated fake submissions would actively disrupt.
 app.view_functions['citizen.emergency_sos'] = limiter.limit("5 per minute")(app.view_functions['citizen.emergency_sos'])
-
-# Backward-compatible aliases for legacy endpoint names used by older templates.
-app.add_url_rule('/incident-commander-dashboard', endpoint='incident_commander_dashboard', view_func=incident_commander_dashboard)
-app.add_url_rule('/incident-response/<int:response_id>/tasks', endpoint='incident_response_tasks', view_func=incident_response_tasks)
-app.add_url_rule('/incident-response/<int:response_id>/resources', endpoint='incident_response_resources', view_func=incident_response_resources)
-app.add_url_rule('/incident-response/<int:response_id>/reports', endpoint='incident_response_reports', view_func=incident_response_reports)
-app.add_url_rule('/incident-response/<int:response_id>/timeline', endpoint='incident_response_timeline', view_func=incident_response_timeline)
-app.add_url_rule('/incident-response/<int:response_id>/close', endpoint='incident_response_close_page', view_func=incident_response_close_page)
-app.add_url_rule('/incident-response/<int:response_id>/assign-task', endpoint='assign_task', view_func=assign_task)
-app.add_url_rule('/incident-response/<int:response_id>/allocate-resource', endpoint='allocate_resource', view_func=allocate_resource)
-app.add_url_rule('/incident-response/<int:response_id>/create-report', endpoint='create_situation_report', view_func=create_situation_report)
-app.add_url_rule('/incident-response/<int:response_id>/update-task/<int:task_id>', endpoint='update_task', view_func=update_task)
-app.add_url_rule('/incident-response/<int:response_id>/update-resource/<int:resource_id>', endpoint='update_resource', view_func=update_resource)
-app.add_url_rule('/coordinator', endpoint='coordinator_dashboard', view_func=coordinator_dashboard)
-app.add_url_rule('/coordinator/tasks', endpoint='coordinator_tasks', view_func=coordinator_tasks)
-app.add_url_rule('/coordinator/team', endpoint='coordinator_team', view_func=coordinator_team)
-app.add_url_rule('/coordinator/resources', endpoint='coordinator_resources', view_func=coordinator_resources)
-app.add_url_rule('/coordinator/reports', endpoint='coordinator_reports', view_func=coordinator_reports)
-app.add_url_rule('/coordinator/comms', endpoint='coordinator_comms', view_func=coordinator_comms)
-app.add_url_rule('/coordinator/reports/submit', endpoint='coordinator_submit_report', view_func=coordinator_submit_report, methods=['POST'])
-app.add_url_rule('/coordinator/tasks/<int:task_id>/update', endpoint='coordinator_update_task', view_func=coordinator_update_task, methods=['POST'])
-app.add_url_rule('/coordinator/resources/<int:resource_id>/update', endpoint='coordinator_update_resource', view_func=coordinator_update_resource, methods=['POST'])
-app.add_url_rule('/coordinator/resources/allocate', endpoint='coordinator_allocate_resource', view_func=coordinator_allocate_resource, methods=['POST'])
-app.add_url_rule('/coordinator/quick-report', endpoint='coordinator_quick_report', view_func=coordinator_quick_report, methods=['POST'])
-app.add_url_rule('/coordinator/response/<int:response_id>', endpoint='coordinator_response_detail', view_func=coordinator_response_detail)
-app.add_url_rule('/responder-dashboard', endpoint='responder_dashboard', view_func=responder_dashboard)
-app.add_url_rule('/responder-tasks', endpoint='responder_tasks', view_func=responder_tasks)
-app.add_url_rule('/responder-checklist', endpoint='responder_checklist', view_func=responder_checklist)
-app.add_url_rule('/responder-report', endpoint='responder_report', view_func=responder_report, methods=['GET', 'POST'])
-app.add_url_rule('/responder-task/<int:task_id>/update', endpoint='responder_update_task', view_func=responder_update_task, methods=['POST'])
-app.add_url_rule('/responder-task/<int:task_id>/complete', endpoint='responder_complete_task', view_func=responder_complete_task, methods=['POST'])
-app.add_url_rule('/eoc-dashboard', endpoint='eoc_dashboard', view_func=eoc_dashboard)
-app.add_url_rule('/eoc/incidents', endpoint='eoc_incident_monitoring', view_func=eoc_incident_monitoring)
-app.add_url_rule('/eoc/resources', endpoint='eoc_resource_monitoring', view_func=eoc_resource_monitoring)
-app.add_url_rule('/citizen-dashboard', endpoint='citizen_dashboard', view_func=citizen_dashboard)
-app.add_url_rule('/citizen-report', endpoint='citizen_report', view_func=citizen_report, methods=['GET', 'POST'])
-app.add_url_rule('/citizen-status', endpoint='citizen_status', view_func=citizen_status)
-app.add_url_rule('/citizen-resources', endpoint='citizen_resources', view_func=citizen_resources)
-app.add_url_rule('/citizen-alerts', endpoint='citizen_alerts', view_func=citizen_alerts)
-# Missing aliases that caused BuildError crashes in templates
-from blueprints.commander import activate_incident_response, incident_response_detail
-app.add_url_rule('/incident/<int:incident_id>/activate-response', endpoint='activate_incident_response', view_func=activate_incident_response, methods=['POST'])
-app.add_url_rule('/incident-response/<int:response_id>', endpoint='incident_response_detail', view_func=incident_response_detail)
-
 
 @app.errorhandler(404)
 def handle_not_found(error):
@@ -290,6 +245,10 @@ def migrate_user_table():
                 cursor.execute("ALTER TABLE user ADD COLUMN is_disabled BOOLEAN DEFAULT 0")
             if 'must_change_password' not in columns:
                 cursor.execute("ALTER TABLE user ADD COLUMN must_change_password BOOLEAN DEFAULT 0")
+            if 'reset_token' not in columns:
+                cursor.execute("ALTER TABLE user ADD COLUMN reset_token VARCHAR(500)")
+            if 'reset_token_expires_at' not in columns:
+                cursor.execute("ALTER TABLE user ADD COLUMN reset_token_expires_at DATETIME")
             conn.commit()
 
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='incident'")
@@ -406,6 +365,19 @@ def migrate_incident_commander_tables():
         conn.commit()
 
 
+def migrate_external_event_id_constraint():
+    """Add the external-event deduplication guarantee to existing databases."""
+    if db.engine.dialect.name not in {'sqlite', 'postgresql'}:
+        return
+
+    db.session.execute(text(
+        'CREATE UNIQUE INDEX IF NOT EXISTS uq_incident_external_event_id '
+        'ON incident (external_event_id) '
+        'WHERE external_event_id IS NOT NULL'
+    ))
+    db.session.commit()
+
+
 def create_default_admin():
     admin_password = os.environ.get('ADMIN_PASSWORD')
     if not admin_password:
@@ -497,6 +469,7 @@ def create_tables():
             db.create_all()
             migrate_user_table()
             migrate_incident_commander_tables()
+            migrate_external_event_id_constraint()
             create_default_admin()
             seed_agencies()
             seed_geography_data()
@@ -549,6 +522,7 @@ def lazy_init():
 
                 db.create_all()
                 migrate_user_table()
+                migrate_external_event_id_constraint()
                 create_default_admin()
                 seed_agencies()
                 seed_geography_data()
@@ -590,34 +564,13 @@ def enforce_password_change():
 
 
 def verify_password(user, password):
-    if user is None:
-        return False
-
-    stored = user.password
-    if not stored:
-        return False
-    
-    try:
-        if check_password_hash(stored, password):
-            return True
-    except (ValueError, TypeError) as e:
-        app.logger.warning(f'Password hash check failed for user {user.username}: {e}')
-        pass
-    except Exception as e:
-        app.logger.error(f'Unexpected error in password hash check for user {user.username}: {e}')
-        pass
-
-    if stored == password:
-        user.password = generate_password_hash(password)
-        try:
-            db.session.commit()
-        except Exception as e:
-            db.session.rollback()
-            app.logger.error(f'Failed to update password for user {user.username}: {e}')
-            return False
-        return True
-
-    return False
+    return verify_and_migrate(
+        user,
+        password,
+        commit=db.session.commit,
+        rollback=db.session.rollback,
+        log=app.logger,
+    )
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -709,11 +662,70 @@ def register():
                 db.session.commit()
             except Exception as e:
                 db.session.rollback()
-                flash(f'Error creating account: {str(e)}', 'error')
+                app.logger.exception('Failed to create account')
+                flash('Unable to create account. Please try again.', 'error')
                 return render_template('pages/register.html', error=None)
             flash('Registration successful! You can now log in.', 'success')
             return redirect(url_for('login'))
     return render_template('pages/register.html', error=error)
+
+
+@app.route('/forgot-password', methods=['GET', 'POST'])
+@limiter.limit("10 per minute")
+def forgot_password():
+    if 'username' in session:
+        return redirect(url_for('dashboard'))
+
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        user = User.query.filter_by(email=email).first() if email else None
+        if user:
+            token = secrets.token_urlsafe(32)
+            user.reset_token = token
+            user.reset_token_expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=1)
+            try:
+                db.session.commit()
+            except Exception as exc:
+                db.session.rollback()
+                app.logger.exception('Failed to create password reset token')
+        flash('If an account exists for that email, a reset link has been sent.', 'success')
+        return redirect(url_for('login'))
+
+    return render_template('pages/forgot_password.html')
+
+
+@app.route('/reset-password/<token>', methods=['GET', 'POST'])
+@limiter.limit("10 per minute")
+def reset_password(token):
+    user = User.query.filter_by(reset_token=token).first()
+    if not user or not user.reset_token_expires_at or user.reset_token_expires_at < datetime.now(timezone.utc).replace(tzinfo=None):
+        flash('This password reset link is invalid or has expired.', 'error')
+        return redirect(url_for('login'))
+
+    error = None
+    if request.method == 'POST':
+        new_password = request.form.get('new_password', '')
+        confirm_password = request.form.get('confirm_password', '')
+        if len(new_password) < 8:
+            error = 'New password must be at least 8 characters.'
+        elif new_password != confirm_password:
+            error = 'New password and confirmation do not match.'
+        else:
+            user.password = generate_password_hash(new_password)
+            user.reset_token = None
+            user.reset_token_expires_at = None
+            user.must_change_password = False
+            try:
+                db.session.commit()
+            except Exception as exc:
+                db.session.rollback()
+                app.logger.exception('Failed to update password from reset link')
+                flash('Unable to update password. Please try again.', 'error')
+                return render_template('pages/reset_password.html', token=token, error=None)
+            flash('Password updated successfully. Please sign in with your new password.', 'success')
+            return redirect(url_for('login'))
+
+    return render_template('pages/reset_password.html', token=token, error=error)
 
 
 @app.route('/logout')
@@ -755,7 +767,8 @@ def change_password():
                 db.session.commit()
             except Exception as e:
                 db.session.rollback()
-                flash(f'Error updating password: {str(e)}', 'error')
+                app.logger.exception('Failed to update password')
+                flash('Unable to update password. Please try again.', 'error')
                 return render_template('pages/change_password.html', error=None, forced=forced)
             session['must_change_password'] = False
             flash('Password updated successfully.', 'success')
@@ -800,7 +813,11 @@ def dashboard():
     recent_users = User.query.order_by(User.created_at.desc()).limit(5).all()
 
     backup_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance')
-    backup_files = sorted(glob.glob(os.path.join(backup_dir, 'dics_ai_backup_*.db')), reverse=True)
+    backup_files = sorted(
+        glob.glob(os.path.join(backup_dir, 'dics_ai_backup_*.db'))
+        + glob.glob(os.path.join(backup_dir, 'dics_ai_backup_*.dump')),
+        reverse=True,
+    )
     last_backup_time = None
     if backup_files:
         last_backup_time = datetime.fromtimestamp(os.path.getmtime(backup_files[0]))
@@ -870,7 +887,15 @@ def serve_upload(filename):
         return {'error': 'Invalid file path'}, 400
     if not os.path.exists(safe_path):
         return {'error': 'File not found'}, 404
-    return send_from_directory(upload_dir, filename)
+    extension = os.path.splitext(filename)[1].lower()
+    response = send_from_directory(
+        upload_dir,
+        filename,
+        as_attachment=extension not in {'.jpg', '.jpeg', '.png', '.webp'},
+        download_name=os.path.basename(filename),
+    )
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    return response
 
 
 @app.route('/api/realtime-data')
@@ -907,6 +932,9 @@ def get_dashboard_stats():
 def get_analytics_data():
     if 'username' not in session:
         return {'error': 'Unauthorized'}, 401
+    user = User.query.filter_by(username=session['username']).first()
+    if not permission_service.can_view_analytics(user):
+        return {'error': 'Forbidden'}, 403
 
     incident_rows = db.session.query(
         Incident.hazard_type,

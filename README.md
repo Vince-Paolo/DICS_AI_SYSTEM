@@ -76,6 +76,26 @@ The application also supports a local environment file (`.env`) at the project
 root. The AI module loads values from that file before it looks at the process
 environment.
 
+## Database Migrations
+
+Production schema changes are managed with Flask-Migrate/Alembic. The
+deployment command runs `flask --app app db upgrade` before Gunicorn starts,
+using the configured `DATABASE_URL` (including PostgreSQL).
+
+For a model change, generate and review a revision locally:
+
+```bash
+flask --app app db migrate -m "describe the schema change"
+flask --app app db upgrade
+```
+
+Commit the generated file under `migrations/versions/` with the code change.
+Do not use `db.create_all()` as a production migration mechanism. A database
+that predates this Alembic history must be verified against the baseline schema
+and stamped once with `flask --app app db stamp 46f03dfa7e95`; do this only
+after confirming the existing database already contains the baseline tables
+and constraints. New databases should use `db upgrade`, not `stamp`.
+
 Example:
 
 ```bash
@@ -142,6 +162,8 @@ production-safety variables should be present:
 export SECRET_KEY=development-secret
 export DATABASE_URL=sqlite:////absolute/path/to/instance/database.db
 export ADMIN_PASSWORD=change-me-now
+# Set to true only when the deployment is served exclusively over HTTPS.
+export ENABLE_HSTS=true
 ```
 
 For optional live AI execution, set the provider-specific keys as described
@@ -179,6 +201,10 @@ Or, when the environment has pytest installed:
 pytest tests/
 ```
 
+Every push and pull request runs the full unittest suite and the standalone
+aftershock checks through the GitHub Actions workflow in
+`.github/workflows/application-tests.yml`.
+
 The app includes a responder-route regression suite in [tests/test_responder_routes.py](tests/test_responder_routes.py) and standalone prediction/aftershock checks.
 
 ---
@@ -204,7 +230,7 @@ The app includes a responder-route regression suite in [tests/test_responder_rou
 
 Additional references:
 
-- [PRIVILEGE_MODEL.md](PRIVILEGE_MODEL.md) for the role model
+- [Permission matrix](docs/permissions-matrix.md) for the canonical role and capability policy
 - [data/README.md](data/README.md) for catalog and calibration notes
 
 ---

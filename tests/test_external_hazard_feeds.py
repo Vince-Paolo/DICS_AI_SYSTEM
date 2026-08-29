@@ -9,7 +9,7 @@ TEST_DB_PATH = os.path.abspath(os.path.join('instance', 'test_external_hazard_fe
 os.environ.setdefault('DATABASE_URL', f'sqlite:///{TEST_DB_PATH}')
 
 from app import app, db
-from models import Incident
+from models import Incident, utcnow
 from seed.demo_data import seed_geography_data
 import services.realtime_data as realtime_data
 import scheduler
@@ -219,7 +219,7 @@ class ExternalHazardMonitorTestCase(unittest.TestCase):
                 # used to let the same event slip back through).
                 stale = Incident.query.filter_by(hazard_type='earthquake', external_event_id='usgs:us7000example').first()
                 self.assertIsNotNone(stale)
-                stale.created_at = datetime.utcnow() - timedelta(days=6)
+                stale.created_at = utcnow() - timedelta(days=6)
                 db.session.commit()
 
                 # USGS still returns the same quake (same id) on a later poll.
@@ -227,6 +227,24 @@ class ExternalHazardMonitorTestCase(unittest.TestCase):
             self.assertFalse(second)
             count = Incident.query.filter_by(hazard_type='earthquake', location='7 km NW of Cabacao, Philippines').count()
             self.assertEqual(count, 1)
+
+    def test_monitor_earthquakes_connects_aftershock_forecast_to_incident(self):
+        quake = {
+            'event_id': 'us7000forecast', 'magnitude': 5.2,
+            'place': 'Calatagan, Philippines', 'time': 1723000000000,
+        }
+        forecast = {
+            'message': 'Elevated probability window: 12.3% chance of a M4.5+ aftershock within 24h.'
+        }
+        with self.app.app_context():
+            with patch.object(scheduler, 'get_earthquake_data', return_value=[quake]), \
+                 patch.object(scheduler, 'forecast_for_event', return_value=forecast) as forecast_mock:
+                created = scheduler.monitor_earthquakes(app)
+
+            self.assertTrue(created)
+            forecast_mock.assert_called_once()
+            incident = Incident.query.filter_by(external_event_id='usgs:us7000forecast').first()
+            self.assertIn(forecast['message'], incident.message)
 
     def test_monitor_earthquakes_creates_new_incident_for_genuinely_different_event(self):
         """A different USGS event id at a similar location (e.g. an
@@ -261,7 +279,7 @@ class ExternalHazardMonitorTestCase(unittest.TestCase):
 
                 stale = Incident.query.filter_by(hazard_type='volcanic', external_event_id='eonet:EONET_9999').first()
                 self.assertIsNotNone(stale)
-                stale.created_at = datetime.utcnow() - timedelta(days=6)
+                stale.created_at = utcnow() - timedelta(days=6)
                 db.session.commit()
 
                 second = scheduler.monitor_volcanoes_eonet(app)

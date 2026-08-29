@@ -1,10 +1,11 @@
-# DICS-AI Privilege Model
+# DICS-AI Privilege Model (Superseded)
 
-This document defines who is allowed to do what, and replaces the current
-ad-hoc checks (`is_admin_or_coordinator()` etc.) with a model that matches
-the real-world Incident Command System (ICS) roles the app is built around.
-It is the reference to code against — if a route's behavior doesn't match
-this doc, either the route or the doc is wrong and should be fixed.
+This file is retained as historical design context only. It is not a policy
+source and must not be used to authorize routes. The canonical permission
+reference is [docs/permissions-matrix.md](docs/permissions-matrix.md), and the
+executable policy is `services/permissions.py`.
+
+
 
 ## 1. Roles and their real-world job
 
@@ -46,12 +47,10 @@ Legend: **Y** = full write access · **R** = read-only · **–** = no access
 
 Notes on the two contested rows:
 
-- **Verify/toggle alerts** — this is a public-safety broadcast action, not
   routine agency coordination, so it stays out of the coordinator's hands.
   It belongs to whoever is watching the whole picture: EOC staff (their
   literal job), the commander for incidents in their own response, and
   admin as a fallback/override.
-- **Cross-agency read access** — coordinators need to *see* what other
   agencies are doing on a shared response to coordinate effectively, but
   should not be able to edit another agency's tasks or resources. EOC gets
   the same read-only visibility, but across the entire org rather than one
@@ -158,9 +157,6 @@ def can_view_org_wide():
 
 ## 5. Fallout from this change (what else needs to move)
 
-- **Sidebar dead links** (`/alerts`, `/incidents` shown to admin/coordinator/commander/EOC) get fixed as a side effect: those roles should link to `/admin/alerts` (verify/alert feed) or `/eoc/incidents` (org-wide monitoring) instead of the citizen-scoped routes.
-- **`create_situation_report`'s broken coordinator branch** goes away naturally: coordinators no longer appear in the allowed-role check at all, since situation-report *approval/compilation* is commander work — coordinators submit their own agency reports (`/coordinator/reports/submit`), which is a separate, already-correct route.
-- **Admin's emergency-override capability** (`can_manage_users`, `can_verify_or_alert`, `can_manage_response` all return `True` for `is_admin()`) needs to be a conscious, documented decision, not an accident — admin is the only role allowed to reach into operational territory it doesn't "own," for support/incident-recovery purposes.
 
 ## 6. Open decisions before implementation
 

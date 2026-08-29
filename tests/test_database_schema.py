@@ -12,7 +12,6 @@ from models import (
     EvacuationCenter,
     Facility,
     Incident,
-    IncidentReport,
     Message,
     Municipality,
     Province,
@@ -58,7 +57,6 @@ class DatabaseSchemaTestCase(unittest.TestCase):
         self.assertTrue(Barangay.__tablename__)
         self.assertTrue(Facility.__tablename__)
         self.assertTrue(EvacuationCenter.__tablename__)
-        self.assertTrue(IncidentReport.__tablename__)
         self.assertTrue(ResourceRequest.__tablename__)
         self.assertTrue(AIRecommendation.__tablename__)
         self.assertTrue(AuditEvent.__tablename__)
@@ -107,6 +105,7 @@ class DatabaseSchemaTestCase(unittest.TestCase):
         self.assertEqual(json.loads(recommendation.recommended_agencies), ['BFP'])
         self.assertEqual(json.loads(recommendation.recommended_resources), ['Water 50L'])
         self.assertEqual(json.loads(recommendation.primary_factors), ['heavy rain', 'river rise'])
+        self.assertEqual(Incident.query.filter_by(reported_by='ai_prediction').one().status, 'NEW')
         self.assertEqual(audit_event.entity_type, 'AIRecommendation')
         self.assertEqual(audit_event.action, 'CREATED')
 

@@ -1,8 +1,12 @@
 import importlib
 import os
 import unittest
+from datetime import datetime, timedelta, timezone
 from io import BytesIO
+from types import SimpleNamespace
 from unittest.mock import patch
+
+from werkzeug.security import check_password_hash
 
 from PIL import Image
 
@@ -115,6 +119,58 @@ class ResponderRoutesTestCase(unittest.TestCase):
         response = self.client.get('/responder-dashboard')
         self.assertEqual(response.status_code, 302)
 
+    def test_forgot_password_flow_generates_reset_token_and_updates_password(self):
+        response = self.client.post('/forgot-password', data={'email': 'responder@example.com'}, follow_redirects=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'If an account exists', response.data)
+
+        with self.app.app_context():
+            user = User.query.filter_by(email='responder@example.com').first()
+            self.assertIsNotNone(user)
+            self.assertIsNotNone(user.reset_token)
+            self.assertIsNotNone(user.reset_token_expires_at)
+            self.assertGreater(user.reset_token_expires_at, datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=59))
+            token = user.reset_token
+
+        response = self.client.post(
+            f'/reset-password/{token}',
+            data={'new_password': 'NewSecurePass123', 'confirm_password': 'NewSecurePass123'},
+            follow_redirects=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'Password updated successfully', response.data)
+
+        with self.app.app_context():
+            user = User.query.filter_by(email='responder@example.com').first()
+            self.assertTrue(check_password_hash(user.password, 'NewSecurePass123'))
+            self.assertIsNone(user.reset_token)
+            self.assertIsNone(user.reset_token_expires_at)
+
+    def test_shared_layout_exposes_accessibility_landmarks(self):
+        response = self.client.get('/')
+
+        self.assertIn(b'href="#main-content"', response.data)
+        self.assertIn(b'id="main-content"', response.data)
+        self.assertIn(b'id="pageStatus"', response.data)
+
+    def test_security_headers_are_applied_globally(self):
+        response = self.client.get('/')
+
+        self.assertIn("default-src 'self'", response.headers['Content-Security-Policy'])
+        self.assertIn("object-src 'none'", response.headers['Content-Security-Policy'])
+        self.assertEqual(response.headers['X-Frame-Options'], 'DENY')
+        self.assertEqual(response.headers['X-Content-Type-Options'], 'nosniff')
+        self.assertNotIn('Strict-Transport-Security', response.headers)
+
+    def test_hsts_is_added_only_when_enabled_for_https(self):
+        self.app.config['ENABLE_HSTS'] = True
+        response = self.client.get('/', base_url='https://localhost')
+
+        self.assertEqual(
+            response.headers['Strict-Transport-Security'],
+            'max-age=31536000; includeSubDomains',
+        )
+
     def test_coordinator_update_task_rejects_unowned_task(self):
         with self.app.app_context():
             coordinator = User(
@@ -156,7 +212,7 @@ class ResponderRoutesTestCase(unittest.TestCase):
         response = self.client.post(f'/coordinator/tasks/{task_id}/update', data={'status': 'IN_PROGRESS'}, follow_redirects=True)
         self.assertEqual(response.status_code, 200)
         with self.app.app_context():
-            refreshed = Task.query.get(task_id)
+            refreshed = db.session.get(Task, task_id)
             self.assertEqual(refreshed.status, 'PENDING')
 
     def test_coordinator_allocate_resource_uses_coordinator_agency(self):
@@ -343,6 +399,31 @@ class ResponderRoutesTestCase(unittest.TestCase):
         response = self.client.get('/responder-dashboard')
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'Field Responder', response.data)
+
+    def test_responder_dashboard_rejects_stale_authenticated_session(self):
+        with self.client.session_transaction() as session:
+            session['username'] = 'missing-responder'
+            session['role'] = 'field_responder'
+
+        response = self.client.get('/responder-dashboard')
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.location, '/')
+
+    def test_permission_policies_use_supplied_user(self):
+        from services import permissions
+
+        citizen = SimpleNamespace(id=11, role='citizen')
+        commander = SimpleNamespace(id=12, role='incident_commander')
+        incident = SimpleNamespace(user_id=citizen.id)
+
+        with self.client.session_transaction() as session:
+            session['username'] = 'responder1'
+            session['role'] = 'citizen'
+
+        self.assertTrue(permissions.can_view_incident(citizen, incident))
+        self.assertTrue(permissions.can_view_incident(commander, incident))
+        self.assertTrue(permissions.can_issue_alert(commander))
+        self.assertFalse(permissions.can_manage_users(citizen))
 
     def test_secret_key_uses_environment_and_initializes_db_on_request(self):
         original_secret = os.environ.get('SECRET_KEY')
@@ -888,7 +969,7 @@ class ResponderRoutesTestCase(unittest.TestCase):
         )
         self.assertEqual(result.status_code, 404)
         with self.app.app_context():
-            refreshed = Task.query.get(task_b_id)
+            refreshed = db.session.get(Task, task_b_id)
             self.assertEqual(refreshed.status, 'PENDING')
 
     def test_commander_update_resource_rejects_resource_from_unowned_response(self):
@@ -930,7 +1011,7 @@ class ResponderRoutesTestCase(unittest.TestCase):
         )
         self.assertEqual(result.status_code, 404)
         with self.app.app_context():
-            refreshed = Resource.query.get(resource_b_id)
+            refreshed = db.session.get(Resource, resource_b_id)
             self.assertEqual(refreshed.status, 'AVAILABLE')
 
     def test_register_rate_limited_after_five_requests_per_hour(self):
@@ -1290,6 +1371,37 @@ class ResponderRoutesTestCase(unittest.TestCase):
         response = self.client.get('/analytics', follow_redirects=False)
         self.assertEqual(response.status_code, 302)
 
+    def test_analytics_api_denied_to_citizen(self):
+        with self.client.session_transaction() as session:
+            session['username'] = 'responder1'
+            session['role'] = 'citizen'
+
+        response = self.client.get('/api/analytics-data')
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.get_json(), {'error': 'Forbidden'})
+
+    def test_analytics_api_denied_to_anonymous_user(self):
+        response = self.client.get('/api/analytics-data')
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.get_json(), {'error': 'Unauthorized'})
+
+    def test_analytics_api_allowed_for_coordinator(self):
+        with self.app.app_context():
+            coordinator = User(
+                username='analytics_api_coord', email='aac@example.com', password='secret',
+                role='agency_coordinator', agency='BFP', email_verified=True,
+            )
+            db.session.add(coordinator)
+            db.session.commit()
+
+        with self.client.session_transaction() as session:
+            session['username'] = 'analytics_api_coord'
+            session['role'] = 'agency_coordinator'
+
+        response = self.client.get('/api/analytics-data')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('incident_counts', response.get_json())
+
     def test_admin_denied_access_to_coordinator_dashboard(self):
         """Admin was previously let into /coordinator/* via
         is_admin_or_coordinator(), which meant an admin visiting these
@@ -1329,6 +1441,60 @@ class ResponderRoutesTestCase(unittest.TestCase):
 
         result = self.client.get('/coordinator')
         self.assertEqual(result.status_code, 200)
+
+    def test_coordinator_dashboard_uses_unambiguous_operational_status_labels(self):
+        with self.client.session_transaction() as session:
+            session['username'] = 'responder1'
+            session['role'] = 'agency_coordinator'
+            session['agency'] = 'BFP'
+
+        result = self.client.get('/coordinator')
+        self.assertEqual(result.status_code, 200)
+        self.assertIn(b'Open Tasks', result.data)
+        self.assertIn(b'Pending or in progress', result.data)
+        self.assertIn(b'Open Responses', result.data)
+        self.assertNotIn(b'Pending Tasks', result.data)
+
+    def test_coordinator_tasks_are_paginated(self):
+        with self.app.app_context():
+            coordinator = User(
+                username='pagination_coord', email='pagination@example.com', password='secret',
+                role='agency_coordinator', agency='BFP', email_verified=True,
+            )
+            db.session.add(coordinator)
+            db.session.flush()
+            incident = Incident(
+                user_id=coordinator.id, hazard_type='flood', location='Test',
+                message='Test incident', status='ACTIVE',
+            )
+            db.session.add(incident)
+            db.session.flush()
+            response = IncidentResponse(
+                incident_id=incident.id, commander_id=coordinator.id, status='ACTIVE',
+            )
+            db.session.add(response)
+            db.session.flush()
+            for index in range(26):
+                db.session.add(Task(
+                    incident_response_id=response.id,
+                    assigned_to_agency='BFP',
+                    assigned_by_id=coordinator.id,
+                    title=f'Pagination task {index}',
+                    description='Test task',
+                ))
+            db.session.commit()
+
+        with self.client.session_transaction() as session:
+            session['username'] = 'pagination_coord'
+            session['role'] = 'agency_coordinator'
+            session['agency'] = 'BFP'
+
+        first_page = self.client.get('/coordinator/tasks')
+        second_page = self.client.get('/coordinator/tasks?page=2')
+        self.assertEqual(first_page.status_code, 200)
+        self.assertEqual(second_page.status_code, 200)
+        self.assertIn(b'Page 2 of 2', second_page.data)
+        self.assertIn(b'Pagination task 0', second_page.data)
 
     def test_coordinator_comms_page_renders_for_agency_coordinator(self):
         with self.client.session_transaction() as session:

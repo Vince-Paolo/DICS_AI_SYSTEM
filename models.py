@@ -1,5 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import event
+from sqlalchemy import CheckConstraint, event
 from sqlalchemy.engine import Engine
 from datetime import datetime, timezone
 
@@ -49,6 +49,8 @@ class User(db.Model):
     agency = db.Column(db.String(150), nullable=True)
     email_verified = db.Column(db.Boolean, default=False)
     verification_token = db.Column(db.String(500), nullable=True)
+    reset_token = db.Column(db.String(500), nullable=True)
+    reset_token_expires_at = db.Column(db.DateTime, nullable=True)
     role = db.Column(db.String(20), default='user')
     is_disabled = db.Column(db.Boolean, default=False)
     must_change_password = db.Column(db.Boolean, default=False)
@@ -141,7 +143,7 @@ class Incident(db.Model):
     # rather than by location text + a wall-clock window. Null for
     # citizen-reported and AI-weather-predicted incidents, which have no
     # external event identity.
-    external_event_id = db.Column(db.String(120), nullable=True)
+    external_event_id = db.Column(db.String(120), nullable=True, unique=True)
     # When the hazard actually occurred/was observed by the source feed
     # (e.g. the USGS quake time, GDACS flood from_date, EONET event date).
     # Distinct from created_at, which is only when *we* logged the row --
@@ -165,7 +167,6 @@ class Incident(db.Model):
     alerts = db.relationship('Alert', backref='incident', lazy=True, cascade='all, delete-orphan')
     messages = db.relationship('Message', backref='incident', lazy=True, cascade='all, delete-orphan')
     ai_recommendations = db.relationship('AIRecommendation', backref='incident', lazy=True, cascade='all, delete-orphan')
-    incident_reports = db.relationship('IncidentReport', backref='incident', lazy=True, cascade='all, delete-orphan')
     resource_requests = db.relationship('ResourceRequest', backref='incident', lazy=True, cascade='all, delete-orphan')
 
     @property
@@ -183,11 +184,11 @@ class IncidentResponse(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     incident_id = db.Column(db.Integer, db.ForeignKey('incident.id', ondelete='CASCADE'), nullable=False)
     commander_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    status = db.Column(db.String(20), default='ACTIVE')  # ACTIVE, MONITORING, RESOLVED, CLOSED
+    status = db.Column(db.String(20), default='ACTIVE', index=True)  # ACTIVE, MONITORING, RESOLVED, CLOSED
     situation_summary = db.Column(db.Text, nullable=True)
     priority_level = db.Column(db.String(20), default='MEDIUM')  # LOW, MEDIUM, HIGH, CRITICAL
     affected_population = db.Column(db.Integer, nullable=True)
-    started_at = db.Column(db.DateTime, default=utcnow)
+    started_at = db.Column(db.DateTime, default=utcnow, index=True)
     resolved_at = db.Column(db.DateTime, nullable=True)
     closed_at = db.Column(db.DateTime, nullable=True)
     updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
@@ -200,9 +201,11 @@ class IncidentResponse(db.Model):
 
 class Task(db.Model):
     """Incident response tasks assigned to agencies"""
+    version_id = db.Column(db.Integer, nullable=False, default=1)
+    __mapper_args__ = {'version_id_col': version_id}
     id = db.Column(db.Integer, primary_key=True)
     incident_response_id = db.Column(db.Integer, db.ForeignKey('incident_response.id', ondelete='CASCADE'), nullable=False)
-    assigned_to_agency = db.Column(db.String(150), nullable=False)
+    assigned_to_agency = db.Column(db.String(150), nullable=False, index=True)
     assigned_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=False)
@@ -210,7 +213,7 @@ class Task(db.Model):
     priority = db.Column(db.String(20), default='MEDIUM')  # LOW, MEDIUM, HIGH, CRITICAL
     estimated_completion = db.Column(db.DateTime, nullable=True)
     completed_at = db.Column(db.DateTime, nullable=True)
-    created_at = db.Column(db.DateTime, default=utcnow)
+    created_at = db.Column(db.DateTime, default=utcnow, index=True)
     updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
 
     assigned_by = db.relationship('User', backref='assigned_tasks', foreign_keys=[assigned_by_id])
@@ -219,7 +222,7 @@ class Task(db.Model):
 class IncidentMessage(db.Model):
     """Unified inter-role incident communications log."""
     id = db.Column(db.Integer, primary_key=True)
-    incident_response_id = db.Column(db.Integer, db.ForeignKey('incident_response.id', ondelete='CASCADE'), nullable=False)
+    incident_response_id = db.Column(db.Integer, db.ForeignKey('incident_response.id', ondelete='CASCADE'), nullable=False, index=True)
     reporter_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     title = db.Column(db.String(200), nullable=False)
     content = db.Column(db.Text, nullable=False)
@@ -230,7 +233,7 @@ class IncidentMessage(db.Model):
     evacuated = db.Column(db.Integer, nullable=True)
     gps_latitude = db.Column(db.Float, nullable=True)
     gps_longitude = db.Column(db.Float, nullable=True)
-    created_at = db.Column(db.DateTime, default=utcnow)
+    created_at = db.Column(db.DateTime, default=utcnow, index=True)
 
     reporter = db.relationship('User', backref='incident_messages', foreign_keys=[reporter_id])
 
@@ -250,15 +253,17 @@ class PostIncidentReport(db.Model):
 
 class Resource(db.Model):
     """Resource allocation tracking"""
+    version_id = db.Column(db.Integer, nullable=False, default=1)
+    __mapper_args__ = {'version_id_col': version_id}
     id = db.Column(db.Integer, primary_key=True)
     incident_response_id = db.Column(db.Integer, db.ForeignKey('incident_response.id', ondelete='CASCADE'), nullable=False)
     resource_type = db.Column(db.String(100), nullable=False)  # Personnel, Equipment, Vehicles, Supplies, etc.
-    agency = db.Column(db.String(150), nullable=False)
+    agency = db.Column(db.String(150), nullable=False, index=True)
     quantity = db.Column(db.Integer, nullable=False)
     status = db.Column(db.String(20), default='AVAILABLE')  # AVAILABLE, DEPLOYED, RETURNING, UNAVAILABLE
     location = db.Column(db.String(255), nullable=True)
     notes = db.Column(db.Text, nullable=True)
-    allocated_at = db.Column(db.DateTime, default=utcnow)
+    allocated_at = db.Column(db.DateTime, default=utcnow, index=True)
     deployed_at = db.Column(db.DateTime, nullable=True)
     updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
 
@@ -282,6 +287,16 @@ class Facility(db.Model):
 
 
 class EvacuationCenter(db.Model):
+    version_id = db.Column(db.Integer, nullable=False, default=1)
+    __mapper_args__ = {'version_id_col': version_id}
+    __table_args__ = (
+        CheckConstraint('capacity IS NULL OR capacity >= 0', name='ck_evacuation_center_capacity_nonnegative'),
+        CheckConstraint('occupancy IS NULL OR occupancy >= 0', name='ck_evacuation_center_occupancy_nonnegative'),
+        CheckConstraint(
+            'capacity IS NULL OR occupancy IS NULL OR occupancy <= capacity',
+            name='ck_evacuation_center_occupancy_within_capacity',
+        ),
+    )
     id = db.Column(db.Integer, primary_key=True)
     facility_id = db.Column(db.Integer, db.ForeignKey('facility.id'), nullable=False)
     capacity = db.Column(db.Integer, nullable=True)
@@ -293,29 +308,18 @@ class EvacuationCenter(db.Model):
     facility = db.relationship('Facility', backref=db.backref('evacuation_center', uselist=False))
 
 
-class IncidentReport(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    incident_id = db.Column(db.Integer, db.ForeignKey('incident.id', ondelete='CASCADE'), nullable=False)
-    reporter_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
-    report_type = db.Column(db.String(50), nullable=False, default='SITUATIONAL')
-    summary = db.Column(db.Text, nullable=False)
-    severity = db.Column(db.String(20), nullable=True)
-    created_at = db.Column(db.DateTime, default=utcnow)
-    updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
-
-
 class ResourceRequest(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     incident_id = db.Column(db.Integer, db.ForeignKey('incident.id', ondelete='CASCADE'), nullable=False)
     resource_type = db.Column(db.String(100), nullable=False)
     quantity = db.Column(db.Integer, nullable=False, default=1)
     requested_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
-    agency = db.Column(db.String(120), nullable=True)
+    agency = db.Column(db.String(120), nullable=True, index=True)
     status = db.Column(db.String(20), default='OPEN')
     decision_notes = db.Column(db.String(255), nullable=True)
     decided_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     decided_at = db.Column(db.DateTime, nullable=True)
-    created_at = db.Column(db.DateTime, default=utcnow)
+    created_at = db.Column(db.DateTime, default=utcnow, index=True)
     updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
 
     requested_by = db.relationship('User', foreign_keys=[requested_by_id], backref='resource_requests')

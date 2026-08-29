@@ -12,6 +12,11 @@ from models import (
     EvacuationCenter,
     Facility,
     Incident,
+    IncidentMessage,
+    IncidentResponse,
+    Barangay,
+    Municipality,
+    Province,
     Report,
     ResourceRequest,
     User,
@@ -35,6 +40,7 @@ class OperationalDataFeaturesTestCase(unittest.TestCase):
                 ('eoc1', 'eoc_staff', None),
                 ('coord1', 'agency_coordinator', 'BFP'),
                 ('cmd1', 'incident_commander', None),
+                ('cmd2', 'incident_commander', None),
                 ('cit1', 'citizen', None),
             ]:
                 db.session.add(User(
@@ -85,6 +91,38 @@ class OperationalDataFeaturesTestCase(unittest.TestCase):
             self.assertEqual(facility.evacuation_center.capacity, 200)
             self.assertEqual(facility.evacuation_center.status, 'OPEN')
 
+    def test_facility_form_uses_dependent_location_dropdowns(self):
+        self._login('eoc1', 'eoc_staff')
+        response = self.client.get('/facilities')
+        html = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('id="facility_province_id"', html)
+        self.assertIn('id="facility_municipality_id"', html)
+        self.assertIn('id="facility_barangay_id"', html)
+        self.assertIn("/api/municipalities/", html)
+        self.assertIn("/api/barangays/", html)
+        self.assertNotIn('name="municipality_id" class="form-select form-select-sm" disabled>\n                                <option value="">—</option>', html)
+
+    def test_facility_location_hierarchy_is_validated_on_submit(self):
+        self._login('eoc1', 'eoc_staff')
+        with self.app.app_context():
+            province = Province.query.first()
+            other_province = Province.query.filter(Province.id != province.id).first()
+            municipality = Municipality.query.filter_by(province_id=province.id).first()
+            barangay = Barangay.query.filter_by(municipality_id=municipality.id).first()
+
+        response = self.client.post('/facilities/add', data={
+            'name': 'Invalid Location Facility',
+            'facility_type': 'Hospital',
+            'province_id': other_province.id,
+            'municipality_id': municipality.id,
+            'barangay_id': barangay.id,
+        })
+        self.assertEqual(response.status_code, 302)
+        with self.app.app_context():
+            self.assertIsNone(Facility.query.filter_by(name='Invalid Location Facility').first())
+
     def test_admin_cannot_view_facilities_page(self):
         self._login('admin1', 'admin')
         resp = self.client.get('/facilities', follow_redirects=False)
@@ -124,8 +162,45 @@ class OperationalDataFeaturesTestCase(unittest.TestCase):
         self.assertEqual(resp.status_code, 302)
 
         with self.app.app_context():
-            updated = EvacuationCenter.query.get(center_id)
+            updated = db.session.get(EvacuationCenter, center_id)
             self.assertEqual(updated.occupancy, 85)
+
+    def test_eoc_cannot_update_occupancy_above_capacity(self):
+        with self.app.app_context():
+            facility = Facility(name='Capacity Center', facility_type='Evacuation Center')
+            db.session.add(facility)
+            db.session.flush()
+            center = EvacuationCenter(facility_id=facility.id, capacity=100, occupancy=85, status='OPEN')
+            db.session.add(center)
+            db.session.commit()
+            center_id = center.id
+
+        self._login('eoc1', 'eoc_staff')
+        resp = self.client.post(f'/evacuation-centers/{center_id}/update', data={
+            'occupancy': '101', 'status': 'FULL',
+        }, follow_redirects=False)
+        self.assertEqual(resp.status_code, 302)
+
+        with self.app.app_context():
+            updated = db.session.get(EvacuationCenter, center_id)
+            self.assertEqual(updated.occupancy, 85)
+            self.assertEqual(updated.status, 'OPEN')
+
+    def test_eoc_cannot_set_negative_occupancy(self):
+        with self.app.app_context():
+            facility = Facility(name='Nonnegative Center', facility_type='Evacuation Center')
+            db.session.add(facility)
+            db.session.flush()
+            center = EvacuationCenter(facility_id=facility.id, capacity=100, occupancy=0, status='OPEN')
+            db.session.add(center)
+            db.session.commit()
+            center_id = center.id
+
+        self._login('eoc1', 'eoc_staff')
+        resp = self.client.post(f'/evacuation-centers/{center_id}/update', data={
+            'occupancy': '-1', 'status': 'OPEN',
+        }, follow_redirects=False)
+        self.assertEqual(resp.status_code, 302)
 
     def test_citizen_evacuation_centers_page_shows_seeded_center(self):
         with self.app.app_context():
@@ -163,7 +238,7 @@ class OperationalDataFeaturesTestCase(unittest.TestCase):
         self.assertEqual(resp.status_code, 302)
 
         with self.app.app_context():
-            updated = ResourceRequest.query.get(request_id)
+            updated = db.session.get(ResourceRequest, request_id)
             self.assertEqual(updated.status, 'APPROVED')
             self.assertEqual(updated.decision_notes, 'go ahead')
 
@@ -182,7 +257,85 @@ class OperationalDataFeaturesTestCase(unittest.TestCase):
         self.assertEqual(resp.status_code, 302)
 
         with self.app.app_context():
-            unchanged = ResourceRequest.query.get(request_id)
+            unchanged = db.session.get(ResourceRequest, request_id)
+            self.assertEqual(unchanged.status, 'OPEN')
+
+    def test_assigned_commander_can_reopen_closed_response(self):
+        with self.app.app_context():
+            response = IncidentResponse(
+                incident_id=self.incident_id, commander_id=User.query.filter_by(username='cmd1').one().id,
+                status='ACTIVE',
+            )
+            db.session.add(response)
+            db.session.commit()
+            response_id = response.id
+
+        self._login('cmd1', 'incident_commander')
+        close_response = self.client.post(
+            f'/incident-response/{response_id}/close',
+            data={'notes': 'Temporary resolution', 'casualties': '0', 'evacuated': '0'},
+        )
+        self.assertEqual(close_response.status_code, 302)
+
+        reopen_response = self.client.post(f'/incident-response/{response_id}/reopen')
+        self.assertEqual(reopen_response.status_code, 302)
+
+        with self.app.app_context():
+            reopened = db.session.get(IncidentResponse, response_id)
+            self.assertEqual(reopened.status, 'ACTIVE')
+            self.assertIsNone(reopened.closed_at)
+            self.assertIsNone(reopened.resolved_at)
+            self.assertTrue(reopened.incident.alert)
+            self.assertTrue(IncidentMessage.query.filter_by(
+                incident_response_id=response_id,
+                title='Incident Response Reopened',
+            ).count())
+
+    def test_unassigned_commander_cannot_reopen_response(self):
+        with self.app.app_context():
+            response = IncidentResponse(
+                incident_id=self.incident_id, commander_id=User.query.filter_by(username='cmd1').one().id,
+                status='CLOSED',
+            )
+            db.session.add(response)
+            db.session.commit()
+            response_id = response.id
+
+        self._login('cmd2', 'incident_commander')
+        response = self.client.post(f'/incident-response/{response_id}/reopen')
+        self.assertEqual(response.status_code, 403)
+
+    def test_commander_cannot_decide_request_for_unowned_incident(self):
+        with self.app.app_context():
+            other_commander = User(
+                username='cmd3', email='cmd3@example.com', password='secret',
+                role='incident_commander', email_verified=True,
+            )
+            db.session.add(other_commander)
+            db.session.flush()
+            response = IncidentResponse(
+                incident_id=self.incident_id, commander_id=other_commander.id,
+                status='ACTIVE',
+            )
+            db.session.add(response)
+            db.session.flush()
+            resource_request = ResourceRequest(
+                incident_id=self.incident_id, resource_type='Ambulances', quantity=1,
+                agency='BFP', status='OPEN',
+            )
+            db.session.add(resource_request)
+            db.session.commit()
+            request_id = resource_request.id
+
+        self._login('cmd1', 'incident_commander')
+        resp = self.client.post(
+            f'/eoc/resource-requests/{request_id}/decide',
+            data={'decision': 'APPROVED'},
+        )
+        self.assertEqual(resp.status_code, 403)
+
+        with self.app.app_context():
+            unchanged = db.session.get(ResourceRequest, request_id)
             self.assertEqual(unchanged.status, 'OPEN')
 
     # -- Alert --------------------------------------------------------
@@ -208,7 +361,7 @@ class OperationalDataFeaturesTestCase(unittest.TestCase):
         resp = self.client.post(f'/eoc/alerts/{alert_id}/resolve', data={})
         self.assertEqual(resp.status_code, 302)
         with self.app.app_context():
-            resolved = Alert.query.get(alert_id)
+            resolved = db.session.get(Alert, alert_id)
             self.assertEqual(resolved.status, 'RESOLVED')
 
     def test_coordinator_cannot_issue_alert(self):
