@@ -16,7 +16,7 @@
 {% if request.endpoint not in ['login', 'register', 'forgot_password', 'reset_password'] %}
     {% include 'partials/sidebar.html' %}
 {% endif %}
-<main id="main-content" class="container{% if request.endpoint not in ['login', 'register', 'forgot_password', 'reset_password'] %} pt-4{% endif %} mb-4" tabindex="-1">
+<main class="container{% if request.endpoint not in ['login', 'register', 'forgot_password', 'reset_password'] %} pt-4{% endif %} mb-4">
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}

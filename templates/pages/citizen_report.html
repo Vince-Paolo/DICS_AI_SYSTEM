@@ -4,6 +4,17 @@
 
 {% block extra_head %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<style>
+    .gps-marker-icon {
+        background: transparent;
+        border: none;
+    }
+
+    .gps-marker-icon svg {
+        display: block;
+        filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.28));
+    }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -216,6 +227,7 @@
                                 </label>
                                 <input type="hidden" id="gps_lat" name="gps_lat">
                                 <input type="hidden" id="gps_lng" name="gps_lng">
+                                <input type="hidden" id="gps_accuracy" name="gps_accuracy">
 
                                 <div class="field-card">
                                     <div class="location-preview" id="locationPreview">
@@ -229,6 +241,7 @@
                                     </div>
 
                                     <small id="gpsStatus" class="text-muted d-block mt-2 mb-2" role="status" aria-live="polite" aria-atomic="true">Allow browser location access to capture GPS automatically.</small>
+                                    <small id="gpsDragHint" class="text-muted d-none d-block mb-2"><i class="bi bi-info-circle me-1"></i>Not quite right? Drag the pin to the exact spot.</small>
 
                                     <div class="location-manual-row">
                                         <input type="text" class="form-control form-control-sm" id="manualLocationInput"
@@ -366,8 +379,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const gpsButton = document.getElementById('gpsButton');
     const gpsStatus = document.getElementById('gpsStatus');
+    const gpsDragHint = document.getElementById('gpsDragHint');
     const gpsLat = document.getElementById('gps_lat');
     const gpsLng = document.getElementById('gps_lng');
+    const gpsAccuracyField = document.getElementById('gps_accuracy');
     const manualInput = document.getElementById('manualLocationInput');
     const manualSearchBtn = document.getElementById('manualLocationSearch');
 
@@ -376,10 +391,58 @@ document.addEventListener('DOMContentLoaded', function () {
     const previewMapEl = document.getElementById('locationPreviewMap');
     let locationMap = null;
     let locationMarker = null;
+    let accuracyCircle = null;
 
-    function showLocationOnMap(lat, lng) {
+    function accuracyColor(radius) {
+        if (radius <= 20) return '#22c55e';   // high precision
+        if (radius <= 100) return '#f59e0b';  // moderate precision
+        return '#ef4444';                     // low precision
+    }
+
+    function accuracyLabel(radius) {
+        if (radius <= 20) return 'high precision';
+        if (radius <= 100) return 'moderate precision';
+        return 'low precision — consider dragging the pin';
+    }
+
+    // Draws/updates/removes the accuracy ring around the pin. Pass null to
+    // clear it (address search and manual drags aren't a device GPS fix,
+    // so there's no radius to show).
+    function setAccuracyCircle(lat, lng, radius) {
+        if (accuracyCircle) {
+            locationMap.removeLayer(accuracyCircle);
+            accuracyCircle = null;
+        }
+        if (radius == null) return;
+        accuracyCircle = L.circle([lat, lng], {
+            radius: radius,
+            color: accuracyColor(radius),
+            fillColor: accuracyColor(radius),
+            fillOpacity: 0.15,
+            weight: 1,
+        }).addTo(locationMap);
+    }
+
+    function createGpsMarkerIcon() {
+        return L.divIcon({
+            className: 'gps-marker-icon',
+            html: `
+                <svg width="28" height="36" viewBox="0 0 28 36" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M14 1C7.4 1 2 6.5 2 13.1c0 8.4 12 21.9 12 21.9s12-13.5 12-21.9C26 6.5 20.6 1 14 1Z" fill="#ef4444"/>
+                    <circle cx="14" cy="13" r="5.2" fill="#ffffff"/>
+                    <circle cx="14" cy="13" r="2.5" fill="#ef4444"/>
+                </svg>
+            `,
+            iconSize: [28, 36],
+            iconAnchor: [14, 36],
+            popupAnchor: [0, -30],
+        });
+    }
+
+    function showLocationOnMap(lat, lng, accuracyMeters) {
         previewEmpty.classList.add('d-none');
         previewMapEl.classList.remove('d-none');
+        gpsDragHint.classList.remove('d-none');
 
         // Leaflet needs the container visible with real dimensions before
         // it can measure itself, so init/resize only after we un-hide it.
@@ -387,31 +450,63 @@ document.addEventListener('DOMContentLoaded', function () {
             locationMap = L.map(previewMapEl, {
                 zoomControl: false,
                 attributionControl: false,
-            }).setView([lat, lng], 15);
+            }).setView([lat, lng], 17);
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
             }).addTo(locationMap);
 
-            locationMarker = L.marker([lat, lng]).addTo(locationMap);
+            // Draggable so a citizen can nudge the pin onto the exact spot
+            // themselves - GPS drift from foliage, tall buildings, or a
+            // weak indoor signal routinely puts the raw fix tens of
+            // meters off, and a human eye on a map corrects that instantly.
+            locationMarker = L.marker([lat, lng], {
+                draggable: true,
+                icon: createGpsMarkerIcon(),
+            }).addTo(locationMap);
+            locationMarker.on('dragend', function () {
+                const pos = locationMarker.getLatLng();
+                // A manual drag is the citizen's own correction, so it
+                // overrides whatever GPS accuracy was showing - clear the
+                // ring and the stored accuracy rather than leave a stale,
+                // now-misleading value for whoever reviews the report.
+                setAccuracyCircle(pos.lat, pos.lng, null);
+                gpsLat.value = pos.lat;
+                gpsLng.value = pos.lng;
+                gpsAccuracyField.value = '';
+                gpsStatus.textContent = `Pin adjusted: ${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)} — looking up address...`;
+                reverseGeocode(pos.lat, pos.lng).then(function (address) {
+                    gpsStatus.textContent = address || `Pin adjusted: ${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`;
+                });
+            });
         } else {
-            locationMap.setView([lat, lng], 15);
+            locationMap.setView([lat, lng], Math.max(locationMap.getZoom(), 17));
             locationMarker.setLatLng([lat, lng]);
         }
+
+        setAccuracyCircle(lat, lng, accuracyMeters);
 
         setTimeout(function () {
             locationMap.invalidateSize();
         }, 50);
     }
 
-    // Shared by both "Use Current Location" and manual address search, so
-    // the map/coordinates/status text stay consistent no matter which path
-    // set the location.
-    function setLocation(lat, lng, address) {
+    // Shared by "Use Current Location", manual address search, and pin
+    // drags, so the map/coordinates/status text stay consistent no matter
+    // which path set the location. `accuracyMeters` is null for anything
+    // that isn't a device GPS fix.
+    function setLocation(lat, lng, address, accuracyMeters) {
         gpsLat.value = lat;
         gpsLng.value = lng;
-        gpsStatus.textContent = address || `Captured GPS: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-        showLocationOnMap(lat, lng);
+        gpsAccuracyField.value = accuracyMeters != null ? accuracyMeters : '';
+
+        if (accuracyMeters != null) {
+            gpsStatus.textContent = `Captured GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)} (±${Math.round(accuracyMeters)}m, ${accuracyLabel(accuracyMeters)})`;
+        } else {
+            gpsStatus.textContent = address || `Location set: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        }
+
+        showLocationOnMap(lat, lng, accuracyMeters);
 
         // Helps citizens who'd otherwise leave "Location (Barangay/Area)"
         // blank - never overwrites something they already typed themselves.
@@ -430,6 +525,19 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(() => null);
     }
 
+    function geolocationErrorMessage(error) {
+        switch (error.code) {
+            case error.PERMISSION_DENIED:
+                return 'Location access was denied. Enable it in your browser/site settings, or type an address below.';
+            case error.POSITION_UNAVAILABLE:
+                return 'Your location could not be determined. Try moving outdoors or near a window, or type an address below.';
+            case error.TIMEOUT:
+                return 'Location capture timed out. Check your GPS/network signal and try again, or type an address below.';
+            default:
+                return 'Unable to access your location. You can still type an address below, or submit the report manually.';
+        }
+    }
+
     if (gpsButton) {
         gpsButton.addEventListener('click', function () {
             if (!navigator.geolocation) {
@@ -437,24 +545,75 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
+            gpsButton.disabled = true;
             gpsStatus.textContent = 'Capturing your current location...';
-            navigator.geolocation.getCurrentPosition(function (position) {
-                const lat = position.coords.latitude;
-                const lng = position.coords.longitude;
-                setLocation(lat, lng, null);
-                gpsStatus.textContent = `Captured GPS: ${lat.toFixed(4)}, ${lng.toFixed(4)} — looking up address...`;
+
+            // A single getCurrentPosition() call very often returns a
+            // coarse network/cell-tower fix before the device's GPS chip
+            // has locked on. watchPosition() keeps listening for a few
+            // seconds and we keep only the most accurate reading seen, so
+            // the pin lands on the tightest fix the device can produce in
+            // that window rather than whatever arrived first.
+            let bestPosition = null;
+            let watchId = null;
+            let settled = false;
+
+            function finish() {
+                if (settled) return;
+                settled = true;
+                if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+                gpsButton.disabled = false;
+
+                if (!bestPosition) {
+                    gpsStatus.textContent = 'Could not get a location fix in time. Check your GPS signal, or type an address below.';
+                    return;
+                }
+
+                const lat = bestPosition.coords.latitude;
+                const lng = bestPosition.coords.longitude;
+                const accuracy = bestPosition.coords.accuracy;
+                setLocation(lat, lng, null, accuracy);
+                gpsStatus.textContent += ' — looking up address...';
                 reverseGeocode(lat, lng).then(function (address) {
                     if (address) {
-                        gpsStatus.textContent = address;
                         const locationField = document.getElementById('location');
                         if (locationField && !locationField.value.trim()) {
                             locationField.value = address;
                         }
+                        gpsStatus.textContent = `${address} (±${Math.round(accuracy)}m)`;
                     }
                 });
-            }, function () {
-                gpsStatus.textContent = 'Unable to access your location. You can still type an address below, or submit the report manually.';
+            }
+
+            watchId = navigator.geolocation.watchPosition(function (position) {
+                if (!bestPosition || position.coords.accuracy < bestPosition.coords.accuracy) {
+                    bestPosition = position;
+                    gpsStatus.textContent = `Refining fix... current best: ±${Math.round(position.coords.accuracy)}m`;
+                }
+                // A GPS-grade fix this tight won't meaningfully improve by
+                // waiting longer, so stop early instead of holding up the
+                // citizen's report.
+                if (position.coords.accuracy <= 15) {
+                    finish();
+                }
+            }, function (error) {
+                if (settled) return;
+                if (!bestPosition) {
+                    gpsStatus.textContent = geolocationErrorMessage(error);
+                }
+                settled = true;
+                if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+                gpsButton.disabled = false;
+            }, {
+                enableHighAccuracy: true,
+                timeout: 20000,
+                maximumAge: 0,
             });
+
+            // Hard cap so a slow-converging fix still submits something
+            // (or a clear failure message) instead of leaving the citizen
+            // waiting indefinitely during an emergency report.
+            setTimeout(finish, 8000);
         });
     }
 
@@ -475,7 +634,11 @@ document.addEventListener('DOMContentLoaded', function () {
                         return;
                     }
                     const result = results[0];
-                    setLocation(parseFloat(result.lat), parseFloat(result.lon), result.display_name);
+                    // Address search gives a street/landmark centroid, not
+                    // a device GPS fix, so there's no accuracy radius to
+                    // draw - the drag hint (shown once the pin appears) is
+                    // how the citizen tightens it up from here.
+                    setLocation(parseFloat(result.lat), parseFloat(result.lon), result.display_name, null);
                 })
                 .catch(function () {
                     manualSearchBtn.disabled = false;
@@ -491,6 +654,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
+
 
     // ── Photo Evidence dropzone ──────────────────────────────
     const dropzone = document.getElementById('photoDropzone');
