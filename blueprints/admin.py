@@ -1,8 +1,10 @@
 import glob
 import os
+import shutil
 import sqlite3
 import subprocess
 from datetime import datetime
+from urllib.parse import urlparse
 
 from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for, send_file
 from werkzeug.security import generate_password_hash
@@ -13,6 +15,42 @@ from services import permissions as permission_service
 from services.passwords import verify_and_migrate
 
 admin_bp = Blueprint('admin', __name__)
+
+
+def _build_pg_dump_command(database_uri, backup_path):
+    """Build a pg_dump invocation without exposing the password in argv.
+    libpq reads the password from the environment, and the database URL passed
+    to --dbname omits it entirely so local users cannot see the secret in the
+    process command line."""
+    if shutil.which('pg_dump') is None:
+        raise RuntimeError('pg_dump is not installed or not on PATH for this deployment.')
+
+    parsed = urlparse(database_uri)
+    if parsed.scheme not in {'postgresql', 'postgres'}:
+        raise RuntimeError(f'Unsupported PostgreSQL URL scheme: {parsed.scheme}')
+
+    username = parsed.username or ''
+    host = parsed.hostname or 'localhost'
+    port = parsed.port or 5432
+    database = parsed.path.lstrip('/') or ''
+    if not database:
+        raise RuntimeError('PostgreSQL database name is missing from the configured DATABASE_URL.')
+
+    netloc = host
+    if username:
+        netloc = f'{username}@{host}'
+    if port and port != 5432:
+        netloc = f'{netloc}:{port}'
+
+    pg_uri = f'postgresql://{netloc}/{database}'
+    if parsed.query:
+        pg_uri = f'{pg_uri}?{parsed.query}'
+
+    env = os.environ.copy()
+    if parsed.password:
+        env['PGPASSWORD'] = parsed.password
+
+    return ['pg_dump', '--format=custom', '--no-owner', '--no-privileges', f'--file={backup_path}', '--dbname', pg_uri], env
 
 
 @admin_bp.route('/admin')
@@ -281,18 +319,13 @@ def export_backup():
         if database_dialect == 'postgresql':
             backup_filename = f'dics_ai_backup_{timestamp}.dump'
             backup_path = os.path.join(backup_dir, backup_filename)
+            pg_dump_args, pg_dump_env = _build_pg_dump_command(database_uri, backup_path)
             subprocess.run(
-                [
-                    'pg_dump',
-                    '--format=custom',
-                    '--no-owner',
-                    '--no-privileges',
-                    f'--file={backup_path}',
-                    f'--dbname={database_uri}',
-                ],
+                pg_dump_args,
                 check=True,
                 capture_output=True,
                 text=True,
+                env=pg_dump_env,
             )
         elif database_dialect == 'sqlite':
             backup_filename = f'dics_ai_backup_{timestamp}.db'

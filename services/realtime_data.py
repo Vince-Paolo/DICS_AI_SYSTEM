@@ -1,9 +1,10 @@
 import json
 import os
+import sqlite3
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from models import utcnow
@@ -20,6 +21,68 @@ _cache = {
     'volcano_events': {'data': None, 'timestamp': None},
 }
 _cache_duration = 300  # 5 minutes
+_CACHE_DB_PATH = Path(__file__).resolve().parents[1] / 'instance' / 'realtime_cache.sqlite3'
+
+
+def _normalize_cache_timestamp(value):
+    if isinstance(value, str):
+        candidate = value.replace('Z', '+00:00')
+        value = datetime.fromisoformat(candidate)
+    if value is None:
+        return None
+    if getattr(value, 'tzinfo', None) is not None:
+        value = value.astimezone(timezone.utc).replace(tzinfo=None)
+    return value
+
+
+def _cache_row_key(name, subkey=None):
+    if subkey is None:
+        return name
+    return f'{name}:{subkey}'
+
+
+def _ensure_shared_cache_db():
+    _CACHE_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(_CACHE_DB_PATH) as conn:
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS realtime_cache (key TEXT PRIMARY KEY, value TEXT NOT NULL)"
+        )
+        conn.commit()
+
+
+def _read_shared_cache(key, default=None):
+    _ensure_shared_cache_db()
+    with sqlite3.connect(_CACHE_DB_PATH) as conn:
+        row = conn.execute(
+            'SELECT value FROM realtime_cache WHERE key = ?', (key,)
+        ).fetchone()
+    if row is None:
+        return default
+    try:
+        payload = json.loads(row[0])
+    except (TypeError, ValueError):
+        return default
+    return payload if isinstance(payload, dict) else default
+
+
+def _write_shared_cache(key, payload):
+    _ensure_shared_cache_db()
+    with sqlite3.connect(_CACHE_DB_PATH) as conn:
+        conn.execute(
+            'INSERT INTO realtime_cache (key, value) VALUES (?, ?) '
+            'ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+            (key, json.dumps(payload, default=str)),
+        )
+        conn.commit()
+
+
+def _clear_shared_cache():
+    _ensure_shared_cache_db()
+    with sqlite3.connect(_CACHE_DB_PATH) as conn:
+        conn.execute('DELETE FROM realtime_cache')
+        conn.commit()
+
+
 CALABARZON_CITIES = {
     'lipa': 'Lipa',
     'batangas': 'Batangas',
@@ -117,10 +180,19 @@ def get_weather_data(city="Lipa"):
     if not canonical_city:
         return None
 
-    # Check cache first
+    # Check cache first, preferring the shared cross-worker cache so all
+    # Gunicorn workers see the same 5-minute TTL instead of doing duplicate
+    # fetches against the upstream weather API.
     cached = _cache['weather'].get(canonical_city)
     if cached and cached['data'] is not None and cached['timestamp'] is not None:
-        if utcnow() - cached['timestamp'] < timedelta(seconds=_cache_duration):
+        if utcnow() - _normalize_cache_timestamp(cached['timestamp']) < timedelta(seconds=_cache_duration):
+            return cached['data']
+
+    shared_weather = _read_shared_cache('weather', {})
+    cached = shared_weather.get(canonical_city)
+    if cached and cached.get('data') is not None and cached.get('timestamp') is not None:
+        if utcnow() - _normalize_cache_timestamp(cached['timestamp']) < timedelta(seconds=_cache_duration):
+            _cache['weather'][canonical_city] = cached
             return cached['data']
 
     api_key = _get_openweather_api_key()
@@ -151,8 +223,13 @@ def get_weather_data(city="Lipa"):
         'weather': data.get('weather', [{}])[0].get('description'),
         'fetched_at': utcnow().isoformat() + 'Z'
     }
-    # Cache the result by city
-    _cache['weather'][canonical_city] = {'data': result, 'timestamp': utcnow()}
+    # Cache the result by city in both the local process and the shared file
+    # cache so other Gunicorn workers can reuse it within the TTL.
+    now = utcnow()
+    _cache['weather'][canonical_city] = {'data': result, 'timestamp': now}
+    shared_weather = _read_shared_cache('weather', {})
+    shared_weather[canonical_city] = {'data': result, 'timestamp': now.isoformat() + 'Z'}
+    _write_shared_cache('weather', shared_weather)
     return result
 
 
@@ -160,10 +237,18 @@ def get_earthquake_data():
     """Fetch recent earthquake events from the Calabarzon region.
     Uses in-memory cache to reduce API calls.
     """
-    # Check cache first
+    # Check the local cache first, then the cross-worker shared cache so all
+    # Gunicorn workers see the same quake feed for the 5-minute TTL.
     cached = _cache.get('earthquakes')
     if cached and cached['data'] is not None and cached['timestamp'] is not None:
-        if utcnow() - cached['timestamp'] < timedelta(seconds=_cache_duration):
+        if utcnow() - _normalize_cache_timestamp(cached['timestamp']) < timedelta(seconds=_cache_duration):
+            return cached['data']
+
+    shared_quakes = _read_shared_cache('earthquakes', {'data': None, 'timestamp': None})
+    cached = shared_quakes
+    if cached and cached.get('data') is not None and cached.get('timestamp') is not None:
+        if utcnow() - _normalize_cache_timestamp(cached['timestamp']) < timedelta(seconds=_cache_duration):
+            _cache['earthquakes'] = cached
             return cached['data']
 
     # starttime bounds the feed to genuinely recent activity. Without this,
@@ -197,8 +282,10 @@ def get_earthquake_data():
             'place': prop.get('place'),
             'time': prop.get('time')
         })
-    # Cache the result
-    _cache['earthquakes'] = {'data': earthquakes, 'timestamp': utcnow()}
+    # Cache the result in both the worker-local and shared cache stores.
+    now = utcnow()
+    _cache['earthquakes'] = {'data': earthquakes, 'timestamp': now}
+    _write_shared_cache('earthquakes', {'data': earthquakes, 'timestamp': now.isoformat() + 'Z'})
     return earthquakes
 
 
@@ -218,7 +305,14 @@ def get_flood_events():
     """
     cached = _cache.get('flood_events')
     if cached and cached['data'] is not None and cached['timestamp'] is not None:
-        if utcnow() - cached['timestamp'] < timedelta(seconds=_cache_duration):
+        if utcnow() - _normalize_cache_timestamp(cached['timestamp']) < timedelta(seconds=_cache_duration):
+            return cached['data']
+
+    shared_floods = _read_shared_cache('flood_events', {'data': None, 'timestamp': None})
+    cached = shared_floods
+    if cached and cached.get('data') is not None and cached.get('timestamp') is not None:
+        if utcnow() - _normalize_cache_timestamp(cached['timestamp']) < timedelta(seconds=_cache_duration):
+            _cache['flood_events'] = cached
             return cached['data']
 
     url = "https://www.gdacs.org/gdacsapi/api/events/geteventlist/EVENTS4APP"
@@ -257,7 +351,9 @@ def get_flood_events():
             'source': 'GDACS',
         })
 
-    _cache['flood_events'] = {'data': floods, 'timestamp': utcnow()}
+    now = utcnow()
+    _cache['flood_events'] = {'data': floods, 'timestamp': now}
+    _write_shared_cache('flood_events', {'data': floods, 'timestamp': now.isoformat() + 'Z'})
     return floods
 
 
@@ -275,7 +371,14 @@ def get_volcano_events():
     """
     cached = _cache.get('volcano_events')
     if cached and cached['data'] is not None and cached['timestamp'] is not None:
-        if utcnow() - cached['timestamp'] < timedelta(seconds=_cache_duration):
+        if utcnow() - _normalize_cache_timestamp(cached['timestamp']) < timedelta(seconds=_cache_duration):
+            return cached['data']
+
+    shared_volcanoes = _read_shared_cache('volcano_events', {'data': None, 'timestamp': None})
+    cached = shared_volcanoes
+    if cached and cached.get('data') is not None and cached.get('timestamp') is not None:
+        if utcnow() - _normalize_cache_timestamp(cached['timestamp']) < timedelta(seconds=_cache_duration):
+            _cache['volcano_events'] = cached
             return cached['data']
 
     url = "https://eonet.gsfc.nasa.gov/api/v3/events?category=volcanoes&status=open"
@@ -309,5 +412,7 @@ def get_volcano_events():
             'source': 'NASA EONET',
         })
 
-    _cache['volcano_events'] = {'data': volcanoes, 'timestamp': utcnow()}
+    now = utcnow()
+    _cache['volcano_events'] = {'data': volcanoes, 'timestamp': now}
+    _write_shared_cache('volcano_events', {'data': volcanoes, 'timestamp': now.isoformat() + 'Z'})
     return volcanoes

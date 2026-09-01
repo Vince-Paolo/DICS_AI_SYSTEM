@@ -118,6 +118,7 @@ def citizen_report():
         anonymous = request.form.get('anonymous') == 'on'
         gps_latitude = request.form.get('gps_lat', '').strip()
         gps_longitude = request.form.get('gps_lng', '').strip()
+        gps_accuracy = request.form.get('gps_accuracy', '').strip()
         province_id = request.form.get('province_id', type=int)
         municipality_id = request.form.get('municipality_id', type=int)
         barangay_id = request.form.get('barangay_id', type=int)
@@ -169,6 +170,11 @@ def citizen_report():
             gps_longitude_value = None
 
         try:
+            gps_accuracy_value = float(gps_accuracy) if gps_accuracy else None
+        except ValueError:
+            gps_accuracy_value = None
+
+        try:
             twenty_minutes_ago = utcnow() - timedelta(minutes=20)
             duplicate_query = Incident.query.filter(
                 Incident.hazard_type == hazard_type,
@@ -193,6 +199,7 @@ def citizen_report():
                 contact=contact,
                 gps_latitude=gps_latitude_value,
                 gps_longitude=gps_longitude_value,
+                gps_accuracy=gps_accuracy_value,
                 province_id=province_id,
                 municipality_id=municipality_id,
                 barangay_id=barangay_id,
