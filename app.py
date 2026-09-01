@@ -65,13 +65,16 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 
 def _get_limiter_storage_uri():
-    """Flask-Limiter supports shared stores such as Redis/Postgres, but not
-    SQLite-backed storage for multi-process deployments. Use the same
-    Postgres DSN as the app when available; otherwise fall back to an
-    in-memory store for local SQLite-only development."""
-    database_url = app.config['SQLALCHEMY_DATABASE_URI']
-    if database_url.startswith('postgresql:'):
-        return database_url
+    """Flask-Limiter (via the `limits` library) only supports memory://,
+    redis://, memcached://, mongodb://, and etcd:// as storage backends --
+    Postgres/SQL is not a supported scheme. Use Redis when REDIS_URL is
+    configured (shares rate-limit state across multiple gunicorn workers);
+    otherwise fall back to an in-memory store, which is fine for a single
+    small deployment but tracks limits per-worker-process rather than
+    globally."""
+    redis_url = os.environ.get('REDIS_URL')
+    if redis_url:
+        return redis_url
     return 'memory://'
 
 
