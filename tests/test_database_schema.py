@@ -1,8 +1,10 @@
 import json
+import os
 import unittest
 from unittest.mock import patch
 
-from app import app, db
+import models
+from app import app, db, limiter
 from models import (
     Agency,
     Alert,
@@ -12,7 +14,7 @@ from models import (
     EvacuationCenter,
     Facility,
     Incident,
-    Message,
+    IncidentMessage,
     Municipality,
     Province,
     Report,
@@ -51,8 +53,12 @@ class DatabaseSchemaTestCase(unittest.TestCase):
         self.assertTrue(Resource.__tablename__)
         self.assertTrue(Alert.__tablename__)
         self.assertTrue(Report.__tablename__)
-        self.assertTrue(Message.__tablename__)
+        self.assertTrue(IncidentMessage.__tablename__)
+        self.assertFalse(hasattr(models, 'Message'))
         self.assertTrue(Province.__tablename__)
+        self.assertIsNotNone(limiter)
+        self.assertTrue(hasattr(limiter, 'storage_uri'))
+        self.assertEqual(limiter.storage_uri, 'memory://')
         self.assertTrue(Municipality.__tablename__)
         self.assertTrue(Barangay.__tablename__)
         self.assertTrue(Facility.__tablename__)
@@ -112,6 +118,19 @@ class DatabaseSchemaTestCase(unittest.TestCase):
     def test_incident_tracks_external_event_id_for_scheduler_deduplication(self):
         self.assertIn('external_event_id', Incident.__table__.columns.keys())
         self.assertIsNotNone(Incident.__table__.c.external_event_id)
+
+    def test_citizen_report_migration_includes_gps_accuracy_column(self):
+        migration_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            'migrations',
+            'versions',
+            'd3f7b1a9c4e2_add_citizen_report_gps_accuracy.py',
+        )
+        self.assertTrue(os.path.exists(migration_path))
+        with open(migration_path, 'r', encoding='utf-8') as migration_file:
+            migration_text = migration_file.read()
+        self.assertIn('gps_accuracy', migration_text)
+        self.assertIn("op.add_column('citizen_report'", migration_text)
 
     def test_ai_recommended_agencies_are_validated_against_agency_table(self):
         db.session.add(Agency(name='BFP'))

@@ -59,8 +59,6 @@ class User(db.Model):
     citizen_reports = db.relationship('CitizenReport', backref='user', lazy=True)
     alerts = db.relationship('Alert', backref='user', lazy=True, cascade='all, delete-orphan')
     reports = db.relationship('Report', backref='user', lazy=True, cascade='all, delete-orphan')
-    messages = db.relationship('Message', foreign_keys='[Message.sender_id]', backref='sender', lazy=True, cascade='all, delete-orphan')
-    received_messages = db.relationship('Message', foreign_keys='[Message.recipient_id]', backref='recipient', lazy=True)
     audit_events = db.relationship('AuditEvent', backref='user', lazy=True, cascade='all, delete-orphan')
     ai_recommendations = db.relationship('AIRecommendation', backref='user', lazy=True, cascade='all, delete-orphan')
 
@@ -112,6 +110,12 @@ class CitizenReport(db.Model):
     contact = db.Column(db.String(30), nullable=True)
     gps_latitude = db.Column(db.Float, nullable=True)
     gps_longitude = db.Column(db.Float, nullable=True)
+    # Radius in meters reported by the browser's Geolocation API
+    # (position.coords.accuracy) for a device GPS fix, or null when the
+    # point instead came from an address search / manual pin placement --
+    # those aren't a device-measured accuracy, so storing one would be
+    # misleading to whoever triages the report.
+    gps_accuracy = db.Column(db.Float, nullable=True)
     province_id = db.Column(db.Integer, db.ForeignKey('province.id'), nullable=True)
     municipality_id = db.Column(db.Integer, db.ForeignKey('municipality.id'), nullable=True)
     barangay_id = db.Column(db.Integer, db.ForeignKey('barangay.id'), nullable=True)
@@ -165,7 +169,6 @@ class Incident(db.Model):
     verifier = db.relationship('User', foreign_keys=[verified_by_id], backref='verified_incidents')
     reports = db.relationship('Report', backref='incident', lazy=True, cascade='all, delete-orphan')
     alerts = db.relationship('Alert', backref='incident', lazy=True, cascade='all, delete-orphan')
-    messages = db.relationship('Message', backref='incident', lazy=True, cascade='all, delete-orphan')
     ai_recommendations = db.relationship('AIRecommendation', backref='incident', lazy=True, cascade='all, delete-orphan')
     resource_requests = db.relationship('ResourceRequest', backref='incident', lazy=True, cascade='all, delete-orphan')
 
@@ -372,14 +375,3 @@ class Report(db.Model):
     report_type = db.Column(db.String(50), default='GENERAL')
     created_at = db.Column(db.DateTime, default=utcnow)
     updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
-
-
-class Message(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    incident_id = db.Column(db.Integer, db.ForeignKey('incident.id', ondelete='CASCADE'), nullable=True)
-    sender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    recipient_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
-    content = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, default=utcnow)
-
-

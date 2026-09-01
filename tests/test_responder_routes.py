@@ -146,6 +146,26 @@ class ResponderRoutesTestCase(unittest.TestCase):
             self.assertIsNone(user.reset_token)
             self.assertIsNone(user.reset_token_expires_at)
 
+    def test_forgot_password_sends_reset_email_with_link(self):
+        self.app.config.update(TESTING=False, MAIL_SUPPRESS_SEND=True)
+
+        with self.app.app_context():
+            from app import mail
+
+            with mail.record_messages() as outbox:
+                response = self.client.post('/forgot-password', data={'email': 'responder@example.com'}, follow_redirects=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'If an account exists', response.data)
+        self.assertEqual(len(outbox), 1)
+        self.assertEqual(outbox[0].recipients, ['responder@example.com'])
+        self.assertIn('Reset your password', outbox[0].subject)
+
+        with self.app.app_context():
+            user = User.query.filter_by(email='responder@example.com').first()
+            self.assertIsNotNone(user.reset_token)
+            self.assertIn(f'/reset-password/{user.reset_token}', outbox[0].body)
+
     def test_shared_layout_exposes_accessibility_landmarks(self):
         response = self.client.get('/')
 

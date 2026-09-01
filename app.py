@@ -5,6 +5,7 @@ import threading
 import secrets
 from datetime import datetime, timedelta, timezone
 from flask import Flask, current_app, render_template, request, redirect, url_for, session, flash, send_from_directory
+from flask_mail import Mail, Message
 from sqlalchemy import text
 from flask_wtf.csrf import CSRFProtect, generate_csrf
 from flask_migrate import Migrate
@@ -61,6 +62,19 @@ def _normalize_database_url():
 
 app.config['SQLALCHEMY_DATABASE_URI'] = _normalize_database_url()
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+
+def _get_limiter_storage_uri():
+    """Flask-Limiter supports shared stores such as Redis/Postgres, but not
+    SQLite-backed storage for multi-process deployments. Use the same
+    Postgres DSN as the app when available; otherwise fall back to an
+    in-memory store for local SQLite-only development."""
+    database_url = app.config['SQLALCHEMY_DATABASE_URI']
+    if database_url.startswith('postgresql:'):
+        return database_url
+    return 'memory://'
+
+
 _secret_key = os.environ.get('SECRET_KEY')
 if not _secret_key:
     import secrets as _secrets
@@ -87,10 +101,38 @@ app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE', 'f
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['ENABLE_HSTS'] = os.environ.get('ENABLE_HSTS', 'false').lower() == 'true'
+gmail_username = os.environ.get('MAIL_USERNAME') or os.environ.get('GMAIL_USERNAME')
+mail_server = os.environ.get('MAIL_SERVER') or ('smtp.gmail.com' if gmail_username else 'localhost')
+mail_port = os.environ.get('MAIL_PORT')
+if mail_port is None:
+    mail_port = '587' if mail_server == 'smtp.gmail.com' else '1025'
+mail_use_tls = os.environ.get('MAIL_USE_TLS')
+if mail_use_tls is None:
+    mail_use_tls = 'true' if mail_server == 'smtp.gmail.com' else 'false'
+mail_use_ssl = os.environ.get('MAIL_USE_SSL')
+if mail_use_ssl is None:
+    mail_use_ssl = 'false'
+
+app.config['MAIL_SERVER'] = mail_server
+app.config['MAIL_PORT'] = int(mail_port)
+app.config['MAIL_USE_TLS'] = mail_use_tls.lower() == 'true'
+app.config['MAIL_USE_SSL'] = mail_use_ssl.lower() == 'true'
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME') or os.environ.get('GMAIL_USERNAME', '')
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD') or os.environ.get('GMAIL_APP_PASSWORD', '')
+app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER') or app.config['MAIL_USERNAME'] or 'noreply@dics.local'
+app.config['MAIL_SUPPRESS_SEND'] = os.environ.get('MAIL_SUPPRESS_SEND', 'false').lower() == 'true'
+app.config['MAIL_DEBUG'] = int(os.environ.get('MAIL_DEBUG', '0'))
+mail = Mail()
+mail.init_app(app)
 
 
 @app.after_request
 def add_security_headers(response):
+    # Keep the inline exceptions only for the small set of legacy inline
+    # bootstrap/js behaviors still in use. This is a defense-in-depth gap, not
+    # an active vulnerability after the upload validation fix, but it should be
+    # tightened later to nonce/hash-based CSP if the remaining inline usage is
+    # ever refactored or bundled out of the template layer.
     response.headers.setdefault(
         'Content-Security-Policy',
         "default-src 'self'; "
@@ -148,7 +190,12 @@ if app.config['SQLALCHEMY_DATABASE_URI'].startswith('postgresql:'):
             except Exception:
                 pass
 
-limiter = Limiter(key_func=get_remote_address, app=app, default_limits=['200 per day', '50 per hour'])
+limiter = Limiter(
+    key_func=get_remote_address,
+    app=app,
+    storage_uri=_get_limiter_storage_uri(),
+    default_limits=['200 per day', '50 per hour'],
+)
 
 scheduler = APScheduler()
 scheduler.init_app(app)
@@ -670,6 +717,25 @@ def register():
     return render_template('pages/register.html', error=error)
 
 
+def send_password_reset_email(user, token):
+    reset_url = url_for('reset_password', token=token, _external=True)
+    subject = 'Reset your password | DICS AI'
+    body = (
+        'You requested a password reset for your DICS AI account.\n\n'
+        f'Use this link to reset your password: {reset_url}\n\n'
+        'This link will expire in 1 hour. If you did not request this reset, '
+        'you can safely ignore this email.'
+    )
+    message = Message(subject=subject, recipients=[user.email], body=body, sender=app.config['MAIL_DEFAULT_SENDER'])
+    try:
+        mail.send(message)
+        app.logger.info('Password reset email sent to %s', user.email)
+        return True
+    except Exception:
+        app.logger.exception('Failed to send password reset email to %s', user.email)
+        return False
+
+
 @app.route('/forgot-password', methods=['GET', 'POST'])
 @limiter.limit("10 per minute")
 def forgot_password():
@@ -685,6 +751,7 @@ def forgot_password():
             user.reset_token_expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=1)
             try:
                 db.session.commit()
+                send_password_reset_email(user, token)
             except Exception as exc:
                 db.session.rollback()
                 app.logger.exception('Failed to create password reset token')

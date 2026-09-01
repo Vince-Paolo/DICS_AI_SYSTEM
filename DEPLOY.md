@@ -37,6 +37,29 @@ providers that are each genuinely free with no card required:
    SQLAlchemy and seeding the default admin account + agencies.
 6. Log in and change the default admin password immediately.
 
+## Gmail SMTP setup
+To enable the password reset emails, configure Gmail SMTP in the deployment environment.
+
+1. In your Google account, create an App Password for your Gmail account.
+   - Go to Google Account -> Security -> App passwords.
+   - Select "Mail" and generate a 16-character app password.
+2. Add these environment variables in Render or your local shell:
+
+```
+MAIL_SERVER=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USE_TLS=true
+MAIL_USE_SSL=false
+MAIL_USERNAME=your-account@gmail.com
+MAIL_PASSWORD=your-16-char-app-password
+MAIL_DEFAULT_SENDER=your-account@gmail.com
+```
+
+Notes:
+- `MAIL_PASSWORD` must be the Gmail App Password, not your normal Gmail password.
+- If you prefer, `GMAIL_USERNAME` and `GMAIL_APP_PASSWORD` are also accepted as aliases.
+- Leave `MAIL_SUPPRESS_SEND=false` in normal deployments so emails actually go out.
+
 ## Things to know
 - Free web services on Render spin down after 15 min idle; free Neon DBs
   scale to zero after idle too. First request after a quiet period may
@@ -44,4 +67,4 @@ providers that are each genuinely free with no card required:
 - Uploaded citizen-report photos are NOT persisted (Render free has no
   disk) -- lost on redeploy. Same tradeoff as the earlier Render-only
   Postgres plan.
-- Single gunicorn worker is intentional -- see comment in render.yaml.
+- Current deployment config runs Gunicorn with 2 workers via Procfile; this is the actual concurrency baseline for the app in production.

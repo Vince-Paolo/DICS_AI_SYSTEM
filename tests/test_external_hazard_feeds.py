@@ -102,6 +102,7 @@ class ExternalHazardFeedParsingTestCase(unittest.TestCase):
     """Unit tests for the fetch/filter/parse logic, independent of network access."""
 
     def setUp(self):
+        realtime_data._clear_shared_cache()
         realtime_data._cache['flood_events'] = {'data': None, 'timestamp': None}
         realtime_data._cache['volcano_events'] = {'data': None, 'timestamp': None}
 
@@ -136,6 +137,24 @@ class ExternalHazardFeedParsingTestCase(unittest.TestCase):
         with patch.object(realtime_data, '_fetch_json', return_value=None):
             volcanoes = realtime_data.get_volcano_events()
         self.assertEqual(volcanoes, [])
+
+    def test_earthquake_cache_is_persisted_for_other_workers(self):
+        feature = {
+            'id': 'us7000abcd',
+            'properties': {
+                'mag': 5.2,
+                'place': 'Lipa, Batangas',
+                'time': 1720000000000,
+            },
+        }
+        with patch.object(realtime_data, '_fetch_json', return_value={'features': [feature]}):
+            data = realtime_data.get_earthquake_data()
+
+        self.assertEqual(len(data), 1)
+        persisted = realtime_data._read_shared_cache('earthquakes')
+        self.assertIsNotNone(persisted)
+        self.assertEqual(persisted['data'][0]['event_id'], 'us7000abcd')
+        self.assertEqual(persisted['data'][0]['place'], 'Lipa, Batangas')
 
 
 class ExternalHazardMonitorTestCase(unittest.TestCase):
