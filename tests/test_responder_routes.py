@@ -147,24 +147,25 @@ class ResponderRoutesTestCase(unittest.TestCase):
             self.assertIsNone(user.reset_token_expires_at)
 
     def test_forgot_password_sends_reset_email_with_link(self):
-        self.app.config.update(TESTING=False, MAIL_SUPPRESS_SEND=True)
+        self.app.config.update(TESTING=False, RESEND_API_KEY='test-resend-key')
 
         with self.app.app_context():
-            from app import mail
-
-            with mail.record_messages() as outbox:
+            with patch('app.requests.post') as resend_post:
+                resend_post.return_value.raise_for_status.return_value = None
                 response = self.client.post('/forgot-password', data={'email': 'responder@example.com'}, follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'If an account exists', response.data)
-        self.assertEqual(len(outbox), 1)
-        self.assertEqual(outbox[0].recipients, ['responder@example.com'])
-        self.assertIn('Reset your password', outbox[0].subject)
+        resend_post.assert_called_once()
+        request_kwargs = resend_post.call_args.kwargs
+        self.assertEqual(request_kwargs['headers']['Authorization'], 'Bearer test-resend-key')
+        self.assertEqual(request_kwargs['json']['to'], ['responder@example.com'])
+        self.assertIn('Reset your password', request_kwargs['json']['subject'])
 
         with self.app.app_context():
             user = User.query.filter_by(email='responder@example.com').first()
             self.assertIsNotNone(user.reset_token)
-            self.assertIn(f'/reset-password/{user.reset_token}', outbox[0].body)
+            self.assertIn(f'/reset-password/{user.reset_token}', request_kwargs['json']['text'])
 
     def test_shared_layout_exposes_accessibility_landmarks(self):
         response = self.client.get('/')

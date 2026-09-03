@@ -5,7 +5,7 @@ import threading
 import secrets
 from datetime import datetime, timedelta, timezone
 from flask import Flask, current_app, render_template, request, redirect, url_for, session, flash, send_from_directory
-from flask_mail import Mail, Message
+import requests
 from sqlalchemy import text
 from flask_wtf.csrf import CSRFProtect, generate_csrf
 from flask_migrate import Migrate
@@ -104,29 +104,10 @@ app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE', 'f
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['ENABLE_HSTS'] = os.environ.get('ENABLE_HSTS', 'false').lower() == 'true'
-gmail_username = os.environ.get('MAIL_USERNAME') or os.environ.get('GMAIL_USERNAME')
-mail_server = os.environ.get('MAIL_SERVER') or ('smtp.gmail.com' if gmail_username else 'localhost')
-mail_port = os.environ.get('MAIL_PORT')
-if mail_port is None:
-    mail_port = '587' if mail_server == 'smtp.gmail.com' else '1025'
-mail_use_tls = os.environ.get('MAIL_USE_TLS')
-if mail_use_tls is None:
-    mail_use_tls = 'true' if mail_server == 'smtp.gmail.com' else 'false'
-mail_use_ssl = os.environ.get('MAIL_USE_SSL')
-if mail_use_ssl is None:
-    mail_use_ssl = 'false'
-
-app.config['MAIL_SERVER'] = mail_server
-app.config['MAIL_PORT'] = int(mail_port)
-app.config['MAIL_USE_TLS'] = mail_use_tls.lower() == 'true'
-app.config['MAIL_USE_SSL'] = mail_use_ssl.lower() == 'true'
-app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME') or os.environ.get('GMAIL_USERNAME', '')
-app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD') or os.environ.get('GMAIL_APP_PASSWORD', '')
-app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER') or app.config['MAIL_USERNAME'] or 'noreply@dics.local'
-app.config['MAIL_SUPPRESS_SEND'] = os.environ.get('MAIL_SUPPRESS_SEND', 'false').lower() == 'true'
-app.config['MAIL_DEBUG'] = int(os.environ.get('MAIL_DEBUG', '0'))
-mail = Mail()
-mail.init_app(app)
+app.config['RESEND_API_KEY'] = os.environ.get('RESEND_API_KEY', '')
+app.config['RESEND_API_URL'] = os.environ.get('RESEND_API_URL', 'https://api.resend.com/emails')
+app.config['RESEND_FROM_EMAIL'] = os.environ.get('RESEND_FROM_EMAIL', 'onboarding@resend.dev')
+app.config['RESEND_SUPPRESS_SEND'] = os.environ.get('RESEND_SUPPRESS_SEND', 'false').lower() == 'true'
 
 
 @app.after_request
@@ -729,9 +710,36 @@ def send_password_reset_email(user, token):
         'This link will expire in 1 hour. If you did not request this reset, '
         'you can safely ignore this email.'
     )
-    message = Message(subject=subject, recipients=[user.email], body=body, sender=app.config['MAIL_DEFAULT_SENDER'])
     try:
-        mail.send(message)
+        if app.config['RESEND_SUPPRESS_SEND']:
+            app.logger.info('Password reset email suppressed for %s', user.email)
+            return True
+
+        response = requests.post(
+            app.config['RESEND_API_URL'],
+            headers={
+                'Authorization': f"Bearer {app.config['RESEND_API_KEY']}",
+                'Content-Type': 'application/json',
+            },
+            json={
+                'from': app.config['RESEND_FROM_EMAIL'],
+                'to': [user.email],
+                'subject': subject,
+                'text': body,
+            },
+            timeout=10,
+        )
+        if not response.ok:
+            # Surface Resend's actual error body (e.g. "domain not
+            # verified", "can only send to your own address in test
+            # mode") instead of just the bare status code from
+            # raise_for_status() -- this is what actually tells us why
+            # a send failed, instead of just that it failed.
+            app.logger.error(
+                'Resend API rejected password reset email to %s: HTTP %s - %s',
+                user.email, response.status_code, response.text,
+            )
+            return False
         app.logger.info('Password reset email sent to %s', user.email)
         return True
     except Exception:
