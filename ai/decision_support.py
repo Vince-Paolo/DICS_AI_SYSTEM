@@ -118,10 +118,15 @@ SYSTEM_PROMPT = (
 
 def _build_user_prompt(hazard_type, rainfall_mm, river_level_m, humidity_pct,
                         population_density, earthquake_data=None, aftershock_forecast=None):
+    river_level = (
+        f'{river_level_m} m'
+        if river_level_m is not None
+        else 'unavailable (no river gauge data)'
+    )
     lines = [
         f"Hazard type: {hazard_type}",
         f"Rainfall: {rainfall_mm} mm",
-        f"River level: {river_level_m} m",
+        f"River level: {river_level}",
         f"Humidity: {humidity_pct}%",
         f"Population density (this grid square): {population_density}",
     ]
@@ -238,9 +243,9 @@ def _deterministic_low_risk_exit(hazard_type, rainfall_mm, river_level_m,
                                  humidity_pct, population_density,
                                  earthquake_data=None):
     low_rainfall = rainfall_mm is not None and rainfall_mm < 10
-    low_river = river_level_m is None or river_level_m < 1.0
-    low_humidity = humidity_pct is None or humidity_pct < 80
-    low_population = population_density is None or population_density < 500
+    low_river = river_level_m is not None and river_level_m < 1.0
+    low_humidity = humidity_pct is not None and humidity_pct < 80
+    low_population = population_density is not None and population_density < 500
     low_seismic = True
     if earthquake_data and isinstance(earthquake_data, list) and earthquake_data:
         top = earthquake_data[0]

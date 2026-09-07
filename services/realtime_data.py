@@ -104,6 +104,27 @@ CALABARZON_CITIES = {
     'san fernando': 'San Fernando',
 }
 
+CALABARZON_CITY_COORDINATES = {
+    'Lipa': (13.9411, 121.1631),
+    'Batangas': (13.7565, 121.0583),
+    'Tanauan': (14.0863, 121.1497),
+    'Calamba': (14.2117, 121.1653),
+    'San Pablo': (14.0683, 121.3256),
+    'Lucena': (13.9373, 121.6172),
+    'Tagaytay': (14.1153, 120.9621),
+    'Imus': (14.4297, 120.9367),
+    'Dasmariñas': (14.3294, 120.9367),
+    'Cavite': (14.4791, 120.8970),
+    'Taytay': (14.5588, 121.1329),
+    'Antipolo': (14.5869, 121.1759),
+    'Quezon': (14.1681, 121.6339),
+    'Rizal': (14.6037, 121.3084),
+    'Carmona': (14.3132, 121.0576),
+    'Alaminos': (14.0639, 121.2465),
+    'Nagcarlan': (14.1364, 121.4165),
+    'San Fernando': (14.8127, 120.4642),
+}
+
 
 def _canonical_city_key(city):
     if not city:
@@ -215,6 +236,8 @@ def get_weather_data(city="Lipa"):
 
     result = {
         'city': CALABARZON_CITIES.get(canonical_city, canonical_city.title()),
+        'lat': (data.get('coord') or {}).get('lat'),
+        'lon': (data.get('coord') or {}).get('lon'),
         'temperature': data.get('main', {}).get('temp'),
         'humidity': data.get('main', {}).get('humidity'),
         'pressure': data.get('main', {}).get('pressure'),
@@ -276,11 +299,15 @@ def get_earthquake_data():
     earthquakes = []
     for feat in data.get('features', []):
         prop = feat.get('properties', {})
+        geometry = feat.get('geometry') or {}
+        coordinates = geometry.get('coordinates') or []
         earthquakes.append({
             'event_id': feat.get('id'),
             'magnitude': prop.get('mag'),
             'place': prop.get('place'),
-            'time': prop.get('time')
+            'time': prop.get('time'),
+            'lon': coordinates[0] if len(coordinates) >= 2 else None,
+            'lat': coordinates[1] if len(coordinates) >= 2 else None,
         })
     # Cache the result in both the worker-local and shared cache stores.
     now = utcnow()

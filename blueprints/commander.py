@@ -3,7 +3,7 @@ from datetime import datetime
 from flask import Blueprint, abort, current_app, flash, jsonify, redirect, render_template, request, session, url_for
 from sqlalchemy.orm.exc import StaleDataError
 
-from models import db, User, Incident, IncidentResponse, Task, Resource, IncidentMessage, PostIncidentReport, Agency, utcnow
+from models import AIRecommendation, AuditEvent, db, User, Incident, IncidentResponse, Task, Resource, IncidentMessage, PostIncidentReport, Agency, EvacuationCenter, EvacuationRecord, utcnow
 from blueprints.common import is_incident_commander
 
 commander_bp = Blueprint('commander', __name__)
@@ -23,8 +23,20 @@ def incident_commander_dashboard():
     ).all()
 
     critical_incidents = db.session.query(Incident).filter(
-        Incident.level.in_(['CRITICAL', 'HIGH'])
+        Incident.level.in_(['Severe', 'High'])
     ).order_by(Incident.created_at.desc()).all()
+    recommendation_by_incident = {
+        incident.id: max(
+            (
+                recommendation
+                for recommendation in incident.ai_recommendations
+                if recommendation.recommendation_type == 'hazard_prediction'
+            ),
+            key=lambda recommendation: recommendation.created_at,
+            default=None,
+        )
+        for incident in critical_incidents
+    }
 
     total_active = len(active_responses)
     total_critical = len(critical_incidents)
@@ -40,6 +52,7 @@ def incident_commander_dashboard():
     return render_template('pages/incident_commander_dashboard.html',
                          active_responses=active_responses,
                          critical_incidents=critical_incidents,
+                         recommendation_by_incident=recommendation_by_incident,
                          total_active=total_active,
                          total_critical=total_critical,
                          total_tasks=total_tasks,
@@ -53,21 +66,79 @@ def activate_incident_response(incident_id):
 
     incident = db.get_or_404(Incident, incident_id)
     commander = User.query.filter_by(username=session['username']).first()
+    decision = request.form.get('decision', 'ACCEPTED').strip().upper()
+    decision_reason = request.form.get('decision_reason', '').strip()
+    if decision not in {'ACCEPTED', 'MODIFIED', 'REJECTED'}:
+        return jsonify({'error': 'Invalid recommendation decision'}), 400
+    if decision in {'MODIFIED', 'REJECTED'} and not decision_reason:
+        flash('A reason is required when modifying or rejecting an AI recommendation.', 'error')
+        return redirect(url_for('commander.incident_commander_dashboard'))
+
+    recommendation = AIRecommendation.query.filter_by(
+        incident_id=incident.id,
+        recommendation_type='hazard_prediction',
+    ).order_by(AIRecommendation.created_at.desc()).first()
+    if recommendation is None:
+        flash('This incident has no AI recommendation to decide on.', 'error')
+        return redirect(url_for('commander.incident_commander_dashboard'))
 
     existing = IncidentResponse.query.filter_by(incident_id=incident_id).first()
     if existing:
         return jsonify({'error': 'Incident response already active'}), 400
+
+    recommendation.decision = decision
+    recommendation.decision_reason = decision_reason or None
+    recommendation.decided_by_id = commander.id
+    recommendation.decided_at = utcnow()
+
+    if decision == 'REJECTED':
+        incident.status = 'REJECTED'
+        incident.alert = False
+        try:
+            db.session.add(AuditEvent(
+                user_id=commander.id,
+                entity_type='AIRecommendation',
+                entity_id=recommendation.id,
+                action='DECISION_REJECTED',
+                details=f'Commander {commander.username} rejected recommendation for incident {incident.id}: {decision_reason}',
+            ))
+            db.session.add(AuditEvent(
+                user_id=commander.id,
+                entity_type='Incident',
+                entity_id=incident.id,
+                action='REJECTED',
+                details=f'Incident {incident.id} marked REJECTED as a false alarm by commander {commander.username}: {decision_reason}',
+            ))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception('Failed to record recommendation decision')
+            flash('Unable to record the recommendation decision. Please try again.', 'error')
+            return redirect(url_for('commander.incident_commander_dashboard'))
+        flash('AI recommendation rejected; no incident response was activated.', 'info')
+        return redirect(url_for('commander.incident_commander_dashboard'))
 
     response = IncidentResponse(
         incident_id=incident_id,
         commander_id=commander.id,
         status='ACTIVE',
         situation_summary=f"Incident Response initiated for {incident.hazard_type} at {incident.location}",
-        priority_level='CRITICAL' if incident.level == 'CRITICAL' else 'HIGH' if incident.level == 'HIGH' else 'MEDIUM'
+        priority_level='CRITICAL' if incident.level == 'Severe' else 'HIGH' if incident.level == 'High' else 'MEDIUM'
     )
 
     db.session.add(response)
     try:
+        db.session.add(AuditEvent(
+            user_id=commander.id,
+            entity_type='AIRecommendation',
+            entity_id=recommendation.id,
+            action=f'DECISION_{decision}',
+            details=(
+                f'Commander {commander.username} marked recommendation {decision.lower()} '
+                f'for incident {incident.id}'
+                + (f': {decision_reason}' if decision_reason else '.')
+            ),
+        ))
         db.session.commit()
     except Exception as e:
         db.session.rollback()
@@ -76,6 +147,55 @@ def activate_incident_response(incident_id):
         return redirect(url_for('commander.incident_commander_dashboard'))
 
     flash(f'Incident response activated for incident {incident_id}', 'success')
+    return redirect(url_for('commander.incident_commander_dashboard'))
+
+
+@commander_bp.route('/incident-response/<int:response_id>/reject', methods=['POST'])
+def reject_incident_response(response_id):
+    if not is_incident_commander():
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    commander = User.query.filter_by(username=session['username']).first()
+    response = db.get_or_404(IncidentResponse, response_id)
+    if response.commander_id != commander.id:
+        abort(403)
+
+    reason = request.form.get('reason', '').strip()
+    if not reason:
+        flash('A reason is required to mark an incident as a false alarm.', 'error')
+        return redirect(url_for('commander.incident_response_detail', response_id=response.id))
+
+    incident = response.incident
+    incident.status = 'REJECTED'
+    incident.alert = False
+    response.status = 'CLOSED'
+    response.resolved_at = utcnow()
+    response.closed_at = utcnow()
+    recommendation = AIRecommendation.query.filter_by(
+        incident_id=incident.id,
+        recommendation_type='hazard_prediction',
+    ).order_by(AIRecommendation.created_at.desc()).first()
+    try:
+        if recommendation:
+            recommendation.decision = 'REJECTED'
+            recommendation.decision_reason = reason
+            recommendation.decided_by_id = commander.id
+            recommendation.decided_at = utcnow()
+        db.session.add(AuditEvent(
+            user_id=commander.id,
+            entity_type='Incident',
+            entity_id=incident.id,
+            action='REJECTED',
+            details=f'Incident {incident.id} marked REJECTED as a false alarm by commander {commander.username}: {reason}',
+        ))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception('Failed to reject incident response')
+        flash('Unable to mark the incident as rejected. Please try again.', 'error')
+        return redirect(url_for('commander.incident_response_detail', response_id=response.id))
+
+    flash('Incident marked as rejected false alarm.', 'success')
     return redirect(url_for('commander.incident_commander_dashboard'))
 
 
@@ -230,7 +350,10 @@ def incident_response_detail(response_id):
     deployed_resources = sum(1 for r in resources if r.status == 'DEPLOYED')
 
     total_casualties = db.session.query(db.func.sum(IncidentMessage.casualties)).filter(IncidentMessage.incident_response_id == response_id).scalar() or 0
-    total_evacuated = db.session.query(db.func.sum(IncidentMessage.evacuated)).filter(IncidentMessage.incident_response_id == response_id).scalar() or 0
+    # Evacuated count is now tracked through real EvacuationRecord entries
+    # (created via record_evacuation) rather than free-text closure notes.
+    total_evacuated = db.session.query(db.func.sum(EvacuationRecord.people_count)).filter(EvacuationRecord.incident_response_id == response_id).scalar() or 0
+    evacuation_centers = EvacuationCenter.query.filter_by(status='OPEN').all()
     post_incident_report = PostIncidentReport.query.filter_by(incident_response_id=response_id).first()
 
     return render_template('pages/incident_response_detail.html',
@@ -246,6 +369,7 @@ def incident_response_detail(response_id):
                          deployed_resources=deployed_resources,
                          total_casualties=total_casualties,
                          total_evacuated=total_evacuated,
+                         evacuation_centers=evacuation_centers,
                          post_incident_report=post_incident_report)
 
 
@@ -351,7 +475,17 @@ def incident_response_close_page(response_id):
     if request.method == 'POST':
         summary = request.form.get('notes', '').strip()
         casualties = int(request.form.get('casualties') or 0)
-        evacuated = int(request.form.get('evacuated') or 0)
+
+        # Evacuated count now defaults to the real, automatically-tracked
+        # total from EvacuationRecord entries instead of relying on the
+        # commander to remember and re-type a number. An explicit override
+        # is still honored, since not every evacuation necessarily went
+        # through a tracked center (e.g. self-evacuation to relatives).
+        auto_evacuated = db.session.query(db.func.sum(EvacuationRecord.people_count)).filter(
+            EvacuationRecord.incident_response_id == response_id
+        ).scalar() or 0
+        evacuated_raw = request.form.get('evacuated', '').strip()
+        evacuated = int(evacuated_raw) if evacuated_raw else auto_evacuated
 
         closure_report = IncidentMessage(
             incident_response_id=response_id,
@@ -371,6 +505,7 @@ def incident_response_close_page(response_id):
         response.situation_summary = f"Response Closed. Total Casualties: {casualties}, Total Evacuated: {evacuated}"
         if response.incident is not None:
             response.incident.alert = False
+            response.incident.status = 'RESOLVED'
 
         db.session.add(closure_report)
         try:
@@ -407,6 +542,7 @@ def reopen_incident_response(response_id):
     response.resolved_at = None
     if response.incident is not None:
         response.incident.alert = True
+        response.incident.status = 'VERIFIED'
     db.session.add(IncidentMessage(
         incident_response_id=response.id,
         reporter_id=commander.id,
@@ -524,6 +660,82 @@ def allocate_resource(response_id):
         flash(f'Resource allocated: {quantity} x {resource_type} from {agency}', 'success')
 
     return redirect(url_for('commander.incident_response_resources', response_id=response_id))
+
+
+@commander_bp.route('/incident-response/<int:response_id>/evacuate', methods=['POST'])
+def record_evacuation(response_id):
+    """Move people into an evacuation center as part of this response.
+
+    This is the actual link between an active response and evacuation
+    center occupancy: occupancy only ever changes through this route, so
+    the center's running total and the response's evacuation history
+    always agree, and the closure summary can be computed from real
+    records instead of a free-text number.
+    """
+    if not is_incident_commander():
+        flash('Incident Commander access required.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    commander = User.query.filter_by(username=session['username']).first()
+    response = db.get_or_404(IncidentResponse, response_id)
+    if response.commander_id != commander.id:
+        abort(403)
+
+    center = db.get_or_404(EvacuationCenter, request.form.get('evacuation_center_id', type=int))
+    people_count = request.form.get('people_count', type=int)
+
+    if not people_count or people_count < 1:
+        flash('Enter a number of people greater than zero.', 'error')
+        return redirect(url_for('commander.incident_response_detail', response_id=response_id))
+
+    current_occupancy = center.occupancy or 0
+    if center.capacity is not None and current_occupancy + people_count > center.capacity:
+        remaining = max(center.capacity - current_occupancy, 0)
+        flash(
+            f'{center.facility.name if center.facility else "That center"} only has room for '
+            f'{remaining} more people (capacity {center.capacity}). Choose another center or reduce the count.',
+            'error',
+        )
+        return redirect(url_for('commander.incident_response_detail', response_id=response_id))
+
+    center.occupancy = current_occupancy + people_count
+    if center.status == 'OPEN' and center.capacity is not None and center.occupancy >= center.capacity:
+        center.status = 'FULL'
+
+    record = EvacuationRecord(
+        incident_response_id=response.id,
+        evacuation_center_id=center.id,
+        people_count=people_count,
+        recorded_by_id=commander.id,
+    )
+    db.session.add(record)
+
+    try:
+        db.session.flush()
+        db.session.add(AuditEvent(
+            user_id=commander.id,
+            entity_type='EvacuationRecord',
+            entity_id=record.id,
+            action='EVACUATION_RECORDED',
+            details=(
+                f'{people_count} people moved to '
+                f'{center.facility.name if center.facility else f"center #{center.id}"} '
+                f'for response #{response.id}.'
+            ),
+        ))
+        db.session.commit()
+    except StaleDataError:
+        db.session.rollback()
+        flash('This evacuation center was updated by another user. Reload and try again.', 'warning')
+        return redirect(url_for('commander.incident_response_detail', response_id=response_id))
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception('Commander operation failed')
+        flash('Unable to record the evacuation. Please try again.', 'error')
+        return redirect(url_for('commander.incident_response_detail', response_id=response_id))
+
+    flash(f'Recorded {people_count} people evacuated to {center.facility.name if center.facility else "the center"}.', 'success')
+    return redirect(url_for('commander.incident_response_detail', response_id=response_id))
 
 
 @commander_bp.route('/incident-response/<int:response_id>/create-report', methods=['GET', 'POST'])

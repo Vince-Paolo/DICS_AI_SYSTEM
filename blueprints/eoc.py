@@ -1,6 +1,6 @@
 from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, session, url_for
 
-from models import AuditEvent, db, Incident, IncidentResponse, Resource, ResourceRequest, Alert, Report, User, Task, utcnow
+from models import AIRecommendation, AuditEvent, db, Incident, IncidentResponse, Resource, ResourceRequest, Alert, Report, User, Task, utcnow
 from blueprints.common import is_eoc_staff, current_user
 from services import permissions as permission_service
 
@@ -18,7 +18,7 @@ def eoc_dashboard():
     ).order_by(IncidentResponse.started_at.desc()).all()
 
     critical_incidents = db.session.query(Incident).filter(
-        Incident.level.in_(['CRITICAL', 'HIGH'])
+        Incident.level.in_(['Severe', 'High'])
     ).order_by(Incident.created_at.desc()).limit(10).all()
 
     recent_incidents = db.session.query(Incident).order_by(
@@ -27,7 +27,7 @@ def eoc_dashboard():
 
     total_active = len(active_responses)
     total_critical = db.session.query(Incident).filter(
-        Incident.level.in_(['CRITICAL', 'HIGH'])
+        Incident.level.in_(['Severe', 'High'])
     ).count()
     total_tasks = db.session.query(Task).filter(
         Task.status.in_(['PENDING', 'IN_PROGRESS'])
@@ -112,9 +112,9 @@ def eoc_incident_monitoring():
 
     total_incidents = db.session.query(Incident).count()
     total_alerts = db.session.query(Incident).filter(Incident.alert.is_(True)).count()
-    total_critical = db.session.query(Incident).filter(Incident.level == 'CRITICAL').count()
+    total_critical = db.session.query(Incident).filter(Incident.level == 'Severe').count()
     total_unresponded = db.session.query(Incident).filter(
-        Incident.level.in_(['CRITICAL', 'HIGH'])
+        Incident.level.in_(['Severe', 'High'])
     ).outerjoin(IncidentResponse).filter(IncidentResponse.id.is_(None)).count()
 
     return render_template('pages/eoc_incident_monitoring.html',
@@ -239,6 +239,56 @@ def verify_incident(incident_id):
     return redirect(url_for('admin.admin_alerts'))
 
 
+@eoc_bp.route('/admin/incidents/<int:incident_id>/reject', methods=['POST'])
+def reject_incident(incident_id):
+    user = current_user()
+    if not user or not permission_service.has_any_role('EOC', 'COMMANDER'):
+        return {'error': 'Unauthorized'}, 403
+
+    incident = db.get_or_404(Incident, incident_id)
+    response = incident.response
+    if permission_service.is_commander() and (not response or response.commander_id != user.id):
+        return {'error': 'Forbidden'}, 403
+
+    reason = request.form.get('reason', '').strip()
+    if not reason:
+        flash('A reason is required to mark an incident as a false alarm.', 'error')
+        return redirect(url_for('admin.admin_alerts'))
+
+    incident.status = 'REJECTED'
+    incident.alert = False
+    if response and response.status in {'ACTIVE', 'MONITORING'}:
+        response.status = 'CLOSED'
+        response.resolved_at = utcnow()
+        response.closed_at = utcnow()
+    recommendation = AIRecommendation.query.filter_by(
+        incident_id=incident.id,
+        recommendation_type='hazard_prediction',
+    ).order_by(AIRecommendation.created_at.desc()).first()
+    try:
+        if recommendation:
+            recommendation.decision = 'REJECTED'
+            recommendation.decision_reason = reason
+            recommendation.decided_by_id = user.id
+            recommendation.decided_at = utcnow()
+        db.session.add(AuditEvent(
+            user_id=user.id,
+            entity_type='Incident',
+            entity_id=incident.id,
+            action='REJECTED',
+            details=f'Incident {incident.id} marked REJECTED as a false alarm by {user.username}: {reason}',
+        ))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception('Failed to reject incident')
+        flash('Unable to mark the incident as rejected. Please try again.', 'error')
+        return redirect(url_for('admin.admin_alerts'))
+
+    flash('Incident marked as rejected false alarm.', 'success')
+    return redirect(url_for('commander.incident_commander_dashboard') if permission_service.is_commander() else url_for('admin.admin_alerts'))
+
+
 @eoc_bp.route('/admin/incidents/<int:incident_id>/assign-commander', methods=['POST'])
 def assign_commander(incident_id):
     """Dispatch: assign a commander to an unresponded incident, creating an IncidentResponse."""
@@ -268,7 +318,7 @@ def assign_commander(incident_id):
         commander_id=commander_id,
         status='ACTIVE',
         situation_summary=f'Response initiated by dispatch for {incident.hazard_type} at {incident.location}',
-        priority_level='CRITICAL' if incident.level == 'CRITICAL' else 'HIGH' if incident.level == 'HIGH' else 'MEDIUM'
+        priority_level='CRITICAL' if incident.level == 'Severe' else 'HIGH' if incident.level == 'High' else 'MEDIUM'
     )
     db.session.add(response)
     try:
@@ -386,10 +436,44 @@ def eoc_decide_resource_request(request_id):
         flash('Invalid decision.', 'error')
         return redirect(url_for('eoc.eoc_resource_requests'))
 
+    response = resource_request.incident.response if resource_request.incident else None
+
+    # Fulfilling a request means resources actually get committed to the
+    # response -- that only makes sense once a response exists to commit
+    # them to, so this is blocked rather than silently marking a request
+    # fulfilled with nothing behind it.
+    if decision == 'FULFILLED' and response is None:
+        flash(
+            'This incident has no active response yet. A commander must '
+            'activate the response before this request can be fulfilled.',
+            'error',
+        )
+        return redirect(url_for('eoc.eoc_resource_requests'))
+
     resource_request.status = decision
     resource_request.decision_notes = notes or None
     resource_request.decided_by_id = user.id
     resource_request.decided_at = utcnow()
+
+    audit_details = (
+        f'Request #{resource_request.id} ({resource_request.quantity}x '
+        f'{resource_request.resource_type} for {resource_request.agency}) '
+        f'marked {decision} by {user.username}.'
+    )
+
+    created_resource = None
+    if decision == 'FULFILLED':
+        created_resource = Resource(
+            incident_response_id=response.id,
+            resource_request_id=resource_request.id,
+            resource_type=resource_request.resource_type,
+            agency=resource_request.agency or 'Unassigned',
+            quantity=resource_request.quantity,
+            status='DEPLOYED',
+            notes=f'Auto-allocated from Resource Request #{resource_request.id}.',
+        )
+        db.session.add(created_resource)
+        audit_details += f' Resource allocation created for response #{response.id}.'
 
     try:
         db.session.flush()
@@ -398,11 +482,7 @@ def eoc_decide_resource_request(request_id):
             entity_type='ResourceRequest',
             entity_id=resource_request.id,
             action=f'DECISION_{decision}',
-            details=(
-                f'Request #{resource_request.id} ({resource_request.quantity}x '
-                f'{resource_request.resource_type} for {resource_request.agency}) '
-                f'marked {decision} by {user.username}.'
-            ),
+            details=audit_details,
         ))
         db.session.commit()
     except Exception as e:
@@ -411,7 +491,15 @@ def eoc_decide_resource_request(request_id):
         flash('Unable to complete the EOC operation. Please try again.', 'error')
         return redirect(url_for('eoc.eoc_resource_requests'))
 
-    flash(f'Request #{resource_request.id} marked {decision.title()}.', 'success')
+    if created_resource:
+        flash(
+            f'Request #{resource_request.id} marked Fulfilled — '
+            f'{resource_request.quantity}x {resource_request.resource_type} '
+            f'allocated to response #{response.id}.',
+            'success',
+        )
+    else:
+        flash(f'Request #{resource_request.id} marked {decision.title()}.', 'success')
     return redirect(url_for('eoc.eoc_resource_requests'))
 
 

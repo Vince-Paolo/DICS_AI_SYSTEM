@@ -1,4 +1,3 @@
-import os
 import secrets
 from io import BytesIO
 
@@ -210,8 +209,6 @@ def responder_report():
             flash('Unable to complete the responder operation. Please try again.', 'error')
             return redirect(url_for('responder.responder_report'))
 
-        upload_dir = current_app.config['UPLOAD_FOLDER']
-        os.makedirs(upload_dir, exist_ok=True)
         uploaded_files = request.files.getlist('media')
         saved_files = []
         for media_file in uploaded_files:
@@ -224,8 +221,7 @@ def responder_report():
 
             media_bytes, filename = validated_media
             saved_name = f"{user.id}_{secrets.token_hex(6)}_{filename}"
-            with open(os.path.join(upload_dir, saved_name), 'wb') as saved_file:
-                saved_file.write(media_bytes)
+            current_app.extensions['file_storage'].save(saved_name, media_bytes)
             saved_files.append(saved_name)
 
         if saved_files:

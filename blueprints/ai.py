@@ -5,6 +5,7 @@ from flask import Blueprint, current_app, flash, redirect, render_template, requ
 
 from models import db, User, Incident, AIRecommendation, AuditEvent
 from services.realtime_data import get_earthquake_data
+from services.realtime_data import CALABARZON_CITY_COORDINATES
 from services.aftershock import forecast_for_event
 from ai.decision_support import predict_hazard
 from services import permissions as permission_service
@@ -42,6 +43,8 @@ def ai_prediction():
     earthquake_data = get_earthquake_data()
     if request.method == 'POST':
         hazard_type = request.form.get('hazard_type')
+        location = request.form.get('location') or None
+        coordinates = CALABARZON_CITY_COORDINATES.get(location)
         rainfall = float(request.form.get('rainfall') or 0)
         river_level = float(request.form.get('river_level') or 0)
         humidity_pct = float(request.form.get('humidity_pct') or 0)
@@ -62,6 +65,9 @@ def ai_prediction():
             incident = Incident(
                 user_id=user.id,
                 hazard_type=hazard_type,
+                location=location,
+                latitude=coordinates[0] if coordinates else None,
+                longitude=coordinates[1] if coordinates else None,
                 rainfall_mm=rainfall,
                 river_level_m=river_level,
                 humidity_pct=humidity_pct,
@@ -122,4 +128,5 @@ def ai_prediction():
                          total_active_alerts=total_active_alerts,
                          total_incidents=total_incidents,
                          latest_risk_score=latest_risk_score,
-                         latest_earthquake_magnitude=latest_earthquake_magnitude)
+                         latest_earthquake_magnitude=latest_earthquake_magnitude,
+                         prediction_locations=CALABARZON_CITY_COORDINATES)

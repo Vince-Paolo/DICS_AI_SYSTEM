@@ -1,5 +1,6 @@
 import os
 import secrets
+import json
 from datetime import timedelta
 from io import BytesIO
 
@@ -7,9 +8,21 @@ from flask import Blueprint, current_app, flash, jsonify, redirect, render_templ
 from PIL import Image, UnidentifiedImageError
 from werkzeug.utils import secure_filename
 
-from models import Barangay, Municipality, Province, db, User, Incident, CitizenReport, Alert, utcnow
+from models import (
+    AIRecommendation,
+    Alert,
+    Barangay,
+    CitizenReport,
+    Incident,
+    Municipality,
+    Province,
+    User,
+    db,
+    utcnow,
+)
 from services.permissions import can_view_incident
-from services.realtime_data import get_earthquake_data
+from services.realtime_data import get_earthquake_data, get_weather_data
+from ai.decision_support import predict_hazard
 
 citizen_bp = Blueprint('citizen', __name__)
 
@@ -155,11 +168,8 @@ def citizen_report():
                 flash('Photo upload was invalid.', 'error')
                 return redirect(url_for('citizen.citizen_report'))
 
-            os.makedirs(upload_dir, exist_ok=True)
             stored_name = f"{secrets.token_hex(8)}{ext}"
-            photo_path = os.path.join(upload_dir, stored_name)
-            with open(photo_path, 'wb') as output_file:
-                output_file.write(image_bytes)
+            current_app.extensions['file_storage'].save(stored_name, image_bytes)
             photo_filename = stored_name
 
         try:
@@ -223,13 +233,24 @@ def citizen_report():
                 return redirect(url_for('citizen.citizen_status'))
 
             db.session.flush()
+            weather_data = get_weather_data(location) or {}
+            earthquake_data = get_earthquake_data()
+            prediction = predict_hazard(
+                hazard_type=hazard_type,
+                rainfall_mm=weather_data.get('rainfall'),
+                river_level_m=None,
+                humidity_pct=weather_data.get('humidity'),
+                population_density=None,
+                earthquake_data=earthquake_data,
+            )
             incident = Incident(
                 user_id=user.id,
                 hazard_type=hazard_type,
                 location=location,
-                message=description,
-                level=severity,
-                alert=False,
+                score=prediction.get('score'),
+                level=prediction.get('level', 'INSUFFICIENT_DATA'),
+                message=prediction.get('message') or description,
+                alert=bool(prediction.get('alert', False)),
                 status='NEW',
                 reported_by='citizen',
                 province_id=province_id,
@@ -240,6 +261,19 @@ def citizen_report():
                 citizen_report_id=citizen_report.id,
             )
             db.session.add(incident)
+            db.session.flush()
+            db.session.add(AIRecommendation(
+                incident_id=incident.id,
+                user_id=user.id,
+                provider=prediction.get('provider'),
+                model=prediction.get('model'),
+                recommendation_type='hazard_prediction',
+                summary=prediction.get('message', '').strip() or 'AI hazard prediction generated.',
+                confidence_score=prediction.get('confidence'),
+                recommended_agencies=json.dumps(prediction.get('recommended_agencies', [])),
+                recommended_resources=json.dumps(prediction.get('recommended_resources', [])),
+                primary_factors=json.dumps(prediction.get('primary_factors', [])),
+            ))
             try:
                 db.session.commit()
             except Exception as e:
@@ -422,7 +456,7 @@ def emergency_sos():
             hazard_type='EMERGENCY',
             location=location,
             message='EMERGENCY SOS Alert from citizen',
-            level='CRITICAL',
+            level='Severe',
             alert=True,  # Immediately create alert
             status='NEW',
             reported_by='citizen',

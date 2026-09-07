@@ -154,28 +154,19 @@ def add_facility():
 
 @facilities_bp.route('/evacuation-centers/<int:center_id>/update', methods=['POST'])
 def update_evacuation_center(center_id):
-    """Update occupancy/status for an evacuation center -- the day-to-day
-    operational action, separate from creating the facility record itself."""
+    """Update the public status of an evacuation center.
+
+    Occupancy is maintained by response-linked evacuation records so the
+    displayed total always has an operational audit trail.
+    """
     user = _current_user()
     if not permission_service.can_manage_evacuation_centers(user):
         flash('You do not have permission to update evacuation centers.', 'danger')
         return redirect(url_for('facilities.list_facilities'))
 
     center = db.get_or_404(EvacuationCenter, center_id)
-    occupancy = request.form.get('occupancy', type=int)
     status = request.form.get('status', '').strip().upper()
 
-    if occupancy is not None:
-        if occupancy < 0:
-            flash('Evacuation center occupancy cannot be negative.', 'error')
-            return redirect(url_for('facilities.list_facilities'))
-        if center.capacity is not None and occupancy > center.capacity:
-            flash(
-                f'Occupancy cannot exceed this center\'s capacity of {center.capacity}.',
-                'error',
-            )
-            return redirect(url_for('facilities.list_facilities'))
-        center.occupancy = occupancy
     if status in ('OPEN', 'FULL', 'CLOSED'):
         center.status = status
 
