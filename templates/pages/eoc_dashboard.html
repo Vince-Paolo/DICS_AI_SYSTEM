@@ -218,7 +218,7 @@
                             </td>
                             <td><span class="text-muted small">{{ incident.location or 'Unknown' }}</span></td>
                             <td>
-                                {{ hz.priority_badge(incident.level, label=incident.level if incident.level != 'CRITICAL' else none) }}
+                                        {{ hz.priority_badge(incident.level, label=incident.level if incident.level != 'Severe' else none) }}
                             </td>
                             <td><strong class="text-info">{{ "%.2f"|format(incident.score|float(0)) }}%</strong></td>
                             <td>
@@ -235,7 +235,7 @@
                 </table>
             </div>
         {% else %}
-            {{ es.render('bi-check-circle', 'No Critical Incidents', subtitle='Nothing at CRITICAL or HIGH risk level right now.', variant='success') }}
+            {{ es.render('bi-check-circle', 'No Severe or High Incidents', subtitle='Nothing at Severe or High risk level right now.', variant='success') }}
         {% endif %}
     </div>
 </div>

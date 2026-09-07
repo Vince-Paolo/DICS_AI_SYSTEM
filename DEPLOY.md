@@ -1,61 +1,99 @@
-# Deploying DICS AI System to Render + Neon (free tier)
+# Deploying DICS AI System to Railway
 
-## Why this combo
-Render only allows one free-tier Postgres database per workspace, and
-that slot is already used by another project. Rather than touching that
-project or paying for anything, this setup splits the two pieces across
-providers that are each genuinely free with no card required:
-- App hosting: Render free web service
-- Database: Neon free Postgres (separate provider, unlimited by Render's
-  one-free-DB rule since it isn't a Render-managed resource)
+This project runs on Railway with Railway Postgres. Configure the service with
+the Railway Postgres `DATABASE_URL`, a strong `SECRET_KEY`, and the S3 storage
+variables documented below for durable uploaded photos.
 
-## Neon free tier limits to know
-- 0.5 GB storage, 100 compute-hours/month, permanent (not a trial)
-- Scale-to-zero is mandatory on the free plan: the database sleeps after
-  a few minutes of inactivity and cold-starts (~500ms) on the next query
-- No credit card required
+## Railway Postgres backup and restore verification
 
-## Code changes made for this deploy (same as the earlier Render+Postgres attempt)
-- `app.py`: fixed `postgres://` -> `postgresql://` scheme.
-- `app.py`: legacy SQLite-only migration patches now only run when the
-  DB is actually SQLite (`db.create_all()` covers Postgres already).
-- `blueprints/admin.py`: SQLite-only "Export Backup" feature now shows a
-  friendly message on Postgres instead of a broken export.
-- `requirements.txt`: added `psycopg2-binary` and `gunicorn`.
-- `render.yaml`: web service only (no `databases:` block this time --
-  the database lives on Neon instead).
+Two backup mechanisms exist for this project. Only the first has actually
+been run end-to-end and confirmed to work; the second is a convenience layer
+that has not yet been drilled and should not be treated as verified until it
+has.
 
-## Steps
-1. Create a free Neon account at neon.tech (no card needed) and create a
-   project. Copy the pooled connection string from the Neon console
-   (Connection Details -- use "Pooled connection").
-2. Push this repo to GitHub.
-3. Render Dashboard -> New -> Blueprint -> connect your repo.
-4. Render will prompt for `DATABASE_URL` (marked `sync: false` in
-   render.yaml) -- paste your Neon connection string here.
-5. Deploy. First request triggers `lazy_init()`, creating all tables via
-   SQLAlchemy and seeding the default admin account + agencies.
-6. Log in and change the default admin password immediately.
+### 1. `pg_dump` / `pg_restore` drill (verified, run this one)
 
-## Resend email setup
-To enable password reset emails, create a Resend API key and verify the sender
-domain or email address in Resend. Add these environment variables in Render or
-your local shell:
+This is a logical dump-and-restore, run from inside the Postgres service's
+own Railway console (Postgres service → **Console** tab) rather than from a
+local machine — no `railway` CLI, tunnel, or local Postgres client install is
+required, since the console already has `psql`/`pg_dump`/`pg_restore` on the
+service's own image.
 
-```
-RESEND_API_KEY=re_your_api_key
-RESEND_FROM_EMAIL=onboarding@your-verified-domain.example
-```
+1. Discover the connection details actually set in this environment (don't
+   assume names/values — confirm them):
+   ```sh
+   env | grep -Ei 'PG|POSTGRES|DATABASE'
+   ```
+2. Take a backup:
+   ```sh
+   pg_dump "$DATABASE_URL" --format=custom --no-owner \
+     --file=/tmp/backup-$(date +%Y%m%d-%H%M%S).dump
+   ```
+3. Restore into a throwaway database on the same server — never into the
+   real database:
+   ```sh
+   createdb -h localhost -U "$POSTGRES_USER" restore_drill
+   pg_restore -h localhost -U "$POSTGRES_USER" -d restore_drill \
+     --no-owner --exit-on-error /tmp/backup-<timestamp>.dump
+   ```
+4. Confirm the data actually came back, don't just check the restore command
+   exited cleanly:
+   ```sh
+   psql -h localhost -U "$POSTGRES_USER" -d restore_drill \
+     -c "SELECT relname, n_live_tup FROM pg_stat_user_tables ORDER BY n_live_tup DESC;"
+   ```
+   Compare row counts against the real `railway` database.
+5. Clean up the scratch database:
+   ```sh
+   dropdb -h localhost -U "$POSTGRES_USER" restore_drill
+   ```
 
-Notes:
-- `RESEND_FROM_EMAIL` must be a sender address verified in Resend.
-- Leave `RESEND_SUPPRESS_SEND=false` in normal deployments so emails actually go out.
+The console's filesystem is ephemeral, so the `.dump` file disappears once
+the session ends — that's fine for this drill (the point is proving the dump
+and restore both work, not keeping this specific file), but it means this
+console session is not itself an ongoing backup strategy. Repeat this drill
+periodically, not just once before submission, since a passing drill from
+weeks ago doesn't prove today's schema restores cleanly.
 
-## Things to know
-- Free web services on Render spin down after 15 min idle; free Neon DBs
-  scale to zero after idle too. First request after a quiet period may
-  be slow while both wake up.
-- Uploaded citizen-report photos are NOT persisted (Render free has no
-  disk) -- lost on redeploy. Same tradeoff as the earlier Render-only
-  Postgres plan.
-- Current deployment config runs Gunicorn with 2 workers via Procfile; this is the actual concurrency baseline for the app in production.
+### 2. Railway native volume snapshots (convenience layer, not yet drilled)
+
+Railway's **Backups** tab on the Postgres service can also snapshot the
+attached volume on a schedule (daily/weekly/monthly retention) with a
+one-click restore. This is a reasonable extra safety net for routine
+"oops" recovery, but as of this writing nobody has actually clicked
+**Restore** on one of these snapshots and confirmed the data comes back
+correctly in this project — so treat it as configured, not verified, until
+that drill has actually been run once:
+
+1. Postgres service → **Backups** tab → create a manual backup, confirm it
+   completes.
+2. **Restore** it, review the staged change, **Deploy**, then run the same
+   spot-checks as step 4 above against the restored service.
+
+Two things worth knowing before relying on this instead of the `pg_dump`
+drill: a volume snapshot can only be restored within the same Railway
+project and environment — it doesn't prove your data is portable off
+Railway the way a logical dump does — and it restores the whole volume,
+not a scratch copy, so there's no equivalent of testing into a throwaway
+database first.
+
+## Uploaded photos and backups
+
+Citizen photos and responder media are stored through the configured
+S3-compatible backend when `FILE_STORAGE_BACKEND=s3`. The browser accesses
+files through the application upload route; bucket credentials are never sent
+to the browser. Back up or retain the object-store bucket separately from
+Railway Postgres dumps.
+
+For local development, `FILE_STORAGE_BACKEND=local` stores files under
+`instance/uploads`. Those files are not durable in a deployed container.
+
+## Operational notes
+
+- Keep Railway and database credentials in Railway variables or a local secret
+  manager. Never put them in source control or shell history.
+- Run `flask --app app db upgrade` after deploying revisions that add
+  migrations.
+- Verify the application health endpoint and log in after each production
+  deployment.
+- Keep at least one verified backup outside Railway.

@@ -174,6 +174,40 @@
             </div>
         </div>
 
+        {% if evacuation_centers %}
+        <div class="card card-custom mb-4">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <div class="icon-badge" style="background:rgba(59,130,246,0.15);color:#93C5FD;border:1px solid rgba(59,130,246,0.3);">
+                        <i class="bi bi-signpost-split-fill"></i>
+                    </div>
+                    <h5 class="mb-0">Record Evacuation</h5>
+                </div>
+                <form method="POST" action="{{ url_for('commander.record_evacuation', response_id=response.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label class="form-label small">Evacuation Center</label>
+                        <select name="evacuation_center_id" class="form-select" required>
+                            {% for center in evacuation_centers %}
+                            <option value="{{ center.id }}">
+                                {{ center.facility.name if center.facility else 'Center #' ~ center.id }}
+                                ({{ center.occupancy or 0 }}{% if center.capacity %}/{{ center.capacity }}{% endif %})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small">People Evacuated</label>
+                        <input type="number" name="people_count" class="form-control" min="1" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary-modern btn-modern w-100">
+                        <i class="bi bi-signpost-split-fill me-2"></i>Record Evacuation
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Leadership & Operations -->
         <div class="card card-custom">
             <div class="card-body p-4">

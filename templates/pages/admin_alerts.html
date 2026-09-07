@@ -84,8 +84,8 @@
                  data-verified="{{ 'true' if incident.status == 'VERIFIED' else 'false' }}"
                  data-alert="{{ 'true' if incident.alert else 'false' }}"
                  data-responded="{{ 'true' if incident.response else 'false' }}"
-                 style="border:1px solid {% if incident.level and incident.level|lower in ['critical','high'] %}rgba(239,68,68,0.35){% elif incident.level and incident.level|lower == 'moderate' %}rgba(245,158,11,0.25){% elif incident.level and incident.level|lower in ['unknown','insufficient_data','insufficient-data','insufficient data'] %}rgba(148,163,184,0.35){% else %}rgba(255,255,255,0.07){% endif %};
-                        border-left:4px solid {% if incident.level and incident.level|lower in ['critical','high'] %}#ef4444{% elif incident.level and incident.level|lower == 'moderate' %}#f59e0b{% elif incident.level and incident.level|lower in ['unknown','insufficient_data','insufficient-data','insufficient data'] %}#94a3b8{% else %}#10b981{% endif %};">
+                 style="border:1px solid {% if incident.level and incident.level|lower in ['severe','high'] %}rgba(239,68,68,0.35){% elif incident.level and incident.level|lower == 'moderate' %}rgba(245,158,11,0.25){% elif incident.level and incident.level|lower in ['unknown','insufficient_data','insufficient-data','insufficient data'] %}rgba(148,163,184,0.35){% else %}rgba(255,255,255,0.07){% endif %};
+                        border-left:4px solid {% if incident.level and incident.level|lower in ['severe','high'] %}#ef4444{% elif incident.level and incident.level|lower == 'moderate' %}#f59e0b{% elif incident.level and incident.level|lower in ['unknown','insufficient_data','insufficient-data','insufficient data'] %}#94a3b8{% else %}#10b981{% endif %};">
                 <div class="card-body p-0">
 
                     <!-- Top row: meta info -->
@@ -93,8 +93,8 @@
 
                         <!-- Hazard icon -->
                         <div style="width:46px;height:46px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;
-                            background:{% if incident.level and incident.level|lower in ['critical','high'] %}rgba(239,68,68,0.12){% elif incident.level and incident.level|lower == 'moderate' %}rgba(245,158,11,0.12){% elif incident.level and incident.level|lower in ['unknown','insufficient_data','insufficient-data','insufficient data'] %}rgba(148,163,184,0.12){% else %}rgba(16,185,129,0.12){% endif %};
-                            color:{% if incident.level and incident.level|lower in ['critical','high'] %}#ef4444{% elif incident.level and incident.level|lower == 'moderate' %}#f59e0b{% elif incident.level and incident.level|lower in ['unknown','insufficient_data','insufficient-data','insufficient data'] %}#94a3b8{% else %}#10b981{% endif %};">
+                            background:{% if incident.level and incident.level|lower in ['severe','high'] %}rgba(239,68,68,0.12){% elif incident.level and incident.level|lower == 'moderate' %}rgba(245,158,11,0.12){% elif incident.level and incident.level|lower in ['unknown','insufficient_data','insufficient-data','insufficient data'] %}rgba(148,163,184,0.12){% else %}rgba(16,185,129,0.12){% endif %};
+                            color:{% if incident.level and incident.level|lower in ['severe','high'] %}#ef4444{% elif incident.level and incident.level|lower == 'moderate' %}#f59e0b{% elif incident.level and incident.level|lower in ['unknown','insufficient_data','insufficient-data','insufficient data'] %}#94a3b8{% else %}#10b981{% endif %};">
                             {{ hz.hazard_icon(incident.hazard_type) }}
                         </div>
 
@@ -109,7 +109,7 @@
                                 <!-- Level badge -->
                                 {% if incident.level %}
                                 <span style="font-size:.7rem;font-weight:600;padding:.25em .7em;border-radius:5px;
-                                    {% if incident.level|lower in ['critical','high'] %}background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.3);
+                                    {% if incident.level|lower in ['severe','high'] %}background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.3);
                                     {% elif incident.level|lower == 'moderate' %}background:rgba(245,158,11,0.15);color:#FDE68A;border:1px solid rgba(245,158,11,0.3);
                                     {% elif incident.level|lower in ['unknown','insufficient_data','insufficient-data','insufficient data'] %}background:rgba(148,163,184,0.15);color:#CBD5E1;border:1px solid rgba(148,163,184,0.45);
                                     {% else %}background:rgba(16,185,129,0.15);color:#86EFAC;border:1px solid rgba(16,185,129,0.3);
@@ -201,6 +201,14 @@
                             style="font-size:.78rem;padding:.35em .9em;border-radius:6px;background:rgba(16,185,129,0.08);color:#6EE7B7;border:1px solid rgba(16,185,129,0.2);">
                             <i class="bi bi-patch-check-fill"></i> Verified
                         </span>
+                        {% endif %}
+
+                        {% if incident.status != 'REJECTED' %}
+                        <form method="post" action="{{ url_for('eoc.reject_incident', incident_id=incident.id) }}" class="d-flex align-items-center gap-2 flex-wrap">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="text" name="reason" required maxlength="500" placeholder="False-alarm reason" class="form-control form-control-sm" style="max-width:220px;">
+                            <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-x-octagon me-1"></i>Reject false alarm</button>
+                        </form>
                         {% endif %}
 
                         <!-- Toggle Alert -->

@@ -9,7 +9,10 @@ os.environ.setdefault('DATABASE_URL', f'sqlite:///{TEST_DB_PATH}')
 from app import app, db
 from models import (
     Alert,
+    AIRecommendation,
+    Agency,
     EvacuationCenter,
+    EvacuationRecord,
     Facility,
     Incident,
     IncidentMessage,
@@ -19,6 +22,8 @@ from models import (
     Province,
     Report,
     ResourceRequest,
+    Resource,
+    Task,
     User,
 )
 from seed.demo_data import seed_geography_data
@@ -48,7 +53,7 @@ class OperationalDataFeaturesTestCase(unittest.TestCase):
                     role=role, agency=agency, email_verified=True,
                 ))
             db.session.add(Incident(
-                hazard_type='flood', location='Test Barangay', level='HIGH', score=70.0,
+                hazard_type='flood', location='Test Barangay', level='High', score=70.0,
                 message='test incident', status='REPORTED', alert=True,
             ))
             db.session.commit()
@@ -145,7 +150,7 @@ class OperationalDataFeaturesTestCase(unittest.TestCase):
         with self.app.app_context():
             self.assertIsNone(Facility.query.filter_by(name='Should Not Exist').first())
 
-    def test_eoc_can_update_evacuation_center_occupancy(self):
+    def test_eoc_can_update_evacuation_center_status_without_editing_occupancy(self):
         with self.app.app_context():
             facility = Facility(name='Center A', facility_type='Evacuation Center')
             db.session.add(facility)
@@ -157,13 +162,118 @@ class OperationalDataFeaturesTestCase(unittest.TestCase):
 
         self._login('eoc1', 'eoc_staff')
         resp = self.client.post(f'/evacuation-centers/{center_id}/update', data={
-            'occupancy': '85', 'status': 'OPEN',
+            'occupancy': '85', 'status': 'FULL',
         })
         self.assertEqual(resp.status_code, 302)
 
         with self.app.app_context():
             updated = db.session.get(EvacuationCenter, center_id)
-            self.assertEqual(updated.occupancy, 85)
+            self.assertEqual(updated.occupancy, 0)
+            self.assertEqual(updated.status, 'FULL')
+
+    def test_incident_runs_through_task_resource_evacuation_alert_and_resolution(self):
+        with self.app.app_context():
+            incident = db.session.get(Incident, self.incident_id)
+            db.session.add(AIRecommendation(
+                incident_id=incident.id,
+                provider='test',
+                model='test-model',
+                recommendation_type='hazard_prediction',
+                summary='High flood risk requires coordinated response.',
+            ))
+            db.session.commit()
+
+        self._login('cmd1', 'incident_commander')
+        activated = self.client.post(
+            f'/incident/{self.incident_id}/activate-response',
+            data={'decision': 'ACCEPTED'},
+        )
+        self.assertEqual(activated.status_code, 302)
+        with self.app.app_context():
+            response = IncidentResponse.query.filter_by(incident_id=self.incident_id).one()
+            response_id = response.id
+            if Agency.query.filter_by(name='BFP').first() is None:
+                db.session.add(Agency(name='BFP'))
+                db.session.commit()
+
+        assigned = self.client.post(f'/incident-response/{response_id}/assign-task', data={
+            'agency': 'BFP',
+            'title': 'Secure evacuation route',
+            'description': 'Keep the route clear for evacuees.',
+            'priority': 'HIGH',
+        })
+        self.assertEqual(assigned.status_code, 302)
+        with self.app.app_context():
+            task_id = Task.query.filter_by(incident_response_id=response_id).one().id
+        completed = self.client.post(
+            f'/incident-response/{response_id}/update-task/{task_id}',
+            data={'status': 'COMPLETED'},
+        )
+        self.assertEqual(completed.status_code, 302)
+
+        allocated = self.client.post(f'/incident-response/{response_id}/allocate-resource', data={
+            'resource_type': 'Rescue Equipment',
+            'agency': 'BFP',
+            'quantity': '2',
+            'location': 'Evacuation route',
+        })
+        self.assertEqual(allocated.status_code, 302)
+        with self.app.app_context():
+            resource_id = Resource.query.filter_by(incident_response_id=response_id).one().id
+        deployed = self.client.post(
+            f'/incident-response/{response_id}/update-resource/{resource_id}',
+            data={'status': 'DEPLOYED', 'location': 'Evacuation route'},
+        )
+        self.assertEqual(deployed.status_code, 302)
+
+        self._login('eoc1', 'eoc_staff')
+        created_center = self.client.post('/facilities/add', data={
+            'name': 'Incident Shelter',
+            'facility_type': 'Evacuation Center',
+            'capacity': '200',
+        })
+        self.assertEqual(created_center.status_code, 302)
+        with self.app.app_context():
+            center = EvacuationCenter.query.join(EvacuationCenter.facility).filter(Facility.name == 'Incident Shelter').one()
+            center_id = center.id
+        self._login('cmd1', 'incident_commander')
+        recorded_evacuation = self.client.post(
+            f'/incident-response/{response_id}/evacuate',
+            data={'evacuation_center_id': str(center_id), 'people_count': '80'},
+        )
+        self.assertEqual(recorded_evacuation.status_code, 302)
+
+        issued = self.client.post('/eoc/alerts/issue', data={
+            'incident_id': str(self.incident_id),
+            'title': 'Flood evacuation advisory',
+            'message': 'Evacuate through the secured route to Incident Shelter.',
+            'severity': 'HIGH',
+        })
+        self.assertEqual(issued.status_code, 302)
+        with self.app.app_context():
+            alert_id = Alert.query.filter_by(incident_id=self.incident_id).one().id
+        resolved_alert = self.client.post(f'/eoc/alerts/{alert_id}/resolve')
+        self.assertEqual(resolved_alert.status_code, 302)
+
+        closed = self.client.post(f'/incident-response/{response_id}/close', data={
+            'notes': 'Evacuation completed and route secured.',
+            'casualties': '0',
+        })
+        self.assertEqual(closed.status_code, 302)
+
+        with self.app.app_context():
+            incident = db.session.get(Incident, self.incident_id)
+            response = db.session.get(IncidentResponse, response_id)
+            task = db.session.get(Task, task_id)
+            resource = db.session.get(Resource, resource_id)
+            center = db.session.get(EvacuationCenter, center_id)
+            alert = db.session.get(Alert, alert_id)
+            self.assertEqual(task.status, 'COMPLETED')
+            self.assertEqual(resource.status, 'DEPLOYED')
+            self.assertEqual(center.occupancy, 80)
+            self.assertEqual(alert.status, 'RESOLVED')
+            self.assertEqual(response.status, 'CLOSED')
+            self.assertFalse(incident.alert)
 
     def test_eoc_cannot_update_occupancy_above_capacity(self):
         with self.app.app_context():
@@ -177,7 +287,7 @@ class OperationalDataFeaturesTestCase(unittest.TestCase):
 
         self._login('eoc1', 'eoc_staff')
         resp = self.client.post(f'/evacuation-centers/{center_id}/update', data={
-            'occupancy': '101', 'status': 'FULL',
+            'occupancy': '101', 'status': 'OPEN',
         }, follow_redirects=False)
         self.assertEqual(resp.status_code, 302)
 
@@ -201,6 +311,96 @@ class OperationalDataFeaturesTestCase(unittest.TestCase):
             'occupancy': '-1', 'status': 'OPEN',
         }, follow_redirects=False)
         self.assertEqual(resp.status_code, 302)
+
+    def test_commander_evacuation_record_updates_center_occupancy(self):
+        """This is the actual fix: recording an evacuation through the response
+        is what moves EvacuationCenter.occupancy now, not a disconnected
+        manual facility-management action."""
+        with self.app.app_context():
+            commander = User.query.filter_by(username='cmd1').one()
+            response = IncidentResponse(incident_id=self.incident_id, commander_id=commander.id, status='ACTIVE')
+            facility = Facility(name='Linked Shelter', facility_type='Evacuation Center')
+            db.session.add_all([response, facility])
+            db.session.flush()
+            center = EvacuationCenter(facility_id=facility.id, capacity=100, occupancy=0, status='OPEN')
+            db.session.add(center)
+            db.session.commit()
+            response_id = response.id
+            center_id = center.id
+
+        self._login('cmd1', 'incident_commander')
+        resp = self.client.post(f'/incident-response/{response_id}/evacuate', data={
+            'evacuation_center_id': str(center_id), 'people_count': '40',
+        })
+        self.assertEqual(resp.status_code, 302)
+
+        with self.app.app_context():
+            center = db.session.get(EvacuationCenter, center_id)
+            self.assertEqual(center.occupancy, 40)
+            record = EvacuationRecord.query.filter_by(incident_response_id=response_id).first()
+            self.assertIsNotNone(record)
+            self.assertEqual(record.people_count, 40)
+            self.assertEqual(record.evacuation_center_id, center_id)
+
+    def test_commander_evacuation_record_rejects_overfill(self):
+        with self.app.app_context():
+            commander = User.query.filter_by(username='cmd1').one()
+            response = IncidentResponse(incident_id=self.incident_id, commander_id=commander.id, status='ACTIVE')
+            facility = Facility(name='Small Shelter', facility_type='Evacuation Center')
+            db.session.add_all([response, facility])
+            db.session.flush()
+            center = EvacuationCenter(facility_id=facility.id, capacity=50, occupancy=40, status='OPEN')
+            db.session.add(center)
+            db.session.commit()
+            response_id = response.id
+            center_id = center.id
+
+        self._login('cmd1', 'incident_commander')
+        resp = self.client.post(f'/incident-response/{response_id}/evacuate', data={
+            'evacuation_center_id': str(center_id), 'people_count': '20',
+        })
+        self.assertEqual(resp.status_code, 302)
+
+        with self.app.app_context():
+            center = db.session.get(EvacuationCenter, center_id)
+            self.assertEqual(center.occupancy, 40)
+            self.assertEqual(EvacuationRecord.query.filter_by(incident_response_id=response_id).count(), 0)
+
+    def test_closure_auto_computes_evacuated_total_from_records(self):
+        """The evacuated figure at closure now defaults to the real tracked
+        total instead of a number the commander has to remember and type."""
+        with self.app.app_context():
+            commander = User.query.filter_by(username='cmd1').one()
+            response = IncidentResponse(incident_id=self.incident_id, commander_id=commander.id, status='ACTIVE')
+            facility = Facility(name='Auto Total Shelter', facility_type='Evacuation Center')
+            db.session.add_all([response, facility])
+            db.session.flush()
+            center = EvacuationCenter(facility_id=facility.id, capacity=100, occupancy=0, status='OPEN')
+            db.session.add(center)
+            db.session.commit()
+            response_id = response.id
+            center_id = center.id
+
+        self._login('cmd1', 'incident_commander')
+        self.client.post(f'/incident-response/{response_id}/evacuate', data={
+            'evacuation_center_id': str(center_id), 'people_count': '25',
+        })
+        self.client.post(f'/incident-response/{response_id}/evacuate', data={
+            'evacuation_center_id': str(center_id), 'people_count': '15',
+        })
+
+        # Note: no 'evacuated' field submitted at all -- it should be
+        # computed from the two EvacuationRecord entries above (25 + 15 = 40).
+        closed = self.client.post(f'/incident-response/{response_id}/close', data={
+            'notes': 'Done.', 'casualties': '0',
+        })
+        self.assertEqual(closed.status_code, 302)
+
+        with self.app.app_context():
+            response = db.session.get(IncidentResponse, response_id)
+            incident = db.session.get(Incident, self.incident_id)
+            self.assertIn('Total Evacuated: 40', response.situation_summary)
+            self.assertEqual(incident.status, 'RESOLVED')
 
     def test_citizen_evacuation_centers_page_shows_seeded_center(self):
         with self.app.app_context():
@@ -259,6 +459,59 @@ class OperationalDataFeaturesTestCase(unittest.TestCase):
         with self.app.app_context():
             unchanged = db.session.get(ResourceRequest, request_id)
             self.assertEqual(unchanged.status, 'OPEN')
+
+    def test_fulfilling_resource_request_without_response_is_blocked(self):
+        """A request can't be marked FULFILLED with nothing behind it -- there
+        has to be an active response to actually commit the resource to."""
+        with self.app.app_context():
+            resource_request = ResourceRequest(
+                incident_id=self.incident_id, resource_type='Rescue Boats', quantity=2,
+                agency='BFP', status='OPEN',
+            )
+            db.session.add(resource_request)
+            db.session.commit()
+            request_id = resource_request.id
+
+        self._login('eoc1', 'eoc_staff')
+        resp = self.client.post(f'/eoc/resource-requests/{request_id}/decide', data={'decision': 'FULFILLED'})
+        self.assertEqual(resp.status_code, 302)
+
+        with self.app.app_context():
+            unchanged = db.session.get(ResourceRequest, request_id)
+            self.assertEqual(unchanged.status, 'OPEN')
+            self.assertEqual(Resource.query.count(), 0)
+
+    def test_fulfilling_resource_request_creates_linked_resource(self):
+        """This is the actual fix: FULFILLED has to create a real, traceable
+        Resource on the response -- not just flip a status label."""
+        with self.app.app_context():
+            commander = User.query.filter_by(username='cmd1').one()
+            response = IncidentResponse(incident_id=self.incident_id, commander_id=commander.id, status='ACTIVE')
+            db.session.add(response)
+            db.session.flush()
+            resource_request = ResourceRequest(
+                incident_id=self.incident_id, resource_type='Rescue Boats', quantity=2,
+                agency='BFP', status='OPEN',
+            )
+            db.session.add(resource_request)
+            db.session.commit()
+            request_id = resource_request.id
+            response_id = response.id
+
+        self._login('eoc1', 'eoc_staff')
+        resp = self.client.post(f'/eoc/resource-requests/{request_id}/decide', data={'decision': 'FULFILLED'})
+        self.assertEqual(resp.status_code, 302)
+
+        with self.app.app_context():
+            updated = db.session.get(ResourceRequest, request_id)
+            self.assertEqual(updated.status, 'FULFILLED')
+            resource = Resource.query.filter_by(resource_request_id=request_id).first()
+            self.assertIsNotNone(resource)
+            self.assertEqual(resource.incident_response_id, response_id)
+            self.assertEqual(resource.resource_type, 'Rescue Boats')
+            self.assertEqual(resource.quantity, 2)
+            self.assertEqual(resource.agency, 'BFP')
+            self.assertEqual(resource.status, 'DEPLOYED')
 
     def test_assigned_commander_can_reopen_closed_response(self):
         with self.app.app_context():

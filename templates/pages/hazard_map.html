@@ -39,7 +39,7 @@
                                     <h5 class="mb-0">3</h5>
                                 </div>
                             </div>
-                            <p class="text-muted mb-0">Risk filters for high, moderate, and low zones.</p>
+                            <p class="text-muted mb-0">Risk filters for severe, high, moderate, and low zones.</p>
                         </div>
                     </div>
                 </div>
@@ -75,12 +75,42 @@
                                 <input type="text" class="form-control" placeholder="Search hazard areas...">
                             </div>
                         </div>
-                        <div class="col-md-7 text-md-end">
+                        <div class="col-md-7">
+                            <div class="row g-2 mb-2">
+                                <div class="col-sm-4">
+                                    <select id="provinceFilter" class="form-select form-select-sm" aria-label="Filter by province">
+                                        <option value="">All Provinces</option>
+                                    </select>
+                                </div>
+                                <div class="col-sm-4">
+                                    <select id="municipalityFilter" class="form-select form-select-sm" aria-label="Filter by municipality">
+                                        <option value="">All Municipalities</option>
+                                    </select>
+                                </div>
+                                <div class="col-sm-4">
+                                    <select id="statusFilter" class="form-select form-select-sm" aria-label="Filter by status">
+                                        <option value="">All Statuses</option>
+                                    </select>
+                                </div>
+                            </div>
                             <div class="d-flex flex-wrap gap-2 justify-content-md-end">
                                 <button id="allZones" class="btn btn-outline-primary btn-sm active">All Zones</button>
+                                <button id="severeRisk" class="btn btn-outline-danger btn-sm">Severe Risk</button>
                                 <button id="highRisk" class="btn btn-outline-danger btn-sm">High Risk</button>
                                 <button id="moderateRisk" class="btn btn-outline-warning btn-sm">Moderate Risk</button>
                                 <button id="lowRisk" class="btn btn-outline-success btn-sm">Low Risk</button>
+                                <span class="w-100"></span>
+                                <button id="allHazards" class="btn btn-outline-primary btn-sm active">All Hazards</button>
+                                <button id="floodHazard" class="btn btn-outline-info btn-sm">Flood</button>
+                                <button id="earthquakeHazard" class="btn btn-outline-danger btn-sm">Earthquake</button>
+                                <button id="volcanicHazard" class="btn btn-outline-warning btn-sm">Volcanic</button>
+                                <button id="fireHazard" class="btn btn-outline-secondary btn-sm">Fire</button>
+                                <button id="landslideHazard" class="btn btn-outline-warning btn-sm">Landslide</button>
+                                <button id="stormHazard" class="btn btn-outline-primary btn-sm">Storm</button>
+                                <button id="otherHazard" class="btn btn-outline-secondary btn-sm">Other</button>
+                                <button id="emergencyHazard" class="btn btn-outline-danger btn-sm">Emergency</button>
+                                <button id="evacuationCentersToggle" class="btn btn-outline-info btn-sm active">Evacuation Centers</button>
+                                <button id="resourcesToggle" class="btn btn-outline-secondary btn-sm active">Resources</button>
                             </div>
                         </div>
                     </div>
@@ -108,10 +138,21 @@ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap'
 }).addTo(map);
 
+const hazardColors = {
+    flood: '#0284c7',
+    earthquake: '#dc2626',
+    volcanic: '#ea580c',
+    fire: '#b91c1c',
+    landslide: '#92400e',
+    storm: '#2563eb',
+    other: '#64748b',
+    emergency: '#be123c',
+};
+
 function createHazardIcon(level) {
     const normalizedLevel = (level || 'Moderate').toLowerCase();
-    const color = normalizedLevel === 'high' ? '#dc2626' : normalizedLevel === 'moderate' ? '#f59e0b' : '#10b981';
-    const symbol = normalizedLevel === 'high' ? '!' : normalizedLevel === 'moderate' ? '!' : '•';
+    const color = normalizedLevel === 'severe' ? '#991b1b' : normalizedLevel === 'high' ? '#dc2626' : normalizedLevel === 'moderate' ? '#f59e0b' : '#10b981';
+    const symbol = normalizedLevel === 'severe' || normalizedLevel === 'high' ? '!' : normalizedLevel === 'moderate' ? '!' : '•';
     return L.divIcon({
         className: `hazard-marker-icon ${normalizedLevel}`,
         html: `<div style="background:${color}; border: 2px solid #ffffff; width: 40px; height: 40px; border-radius: 50%; display:flex; align-items:center; justify-content:center; color:#ffffff; font-weight:700; font-size:1.05rem; text-shadow:0 0 6px rgba(0,0,0,0.35);">${symbol}</div>`,
@@ -121,22 +162,101 @@ function createHazardIcon(level) {
     });
 }
 
+function createHazardClusterIcon(cluster) {
+    const hazardTypes = [...new Set(cluster.getAllChildMarkers()
+        .map(marker => marker.options.hazardType)
+        .filter(Boolean))];
+    const color = hazardTypes.length === 1 ? hazardColors[hazardTypes[0]] || '#475569' : '#475569';
+    const label = cluster.getChildCount();
+    return L.divIcon({
+        className: 'hazard-cluster-icon',
+        html: `<div style="background:${color}; border:3px solid #ffffff; width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#ffffff; font-weight:700; box-shadow:0 1px 4px rgba(0,0,0,0.35);">${label}</div>`,
+        iconSize: [42, 42],
+    });
+}
+
 let markersData = [];
 let activeFilter = 'all';
+let activeHazardFilter = 'all';
+const mapFilters = { province: '', municipality: '', status: '' };
+let evacuationCentersData = [];
+let resourcesData = [];
+let evacuationCentersVisible = true;
+let resourcesVisible = true;
 
-const clusterGroup = L.markerClusterGroup({ chunkedLoading: true, spiderfyOnMaxZoom: true, showCoverageOnHover: false });
+const clusterGroup = L.markerClusterGroup({
+    chunkedLoading: true,
+    spiderfyOnMaxZoom: true,
+    showCoverageOnHover: false,
+    iconCreateFunction: createHazardClusterIcon,
+});
 clusterGroup.addTo(map);
+const evacuationCentersLayer = L.layerGroup().addTo(map);
+const resourcesLayer = L.layerGroup().addTo(map);
 
-function renderMarkers(filter) {
+function createPointIcon(color, symbol) {
+    return L.divIcon({
+        className: 'map-point-icon',
+        html: `<div style="background:${color}; border:2px solid #ffffff; width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#ffffff; font-weight:700; font-size:0.9rem;">${symbol}</div>`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 32],
+        popupAnchor: [0, -28]
+    });
+}
+
+function renderOperationalLayers() {
+    evacuationCentersLayer.clearLayers();
+    resourcesLayer.clearLayers();
+    if (evacuationCentersVisible) {
+        evacuationCentersData.forEach(center => {
+            const marker = L.marker([center.lat, center.lng], { icon: createPointIcon('#0891b2', 'E') });
+            marker.bindPopup(`<strong>${center.name}</strong><br/>Status: ${center.status}<br/>Occupancy: ${center.occupancy}/${center.capacity ?? '—'}<br/>${center.address || ''}`);
+            evacuationCentersLayer.addLayer(marker);
+        });
+    }
+    if (resourcesVisible) {
+        resourcesData.forEach(resource => {
+            const marker = L.marker([resource.lat, resource.lng], { icon: createPointIcon('#64748b', 'R') });
+            marker.bindPopup(`<strong>${resource.resource_type}</strong><br/>Agency: ${resource.agency}<br/>Quantity: ${resource.quantity}<br/>Status: ${resource.status}<br/>${resource.location || ''}`);
+            resourcesLayer.addLayer(marker);
+        });
+    }
+}
+
+function renderMarkers(filter, hazardFilter = activeHazardFilter) {
     activeFilter = filter;
+    activeHazardFilter = hazardFilter;
     clusterGroup.clearLayers();
     markersData.forEach(item => {
         const level = (item.level || 'Moderate').toLowerCase();
-        if (filter === 'all' || (filter === 'high' && level === 'high') || (filter === 'moderate' && level === 'moderate') || (filter === 'low' && level === 'low')) {
-            const marker = L.marker([item.lat, item.lng], { icon: createHazardIcon(item.level) });
+        const hazardType = (item.hazard_type || '').toLowerCase();
+        const matchesSeverity = filter === 'all' || (filter === 'severe' && level === 'severe') || (filter === 'high' && level === 'high') || (filter === 'moderate' && level === 'moderate') || (filter === 'low' && level === 'low');
+        const matchesHazard = hazardFilter === 'all' || hazardType === hazardFilter;
+        const matchesLocation = (!mapFilters.province || item.province === mapFilters.province)
+            && (!mapFilters.municipality || item.municipality === mapFilters.municipality)
+            && (!mapFilters.status || item.status === mapFilters.status);
+        if (matchesSeverity && matchesHazard && matchesLocation) {
+            const marker = L.marker([item.lat, item.lng], {
+                icon: createHazardIcon(item.level),
+                hazardType,
+            });
             marker.bindPopup(`<strong>${item.label}</strong><br/><span style='color:#b8c2ff'>Risk: ${item.level}</span><br/>${item.message || ''}`);
             clusterGroup.addLayer(marker);
         }
+    });
+}
+
+function populateFilter(selectId, values, filterName) {
+    const select = document.getElementById(selectId);
+    [...new Set(values.filter(Boolean))].sort().forEach(value => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = value;
+        select.appendChild(option);
+    });
+    select.addEventListener('change', event => {
+        mapFilters[filterName] = event.target.value;
+        renderMarkers(activeFilter);
     });
 }
 
@@ -145,6 +265,9 @@ function loadMarkers() {
         .then(response => response.json())
         .then(data => {
             markersData = Array.isArray(data) ? data : [];
+            populateFilter('provinceFilter', markersData.map(item => item.province), 'province');
+            populateFilter('municipalityFilter', markersData.map(item => item.municipality), 'municipality');
+            populateFilter('statusFilter', markersData.map(item => item.status), 'status');
             renderMarkers(activeFilter);
             if (markersData.length > 0) {
                 const first = markersData[0];
@@ -163,15 +286,50 @@ function loadMarkers() {
 
 loadMarkers();
 
-const buttons = document.querySelectorAll('#allZones, #highRisk, #moderateRisk, #lowRisk');
+Promise.all([
+    fetch('/api/map-evacuation-centers').then(response => response.json()),
+    fetch('/api/map-resources').then(response => response.json())
+]).then(([centers, resources]) => {
+    evacuationCentersData = Array.isArray(centers) ? centers : [];
+    resourcesData = Array.isArray(resources) ? resources : [];
+    renderOperationalLayers();
+}).catch(() => {
+    evacuationCentersData = [];
+    resourcesData = [];
+});
+
+const buttons = document.querySelectorAll('#allZones, #severeRisk, #highRisk, #moderateRisk, #lowRisk');
 buttons.forEach(button => {
     button.addEventListener('click', () => {
         let filter = 'all';
+        if (button.id === 'severeRisk') filter = 'severe';
         if (button.id === 'highRisk') filter = 'high';
         if (button.id === 'moderateRisk') filter = 'moderate';
         if (button.id === 'lowRisk') filter = 'low';
         renderMarkers(filter);
         buttons.forEach(btn => btn.classList.remove('active'));
+        button.classList.add('active');
+    });
+});
+
+document.getElementById('evacuationCentersToggle').addEventListener('click', event => {
+    evacuationCentersVisible = !evacuationCentersVisible;
+    event.currentTarget.classList.toggle('active', evacuationCentersVisible);
+    renderOperationalLayers();
+});
+
+document.getElementById('resourcesToggle').addEventListener('click', event => {
+    resourcesVisible = !resourcesVisible;
+    event.currentTarget.classList.toggle('active', resourcesVisible);
+    renderOperationalLayers();
+});
+
+const hazardButtons = document.querySelectorAll('#allHazards, #floodHazard, #earthquakeHazard, #volcanicHazard, #fireHazard, #landslideHazard, #stormHazard, #otherHazard, #emergencyHazard');
+hazardButtons.forEach(button => {
+    button.addEventListener('click', () => {
+        const hazardFilter = button.id === 'allHazards' ? 'all' : button.id.replace('Hazard', '').toLowerCase();
+        renderMarkers(activeFilter, hazardFilter);
+        hazardButtons.forEach(btn => btn.classList.remove('active'));
         button.classList.add('active');
     });
 });

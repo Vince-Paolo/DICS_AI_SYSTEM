@@ -10,6 +10,7 @@ os.environ.setdefault('DATABASE_URL', f'sqlite:///{TEST_DB_PATH}')
 
 from app import app, db
 from models import Incident, utcnow
+from models import AIRecommendation, AuditEvent, Incident, utcnow
 from seed.demo_data import seed_geography_data
 import services.realtime_data as realtime_data
 import scheduler
@@ -141,6 +142,7 @@ class ExternalHazardFeedParsingTestCase(unittest.TestCase):
     def test_earthquake_cache_is_persisted_for_other_workers(self):
         feature = {
             'id': 'us7000abcd',
+            'geometry': {'type': 'Point', 'coordinates': [121.1, 14.2]},
             'properties': {
                 'mag': 5.2,
                 'place': 'Lipa, Batangas',
@@ -155,6 +157,8 @@ class ExternalHazardFeedParsingTestCase(unittest.TestCase):
         self.assertIsNotNone(persisted)
         self.assertEqual(persisted['data'][0]['event_id'], 'us7000abcd')
         self.assertEqual(persisted['data'][0]['place'], 'Lipa, Batangas')
+        self.assertEqual(persisted['data'][0]['lat'], 14.2)
+        self.assertEqual(persisted['data'][0]['lon'], 121.1)
 
 
 class ExternalHazardMonitorTestCase(unittest.TestCase):
@@ -186,9 +190,16 @@ class ExternalHazardMonitorTestCase(unittest.TestCase):
             self.assertTrue(created)
             incident = Incident.query.filter_by(hazard_type='flood', location='Flood in Batangas').first()
             self.assertIsNotNone(incident)
+            self.assertEqual(incident.latitude, 14.1)
+            self.assertEqual(incident.longitude, 121.0)
             self.assertEqual(incident.level, 'High')
             self.assertTrue(incident.alert)
             self.assertIn('GDACS', incident.message)
+            recommendation = AIRecommendation.query.filter_by(incident_id=incident.id).one()
+            self.assertEqual(recommendation.provider, 'deterministic')
+            self.assertIn('water rescue', recommendation.summary)
+            self.assertIn('BFP', recommendation.recommended_agencies)
+            self.assertEqual(AuditEvent.query.filter_by(entity_id=recommendation.id, action='CREATED').count(), 1)
 
     def test_monitor_floods_gdacs_does_not_alert_on_green(self):
         parsed_flood = {
@@ -251,6 +262,7 @@ class ExternalHazardMonitorTestCase(unittest.TestCase):
         quake = {
             'event_id': 'us7000forecast', 'magnitude': 5.2,
             'place': 'Calatagan, Philippines', 'time': 1723000000000,
+            'lat': 13.58, 'lon': 120.63,
         }
         forecast = {
             'message': 'Elevated probability window: 12.3% chance of a M4.5+ aftershock within 24h.'
@@ -264,6 +276,11 @@ class ExternalHazardMonitorTestCase(unittest.TestCase):
             forecast_mock.assert_called_once()
             incident = Incident.query.filter_by(external_event_id='usgs:us7000forecast').first()
             self.assertIn(forecast['message'], incident.message)
+            self.assertEqual(incident.latitude, 13.58)
+            self.assertEqual(incident.longitude, 120.63)
+            recommendation = AIRecommendation.query.filter_by(incident_id=incident.id).one()
+            self.assertIn('search and rescue', recommendation.summary)
+            self.assertIn('Structural assessment equipment', recommendation.recommended_resources)
 
     def test_monitor_earthquakes_creates_new_incident_for_genuinely_different_event(self):
         """A different USGS event id at a similar location (e.g. an
@@ -318,6 +335,11 @@ class ExternalHazardMonitorTestCase(unittest.TestCase):
             self.assertTrue(created)
             incident = Incident.query.filter_by(hazard_type='volcanic', location='Taal Volcano').first()
             self.assertIsNotNone(incident)
+            self.assertEqual(incident.latitude, 14.00)
+            self.assertEqual(incident.longitude, 120.99)
+            recommendation = AIRecommendation.query.filter_by(incident_id=incident.id).one()
+            self.assertEqual(recommendation.recommendation_type, 'hazard_prediction')
+            self.assertIn('evacuation readiness', recommendation.summary)
             self.assertEqual(incident.level, 'High')
             self.assertTrue(incident.alert)
             self.assertIn('EONET', incident.message)

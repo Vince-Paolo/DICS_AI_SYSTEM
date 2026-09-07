@@ -20,7 +20,9 @@
 
 {% macro risk_badge(level) -%}
     {%- set l = (level or '')|lower -%}
-    {%- if l == 'high' -%}
+    {%- if l == 'severe' -%}
+    <span class="badge badge-high"><i class="bi bi-record-fill me-1"></i>SEVERE</span>
+    {%- elif l == 'high' -%}
     <span class="badge badge-high"><i class="bi bi-record-fill me-1"></i>HIGH</span>
     {%- elif l == 'moderate' or l == 'mod' -%}
     <span class="badge badge-mod"><i class="bi bi-record-fill me-1"></i>MOD</span>
@@ -33,7 +35,9 @@
 
 {% macro priority_badge(level, label=none) -%}
     {%- set l = (level or '')|lower -%}
-    {%- if l == 'critical' -%}
+    {%- if l == 'severe' -%}
+    <span class="priority-badge priority-critical"><span class="priority-badge-content"><i class="bi bi-record-fill"></i>{{ label or 'SEVERE' }}</span></span>
+    {%- elif l == 'critical' -%}
     <span class="priority-badge priority-critical"><span class="priority-badge-content"><i class="bi bi-record-fill"></i>{{ label or 'CRITICAL' }}</span></span>
     {%- elif l == 'high' -%}
     <span class="priority-badge priority-high"><span class="priority-badge-content"><i class="bi bi-record-fill"></i>{{ label or 'HIGH' }}</span></span>

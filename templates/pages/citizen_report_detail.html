@@ -96,7 +96,7 @@
               <div class="p-3 rounded" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);">
                 <div class="text-muted small mb-1">Severity / Level</div>
                 <div class="fw-bold
-                  {% if incident.level|lower in ['high','critical'] %}text-danger
+                  {% if incident.level|lower in ['high','severe'] %}text-danger
                   {% elif incident.level|lower == 'moderate' %}text-warning
                   {% elif incident.level|lower in ['unknown','insufficient_data','insufficient-data','insufficient data'] %}text-secondary
                   {% else %}text-success{% endif %}">

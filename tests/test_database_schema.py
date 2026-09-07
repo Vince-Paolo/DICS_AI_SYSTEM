@@ -23,7 +23,12 @@ from models import (
     Task,
     User,
 )
-from ai.decision_support import _normalize_recommended_agencies, _deterministic_low_risk_exit
+from ai.decision_support import (
+    _build_user_prompt,
+    _normalize_recommended_agencies,
+    _deterministic_low_risk_exit,
+)
+from blueprints.admin import _build_pg_dump_command
 
 
 class DatabaseSchemaTestCase(unittest.TestCase):
@@ -57,8 +62,7 @@ class DatabaseSchemaTestCase(unittest.TestCase):
         self.assertFalse(hasattr(models, 'Message'))
         self.assertTrue(Province.__tablename__)
         self.assertIsNotNone(limiter)
-        self.assertTrue(hasattr(limiter, 'storage_uri'))
-        self.assertEqual(limiter.storage_uri, 'memory://')
+        self.assertEqual(limiter._storage_uri, 'memory://')
         self.assertTrue(Municipality.__tablename__)
         self.assertTrue(Barangay.__tablename__)
         self.assertTrue(Facility.__tablename__)
@@ -75,7 +79,7 @@ class DatabaseSchemaTestCase(unittest.TestCase):
             'model': 'gpt-5.6-terra',
             'score': 78.2,
             'confidence': 82.5,
-            'level': 'HIGH',
+            'level': 'High',
             'message': 'High flood risk detected near the reported location.',
             'primary_factors': ['heavy rain', 'river rise'],
             'recommended_agencies': ['BFP'],
@@ -140,6 +144,34 @@ class DatabaseSchemaTestCase(unittest.TestCase):
         normalized = _normalize_recommended_agencies(['bfp', 'DOH', 'invalid', '  doh  '])
         self.assertEqual(normalized, ['BFP', 'DOH'])
 
+    @patch('blueprints.admin.shutil.which', return_value='pg_dump')
+    def test_pg_dump_command_uses_custom_format_without_password_in_argv(self, mock_which):
+        command, environment = _build_pg_dump_command(
+            'postgresql://backup_user:secret@ep.example.neon.tech:5433/dics?sslmode=require',
+            '/tmp/dics_ai_backup.dump',
+        )
+
+        mock_which.assert_called_once_with('pg_dump')
+        self.assertEqual(command[0], 'pg_dump')
+        self.assertIn('--format=custom', command)
+        self.assertIn('--no-owner', command)
+        self.assertIn('--no-privileges', command)
+        self.assertIn('--file=/tmp/dics_ai_backup.dump', command)
+        self.assertIn('--dbname', command)
+        self.assertNotIn('secret', ' '.join(command))
+        self.assertEqual(environment['PGPASSWORD'], 'secret')
+        self.assertIn('sslmode=require', command[-1])
+
+    @patch('blueprints.admin.shutil.which', return_value=None)
+    def test_pg_dump_command_fails_when_client_is_missing(self, mock_which):
+        with self.assertRaisesRegex(RuntimeError, 'pg_dump is not installed'):
+            _build_pg_dump_command(
+                'postgresql://backup_user:secret@localhost/dics',
+                '/tmp/dics_ai_backup.dump',
+            )
+
+        mock_which.assert_called_once_with('pg_dump')
+
     def test_deterministic_low_risk_exit_bypasses_ai_when_inputs_are_conservatively_low(self):
         result = _deterministic_low_risk_exit(
             'flood',
@@ -154,6 +186,26 @@ class DatabaseSchemaTestCase(unittest.TestCase):
         self.assertEqual(result['confidence'], 95.0)
         self.assertEqual(result['recommended_agencies'], [])
         self.assertIn('rainfall below 10 mm', result['primary_factors'])
+
+    def test_deterministic_low_risk_exit_does_not_treat_missing_inputs_as_low_risk(self):
+        for missing_field in ('river_level_m', 'humidity_pct', 'population_density'):
+            inputs = {
+                'rainfall_mm': 5,
+                'river_level_m': 0.5,
+                'humidity_pct': 70,
+                'population_density': 200,
+                'earthquake_data': [{'magnitude': 3.1, 'place': 'nearby'}],
+            }
+            inputs[missing_field] = None
+
+            with self.subTest(missing_field=missing_field):
+                self.assertIsNone(_deterministic_low_risk_exit('flood', **inputs))
+
+    def test_ai_prompt_identifies_unavailable_river_gauge_data(self):
+        prompt = _build_user_prompt('flood', 20, None, 85, 1200)
+
+        self.assertIn('River level: unavailable (no river gauge data)', prompt)
+        self.assertNotIn('River level: None m', prompt)
 
 
 if __name__ == '__main__':

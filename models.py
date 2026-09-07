@@ -60,7 +60,13 @@ class User(db.Model):
     alerts = db.relationship('Alert', backref='user', lazy=True, cascade='all, delete-orphan')
     reports = db.relationship('Report', backref='user', lazy=True, cascade='all, delete-orphan')
     audit_events = db.relationship('AuditEvent', backref='user', lazy=True, cascade='all, delete-orphan')
-    ai_recommendations = db.relationship('AIRecommendation', backref='user', lazy=True, cascade='all, delete-orphan')
+    ai_recommendations = db.relationship(
+        'AIRecommendation',
+        foreign_keys='[AIRecommendation.user_id]',
+        backref='user',
+        lazy=True,
+        cascade='all, delete-orphan',
+    )
 
     @property
     def password_hash(self):
@@ -260,6 +266,7 @@ class Resource(db.Model):
     __mapper_args__ = {'version_id_col': version_id}
     id = db.Column(db.Integer, primary_key=True)
     incident_response_id = db.Column(db.Integer, db.ForeignKey('incident_response.id', ondelete='CASCADE'), nullable=False)
+    resource_request_id = db.Column(db.Integer, db.ForeignKey('resource_request.id', ondelete='SET NULL'), nullable=True, index=True)
     resource_type = db.Column(db.String(100), nullable=False)  # Personnel, Equipment, Vehicles, Supplies, etc.
     agency = db.Column(db.String(150), nullable=False, index=True)
     quantity = db.Column(db.Integer, nullable=False)
@@ -269,6 +276,8 @@ class Resource(db.Model):
     allocated_at = db.Column(db.DateTime, default=utcnow, index=True)
     deployed_at = db.Column(db.DateTime, nullable=True)
     updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
+
+    resource_request = db.relationship('ResourceRequest', backref='fulfilled_resources')
 
 
 class Facility(db.Model):
@@ -311,6 +320,29 @@ class EvacuationCenter(db.Model):
     facility = db.relationship('Facility', backref=db.backref('evacuation_center', uselist=False))
 
 
+class EvacuationRecord(db.Model):
+    """Tracks people moved into an evacuation center as part of an active incident response.
+
+    This is what actually links EvacuationCenter.occupancy to a response's
+    lifecycle: occupancy is updated exclusively through records created here,
+    so the running total on the center and the audit trail for a response
+    always agree.
+    """
+    __table_args__ = (
+        CheckConstraint('people_count > 0', name='ck_evacuation_record_people_positive'),
+    )
+    id = db.Column(db.Integer, primary_key=True)
+    incident_response_id = db.Column(db.Integer, db.ForeignKey('incident_response.id', ondelete='CASCADE'), nullable=False, index=True)
+    evacuation_center_id = db.Column(db.Integer, db.ForeignKey('evacuation_center.id', ondelete='CASCADE'), nullable=False, index=True)
+    people_count = db.Column(db.Integer, nullable=False)
+    recorded_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    recorded_at = db.Column(db.DateTime, default=utcnow, index=True)
+
+    incident_response = db.relationship('IncidentResponse', backref=db.backref('evacuation_records', cascade='all, delete-orphan'))
+    evacuation_center = db.relationship('EvacuationCenter', backref='evacuation_records')
+    recorded_by = db.relationship('User')
+
+
 class ResourceRequest(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     incident_id = db.Column(db.Integer, db.ForeignKey('incident.id', ondelete='CASCADE'), nullable=False)
@@ -341,7 +373,13 @@ class AIRecommendation(db.Model):
     recommended_agencies = db.Column(db.Text, nullable=True)
     recommended_resources = db.Column(db.Text, nullable=True)
     primary_factors = db.Column(db.Text, nullable=True)
+    decision = db.Column(db.String(20), nullable=True)
+    decision_reason = db.Column(db.Text, nullable=True)
+    decided_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    decided_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=utcnow)
+
+    decided_by = db.relationship('User', foreign_keys=[decided_by_id])
 
 
 class AuditEvent(db.Model):

@@ -24,7 +24,7 @@ from flask import render_template_string
 
 import app as app_module
 from app import app, db, create_default_admin
-from models import User, CitizenReport, Incident, IncidentResponse, PostIncidentReport, Task, Resource, IncidentMessage, Province, Municipality, Barangay
+from models import AIRecommendation, AuditEvent, User, CitizenReport, Incident, IncidentResponse, PostIncidentReport, Task, Resource, IncidentMessage, Province, Municipality, Barangay
 from seed.demo_data import seed_geography_data
 import scheduler
 
@@ -105,7 +105,7 @@ class ResponderRoutesTestCase(unittest.TestCase):
             prediction = decision_support.predict_hazard(
                 'flood',
                 rainfall_mm=0,
-                river_level_m=None,
+                river_level_m=0,
                 humidity_pct=0,
                 population_density=0,
             )
@@ -205,7 +205,7 @@ class ResponderRoutesTestCase(unittest.TestCase):
             db.session.add(coordinator)
             db.session.commit()
 
-            incident = Incident(user_id=coordinator.id, hazard_type='earthquake', location='Test', message='Test', level='high', alert=True, status='ACTIVE')
+            incident = Incident(user_id=coordinator.id, hazard_type='earthquake', location='Test', message='Test', level='High', alert=True, status='ACTIVE')
             db.session.add(incident)
             db.session.commit()
 
@@ -249,7 +249,7 @@ class ResponderRoutesTestCase(unittest.TestCase):
             db.session.add(coordinator)
             db.session.commit()
 
-            incident = Incident(user_id=coordinator.id, hazard_type='earthquake', location='Test', message='Test', level='high', alert=True, status='ACTIVE')
+            incident = Incident(user_id=coordinator.id, hazard_type='earthquake', location='Test', message='Test', level='High', alert=True, status='ACTIVE')
             db.session.add(incident)
             db.session.commit()
 
@@ -302,7 +302,7 @@ class ResponderRoutesTestCase(unittest.TestCase):
             db.session.add(coordinator)
             db.session.commit()
 
-            incident = Incident(user_id=coordinator.id, hazard_type='earthquake', location='Test', message='Test', level='high', alert=True, status='ACTIVE')
+            incident = Incident(user_id=coordinator.id, hazard_type='earthquake', location='Test', message='Test', level='High', alert=True, status='ACTIVE')
             db.session.add(incident)
             db.session.commit()
 
@@ -348,7 +348,7 @@ class ResponderRoutesTestCase(unittest.TestCase):
             db.session.add(other_coordinator)
             db.session.commit()
 
-            incident = Incident(user_id=other_coordinator.id, hazard_type='earthquake', location='Test', message='Test', level='high', alert=True, status='ACTIVE')
+            incident = Incident(user_id=other_coordinator.id, hazard_type='earthquake', location='Test', message='Test', level='High', alert=True, status='ACTIVE')
             db.session.add(incident)
             db.session.commit()
 
@@ -522,6 +522,60 @@ class ResponderRoutesTestCase(unittest.TestCase):
             self.assertEqual(upload_response.status_code, 200)
             self.assertGreater(len(upload_response.data), 0)
             self.assertTrue(upload_response.data.startswith(b'\xff\xd8'))
+
+    def test_upload_requires_authentication(self):
+        response = self.client.get('/uploads/nonexistent.jpg')
+
+        self.assertEqual(response.status_code, 401)
+
+    @patch('blueprints.citizen.get_earthquake_data', return_value=[])
+    @patch('blueprints.citizen.get_weather_data', return_value={'rainfall': 80, 'humidity': 90})
+    @patch('blueprints.citizen.predict_hazard')
+    def test_citizen_report_uses_hazard_assessment_instead_of_submitted_severity(
+        self, mock_predict, mock_weather, mock_earthquakes,
+    ):
+        mock_predict.return_value = {
+            'provider': 'openai',
+            'model': 'gpt-test',
+            'score': 81.0,
+            'confidence': 88.0,
+            'level': 'Severe',
+            'message': 'AI assessment indicates severe flood risk.',
+            'alert': True,
+            'recommended_agencies': ['BFP'],
+            'recommended_resources': ['Rescue boat'],
+            'primary_factors': ['heavy rainfall'],
+        }
+        with self.client.session_transaction() as session:
+            session['username'] = 'responder1'
+            session['role'] = 'user'
+
+        response = self.client.post('/citizen-report', data={
+            'hazard_type': 'flood',
+            'severity': 'low',
+            'location': 'Lipa',
+            'description': 'Water rising quickly',
+        }, follow_redirects=True)
+
+        self.assertEqual(response.status_code, 200)
+        mock_predict.assert_called_once_with(
+            hazard_type='flood',
+            rainfall_mm=80,
+            river_level_m=None,
+            humidity_pct=90,
+            population_density=None,
+            earthquake_data=[],
+        )
+        with self.app.app_context():
+            incident = Incident.query.filter_by(reported_by='citizen').one()
+            recommendation = AIRecommendation.query.filter_by(incident_id=incident.id).one()
+            self.assertEqual(incident.level, 'Severe')
+            self.assertEqual(incident.score, 81.0)
+            self.assertTrue(incident.alert)
+            self.assertEqual(recommendation.provider, 'openai')
+            self.assertEqual(recommendation.confidence_score, 88.0)
+        mock_weather.assert_called_once_with('Lipa')
+        mock_earthquakes.assert_called_once_with()
 
     def test_citizen_report_does_not_create_duplicate_incident_for_recent_same_barangay_report(self):
         with self.client.session_transaction() as session:
@@ -764,7 +818,7 @@ class ResponderRoutesTestCase(unittest.TestCase):
                 hazard_type='flood',
                 location='Barangay Test',
                 message='Water rising',
-                level='high',
+                level='High',
                 alert=True,
                 status='ACTIVE',
                 reported_by='citizen',
@@ -821,17 +875,195 @@ class ResponderRoutesTestCase(unittest.TestCase):
             'alert': True,
         }
 
+        prediction.update({
+            'provider': 'anthropic',
+            'model': 'claude-test',
+            'confidence': 84.0,
+            'recommended_agencies': ['BFP'],
+            'recommended_resources': ['Water'],
+            'primary_factors': ['rainfall'],
+        })
+
         with patch.object(scheduler, 'get_all_weather_data', return_value={'Lipa': weather_data}), \
-             patch.object(scheduler, 'predict_hazard', return_value=prediction):
+            patch.object(scheduler, 'predict_hazard', return_value=prediction) as mock_predict:
             with self.app.app_context():
                 scheduler.monitor_hazards()
+
+        self.assertEqual(mock_predict.call_args.kwargs['river_level_m'], None)
 
         with self.app.app_context():
             incident = Incident.query.filter_by(hazard_type='flood').order_by(Incident.created_at.desc()).first()
             self.assertIsNotNone(incident)
             self.assertTrue(incident.alert)
+            self.assertEqual(incident.status, 'NEW')
+            self.assertIsNone(incident.response)
             self.assertEqual(incident.score, 80.0)
             self.assertEqual(incident.location, 'Lipa')
+            recommendation = AIRecommendation.query.filter_by(incident_id=incident.id).one()
+            self.assertEqual(recommendation.provider, 'anthropic')
+            self.assertEqual(recommendation.model, 'claude-test')
+            self.assertEqual(recommendation.confidence_score, 84.0)
+
+    def test_commander_can_accept_modify_or_reject_ai_recommendation(self):
+        with self.app.app_context():
+            commander = User(
+                username='decision_commander',
+                email='decision-commander@example.com',
+                password='secret',
+                role='incident_commander',
+                email_verified=True,
+            )
+            db.session.add(commander)
+            db.session.flush()
+            incidents = []
+            for index, decision in enumerate(('ACCEPTED', 'MODIFIED', 'REJECTED'), start=1):
+                incident = Incident(
+                    hazard_type='flood',
+                    location=f'Decision {index}',
+                    level='High',
+                    message='AI recommendation',
+                    status='NEW',
+                    reported_by='citizen',
+                )
+                db.session.add(incident)
+                db.session.flush()
+                db.session.add(AIRecommendation(
+                    incident_id=incident.id,
+                    provider='openai',
+                    model='gpt-test',
+                    recommendation_type='hazard_prediction',
+                    summary='Review this recommendation',
+                ))
+                incidents.append((incident.id, decision))
+            db.session.commit()
+
+        with self.client.session_transaction() as session:
+            session['username'] = 'decision_commander'
+            session['role'] = 'incident_commander'
+
+        for incident_id, decision in incidents:
+            reason = '' if decision == 'ACCEPTED' else f'{decision.title()} reason'
+            response = self.client.post(
+                f'/incident/{incident_id}/activate-response',
+                data={'decision': decision, 'decision_reason': reason},
+            )
+            self.assertEqual(response.status_code, 302)
+
+        with self.app.app_context():
+            commander = User.query.filter_by(username='decision_commander').one()
+            recommendations = AIRecommendation.query.order_by(AIRecommendation.id).all()
+            self.assertEqual([recommendation.decision for recommendation in recommendations], ['ACCEPTED', 'MODIFIED', 'REJECTED'])
+            self.assertEqual([recommendation.decided_by_id for recommendation in recommendations], [commander.id] * 3)
+            self.assertEqual(recommendations[1].decision_reason, 'Modified reason')
+            self.assertEqual(recommendations[2].decision_reason, 'Rejected reason')
+            self.assertEqual(IncidentResponse.query.filter_by(incident_id=incidents[0][0]).count(), 1)
+            self.assertEqual(IncidentResponse.query.filter_by(incident_id=incidents[1][0]).count(), 1)
+            self.assertEqual(IncidentResponse.query.filter_by(incident_id=incidents[2][0]).count(), 0)
+            self.assertEqual(db.session.get(Incident, incidents[2][0]).status, 'REJECTED')
+            audit_actions = [event.action for event in AuditEvent.query.filter_by(entity_type='AIRecommendation').order_by(AuditEvent.id).all()]
+            self.assertEqual(audit_actions, ['DECISION_ACCEPTED', 'DECISION_MODIFIED', 'DECISION_REJECTED'])
+
+    def test_commander_dashboard_shows_ai_confidence(self):
+        with self.app.app_context():
+            commander = User(
+                username='confidence_commander',
+                email='confidence-commander@example.com',
+                password='secret',
+                role='incident_commander',
+                email_verified=True,
+            )
+            incident = Incident(
+                hazard_type='flood',
+                location='Confidence Test',
+                level='Severe',
+                score=82.0,
+                message='AI recommendation',
+                status='NEW',
+            )
+            db.session.add_all([commander, incident])
+            db.session.flush()
+            db.session.add(AIRecommendation(
+                incident_id=incident.id,
+                recommendation_type='hazard_prediction',
+                summary='Severe flood risk detected.',
+                confidence_score=91.5,
+            ))
+            db.session.commit()
+
+        with self.client.session_transaction() as session:
+            session['username'] = 'confidence_commander'
+            session['role'] = 'incident_commander'
+
+        response = self.client.get('/incident-commander-dashboard')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'AI Confidence', response.data)
+        self.assertIn(b'91.5%', response.data)
+
+    def test_eoc_can_mark_active_incident_as_rejected_false_alarm(self):
+        with self.app.app_context():
+            eoc = User(
+                username='false_alarm_eoc',
+                email='false-alarm-eoc@example.com',
+                password='secret',
+                role='eoc_staff',
+                email_verified=True,
+            )
+            db.session.add(eoc)
+            db.session.flush()
+            incident = Incident(
+                hazard_type='flood',
+                location='EOC review',
+                    level='High',
+                message='Review me',
+                status='VERIFIED',
+                alert=True,
+            )
+            db.session.add(incident)
+            db.session.flush()
+            response = IncidentResponse(
+                incident_id=incident.id,
+                commander_id=User.query.filter_by(username='responder1').one().id,
+                status='ACTIVE',
+            )
+            db.session.add(response)
+            db.session.commit()
+            incident_id = incident.id
+            response_id = response.id
+
+        with self.client.session_transaction() as session:
+            session['username'] = 'false_alarm_eoc'
+            session['role'] = 'eoc_staff'
+
+        result = self.client.post(
+            f'/admin/incidents/{incident_id}/reject',
+            data={'reason': 'Confirmed false alarm by field verification'},
+        )
+
+        self.assertEqual(result.status_code, 302)
+        with self.app.app_context():
+            rejected = db.session.get(Incident, incident_id)
+            closed_response = db.session.get(IncidentResponse, response_id)
+            audit = AuditEvent.query.filter_by(entity_type='Incident', entity_id=incident_id, action='REJECTED').one()
+            self.assertEqual(rejected.status, 'REJECTED')
+            self.assertFalse(rejected.alert)
+            self.assertEqual(closed_response.status, 'CLOSED')
+            self.assertEqual(audit.user_id, User.query.filter_by(username='false_alarm_eoc').one().id)
+
+    def test_live_prediction_does_not_derive_river_level_from_rainfall(self):
+        weather_data = {'rainfall': 20, 'humidity': 85}
+        prediction = {'level': 'INSUFFICIENT_DATA', 'degraded': True}
+
+        with self.client.session_transaction() as session:
+            session['username'] = 'responder1'
+
+        with patch.dict(os.environ, {'OPENWEATHER_API_KEY': 'test-key'}), \
+             patch.object(app_module, 'get_weather_data', return_value=weather_data), \
+             patch.object(app_module, 'predict_hazard', return_value=prediction) as mock_predict:
+            response = self.client.get('/live-prediction?city=Lipa')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(mock_predict.call_args.kwargs['river_level_m'])
 
     def test_monitor_hazards_creates_incidents_for_multiple_hazard_types(self):
         weather_data = {
@@ -907,7 +1139,7 @@ class ResponderRoutesTestCase(unittest.TestCase):
                 hazard_type='flood',
                 location='Lipa',
                 message='Flooding reported',
-                level='HIGH',
+                level='High',
                 alert=True,
                 status='CLOSED',
                 reported_by='system',
@@ -956,8 +1188,8 @@ class ResponderRoutesTestCase(unittest.TestCase):
             db.session.add_all([commander_a, commander_b])
             db.session.commit()
 
-            incident_a = Incident(hazard_type='flood', location='A', message='m', level='HIGH', status='ACTIVE')
-            incident_b = Incident(hazard_type='flood', location='B', message='m', level='HIGH', status='ACTIVE')
+            incident_a = Incident(hazard_type='flood', location='A', message='m', level='High', status='ACTIVE')
+            incident_b = Incident(hazard_type='flood', location='B', message='m', level='High', status='ACTIVE')
             db.session.add_all([incident_a, incident_b])
             db.session.commit()
 
@@ -1000,8 +1232,8 @@ class ResponderRoutesTestCase(unittest.TestCase):
             db.session.add_all([commander_a, commander_b])
             db.session.commit()
 
-            incident_a = Incident(hazard_type='flood', location='A', message='m', level='HIGH', status='ACTIVE')
-            incident_b = Incident(hazard_type='flood', location='B', message='m', level='HIGH', status='ACTIVE')
+            incident_a = Incident(hazard_type='flood', location='A', message='m', level='High', status='ACTIVE')
+            incident_b = Incident(hazard_type='flood', location='B', message='m', level='High', status='ACTIVE')
             db.session.add_all([incident_a, incident_b])
             db.session.commit()
 
@@ -1120,15 +1352,15 @@ class ResponderRoutesTestCase(unittest.TestCase):
             db.session.commit()
             sos_incident = Incident(
                 user_id=citizen.id, hazard_type='EMERGENCY', location='Barangay Uno',
-                message='EMERGENCY SOS Alert from citizen', level='CRITICAL',
+                message='EMERGENCY SOS Alert from citizen', level='Severe',
                 alert=True, status='NEW', reported_by='citizen',
             )
             # A non-SOS incident and an already-verified SOS incident must
             # NOT show up -- only unverified 'EMERGENCY' incidents count.
-            other_incident = Incident(hazard_type='flood', location='Elsewhere', message='m', level='HIGH', status='NEW')
+            other_incident = Incident(hazard_type='flood', location='Elsewhere', message='m', level='High', status='NEW')
             verified_sos = Incident(
                 user_id=citizen.id, hazard_type='EMERGENCY', location='Already handled',
-                message='m', level='CRITICAL', status='VERIFIED', reported_by='citizen',
+                message='m', level='Severe', status='VERIFIED', reported_by='citizen',
             )
             db.session.add_all([sos_incident, other_incident, verified_sos])
             db.session.commit()
@@ -1156,7 +1388,7 @@ class ResponderRoutesTestCase(unittest.TestCase):
             db.session.commit()
             sos_incident = Incident(
                 user_id=citizen.id, hazard_type='EMERGENCY', location='Barangay Dos',
-                message='EMERGENCY SOS Alert from citizen', level='CRITICAL',
+                message='EMERGENCY SOS Alert from citizen', level='Severe',
                 alert=True, status='NEW', reported_by='citizen',
             )
             db.session.add(sos_incident)

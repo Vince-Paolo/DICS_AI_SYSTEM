@@ -75,7 +75,6 @@
                                             {% if can_manage %}
                                             <form method="POST" action="{{ url_for('facilities.update_evacuation_center', center_id=ec.id) }}" class="d-flex align-items-center gap-1">
                                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                <input type="number" name="occupancy" value="{{ ec.occupancy or 0 }}" min="0" class="form-control form-control-sm" style="width:70px;font-size:0.72rem;">
                                                 <select name="status" class="form-select form-select-sm" style="width:90px;font-size:0.72rem;">
                                                     <option value="OPEN" {% if ec.status=='OPEN' %}selected{% endif %}>Open</option>
                                                     <option value="FULL" {% if ec.status=='FULL' %}selected{% endif %}>Full</option>

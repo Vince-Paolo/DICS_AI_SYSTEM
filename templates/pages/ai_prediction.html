@@ -93,6 +93,15 @@
                             </select>
                         </div>
                         <div class="col-md-6">
+                            <label class="form-label text-uppercase fw-bold" for="location">Location</label>
+                            <select id="location" class="form-select text-white font-monospace" name="location">
+                                <option value="">Select a city (optional)</option>
+                                {% for city in prediction_locations %}
+                                <option value="{{ city }}">{{ city }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
                             <label class="form-label text-uppercase fw-bold" for="rainfall">
                                 Precipitation Gauge Accumulation (mm)
                                 <span class="quality-badge quality-live">LIVE</span>

@@ -14,7 +14,7 @@ from flask_apscheduler import APScheduler
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
-from models import db, User, Incident, IncidentResponse, Task, Resource, CitizenReport, Agency, PostIncidentReport
+from models import db, User, Incident, IncidentResponse, Task, Resource, CitizenReport, Agency, PostIncidentReport, EvacuationCenter, Province, Municipality
 from scheduler import monitor_hazards
 from services.realtime_data import get_all_weather_data, get_weather_data, get_earthquake_data
 from services import permissions as permission_service
@@ -30,6 +30,7 @@ from blueprints.eoc import eoc_bp
 from blueprints.citizen import citizen_bp
 from blueprints.ai import ai_bp
 from blueprints.facilities import facilities_bp
+from services.file_storage import FileStorage
 
 
 app = Flask(__name__)
@@ -94,6 +95,14 @@ app.config['SECRET_KEY'] = _secret_key
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.config['UPLOAD_FOLDER'] = upload_dir
 app.config['INSTANCE_DIR'] = instance_dir
+app.config['FILE_STORAGE_BACKEND'] = os.environ.get('FILE_STORAGE_BACKEND', 'local')
+app.config['FILE_STORAGE_BUCKET'] = os.environ.get('FILE_STORAGE_BUCKET', '')
+app.config['FILE_STORAGE_PREFIX'] = os.environ.get('FILE_STORAGE_PREFIX', 'uploads')
+app.config['FILE_STORAGE_REGION'] = os.environ.get('FILE_STORAGE_REGION', '')
+app.config['FILE_STORAGE_ENDPOINT_URL'] = os.environ.get('FILE_STORAGE_ENDPOINT_URL', '')
+app.config['FILE_STORAGE_ACCESS_KEY_ID'] = os.environ.get('FILE_STORAGE_ACCESS_KEY_ID', '')
+app.config['FILE_STORAGE_SECRET_ACCESS_KEY'] = os.environ.get('FILE_STORAGE_SECRET_ACCESS_KEY', '')
+app.extensions['file_storage'] = FileStorage(app)
 app.config['MAX_UPLOAD_SIZE_BYTES'] = int(os.environ.get('MAX_UPLOAD_SIZE_BYTES', 16 * 1024 * 1024))
 app.config['MAX_CONTENT_LENGTH'] = app.config['MAX_UPLOAD_SIZE_BYTES']
 app.config['WTF_CSRF_ENABLED'] = True
@@ -929,6 +938,8 @@ def get_map_pins():
         if not is_active:
             continue
 
+        latitude = incident.latitude
+        longitude = incident.longitude
         report = incident.citizen_report
         if report is None:
             report = CitizenReport.query.filter(
@@ -937,10 +948,15 @@ def get_map_pins():
                 CitizenReport.hazard_type == incident.hazard_type,
             ).order_by(CitizenReport.created_at.desc()).first()
 
-        if report is None or report.gps_latitude is None or report.gps_longitude is None:
+        if latitude is None or longitude is None:
+            latitude = report.gps_latitude if report else None
+            longitude = report.gps_longitude if report else None
+        if latitude is None or longitude is None:
             continue
 
-        level = 'High' if incident.alert else str(incident.level or 'Moderate')
+        level = str(incident.level or ('High' if incident.alert else 'Moderate'))
+        province = db.session.get(Province, report.province_id) if report and report.province_id else None
+        municipality = db.session.get(Municipality, report.municipality_id) if report and report.municipality_id else None
         pins.append({
             'id': incident.id,
             'hazard_type': incident.hazard_type,
@@ -948,17 +964,102 @@ def get_map_pins():
             'location': incident.location,
             'message': incident.message,
             'level': level.capitalize(),
-            'lat': report.gps_latitude,
-            'lng': report.gps_longitude,
+            'lat': latitude,
+            'lng': longitude,
             'status': incident.status,
+            'province': province.name if province else None,
+            'municipality': municipality.name if municipality else None,
             'reported_by': incident.reported_by,
         })
 
     return pins
 
 
+@app.route('/api/map-evacuation-centers')
+def get_map_evacuation_centers():
+    if 'username' not in session:
+        return {'error': 'Unauthorized'}, 401
+
+    centers = EvacuationCenter.query.join(EvacuationCenter.facility).all()
+    return [
+        {
+            'id': center.id,
+            'name': center.facility.name,
+            'status': center.status,
+            'occupancy': center.occupancy or 0,
+            'capacity': center.capacity,
+            'lat': center.facility.latitude,
+            'lng': center.facility.longitude,
+            'address': center.facility.address,
+        }
+        for center in centers
+        if center.facility.latitude is not None and center.facility.longitude is not None
+    ]
+
+
+@app.route('/api/map-resources')
+def get_map_resources():
+    if 'username' not in session:
+        return {'error': 'Unauthorized'}, 401
+
+    resources = Resource.query.join(IncidentResponse).join(Incident).all()
+    pins = []
+    for resource in resources:
+        incident = resource.incident_response.incident
+        latitude = incident.latitude
+        longitude = incident.longitude
+        report = incident.citizen_report
+        if latitude is None or longitude is None:
+            latitude = report.gps_latitude if report else None
+            longitude = report.gps_longitude if report else None
+        if latitude is None or longitude is None:
+            continue
+        pins.append({
+            'id': resource.id,
+            'resource_type': resource.resource_type,
+            'agency': resource.agency,
+            'quantity': resource.quantity,
+            'status': resource.status,
+            'location': resource.location,
+            'lat': latitude,
+            'lng': longitude,
+            'incident_response_id': resource.incident_response_id,
+        })
+    return pins
+
+
 @app.route('/uploads/<path:filename>')
 def serve_upload(filename):
+    user = permission_service.current_user()
+    if not user:
+        return {'error': 'Authentication required'}, 401
+
+    if os.path.basename(filename) != filename:
+        return {'error': 'Invalid file path'}, 400
+
+    citizen_report = CitizenReport.query.filter_by(photo_filename=filename).first()
+    if citizen_report and not permission_service.can_view_incident(user, citizen_report.incident):
+        return {'error': 'Forbidden'}, 403
+
+    storage = current_app.extensions['file_storage']
+    if storage.backend == 's3':
+        content = storage.read(filename)
+        if content is None:
+            return {'error': 'File not found'}, 404
+        extension = os.path.splitext(filename)[1].lower()
+        response = current_app.response_class(
+            content,
+            mimetype=storage._content_type(filename),
+            direct_passthrough=True,
+        )
+        response.headers['Content-Disposition'] = (
+            f'inline; filename="{os.path.basename(filename)}"'
+            if extension in {'.jpg', '.jpeg', '.png', '.webp'}
+            else f'attachment; filename="{os.path.basename(filename)}"'
+        )
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        return response
+
     upload_dir = current_app.config['UPLOAD_FOLDER']
     safe_path = os.path.join(upload_dir, filename)
     if not os.path.commonpath([os.path.abspath(upload_dir), os.path.abspath(safe_path)]) == os.path.abspath(upload_dir):
@@ -1084,7 +1185,7 @@ def live_prediction():
         return {'error': f'Could not fetch weather data for {city}.'}, 404
 
     rainfall = float(weather_data.get('rainfall', 0) or 0)
-    river_level = round(min(15.0, max(0.0, rainfall / 10.0)), 2)
+    river_level = None
     humidity_pct = float(weather_data.get('humidity', 0) or 0)
     population_density = 1200
     prediction = predict_hazard(

@@ -174,9 +174,16 @@
                             </td>
                             <td data-label="Started" class="table-hide-tablet"><span class="text-muted small">{{ response.started_at.strftime('%b %d, %Y %H:%M') }}</span></td>
                             <td data-label="Action" class="text-center">
-                                <a href="{{ url_for('commander.incident_response_detail', response_id=response.id) }}" class="btn btn-sm btn-primary-modern btn-modern">
-                                    <i class="bi bi-eye me-1"></i>View
-                                </a>
+                                <div class="d-flex gap-1 justify-content-center flex-wrap">
+                                    <a href="{{ url_for('commander.incident_response_detail', response_id=response.id) }}" class="btn btn-sm btn-primary-modern btn-modern">
+                                        <i class="bi bi-eye me-1"></i>View
+                                    </a>
+                                    <form method="POST" action="{{ url_for('commander.reject_incident_response', response_id=response.id) }}" class="d-flex gap-1">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="text" name="reason" required maxlength="500" placeholder="False-alarm reason" class="form-control form-control-sm" style="max-width:150px;">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Mark false alarm"><i class="bi bi-x-octagon"></i></button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}
@@ -209,6 +216,7 @@
                             <th>Location</th>
                             <th>Risk Level</th>
                             <th>Score</th>
+                            <th>AI Confidence</th>
                             <th>Alert</th>
                             <th>Detected</th>
                             <th class="text-center">Action</th>
@@ -226,9 +234,17 @@
                                 </td>
                                 <td><span class="text-muted small">{{ incident.location or 'Unknown' }}</span></td>
                                 <td>
-                                    {{ hz.priority_badge(incident.level, label=incident.level if incident.level != 'CRITICAL' else none) }}
+                                    {{ hz.priority_badge(incident.level, label=incident.level if incident.level != 'Severe' else none) }}
                                 </td>
                                 <td><strong class="text-info">{{ "%.2f"|format(incident.score|float(0)) }}%</strong></td>
+                                <td>
+                                    {% set recommendation = recommendation_by_incident.get(incident.id) %}
+                                    {% if recommendation and recommendation.confidence_score is not none %}
+                                        <strong class="text-info">{{ "%.1f"|format(recommendation.confidence_score|float) }}%</strong>
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
                                 <td>
                                     {% if incident.alert %}
                                         <span class="badge-status-active" style="font-size:0.72rem;">ACTIVE</span>
@@ -238,11 +254,14 @@
                                 </td>
                                 <td>{{ hz.event_time_cell(incident, fmt='%b %d, %H:%M') }}</td>
                                 <td class="text-center">
-                                    <form method="POST" action="{{ url_for('commander.activate_incident_response', incident_id=incident.id) }}" style="display:inline;" data-confirm="Activate incident response for #{{ incident.id }}?" data-confirm-title="Activate response">
+                                    <form method="POST" action="{{ url_for('commander.activate_incident_response', incident_id=incident.id) }}" class="d-flex flex-column align-items-stretch gap-1" style="min-width:220px;">
                                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                        <button type="submit" class="btn btn-sm" style="background:linear-gradient(135deg,#dc2626,#b91c1c);color:#fff;border:none;font-weight:600;border-radius:6px;padding:0.35rem 0.75rem;">
-                                            <i class="bi bi-play-fill me-1"></i>Activate
-                                        </button>
+                                        <textarea name="decision_reason" rows="2" class="form-control form-control-sm" placeholder="Reason for modify/reject (required)"></textarea>
+                                        <div class="d-flex gap-1">
+                                            <button type="submit" name="decision" value="ACCEPTED" class="btn btn-sm btn-success flex-fill" title="Accept recommendation and activate response"><i class="bi bi-check-lg me-1"></i>Accept</button>
+                                            <button type="submit" name="decision" value="MODIFIED" class="btn btn-sm btn-warning flex-fill" title="Modify recommendation and activate response"><i class="bi bi-pencil me-1"></i>Modify</button>
+                                            <button type="submit" name="decision" value="REJECTED" class="btn btn-sm btn-outline-danger flex-fill" title="Reject recommendation"><i class="bi bi-x-lg me-1"></i>Reject</button>
+                                        </div>
                                     </form>
                                 </td>
                             </tr>

@@ -127,7 +127,7 @@
                                 <tr class="font-monospace">
                                     <td class="text-white fw-bold">{{ incident.hazard_type|upper }}</td>
                                     <td>
-                                        {% if incident.level|lower == 'high' %}
+                                        {% if incident.level|lower in ['high', 'severe'] %}
                                             <span class="badge badge-high px-2 py-1">CRITICAL</span>
                                         {% elif incident.level|lower == 'moderate' %}
                                             <span class="badge badge-mod px-2 py-1">ELEVATED</span>

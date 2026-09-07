@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import text
@@ -10,7 +11,7 @@ from services.realtime_data import (
     get_volcano_events,
 )
 from ai.decision_support import predict_hazard
-from models import db, Incident, utcnow
+from models import AIRecommendation, AuditEvent, db, Incident, utcnow
 from services.aftershock import forecast_for_event
 
 # Earthquake severity is judged from real USGS magnitude readings, not the
@@ -50,9 +51,31 @@ CITY_POPULATION_DENSITY = {
 }
 
 
-def _estimate_river_level(rainfall_mm):
-    # No real gauge is available, so use a simple rainfall-derived proxy.
-    return round(min(15.0, max(0.0, rainfall_mm / 10.0)), 2)
+def _add_deterministic_recommendation(incident, summary, agencies, resources, factors):
+    """Attach a reviewable recommendation to an externally scored incident."""
+    db.session.flush()
+    recommendation = AIRecommendation(
+        incident_id=incident.id,
+        provider='deterministic',
+        model='external-hazard-threshold-v1',
+        recommendation_type='hazard_prediction',
+        summary=summary,
+        confidence_score=100.0,
+        recommended_agencies=json.dumps(agencies),
+        recommended_resources=json.dumps(resources),
+        primary_factors=json.dumps(factors),
+    )
+    db.session.add(recommendation)
+    db.session.flush()
+    db.session.add(AuditEvent(
+        entity_type='AIRecommendation',
+        entity_id=recommendation.id,
+        action='CREATED',
+        details=(
+            f'Deterministic external hazard recommendation created for '
+            f'incident_id={incident.id} model={recommendation.model}.'
+        ),
+    ))
 
 
 def _population_density_for_city(city):
@@ -146,6 +169,8 @@ def monitor_earthquakes(app):
         incident = Incident(
             hazard_type="earthquake",
             location=location,
+            latitude=quake.get('lat'),
+            longitude=quake.get('lon'),
             external_event_id=external_event_id,
             event_time=event_time,
             rainfall_mm=0.0,
@@ -163,6 +188,13 @@ def monitor_earthquakes(app):
             reported_by='system',
         )
         db.session.add(incident)
+        _add_deterministic_recommendation(
+            incident,
+            f'M{magnitude:.1f} earthquake near {location} — recommend search and rescue, medical, and engineering assessment.',
+            ['BFP', 'DOH', 'DPWH'],
+            ['Search and rescue teams', 'Medical teams', 'Structural assessment equipment'],
+            [f'M{magnitude:.1f} earthquake', 'USGS external event feed', 'Potential aftershock activity'],
+        )
         created_any = True
         app.logger.info(
             "Earthquake monitoring: created alert for M%.1f near %s", magnitude, location
@@ -222,6 +254,8 @@ def monitor_floods_gdacs(app):
         incident = Incident(
             hazard_type="flood",
             location=location,
+            latitude=flood.get('lat'),
+            longitude=flood.get('lon'),
             external_event_id=external_event_id,
             event_time=event_time,
             rainfall_mm=0.0,
@@ -240,6 +274,13 @@ def monitor_floods_gdacs(app):
             reported_by='system',
         )
         db.session.add(incident)
+        _add_deterministic_recommendation(
+            incident,
+            f'GDACS {alert_level.title()} flood alert near {location} — recommend evacuation coordination, water rescue, and medical support.',
+            ['OCD', 'BFP', 'PNP', 'DOH'],
+            ['Rescue boats', 'Evacuation transport', 'Emergency medical supplies'],
+            [f'GDACS {alert_level.title()} alert', 'Confirmed external flood event', flood.get('severity_text') or 'Active flood monitoring'],
+        )
         created_any = True
         app.logger.info(
             "GDACS flood monitoring: created %s incident for %s", mapping['level'], location
@@ -291,6 +332,8 @@ def monitor_volcanoes_eonet(app):
         incident = Incident(
             hazard_type="volcanic",
             location=location,
+            latitude=volcano.get('lat'),
+            longitude=volcano.get('lon'),
             external_event_id=external_event_id,
             event_time=event_time,
             rainfall_mm=0.0,
@@ -309,6 +352,13 @@ def monitor_volcanoes_eonet(app):
             reported_by='system',
         )
         db.session.add(incident)
+        _add_deterministic_recommendation(
+            incident,
+            f'Open volcanic event at {location} — recommend evacuation readiness, medical support, and engineering assessment.',
+            ['PHIVOLCS', 'BFP', 'DOH', 'DPWH'],
+            ['Evacuation transport', 'Medical supplies', 'Engineering assessment teams'],
+            ['NASA EONET open volcanic event', 'Volcanic hazard monitoring', 'Potential evacuation requirement'],
+        )
         created_any = True
         app.logger.info("EONET volcano monitoring: created alert for %s", location)
 
@@ -370,7 +420,7 @@ def _monitor_hazards_once(app):
 
             rainfall_mm = float(weather_data.get("rainfall", 0) or 0)
             humidity_pct = float(weather_data.get("humidity", 0) or 0)
-            river_level_m = _estimate_river_level(rainfall_mm)
+            river_level_m = None
             population_density = _population_density_for_city(city)
 
             hazard_configs = [
@@ -437,6 +487,8 @@ def _monitor_hazards_once(app):
                 incident = Incident(
                     hazard_type=prediction.get("type", config["hazard_type"]),
                     location=city,
+                    latitude=weather_data.get('lat'),
+                    longitude=weather_data.get('lon'),
                     rainfall_mm=rainfall_mm,
                     river_level_m=river_level_m,
                     humidity_pct=humidity_pct,
@@ -445,10 +497,34 @@ def _monitor_hazards_once(app):
                     level=prediction.get("level", "Moderate"),
                     message=prediction.get("message", "High hazard risk detected."),
                     alert=bool(prediction.get("alert", False)),
-                    status='ACTIVE' if prediction.get("alert") else 'NEW',
+                    status='NEW',
                     reported_by='system',
                 )
                 db.session.add(incident)
+                db.session.flush()
+                recommendation = AIRecommendation(
+                    incident_id=incident.id,
+                    provider=prediction.get('provider'),
+                    model=prediction.get('model'),
+                    recommendation_type='hazard_prediction',
+                    summary=prediction.get('message', '').strip() or 'AI hazard prediction generated.',
+                    confidence_score=prediction.get('confidence'),
+                    recommended_agencies=json.dumps(prediction.get('recommended_agencies', [])),
+                    recommended_resources=json.dumps(prediction.get('recommended_resources', [])),
+                    primary_factors=json.dumps(prediction.get('primary_factors', [])),
+                )
+                db.session.add(recommendation)
+                db.session.flush()
+                db.session.add(AuditEvent(
+                    entity_type='AIRecommendation',
+                    entity_id=recommendation.id,
+                    action='CREATED',
+                    details=(
+                        f"Scheduled hazard prediction created from provider={prediction.get('provider')} "
+                        f"model={prediction.get('model')} score={prediction.get('score')} "
+                        f"for incident_id={incident.id}"
+                    ),
+                ))
                 created_any = True
 
         if created_any:
