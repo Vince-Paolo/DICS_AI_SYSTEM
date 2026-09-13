@@ -16,14 +16,22 @@ class FileStorage:
         self.client = None
 
         if self.backend == 's3':
+            region = (app.config.get('FILE_STORAGE_REGION') or '').strip()
+            endpoint_url = (app.config.get('FILE_STORAGE_ENDPOINT_URL') or '').strip()
+            access_key = (app.config.get('FILE_STORAGE_ACCESS_KEY_ID') or '').strip()
+            secret_key = (app.config.get('FILE_STORAGE_SECRET_ACCESS_KEY') or '').strip()
+
             if not self.bucket:
                 raise RuntimeError('FILE_STORAGE_BUCKET is required when FILE_STORAGE_BACKEND=s3')
+            if not region or region == '...':
+                raise RuntimeError('FILE_STORAGE_REGION must be set when FILE_STORAGE_BACKEND=s3')
+
             self.client = boto3.client(
                 's3',
-                region_name=app.config.get('FILE_STORAGE_REGION') or None,
-                endpoint_url=app.config.get('FILE_STORAGE_ENDPOINT_URL') or None,
-                aws_access_key_id=app.config.get('FILE_STORAGE_ACCESS_KEY_ID') or None,
-                aws_secret_access_key=app.config.get('FILE_STORAGE_SECRET_ACCESS_KEY') or None,
+                region_name=region,
+                endpoint_url=endpoint_url or None,
+                aws_access_key_id=access_key or None,
+                aws_secret_access_key=secret_key or None,
             )
 
     def _key(self, filename):
