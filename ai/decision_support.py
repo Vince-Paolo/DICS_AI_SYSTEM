@@ -67,8 +67,6 @@ _load_dotenv()
 
 # --- Provider configuration ------------------------------------------------
 
-AI_PROVIDER = os.getenv('AI_PROVIDER', 'anthropic').strip().lower()
-
 PROVIDER_DEFAULTS = {
     'anthropic': {
         'api_key_env': 'ANTHROPIC_API_KEY',
@@ -86,6 +84,10 @@ PROVIDER_DEFAULTS = {
         'default_model': 'gemini-3.1-flash-lite',
     },
 }
+
+AI_PROVIDER = os.getenv('AI_PROVIDER', 'gemini').strip().lower() or 'gemini'
+if AI_PROVIDER not in PROVIDER_DEFAULTS:
+    AI_PROVIDER = 'gemini'
 
 REQUEST_TIMEOUT_SECONDS = 15
 VALID_LEVELS = {'Low', 'Moderate', 'High', 'Severe', 'Unknown', 'Insufficient Data', 'INSUFFICIENT_DATA'}
