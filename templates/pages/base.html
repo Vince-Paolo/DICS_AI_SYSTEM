@@ -54,6 +54,34 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+<script>
+    (function () {
+        const authPages = ['login', 'register', 'forgot_password', 'reset_password'];
+        const endpoint = '{{ request.endpoint | default("") }}';
+        const isAuthPage = authPages.includes(endpoint);
+        const isLoggedIn = {{ 'true' if 'username' in session else 'false' }};
+        const loginUrl = '{{ url_for('login') }}';
+        const dashboardUrl = '{{ url_for('dashboard') }}';
+
+        if (isLoggedIn && isAuthPage) {
+            window.history.replaceState(null, '', dashboardUrl);
+            window.location.reload();
+            return;
+        }
+
+        if (!isLoggedIn && !isAuthPage) {
+            window.history.replaceState(null, '', loginUrl);
+            window.location.reload();
+            return;
+        }
+
+        window.addEventListener('pageshow', function (event) {
+            if (event.persisted) {
+                window.location.reload();
+            }
+        });
+    })();
+</script>
 <script src="/static/js/app.js"></script>
 {% block scripts %}{% endblock %}
 </body>

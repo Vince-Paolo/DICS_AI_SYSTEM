@@ -4,6 +4,11 @@
 
 {% block content %}
 <h1 class="visually-hidden">Predictive Compute Matrix</h1>
+<div class="d-flex justify-content-end mb-3">
+    <span class="badge rounded-pill border border-info-subtle bg-info-subtle text-info-emphasis px-3 py-2">
+        <i class="bi bi-cpu me-1"></i> AI provider: {{ active_ai_provider_label }}
+    </span>
+</div>
 <div class="row justify-content-center">
     <div class="col-lg-10">
         <!-- Statistics Cards Row -->
