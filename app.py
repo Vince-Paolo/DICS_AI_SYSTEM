@@ -4,6 +4,8 @@ import sqlite3
 import threading
 import secrets
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
 from flask import Flask, current_app, render_template, request, redirect, url_for, session, flash, send_from_directory
 import requests
 from sqlalchemy import text
@@ -19,7 +21,7 @@ from scheduler import monitor_hazards
 from services.realtime_data import get_all_weather_data, get_weather_data, get_earthquake_data
 from services import permissions as permission_service
 from services.passwords import verify_and_migrate
-from ai.decision_support import predict_hazard
+from ai.decision_support import predict_hazard, AI_PROVIDER
 from seed.demo_data import seed_geography_data
 
 from blueprints.admin import admin_bp
@@ -31,7 +33,6 @@ from blueprints.citizen import citizen_bp
 from blueprints.ai import ai_bp
 from blueprints.facilities import facilities_bp
 from services.file_storage import FileStorage
-
 
 app = Flask(__name__)
 base_dir = os.path.abspath(os.path.dirname(__file__))
@@ -63,6 +64,26 @@ def _normalize_database_url():
 
 app.config['SQLALCHEMY_DATABASE_URI'] = _normalize_database_url()
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+
+def _resolve_sqlite_db_path():
+    configured_uri = app.config['SQLALCHEMY_DATABASE_URI']
+    if not configured_uri.startswith('sqlite:'):
+        return None
+
+    db_path = configured_uri
+    if db_path.startswith('sqlite:///'):
+        db_path = db_path[len('sqlite:///'):]
+    elif db_path.startswith('sqlite://'):
+        db_path = db_path[len('sqlite://'):]
+
+    if not db_path or db_path == ':memory:':
+        return None
+
+    if os.name == 'nt' and db_path.startswith('/'):
+        db_path = db_path[1:]
+
+    return os.path.abspath(db_path)
 
 
 def _get_limiter_storage_uri():
@@ -145,6 +166,10 @@ def add_security_headers(response):
     )
     response.headers.setdefault('X-Frame-Options', 'DENY')
     response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+    if request.endpoint in {'login', 'register', 'forgot_password', 'reset_password', 'logout'} or session.get('username'):
+        response.headers.setdefault('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+        response.headers.setdefault('Pragma', 'no-cache')
+        response.headers.setdefault('Expires', '0')
     if app.config['ENABLE_HSTS'] and request.is_secure:
         response.headers.setdefault(
             'Strict-Transport-Security',
@@ -206,6 +231,21 @@ def start_scheduler():
 def inject_csrf_token():
     return {'csrf_token': generate_csrf}
 
+
+@app.context_processor
+def inject_ai_provider():
+    provider_name = (AI_PROVIDER or 'gemini').strip().lower() or 'gemini'
+    provider_label = {
+        'anthropic': 'Anthropic',
+        'openai': 'OpenAI',
+        'gemini': 'Gemini',
+    }.get(provider_name, provider_name.title())
+    return {
+        'active_ai_provider': provider_name,
+        'active_ai_provider_label': provider_label,
+    }
+
+
 app.register_blueprint(admin_bp)
 app.register_blueprint(commander_bp)
 app.register_blueprint(coordinator_bp)
@@ -262,9 +302,9 @@ def migrate_user_table():
     # (e.g. Railway's Postgres plugin) db.create_all() already builds the
     # full schema from the current models, and opening a stray local SQLite
     # file here would be misleading dead weight -- so skip it entirely.
-    if not app.config['SQLALCHEMY_DATABASE_URI'].startswith('sqlite:'):
+    db_path = _resolve_sqlite_db_path()
+    if not db_path:
         return
-    db_path = os.path.join(instance_dir, 'database.db')
     with sqlite3.connect(db_path) as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='user'")
@@ -308,9 +348,9 @@ def migrate_user_table():
 
 def migrate_incident_commander_tables():
     # Same reasoning as migrate_user_table(): raw sqlite3 only, skip on Postgres.
-    if not app.config['SQLALCHEMY_DATABASE_URI'].startswith('sqlite:'):
+    db_path = _resolve_sqlite_db_path()
+    if not db_path:
         return
-    db_path = os.path.join(instance_dir, 'database.db')
     with sqlite3.connect(db_path) as conn:
         cursor = conn.cursor()
         cursor.execute("""
@@ -402,6 +442,32 @@ def migrate_incident_commander_tables():
                            'coordinator' AS source, affected_areas, casualties, evacuated, created_at
                     FROM message
                 """)
+        conn.commit()
+
+
+def migrate_legacy_sqlite_resource_columns():
+    """Backward-compatibility fix for older SQLite databases created before
+    the resource_request_id migration landed. Those DBs still power live apps
+    in dev environments and must be upgraded in-place before dashboard SQL
+    queries can run."""
+    db_path = _resolve_sqlite_db_path()
+    if not db_path:
+        return
+
+    with sqlite3.connect(db_path) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='resource'")
+        if not cursor.fetchone():
+            return
+
+        cursor.execute("PRAGMA table_info(resource)")
+        columns = [row[1] for row in cursor.fetchall()]
+        if 'resource_request_id' not in columns:
+            cursor.execute('ALTER TABLE resource ADD COLUMN resource_request_id INTEGER')
+        if 'updated_at' not in columns:
+            cursor.execute('ALTER TABLE resource ADD COLUMN updated_at DATETIME')
+        if 'version_id' not in columns:
+            cursor.execute('ALTER TABLE resource ADD COLUMN version_id INTEGER DEFAULT 1')
         conn.commit()
 
 
@@ -562,6 +628,8 @@ def lazy_init():
 
                 db.create_all()
                 migrate_user_table()
+                migrate_incident_commander_tables()
+                migrate_legacy_sqlite_resource_columns()
                 migrate_external_event_id_constraint()
                 create_default_admin()
                 seed_agencies()
@@ -613,6 +681,7 @@ def verify_password(user, password):
     )
 
 
+@app.route('/login', methods=['GET', 'POST'])
 @app.route('/', methods=['GET', 'POST'])
 @limiter.limit("10 per minute")
 def login():
@@ -819,7 +888,11 @@ def reset_password(token):
 def logout():
     session.clear()
     flash('You have been logged out.', 'info')
-    return redirect(url_for('login'))
+    response = redirect(url_for('login'))
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 
 @app.route('/change-password', methods=['GET', 'POST'])

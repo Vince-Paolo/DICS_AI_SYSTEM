@@ -104,6 +104,7 @@ class ExternalHazardFeedParsingTestCase(unittest.TestCase):
 
     def setUp(self):
         realtime_data._clear_shared_cache()
+        realtime_data._cache['earthquakes'] = {'data': None, 'timestamp': None}
         realtime_data._cache['flood_events'] = {'data': None, 'timestamp': None}
         realtime_data._cache['volcano_events'] = {'data': None, 'timestamp': None}
 

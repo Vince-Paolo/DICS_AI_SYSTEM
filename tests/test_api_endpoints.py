@@ -1,4 +1,5 @@
 import os
+import sqlite3
 import unittest
 from unittest.mock import patch
 
@@ -186,6 +187,78 @@ class ApiEndpointFunctionalTestCase(unittest.TestCase):
         self.assertIsNotNone(pins[0]['province'])
         self.assertIsNotNone(pins[0]['municipality'])
         self.assertEqual(pins[0]['status'], 'ACTIVE')
+
+    def test_login_and_logout_responses_disable_browser_cache(self):
+        response = self.client.get('/login')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('no-store', response.headers.get('Cache-Control', '').lower())
+
+        with self.client.session_transaction() as session:
+            session['username'] = 'api_citizen'
+            session['role'] = 'citizen'
+
+        response = self.client.get('/login')
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('no-store', response.headers.get('Cache-Control', '').lower())
+
+        response = self.client.get('/logout', follow_redirects=False)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('no-store', response.headers.get('Cache-Control', '').lower())
+
+    def test_file_storage_raises_when_s3_region_is_placeholder(self):
+        from services.file_storage import FileStorage
+
+        app_stub = type('AppStub', (), {
+            'config': {
+                'FILE_STORAGE_BACKEND': 's3',
+                'FILE_STORAGE_BUCKET': 'demo-bucket',
+                'FILE_STORAGE_PREFIX': 'uploads',
+                'FILE_STORAGE_REGION': '...',
+                'FILE_STORAGE_ENDPOINT_URL': 'https://s3.example.com',
+                'FILE_STORAGE_ACCESS_KEY_ID': 'demo-key',
+                'FILE_STORAGE_SECRET_ACCESS_KEY': 'demo-secret',
+                'UPLOAD_FOLDER': os.path.join('instance', 'uploads', 'citizen_reports'),
+            }
+        })()
+
+        with self.assertRaises(RuntimeError):
+            FileStorage(app_stub)
+
+    def test_legacy_sqlite_database_adds_missing_resource_request_id_column(self):
+        from app import app, migrate_legacy_sqlite_resource_columns
+
+        configured_uri = app.config['SQLALCHEMY_DATABASE_URI']
+        self.assertTrue(configured_uri.startswith('sqlite:'))
+
+        db_path = configured_uri.removeprefix('sqlite:///')
+        if os.name == 'nt' and db_path.startswith('/'):
+            db_path = db_path[1:]
+        db_path = os.path.abspath(db_path)
+
+        with sqlite3.connect(db_path) as conn:
+            conn.execute('DROP TABLE IF EXISTS resource')
+            conn.execute('''
+                CREATE TABLE resource (
+                    id INTEGER PRIMARY KEY,
+                    incident_response_id INTEGER NOT NULL,
+                    resource_type VARCHAR(100) NOT NULL,
+                    agency VARCHAR(150) NOT NULL,
+                    quantity INTEGER NOT NULL,
+                    status VARCHAR(20) DEFAULT 'AVAILABLE',
+                    location VARCHAR(255),
+                    notes TEXT,
+                    allocated_at DATETIME,
+                    deployed_at DATETIME
+                )
+            ''')
+            conn.commit()
+
+        migrate_legacy_sqlite_resource_columns()
+
+        with sqlite3.connect(db_path) as conn:
+            columns = [row[1] for row in conn.execute('PRAGMA table_info(resource)')]
+        self.assertIn('resource_request_id', columns)
+        self.assertIn('updated_at', columns)
 
     def test_map_operational_layer_endpoints_return_geolocated_centers_and_resources(self):
         self._login('api_citizen', 'citizen')

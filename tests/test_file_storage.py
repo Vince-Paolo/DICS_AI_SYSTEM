@@ -49,6 +49,13 @@ class S3FileStorageTestCase(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             FileStorage(FakeApp(config))
 
+    def test_requires_region_when_backend_is_s3(self):
+        for region in ('', '...'):
+            config = _base_config('/tmp', backend='s3')
+            config['FILE_STORAGE_REGION'] = region
+            with self.assertRaises(RuntimeError):
+                FileStorage(FakeApp(config))
+
     @patch('services.file_storage.boto3.client')
     def test_save_uploads_to_configured_bucket_and_key(self, mock_boto_client):
         mock_client = MagicMock()
