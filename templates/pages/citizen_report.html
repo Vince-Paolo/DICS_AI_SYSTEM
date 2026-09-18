@@ -14,6 +14,122 @@
         display: block;
         filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.28));
     }
+
+    .report-triage-intro {
+        padding: 0.85rem 1rem;
+        margin-bottom: 1.5rem;
+        border-left: 3px solid var(--accent-glow);
+        background: rgba(56, 189, 248, 0.08);
+        color: #D1D5DB;
+    }
+
+    .report-secondary {
+        margin: 1.5rem 0;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    .report-secondary summary {
+        cursor: pointer;
+        padding: 1rem 1.15rem;
+        color: var(--accent-glow);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+    }
+
+    .report-secondary-content {
+        padding: 0 1.15rem 0.25rem;
+    }
+
+    .report-progress {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.75rem;
+        margin: 0 0 1.75rem;
+    }
+
+    .report-progress-step {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        padding: 0.65rem 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-muted);
+        font-size: var(--type-sm);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .report-progress-step.is-current {
+        border-color: var(--accent-glow);
+        background: rgba(59, 130, 246, 0.1);
+        color: var(--text-primary);
+    }
+
+    .report-progress-number {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.6rem;
+        height: 1.6rem;
+        flex: 0 0 1.6rem;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--text-muted);
+        font-size: var(--type-xs);
+    }
+
+    .is-current .report-progress-number {
+        background: var(--accent-glow);
+        color: #fff;
+    }
+
+    .location-status {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        margin-top: 0.5rem;
+        color: var(--text-muted);
+        font-size: var(--type-sm);
+    }
+
+    .location-status.is-ready {
+        color: var(--status-success);
+    }
+
+    .location-status.is-warning {
+        color: var(--status-warning);
+    }
+
+    @media (max-width: 575.98px) {
+        .report-progress {
+            grid-template-columns: 1fr;
+            gap: 0.5rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .report-progress-step {
+            min-height: 2.75rem;
+        }
+
+        #incidentReportForm > .form-section-header {
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+        }
+
+        #incidentReportForm .form-pair-grid,
+        #incidentReportForm .row.g-3 {
+            row-gap: 1rem;
+        }
+
+        #incidentReportForm .form-label {
+            margin-top: 0.25rem;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -28,6 +144,24 @@
                     <div class="section-header">
                         <span class="section-header-icon"><i class="bi bi-exclamation-circle"></i></span>
                         <h4>Report an Incident</h4>
+                    </div>
+                    <div class="report-triage-intro" role="note">
+                        <strong>Start with the essentials:</strong> tell us what is happening and where. You can add context, evidence, and impact details afterward.
+                    </div>
+
+                    <div class="report-progress" aria-label="Report progress">
+                        <div class="report-progress-step is-current" data-report-step="1" aria-current="step">
+                            <span class="report-progress-number">1</span>
+                            <span>What happened</span>
+                        </div>
+                        <div class="report-progress-step" data-report-step="2">
+                            <span class="report-progress-number">2</span>
+                            <span>Where it is</span>
+                        </div>
+                        <div class="report-progress-step" data-report-step="3">
+                            <span class="report-progress-number">3</span>
+                            <span>Extra details</span>
+                        </div>
                     </div>
 
                     <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate id="incidentReportForm">
@@ -55,23 +189,11 @@
                                 <div class="invalid-feedback">Please select the type of incident.</div>
                             </div>
 
-                            <div class="form-pair-field">
-                                <label for="severity" class="form-label">
-                                    <i class="bi bi-speedometer me-2"></i>Severity Level
-                                </label>
-                                <select class="form-select" id="severity" name="severity" required>
-                                    <option value="">Select severity...</option>
-                                    <option value="low">Low &ndash; Minor incident</option>
-                                    <option value="moderate">Moderate &ndash; Significant impact</option>
-                                    <option value="high">High &ndash; Critical situation</option>
-                                </select>
-                                <div class="invalid-feedback">Please select a severity level.</div>
-                            </div>
                         </div>
 
-                        <div class="mb-4">
-                            <label class="form-label">
-                                <i class="bi bi-geo-alt me-2"></i>Location
+                        <div class="mb-4" id="locationFieldGroup">
+                            <label class="form-label" for="location">
+                                <i class="bi bi-geo-alt me-2"></i>Where is it happening?
                             </label>
                             <div class="row g-3">
                                 <div class="col-md-4">
@@ -99,20 +221,26 @@
                             <input type="text" class="form-control mt-3" id="location" name="location"
                                    placeholder="e.g., Near the market or along the river" required>
                             <div class="invalid-feedback">Please enter a nearby landmark or area.</div>
+                            <div id="locationStatus" class="location-status" role="status" aria-live="polite">
+                                <i class="bi bi-info-circle" aria-hidden="true"></i>
+                                <span>Select the area and add a nearby landmark.</span>
+                            </div>
                         </div>
 
+                        <details class="report-secondary">
+                            <summary><i class="bi bi-plus-circle me-2"></i>Add context and impact details <span class="text-muted fw-normal">(optional)</span></summary>
+                            <div class="report-secondary-content">
                         <div class="mb-4">
                             <label for="description" class="form-label">
                                 <i class="bi bi-chat-square-text me-2"></i>Detailed Description
                             </label>
                             <textarea class="form-control" id="description" name="description" rows="5" 
-                                      placeholder="Describe what you're experiencing in detail..." required></textarea>
-                            <div class="invalid-feedback">Please describe what's happening.</div>
+                                      placeholder="Describe what you're experiencing in detail..."></textarea>
                             <small class="text-muted d-block mt-2">Be as specific as possible to help authorities respond effectively</small>
                         </div>
 
                         <!-- Impact Assessment Section -->
-                        <div class="form-section-header" style="margin-top: 1rem;">
+                        <div class="form-section-header section-subheader">
                             <h5><i class="bi bi-bar-chart me-2"></i>Impact Assessment</h5>
                         </div>
 
@@ -135,11 +263,11 @@
                         </div>
 
                         <!-- Assistance Section -->
-                        <div class="form-section-header" style="margin-top: 1rem;">
+                        <div class="form-section-header section-subheader">
                             <h5><i class="bi bi-hand-thumbs-up me-2"></i>Assistance Needed</h5>
                         </div>
 
-                        <div class="mb-4 p-3" style="background: rgba(59, 130, 246, 0.05); border-radius: 8px;">
+                        <div class="mb-4 p-3 assistance-panel">
                             <div class="form-check mb-3">
                                 <input class="form-check-input" type="checkbox" id="medical" name="assistance" value="medical">
                                 <label class="form-check-label" for="medical">
@@ -165,112 +293,122 @@
                                 </label>
                             </div>
                         </div>
+                            </div>
+                        </details>
 
-                        <!-- Contact Section -->
-                        <div class="form-section-header">
-                            <h5><i class="bi bi-telephone me-2"></i>Your Contact Information</h5>
-                        </div>
+                        <details class="report-secondary report-secondary-optional">
+                            <summary><i class="bi bi-phone me-2"></i>Add contact and evidence details <span class="text-muted fw-normal">(optional)</span></summary>
+                            <div class="report-secondary-content">
+                                <div class="detail-card mb-4">
+                                    <div class="detail-label-row">
+                                        <label for="contact" class="form-label mb-0">
+                                            <i class="bi bi-phone me-2"></i>Contact Number
+                                        </label>
+                                    </div>
+                                    <input type="tel" class="form-control detail-input" id="contact" name="contact" 
+                                           placeholder="09XXXXXXXXX" pattern="^(09\d{9}|\+639\d{9})$" inputmode="numeric"
+                                           oninput="this.value = this.value.replace(/[^0-9+]/g, '')" 
+                                           maxlength="13">
+                                    <div class="invalid-feedback">Enter a valid Philippine number: 09XXXXXXXXX or +639XXXXXXXXX.</div>
+                                    <small class="detail-help">Optional: leave blank if you prefer to submit anonymously or if you do not want to share your number.</small>
+                                </div>
 
-                        <div class="mb-4">
-                            <label for="contact" class="form-label">
-                                <i class="bi bi-phone me-2"></i>Contact Number
-                            </label>
-                            <input type="tel" class="form-control" id="contact" name="contact" 
-                                   placeholder="09XXXXXXXXX" pattern="^(09\d{9}|\+639\d{9})$" inputmode="numeric"
-                                   oninput="this.value = this.value.replace(/[^0-9+]/g, '')" 
-                                   maxlength="13" required>
-                            <div class="invalid-feedback">Enter a valid Philippine number: 09XXXXXXXXX or +639XXXXXXXXX.</div>
-                            <small class="text-muted d-block mt-2">Format: 09XXXXXXXXX or +639XXXXXXXXX (Philippine numbers only)</small>
-                        </div>
-
-                        <div class="form-section-header">
-                            <h5><i class="bi bi-camera me-2"></i>Evidence & Privacy</h5>
-                        </div>
-
-                        <div class="row form-pair-grid">
-                            <div class="form-pair-field">
-                                <label for="photo" class="form-label">
-                                    <i class="bi bi-image me-2"></i>Photo Evidence
-                                </label>
-
-                                <div class="field-card">
-                                    <button type="button" class="photo-dropzone" id="photoDropzone"
-                                            aria-label="Upload photo evidence"
-                                            aria-describedby="photoDropzoneHint">
-                                        <input type="file" class="visually-hidden" id="photo" name="photo" accept="image/*">
-
-                                        <div class="photo-dropzone-empty" id="photoDropzoneEmpty">
-                                            <div class="icon-badge icon-badge-primary mb-3">
-                                                <i class="bi bi-cloud-arrow-up-fill"></i>
+                                <div class="row form-pair-grid">
+                                    <div class="form-pair-field">
+                                        <div class="detail-card">
+                                            <div class="detail-label-row">
+                                                <label for="photo" class="form-label mb-0">
+                                                    <i class="bi bi-image me-2"></i>Photo Evidence
+                                                </label>
+                                                <span class="detail-tag">Optional</span>
                                             </div>
-                                            <p class="mb-1 fw-semibold">Drag & drop a photo here</p>
-                                            <p id="photoDropzoneHint" class="text-muted small mb-0">or click to browse · JPG, PNG, up to 10MB</p>
-                                        </div>
 
-                                        <div class="photo-dropzone-preview d-none" id="photoDropzonePreview">
-                                            <img id="photoPreviewImg" src="" alt="Selected photo preview">
-                                            <div class="photo-preview-info">
-                                                <div class="photo-preview-name text-truncate" id="photoPreviewName"></div>
-                                                <div class="photo-preview-size" id="photoPreviewSize"></div>
+                                            <div class="field-card">
+                                                <button type="button" class="photo-dropzone" id="photoDropzone"
+                                                        aria-label="Upload photo evidence"
+                                                        aria-describedby="photoDropzoneHint">
+                                                    <input type="file" class="visually-hidden" id="photo" name="photo" accept="image/*">
+
+                                                    <div class="photo-dropzone-empty" id="photoDropzoneEmpty">
+                                                        <div class="icon-badge icon-badge-primary mb-3">
+                                                            <i class="bi bi-cloud-arrow-up-fill"></i>
+                                                        </div>
+                                                        <p class="mb-1 fw-semibold">Drag & drop a photo here</p>
+                                                        <p id="photoDropzoneHint" class="text-muted small mb-0">or click to browse · JPG, PNG, up to 10MB</p>
+                                                    </div>
+
+                                                    <div class="photo-dropzone-preview d-none" id="photoDropzonePreview">
+                                                        <img id="photoPreviewImg" src="" alt="Selected photo preview">
+                                                        <div class="photo-preview-info">
+                                                            <div class="photo-preview-name text-truncate" id="photoPreviewName"></div>
+                                                            <div class="photo-preview-size" id="photoPreviewSize"></div>
+                                                        </div>
+                                                        <button type="button" class="photo-preview-remove" id="photoRemoveBtn" aria-label="Remove photo">
+                                                            <i class="bi bi-x-lg"></i>
+                                                        </button>
+                                                    </div>
+                                                </button>
+                                                <small class="detail-help mt-2">Optional image upload for the report.</small>
                                             </div>
-                                            <button type="button" class="photo-preview-remove" id="photoRemoveBtn" aria-label="Remove photo">
-                                                <i class="bi bi-x-lg"></i>
-                                            </button>
                                         </div>
                                     </div>
-                                    <small class="text-muted d-block mt-2">Optional image upload for the report.</small>
+                                    <div class="form-pair-field">
+                                        <div class="detail-card">
+                                            <div class="detail-label-row">
+                                                <label class="form-label mb-0" for="gps_lat">
+                                                    <i class="bi bi-geo-alt me-2"></i>GPS Location
+                                                </label>
+                                                <span class="detail-tag">Optional</span>
+                                            </div>
+                                            <input type="hidden" id="gps_lat" name="gps_lat">
+                                            <input type="hidden" id="gps_lng" name="gps_lng">
+                                            <input type="hidden" id="gps_accuracy" name="gps_accuracy">
+
+                                            <div class="field-card">
+                                                <div class="location-preview" id="locationPreview">
+                                                    <div class="location-preview-empty" id="locationPreviewEmpty">
+                                                        <div class="icon-badge icon-badge-primary mb-2">
+                                                            <i class="bi bi-pin-map-fill"></i>
+                                                        </div>
+                                                        <p class="mb-0 text-muted small">No location captured yet</p>
+                                                    </div>
+                                                    <div class="location-preview-map d-none" id="locationPreviewMap"></div>
+                                                </div>
+
+                                                <small id="gpsStatus" class="detail-help mt-2 mb-2" role="status" aria-live="polite" aria-atomic="true">Allow browser location access to capture GPS automatically.</small>
+                                                <small id="gpsDragHint" class="detail-help d-none d-block mb-2"><i class="bi bi-info-circle me-1"></i>Not quite right? Drag the pin to the exact spot.</small>
+
+                                                <div class="location-manual-row">
+                                                    <input type="text" class="form-control form-control-sm" id="manualLocationInput"
+                                                           placeholder="Or type an address / landmark...">
+                                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="manualLocationSearch" aria-label="Search address">
+                                                        <i class="bi bi-search"></i>
+                                                    </button>
+                                                </div>
+
+                                                <button type="button" class="btn btn-outline-secondary w-100 mt-auto" id="gpsButton">
+                                                    <i class="bi bi-crosshair me-2"></i>Use Current Location
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-check mb-4 detail-anonymous">
+                                    <input class="form-check-input" type="checkbox" id="anonymous" name="anonymous">
+                                    <label class="form-check-label" for="anonymous">
+                                        Submit this report anonymously
+                                    </label>
                                 </div>
                             </div>
-                            <div class="form-pair-field">
-                                <label class="form-label" for="gps_lat">
-                                    <i class="bi bi-geo-alt me-2"></i>GPS Location
-                                </label>
-                                <input type="hidden" id="gps_lat" name="gps_lat">
-                                <input type="hidden" id="gps_lng" name="gps_lng">
-                                <input type="hidden" id="gps_accuracy" name="gps_accuracy">
-
-                                <div class="field-card">
-                                    <div class="location-preview" id="locationPreview">
-                                        <div class="location-preview-empty" id="locationPreviewEmpty">
-                                            <div class="icon-badge icon-badge-primary mb-2">
-                                                <i class="bi bi-pin-map-fill"></i>
-                                            </div>
-                                            <p class="mb-0 text-muted small">No location captured yet</p>
-                                        </div>
-                                        <div class="location-preview-map d-none" id="locationPreviewMap"></div>
-                                    </div>
-
-                                    <small id="gpsStatus" class="text-muted d-block mt-2 mb-2" role="status" aria-live="polite" aria-atomic="true">Allow browser location access to capture GPS automatically.</small>
-                                    <small id="gpsDragHint" class="text-muted d-none d-block mb-2"><i class="bi bi-info-circle me-1"></i>Not quite right? Drag the pin to the exact spot.</small>
-
-                                    <div class="location-manual-row">
-                                        <input type="text" class="form-control form-control-sm" id="manualLocationInput"
-                                               placeholder="Or type an address / landmark...">
-                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="manualLocationSearch" aria-label="Search address">
-                                            <i class="bi bi-search"></i>
-                                        </button>
-                                    </div>
-
-                                    <button type="button" class="btn btn-outline-secondary w-100 mt-auto" id="gpsButton">
-                                        <i class="bi bi-crosshair me-2"></i>Use Current Location
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="form-check mb-4">
-                            <input class="form-check-input" type="checkbox" id="anonymous" name="anonymous">
-                            <label class="form-check-label" for="anonymous">
-                                Submit this report anonymously
-                            </label>
-                        </div>
+                        </details>
 
                         <!-- Action Buttons -->
                         <div class="d-flex gap-2 mt-5 pt-3 border-top border-secondary form-actions-row">
-                            <button type="submit" id="submitReportBtn" class="btn btn-primary-modern btn-modern" style="flex: 1;">
+                            <button type="submit" id="submitReportBtn" class="btn btn-primary-modern btn-modern form-submit-button">
                                 <i class="bi bi-check-circle me-2"></i><span id="submitReportBtnText">Submit Report</span>
                             </button>
-                            <a href="/dashboard" class="btn btn-outline-secondary" style="flex: 0.5;">
+                            <a href="/dashboard" class="btn btn-outline-secondary form-cancel-button">
                                 <i class="bi bi-x-circle me-2"></i>Cancel
                             </a>
                         </div>
@@ -329,6 +467,45 @@ document.addEventListener('DOMContentLoaded', function () {
     const provinceSelect = document.getElementById('province_id');
     const municipalitySelect = document.getElementById('municipality_id');
     const barangaySelect = document.getElementById('barangay_id');
+    const locationInput = document.getElementById('location');
+    const locationStatus = document.getElementById('locationStatus');
+    const progressSteps = Array.from(document.querySelectorAll('[data-report-step]'));
+    const optionalDetails = Array.from(document.querySelectorAll('.report-secondary'));
+
+    function updateReportProgress() {
+        const essentialsComplete = document.getElementById('hazard_type')?.value;
+        const locationComplete = locationInput && locationInput.value.trim() && provinceSelect?.value && municipalitySelect?.value;
+        const optionalOpen = optionalDetails.some(function (details) { return details.open; });
+        const currentStep = optionalOpen ? 3 : locationComplete ? 3 : essentialsComplete ? 2 : 1;
+
+        progressSteps.forEach(function (step) {
+            const isCurrent = Number(step.dataset.reportStep) === currentStep;
+            step.classList.toggle('is-current', isCurrent);
+            if (isCurrent) {
+                step.setAttribute('aria-current', 'step');
+            } else {
+                step.removeAttribute('aria-current');
+            }
+        });
+    }
+
+    function updateLocationStatus() {
+        if (!locationStatus || !locationInput) return;
+
+        const areaSelected = provinceSelect && provinceSelect.value && municipalitySelect && municipalitySelect.value;
+        const landmarkEntered = locationInput.value.trim().length > 0;
+        locationStatus.classList.remove('is-ready', 'is-warning');
+
+        if (areaSelected && landmarkEntered) {
+            locationStatus.classList.add('is-ready');
+            locationStatus.innerHTML = '<i class="bi bi-check-circle-fill" aria-hidden="true"></i><span>Location details are ready to submit.</span>';
+        } else if (landmarkEntered) {
+            locationStatus.classList.add('is-warning');
+            locationStatus.innerHTML = '<i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i><span>Add the province and municipality to help responders find you.</span>';
+        } else {
+            locationStatus.innerHTML = '<i class="bi bi-info-circle" aria-hidden="true"></i><span>Select the area and add a nearby landmark.</span>';
+        }
+    }
 
     function resetSelect(select, placeholderText) {
         select.innerHTML = '';
@@ -353,6 +530,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (provinceSelect && municipalitySelect && barangaySelect) {
         provinceSelect.addEventListener('change', function () {
             resetSelect(barangaySelect, 'Select municipality first');
+            updateLocationStatus();
             if (!provinceSelect.value) {
                 resetSelect(municipalitySelect, 'Select province first');
                 return;
@@ -360,11 +538,15 @@ document.addEventListener('DOMContentLoaded', function () {
             resetSelect(municipalitySelect, 'Loading...');
             fetch('/api/municipalities/' + provinceSelect.value)
                 .then(function (response) { return response.ok ? response.json() : { municipalities: [] }; })
-                .then(function (data) { populateSelect(municipalitySelect, data.municipalities || [], 'Select municipality'); })
+                .then(function (data) {
+                    populateSelect(municipalitySelect, data.municipalities || [], 'Select municipality');
+                    updateLocationStatus();
+                })
                 .catch(function () { resetSelect(municipalitySelect, 'Unable to load municipalities'); });
         });
 
         municipalitySelect.addEventListener('change', function () {
+            updateLocationStatus();
             if (!municipalitySelect.value) {
                 resetSelect(barangaySelect, 'Select municipality first');
                 return;
@@ -376,6 +558,20 @@ document.addEventListener('DOMContentLoaded', function () {
                 .catch(function () { resetSelect(barangaySelect, 'Unable to load barangays'); });
         });
     }
+
+    if (locationInput) {
+        locationInput.addEventListener('input', updateLocationStatus);
+        updateLocationStatus();
+    }
+
+    ['hazard_type'].forEach(function (fieldId) {
+        const field = document.getElementById(fieldId);
+        if (field) field.addEventListener('change', updateReportProgress);
+    });
+    optionalDetails.forEach(function (details) {
+        details.addEventListener('toggle', updateReportProgress);
+    });
+    updateReportProgress();
 
     const gpsButton = document.getElementById('gpsButton');
     const gpsStatus = document.getElementById('gpsStatus');

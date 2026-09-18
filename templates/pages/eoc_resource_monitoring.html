@@ -130,7 +130,7 @@
 
                 {% if resources %}
                     <div class="table-responsive">
-                        <table class="table table-enhanced align-middle mb-0">
+                        <table class="table table-enhanced table-mobile-stack align-middle mb-0">
                             <thead>
                                 <tr>
                                     <th>Type</th>
@@ -204,10 +204,7 @@
                     </div>
                     {% endfor %}
                 {% else %}
-                    <div class="text-center py-4">
-                        <div style="font-size:2rem;margin-bottom:0.5rem;opacity:0.4;"><i class="bi bi-boxes"></i></div>
-                        <p class="text-muted mb-0 small">No resources currently deployed.</p>
-                    </div>
+                    {{ es.render('bi-boxes', 'No Resources Deployed', subtitle='Resources assigned to active responses will appear here.', size='sm') }}
                 {% endif %}
             </div>
         </div>

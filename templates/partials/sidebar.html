@@ -72,13 +72,9 @@
                     <i class="bi bi-people-fill"></i>
                     <span class="nav-text sidebar-text-show">Team Tracking</span>
                 </a>
-                <a href="/coordinator/resources" class="sidebar-nav-link {{ 'active' if request.path == '/coordinator/resources' else '' }}" data-tooltip="Resource Requests" aria-label="Resource Requests">
+                <a href="/coordinator/resources" class="sidebar-nav-link {{ 'active' if request.path == '/coordinator/resources' or request.path == '/coordinator/resource-requests' else '' }}" data-tooltip="Resources" aria-label="Resources">
                     <i class="bi bi-box-seam-fill"></i>
-                    <span class="nav-text sidebar-text-show">Resource Requests</span>
-                </a>
-                <a href="/coordinator/resource-requests" class="sidebar-nav-link {{ 'active' if request.path == '/coordinator/resource-requests' else '' }}" data-tooltip="Request from EOC" aria-label="Request from EOC">
-                    <i class="bi bi-send-plus-fill"></i>
-                    <span class="nav-text sidebar-text-show">Request from EOC</span>
+                    <span class="nav-text sidebar-text-show">Resources</span>
                 </a>
 
                 <div class="menu-subgroup-label sidebar-text-show">Monitoring</div>
@@ -90,9 +86,9 @@
                     <i class="bi bi-pin-map-fill"></i>
                     <span class="nav-text sidebar-text-show">Hazard Map</span>
                 </a>
-                <a href="/all-alerts" class="sidebar-nav-link {{ 'active' if request.path == '/all-alerts' else '' }}" data-tooltip="Hazard Feed" aria-label="Hazard Feed">
+                <a href="/all-alerts" class="sidebar-nav-link {{ 'active' if request.path == '/all-alerts' else '' }}" data-tooltip="AI Risk Signals" aria-label="AI Risk Signals">
                     <i class="bi bi-exclamation-triangle-fill"></i>
-                    <span class="nav-text sidebar-text-show">Hazard Feed</span>
+                    <span class="nav-text sidebar-text-show">AI Risk Signals</span>
                 </a>
 
                 <div class="menu-subgroup-label sidebar-text-show">Alerts &amp; Comms</div>
@@ -122,9 +118,13 @@
                     <i class="bi bi-pin-map-fill"></i>
                     <span class="nav-text sidebar-text-show">Hazard Map</span>
                 </a>
-                <a href="/all-alerts" class="sidebar-nav-link {{ 'active' if request.path == '/all-alerts' else '' }}" data-tooltip="Hazard Feed" aria-label="Hazard Feed">
+                <a href="/all-alerts" class="sidebar-nav-link {{ 'active' if request.path == '/all-alerts' else '' }}" data-tooltip="AI Risk Signals" aria-label="AI Risk Signals">
                     <i class="bi bi-exclamation-triangle-fill"></i>
-                    <span class="nav-text sidebar-text-show">Hazard Feed</span>
+                    <span class="nav-text sidebar-text-show">AI Risk Signals</span>
+                </a>
+                <a href="/facilities" class="sidebar-nav-link {{ 'active' if request.path == '/facilities' else '' }}" data-tooltip="Facility Directory" aria-label="Facility Directory">
+                    <i class="bi bi-building-fill"></i>
+                    <span class="nav-text sidebar-text-show">Facilities</span>
                 </a>
                 <a href="/protocols" class="sidebar-nav-link {{ 'active' if request.path == '/protocols' else '' }}" data-tooltip="ICS Protocols" aria-label="ICS Protocols">
                     <i class="bi bi-file-text"></i>
@@ -132,9 +132,9 @@
                 </a>
 
                 <div class="menu-subgroup-label sidebar-text-show">Alerts &amp; Comms</div>
-                <a href="/eoc/alerts" class="sidebar-nav-link {{ 'active' if request.path == '/eoc/alerts' else '' }}" data-tooltip="Published Alerts" aria-label="Published Alerts">
+                <a href="/eoc/alerts" class="sidebar-nav-link {{ 'active' if request.path == '/eoc/alerts' else '' }}" data-tooltip="Public Advisories" aria-label="Public Advisories">
                     <i class="bi bi-megaphone-fill"></i>
-                    <span class="nav-text sidebar-text-show">Published Alerts</span>
+                    <span class="nav-text sidebar-text-show">Public Advisories</span>
                 </a>
 
                 {% elif session.role == 'eoc_staff' %}
@@ -164,15 +164,15 @@
                 </a>
 
                 <div class="menu-subgroup-label sidebar-text-show">Dispatch</div>
-                <a href="/admin/alerts" class="sidebar-nav-link {{ 'active' if request.path == '/admin/alerts' else '' }}" data-tooltip="Verify & Toggle Alerts" aria-label="Verify & Toggle Alerts">
+                <a href="{{ url_for('admin.eoc_verifications') }}" class="sidebar-nav-link {{ 'active' if request.path == '/admin/alerts' else '' }}" data-tooltip="Verification Queue" aria-label="Verification Queue">
                     <i class="bi bi-check-circle-fill"></i>
-                    <span class="nav-text sidebar-text-show">Verifications</span>
+                    <span class="nav-text sidebar-text-show">Verification Queue</span>
                 </a>
-                <a href="/admin/responses" class="sidebar-nav-link {{ 'active' if request.path == '/admin/responses' else '' }}" data-tooltip="Active Operations" aria-label="Active Operations">
+                <a href="{{ url_for('admin.eoc_operations') }}" class="sidebar-nav-link {{ 'active' if request.path == '/admin/responses' else '' }}" data-tooltip="Active Operations" aria-label="Active Operations">
                     <i class="bi bi-shield-fill-exclamation"></i>
-                    <span class="nav-text sidebar-text-show">Operations</span>
+                    <span class="nav-text sidebar-text-show">Active Operations</span>
                 </a>
-                <a href="/eoc/resource-requests" class="sidebar-nav-link {{ 'active' if request.path == '/eoc/resource-requests' else '' }}" data-tooltip="Resource Requests" aria-label="Resource Requests">
+                <a href="{{ url_for('eoc.eoc_resource_requests') }}" class="sidebar-nav-link {{ 'active' if request.path == '/eoc/resource-requests' else '' }}" data-tooltip="Resource Requests" aria-label="Resource Requests">
                     <i class="bi bi-inbox-fill"></i>
                     <span class="nav-text sidebar-text-show">Resource Requests</span>
                 </a>
@@ -182,13 +182,13 @@
                 </a>
 
                 <div class="menu-subgroup-label sidebar-text-show">Alerts &amp; Comms</div>
-                <a href="/all-alerts" class="sidebar-nav-link {{ 'active' if request.path == '/all-alerts' else '' }}" data-tooltip="Hazard Feed" aria-label="Hazard Feed">
+                <a href="{{ url_for('admin.all_alerts') }}" class="sidebar-nav-link {{ 'active' if request.path == '/all-alerts' else '' }}" data-tooltip="AI Risk Signals" aria-label="AI Risk Signals">
                     <i class="bi bi-exclamation-triangle-fill"></i>
-                    <span class="nav-text sidebar-text-show">Hazard Feed</span>
+                    <span class="nav-text sidebar-text-show">AI Risk Signals</span>
                 </a>
-                <a href="/eoc/alerts" class="sidebar-nav-link {{ 'active' if request.path == '/eoc/alerts' else '' }}" data-tooltip="Published Alerts" aria-label="Published Alerts">
+                <a href="{{ url_for('eoc.official_alerts') }}" class="sidebar-nav-link {{ 'active' if request.path == '/eoc/alerts' else '' }}" data-tooltip="Public Advisories" aria-label="Public Advisories">
                     <i class="bi bi-megaphone-fill"></i>
-                    <span class="nav-text sidebar-text-show">Published Alerts</span>
+                    <span class="nav-text sidebar-text-show">Public Advisories</span>
                 </a>
 
                 {% elif session.role == 'field_responder' %}
@@ -215,11 +215,18 @@
 
                 {% else %}
                 {# ── CITIZEN LINKS ── #}
+                <div class="menu-subgroup-label sidebar-text-show">Overview</div>
                 <a href="/citizen-dashboard" class="sidebar-nav-link {{ 'active' if request.path == '/citizen-dashboard' else '' }}" data-tooltip="Dashboard" aria-label="Dashboard">
                     <i class="bi bi-speedometer2"></i>
                     <span class="nav-text sidebar-text-show">Dashboard</span>
                 </a>
 
+                <a href="/citizen-status" class="sidebar-nav-link {{ 'active' if request.path == '/citizen-status' else '' }}" data-tooltip="Status Tracking" aria-label="Status Tracking">
+                    <i class="bi bi-clock-history"></i>
+                    <span class="nav-text sidebar-text-show">Status Tracking</span>
+                </a>
+
+                <div class="menu-subgroup-label sidebar-text-show">Alerts &amp; Updates</div>
                 <a href="/citizen-alerts" class="sidebar-nav-link {{ 'active' if request.path == '/citizen-alerts' else '' }}" data-tooltip="Emergency Alerts" aria-label="Emergency Alerts">
                     <i class="bi bi-bell-fill"></i>
                     <span class="nav-text sidebar-text-show">Emergency Alerts</span>
@@ -234,11 +241,7 @@
                     <span class="nav-text sidebar-text-show">Report Incident</span>
                 </a>
 
-                <a href="/citizen-status" class="sidebar-nav-link {{ 'active' if request.path == '/citizen-status' else '' }}" data-tooltip="Status Tracking" aria-label="Status Tracking">
-                    <i class="bi bi-clock-history"></i>
-                    <span class="nav-text sidebar-text-show">Status Tracking</span>
-                </a>
-
+                <div class="menu-subgroup-label sidebar-text-show">Support</div>
                 <a href="/citizen-resources" class="sidebar-nav-link {{ 'active' if request.path == '/citizen-resources' else '' }}" data-tooltip="Resources & Info" aria-label="Resources & Info">
                     <i class="bi bi-info-circle-fill"></i>
                     <span class="nav-text sidebar-text-show">Resources & Info</span>

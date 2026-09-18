@@ -1,5 +1,7 @@
 <!-- Generated at: 2024-01-15 03:37:00 -->
 {% extends 'pages/base.html' %}
+{% import 'partials/hazard_macros.html' as hz %}
+{% import 'partials/empty_state.html' as es %}
 
 {% block title %}Operational Center Console | DICS AI{% endblock %}
 
@@ -113,7 +115,7 @@
                 <h5 class="card-title">Realtime Critical Inferences</h5>
                 {% if incidents %}
                 <div class="table-responsive">
-                    <table class="table table-custom align-middle mb-0">
+                    <table class="table table-custom table-mobile-stack align-middle mb-0">
                         <thead>
                             <tr>
                                 <th>Hazard Class</th>
@@ -127,13 +129,7 @@
                                 <tr class="font-monospace">
                                     <td class="text-white fw-bold">{{ incident.hazard_type|upper }}</td>
                                     <td>
-                                        {% if incident.level|lower in ['high', 'severe'] %}
-                                            <span class="badge badge-high px-2 py-1">CRITICAL</span>
-                                        {% elif incident.level|lower == 'moderate' %}
-                                            <span class="badge badge-mod px-2 py-1">ELEVATED</span>
-                                        {% else %}
-                                            <span class="badge badge-low px-2 py-1">NOMINAL</span>
-                                        {% endif %}
+                                        {{ hz.risk_badge(incident.level) }}
                                     </td>
                                     <td class="text-info font-monospace fw-bold">{{ '%.1f'|format(incident.score) }}%</td>
                                     <td>
@@ -149,7 +145,7 @@
                     </table>
                 </div>
                 {% else %}
-                    <p class="text-muted font-monospace p-3 small mb-0">No metrics collected. Process data fields to activate.</p>
+                    {{ es.render('bi-bar-chart', 'No Metrics Collected', subtitle='Process data fields to activate operational metrics.', size='sm') }}
                 {% endif %}
             </div>
         </div>

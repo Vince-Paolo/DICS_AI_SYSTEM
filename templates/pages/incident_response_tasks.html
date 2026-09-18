@@ -40,7 +40,7 @@
                                         <span class="text-muted small">ID: #{{ task.id }}</span>
                                     </td>
                                     <td data-label="Agency" class="table-hide-tablet">
-                                        <span style="color:#93C5FD;font-weight:600;">{{ task.assigned_to_agency }}</span>
+                                        <span style="color:var(--status-info);font-weight:600;">{{ task.assigned_to_agency }}</span>
                                     </td>
                                     <td data-label="Priority" class="priority-status-cell">
                                         {{ hz.priority_badge(task.priority) }}

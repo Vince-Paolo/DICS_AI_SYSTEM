@@ -58,7 +58,7 @@
 
 <!-- Citizen Stat Cards -->
 <div class="row g-3 mb-4">
-    <div class="col-md-4">
+    <div class="col-6 col-md-3">
         <div class="stat-card card-gradient-primary h-100">
             <div class="d-flex align-items-center justify-content-between">
                 <div>
@@ -72,7 +72,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-6 col-md-3">
         <div class="stat-card card-gradient-danger h-100">
             <div class="d-flex align-items-center justify-content-between">
                 <div>
@@ -86,16 +86,16 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-6 col-md-3">
         <div class="stat-card card-gradient-warning h-100">
             <div class="d-flex align-items-center justify-content-between">
                 <div>
-                    <div class="stat-label">Earthquake</div>
-                    <div class="stat-value" style="font-size: 1.75rem;">M{{ "%.1f"|format(latest_earthquake_magnitude|float(0)) }}</div>
-                    <div class="stat-description">Latest recorded magnitude</div>
+                    <div class="stat-label">Current Risk</div>
+                    <div class="stat-value" style="font-size: 1.6rem;">{{ current_risk_level }}</div>
+                    <div class="stat-description">{{ current_risk_detail }}</div>
                 </div>
                 <div class="icon-badge icon-badge-warning">
-                    <i class="bi bi-tsunami"></i>
+                    <i class="bi bi-shield-check"></i>
                 </div>
             </div>
         </div>

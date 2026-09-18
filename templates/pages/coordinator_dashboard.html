@@ -136,7 +136,7 @@
                 <i class="bi bi-people-fill me-2"></i>Team Tracking
             </a>
             <a href="{{ url_for('coordinator.coordinator_resources') }}" class="btn btn-modern flex-grow-1 text-center" style="background:rgba(245,158,11,0.12);color:#FCD34D;border:1px solid rgba(245,158,11,0.3);font-weight:600;padding:0.65rem 1rem;">
-                <i class="bi bi-box-seam-fill me-2"></i>Resource Requests
+                <i class="bi bi-box-seam-fill me-2"></i>My Resources
             </a>
             <a href="{{ url_for('coordinator.coordinator_reports') }}" class="btn btn-modern flex-grow-1 text-center" style="background:rgba(139,92,246,0.12);color:#C4B5FD;border:1px solid rgba(139,92,246,0.3);font-weight:600;padding:0.65rem 1rem;">
                 <i class="bi bi-file-earmark-bar-graph-fill me-2"></i>Situation Reports
@@ -244,7 +244,7 @@
                             <div class="d-flex align-items-center gap-2 mb-1">
                                 <strong class="text-white" style="font-size:0.85rem;">#{{ resp.incident_id }} – {{ resp.incident.hazard_type }}</strong>
                                 {% if resp.priority_level == 'CRITICAL' %}
-                                    <span style="padding:0.15em 0.5em;background:rgba(239,68,68,0.2);color:#FCA5A5;border:1px solid rgba(239,68,68,0.4);border-radius:4px;font-size:0.65em;font-weight:700;">CRITICAL</span>
+                                    {{ hz.priority_badge(resp.priority_level, label='CRITICAL') }}
                                 {% endif %}
                             </div>
                             <div class="text-muted" style="font-size:0.78rem;"><i class="bi bi-geo-alt me-1"></i>{{ resp.incident.location or 'Unknown' }}</div>
@@ -255,10 +255,7 @@
                     </div>
                     {% endfor %}
                 {% else %}
-                    <div class="text-center py-3">
-                        <i class="bi bi-shield-check text-muted fs-3 d-block mb-2"></i>
-                        <span class="text-muted small">No open responses.</span>
-                    </div>
+                    {{ es.render('bi-shield-check', 'No Open Responses', subtitle='Active responses assigned to your agency will appear here.', size='sm') }}
                 {% endif %}
             </div>
         </div>

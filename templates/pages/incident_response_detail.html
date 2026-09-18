@@ -1,4 +1,5 @@
 {% extends 'pages/base.html' %}
+{% import 'partials/empty_state.html' as es %}
 {% block title %}Response #{{ response.incident_id }} Overview | DICS AI{% endblock %}
 
 {% block content %}
@@ -44,7 +45,7 @@
                     <div class="stat-value">{{ total_casualties }}</div>
                     <div class="stat-description">Total cumulative count</div>
                 </div>
-                <div class="icon-badge" style="background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.3);">
+                <div class="icon-badge" style="background:rgba(239,68,68,0.15);color:var(--status-danger);border:1px solid rgba(239,68,68,0.3);">
                     <i class="bi bi-activity"></i>
                 </div>
             </div>
@@ -81,7 +82,7 @@
                         <div style="padding:1rem;background:rgba(239,68,68,0.07);border-radius:8px;border-left:3px solid #EF4444;">
                             <span class="text-muted d-block small mb-1" style="text-transform:uppercase;letter-spacing:0.05em;">Risk Assessment</span>
                             <div class="d-flex align-items-center gap-2">
-                                <h2 class="fw-bold mb-0" style="color:#FCA5A5;">{{ "%.2f"|format(response.incident.score|float(0)) }}</h2>
+                                <h2 class="fw-bold mb-0" style="color:var(--status-danger);">{{ "%.2f"|format(response.incident.score|float(0)) }}</h2>
                                 <span style="padding:0.3em 0.6em;background:rgba(239,68,68,0.2);color:#FCA5A5;border:1px solid rgba(239,68,68,0.5);border-radius:5px;font-size:0.75em;font-weight:700;text-transform:uppercase;">
                                     {{ response.incident.level }}
                                 </span>
@@ -136,7 +137,11 @@
                     <div style="flex:1;height:1px;background:rgba(255,255,255,0.06);"></div>
                 </div>
                 <div style="padding:1rem;background:rgba(10,13,26,0.6);border:1px solid rgba(255,255,255,0.06);border-radius:8px;color:#D1D5DB;white-space:pre-line;font-size:0.9rem;line-height:1.65;">
-                    {{ response.situation_summary or 'No current summary reports have been generated yet.' }}
+                    {% if response.situation_summary %}
+                        {{ response.situation_summary }}
+                    {% else %}
+                        {{ es.render('bi-file-earmark-text', 'No Situation Summary Yet', subtitle='Current situation reports will appear here as the response develops.', size='sm') }}
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -148,7 +153,7 @@
         <div class="card card-custom mb-4">
             <div class="card-body p-4">
                 <div class="d-flex align-items-center gap-2 mb-4">
-                    <div class="icon-badge" style="background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.3);">
+                    <div class="icon-badge" style="background:rgba(239,68,68,0.15);color:var(--status-danger);border:1px solid rgba(239,68,68,0.3);">
                         <i class="bi bi-lightning-charge-fill"></i>
                     </div>
                     <h5 class="mb-0">Quick Actions</h5>
@@ -178,7 +183,7 @@
         <div class="card card-custom mb-4">
             <div class="card-body p-4">
                 <div class="d-flex align-items-center gap-2 mb-4">
-                    <div class="icon-badge" style="background:rgba(59,130,246,0.15);color:#93C5FD;border:1px solid rgba(59,130,246,0.3);">
+                    <div class="icon-badge" style="background:rgba(59,130,246,0.15);color:var(--status-info);border:1px solid rgba(59,130,246,0.3);">
                         <i class="bi bi-signpost-split-fill"></i>
                     </div>
                     <h5 class="mb-0">Record Evacuation</h5>
@@ -217,7 +222,7 @@
                 </div>
                 <div class="d-flex align-items-center gap-3 mb-3">
                     <div style="width:48px;height:48px;border-radius:50%;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                        <i class="bi bi-person-badge-fill" style="color:#93C5FD;font-size:1.2rem;"></i>
+                        <i class="bi bi-person-badge-fill" style="color:var(--status-info);font-size:1.2rem;"></i>
                     </div>
                     <div>
                         <span class="d-block text-muted" style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.05em;">Incident Commander</span>

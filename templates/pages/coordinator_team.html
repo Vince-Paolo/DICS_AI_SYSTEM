@@ -33,10 +33,10 @@
 <!-- Agency Overview Cards -->
 <div class="row g-3 mb-4">
     {% set agencies = [
-        {'name': 'Fire Department', 'icon': 'bi-fire', 'color': '#FCA5A5', 'bg': 'rgba(239,68,68,0.15)', 'border': 'rgba(239,68,68,0.3)'},
-        {'name': 'Police Department', 'icon': 'bi-shield-fill', 'color': '#93C5FD', 'bg': 'rgba(59,130,246,0.15)', 'border': 'rgba(59,130,246,0.3)'},
-        {'name': 'MDRRMO', 'icon': 'bi-building-gear', 'color': '#FCD34D', 'bg': 'rgba(245,158,11,0.15)', 'border': 'rgba(245,158,11,0.3)'},
-        {'name': 'Health Office', 'icon': 'bi-heart-pulse-fill', 'color': '#86EFAC', 'bg': 'rgba(16,185,129,0.15)', 'border': 'rgba(16,185,129,0.3)'},
+        {'name': 'Fire Department', 'icon': 'bi-fire', 'color': 'var(--status-danger)', 'bg': 'rgba(239,68,68,0.15)', 'border': 'rgba(239,68,68,0.3)'},
+        {'name': 'Police Department', 'icon': 'bi-shield-fill', 'color': 'var(--status-info)', 'bg': 'rgba(59,130,246,0.15)', 'border': 'rgba(59,130,246,0.3)'},
+        {'name': 'MDRRMO', 'icon': 'bi-building-gear', 'color': 'var(--status-warning)', 'bg': 'rgba(245,158,11,0.15)', 'border': 'rgba(245,158,11,0.3)'},
+        {'name': 'Health Office', 'icon': 'bi-heart-pulse-fill', 'color': 'var(--status-success)', 'bg': 'rgba(16,185,129,0.15)', 'border': 'rgba(16,185,129,0.3)'},
         {'name': 'Search & Rescue', 'icon': 'bi-search-heart-fill', 'color': '#C4B5FD', 'bg': 'rgba(139,92,246,0.15)', 'border': 'rgba(139,92,246,0.3)'}
     ] %}
     {% for ag in agencies %}
@@ -75,7 +75,7 @@
                         {# group by agency #}
                     {% endfor %}
                     <div class="table-responsive">
-                        <table class="table table-enhanced align-middle mb-0">
+                        <table class="table table-enhanced table-mobile-stack align-middle mb-0">
                             <thead>
                                 <tr>
                                     <th>Agency</th>
@@ -189,9 +189,7 @@
                     </div>
                     {% endfor %}
                 {% else %}
-                    <div class="text-center py-3">
-                        <span class="text-muted small">No task data available.</span>
-                    </div>
+                    {{ es.render('bi-list-check', 'No Task Data Available', subtitle='Team task progress will appear here once assignments are active.', size='sm') }}
                 {% endif %}
             </div>
         </div>

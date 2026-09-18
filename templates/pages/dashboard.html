@@ -1,5 +1,6 @@
 <!-- Generated at: 2024-01-15 03:37:00 -->
 {% extends 'pages/base.html' %}
+{% import 'partials/empty_state.html' as es %}
 
 {% block title %}Administration Console | DICS AI{% endblock %}
 
@@ -101,7 +102,7 @@
             <p class="small text-muted mt-2 mb-1">Last backup: <span class="text-white">{{ last_backup_time.strftime('%b %d, %Y %I:%M %p') }}</span></p>
             <p class="small text-muted mb-3">{{ backup_count }} backup(s) retained</p>
             {% else %}
-            <p class="small text-muted mt-2 mb-3">No backups have been taken yet.</p>
+            {{ es.render('bi-cloud-arrow-up', 'No Backups Yet', subtitle='Create an export to establish the first recovery point.', size='sm') }}
             {% endif %}
             <a href="{{ url_for('admin.export_backup') }}" id="dashboardBackupLink" class="btn btn-outline-primary btn-sm mt-auto"><i class="bi bi-cloud-download-fill me-1"></i> Export Backup</a>
         </div>
@@ -131,7 +132,7 @@
                 </h5>
                 {% if recent_users %}
                 <div class="table-responsive">
-                    <table class="table table-custom recent-accounts-table align-middle mb-0">
+                    <table class="table table-custom recent-accounts-table table-mobile-stack align-middle mb-0">
                         <thead>
                             <tr>
                                 <th>Username</th>
@@ -159,7 +160,7 @@
                     </table>
                 </div>
                 {% else %}
-                    <p class="text-muted p-3 small mb-0">No accounts found.</p>
+                    {{ es.render('bi-people', 'No Accounts Found', subtitle='Newly registered accounts will appear here.', size='sm') }}
                 {% endif %}
             </div>
         </div>

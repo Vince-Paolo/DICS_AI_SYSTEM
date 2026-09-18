@@ -1,4 +1,5 @@
 {% extends 'pages/base.html' %}
+{% import 'partials/empty_state.html' as es %}
 {% block title %}Pre-Deployment Checklist | DICS AI{% endblock %}
 {% block content %}
 <h1 class="visually-hidden">Pre-Deployment Checklist</h1>
@@ -27,7 +28,7 @@
                     {% if completed.get(key) %}checked{% endif %}
                     style="width:1.3em;height:1.3em;cursor:pointer;">
                 </div>
-                <label for="chk_{{ key }}" class="mb-0 fw-semibold" style="cursor:pointer;{% if completed.get(key) %}color:#86EFAC;{% endif %}">
+                <label for="chk_{{ key }}" class="mb-0 fw-semibold" style="cursor:pointer;{% if completed.get(key) %}color:var(--status-success);{% endif %}">
                   {{ label }}
                 </label>
                 {% if completed.get(key) %}
@@ -65,7 +66,7 @@
             {% endfor %}
           </div>
           {% else %}
-          <p class="text-muted small mb-0">No active incidents at this time.</p>
+          {{ es.render('bi-shield-check', 'No Active Incidents', subtitle='Active incidents will appear here when assigned.', size='sm') }}
           {% endif %}
         </div>
       </div>

@@ -1,9 +1,9 @@
 {% extends 'pages/base.html' %}
 {% import 'partials/empty_state.html' as es %}
-{% block title %}Resource Requests | Agency Coordinator | DICS AI{% endblock %}
+{% block title %}My Resources | Agency Coordinator | DICS AI{% endblock %}
 
 {% block content %}
-<h1 class="visually-hidden">Resource Requests | Agency Coordinator</h1>
+<h1 class="visually-hidden">My Resources | Agency Coordinator</h1>
 
 <!-- Header -->
 <div class="row mb-4">
@@ -12,7 +12,7 @@
             <div class="card-body">
                 <div class="section-header mb-0">
                     <span class="section-header-icon" style="color:#FCD34D;"><i class="bi bi-box-seam-fill"></i></span>
-                    <h4 class="mb-0">Resource Requests</h4>
+                    <h4 class="mb-0">My Resources</h4>
                     <span class="ms-3">
                         <a href="{{ url_for('coordinator.coordinator_dashboard') }}" class="btn btn-sm btn-modern" style="background:rgba(245,158,11,0.1);color:#FCD34D;border:1px solid rgba(245,158,11,0.25);font-size:0.78rem;">
                             <i class="bi bi-arrow-left me-1"></i>Back to Hub
@@ -24,10 +24,19 @@
                         </span>
                     </span>
                 </div>
-                <p class="text-muted mb-0 mt-2" style="padding-left:2.75rem;">Track allocated resources and request additional supplies or personnel for active responses.</p>
+                <p class="text-muted mb-0 mt-2" style="padding-left:2.75rem;">Track what your agency already has on hand and request additional support when you need it.</p>
             </div>
         </div>
     </div>
+</div>
+
+<div class="d-flex flex-wrap gap-2 mb-4">
+    <a href="{{ url_for('coordinator.coordinator_resources') }}" class="btn btn-sm btn-primary-modern btn-modern {{ 'active' if request.path == '/coordinator/resources' else '' }}">
+        <i class="bi bi-box-seam-fill me-1"></i>My Resources
+    </a>
+    <a href="{{ url_for('coordinator.coordinator_resource_requests') }}" class="btn btn-sm btn-outline-light {{ 'active' if request.path == '/coordinator/resource-requests' else '' }}">
+        <i class="bi bi-send-plus-fill me-1"></i>Request from EOC
+    </a>
 </div>
 
 <div class="row g-4 align-items-stretch">
@@ -45,7 +54,7 @@
 
                 {% if resources %}
                     <div class="table-responsive">
-                        <table class="table table-enhanced align-middle mb-0">
+                        <table class="table table-enhanced table-mobile-stack align-middle mb-0">
                             <thead>
                                 <tr>
                                     <th>Type</th>

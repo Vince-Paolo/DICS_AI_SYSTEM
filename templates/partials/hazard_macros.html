@@ -21,7 +21,7 @@
 {% macro risk_badge(level) -%}
     {%- set l = (level or '')|lower -%}
     {%- if l == 'severe' -%}
-    <span class="badge badge-high"><i class="bi bi-record-fill me-1"></i>SEVERE</span>
+    <span class="badge badge-severe"><i class="bi bi-exclamation-octagon-fill me-1"></i>SEVERE</span>
     {%- elif l == 'high' -%}
     <span class="badge badge-high"><i class="bi bi-record-fill me-1"></i>HIGH</span>
     {%- elif l == 'moderate' or l == 'mod' -%}

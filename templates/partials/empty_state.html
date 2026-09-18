@@ -10,12 +10,12 @@
     <div class="icon-badge icon-badge-{{ variant }} empty-state-icon">
         <i class="bi {{ icon }}" aria-hidden="true"></i>
     </div>
-    <h5 class="mb-2">{{ title }}</h5>
+    <h5>{{ title }}</h5>
     {%- if subtitle %}
-    <p class="text-muted {{ 'mb-3' if cta_text else 'mb-0' }}">{{ subtitle }}</p>
+    <p class="{{ 'mb-3' if cta_text else 'mb-0' }}">{{ subtitle }}</p>
     {%- endif %}
     {%- if cta_text and cta_href %}
-    <a href="{{ cta_href }}" class="btn btn-primary-modern btn-modern" style="width:auto;display:inline-block;">
+    <a href="{{ cta_href }}" class="btn btn-primary-modern btn-modern empty-state__cta">
         <i class="bi bi-plus-circle me-2" aria-hidden="true"></i>{{ cta_text }}
     </a>
     {%- endif %}

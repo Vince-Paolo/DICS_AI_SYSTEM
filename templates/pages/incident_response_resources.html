@@ -20,7 +20,7 @@
 
                 {% if resources %}
                     <div class="table-responsive">
-                        <table class="table table-enhanced align-middle mb-0">
+                        <table class="table table-enhanced table-mobile-stack align-middle mb-0">
                             <thead>
                                 <tr>
                                     <th>Resource Type</th>
@@ -38,7 +38,7 @@
                                         <strong class="text-white">{{ resource.resource_type }}</strong><br>
                                         <span class="text-muted small">Allocated {{ resource.allocated_at.strftime('%b %d, %H:%M') }}</span>
                                     </td>
-                                    <td><span style="color:#86EFAC;font-weight:600;">{{ resource.agency }}</span></td>
+                                    <td><span style="color:var(--status-success);font-weight:600;">{{ resource.agency }}</span></td>
                                     <td><strong class="text-warning fs-5">{{ resource.quantity }}</strong></td>
                                     <td>
                                         {% if response.status != 'CLOSED' %}

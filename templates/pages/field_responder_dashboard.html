@@ -1,4 +1,5 @@
 {% extends 'pages/base.html' %}
+{% import 'partials/empty_state.html' as es %}
 {% block title %}Field Responder Dashboard | DICS AI{% endblock %}
 
 {% block content %}
@@ -72,9 +73,9 @@
         <div class="stat-card card-gradient-warning h-100">
             <div class="d-flex align-items-center justify-content-between">
                 <div>
-                    <div class="stat-label">My Tasks</div>
+                    <div class="stat-label">Total Assigned</div>
                     <div class="stat-value">{{ my_tasks|length }}</div>
-                    <div class="stat-description">Assigned to me</div>
+                    <div class="stat-description">All tasks assigned to me</div>
                 </div>
                 <div class="icon-badge icon-badge-warning">
                     <i class="bi bi-clipboard2-check-fill"></i>
@@ -86,9 +87,9 @@
         <div class="stat-card card-gradient-danger h-100">
             <div class="d-flex align-items-center justify-content-between">
                 <div>
-                    <div class="stat-label">Open Tasks</div>
+                    <div class="stat-label">In Progress</div>
                     <div class="stat-value">{{ pending_count }}</div>
-                    <div class="stat-description">Pending or in progress</div>
+                    <div class="stat-description">Pending or active work</div>
                 </div>
                 <div class="icon-badge" style="background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.3);">
                     <i class="bi bi-hourglass-split"></i>
@@ -202,10 +203,7 @@
                     {% endfor %}
                     </div>
                 {% else %}
-                    <div class="text-center py-4" style="color:#6B7280;">
-                        <i class="bi bi-clipboard2-check" style="font-size:2rem;"></i>
-                        <p class="mt-2 mb-0" style="font-size:0.85rem;">No active assignments right now.</p>
-                    </div>
+                    {{ es.render('bi-clipboard2-check', 'No Active Assignments', subtitle='New field tasks will appear here.', size='sm') }}
                 {% endif %}
             </div>
         </div>
@@ -267,10 +265,7 @@
                         {% endfor %}
                         </div>
                     {% else %}
-                        <div class="text-center py-3" style="color:#6B7280;">
-                            <i class="bi bi-shield-check" style="font-size:1.8rem;"></i>
-                            <p class="mt-2 mb-0" style="font-size:0.82rem;">No currently active incidents.</p>
-                        </div>
+                        {{ es.render('bi-shield-check', 'No Active Incidents', subtitle='Active operational incidents will appear here.', size='sm') }}
                     {% endif %}
                 </div>
             </div>
@@ -296,7 +291,7 @@
 
                 {% if my_reports %}
                     <div class="table-responsive">
-                        <table class="table table-dark table-hover align-middle mb-0" style="font-size:0.83rem;border-color:rgba(255,255,255,0.07);">
+                        <table class="table table-dark table-hover table-mobile-stack align-middle mb-0" style="font-size:0.83rem;border-color:rgba(255,255,255,0.07);">
                             <thead style="color:#9CA3AF;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.05em;">
                                 <tr>
                                     <th class="fw-normal border-0">Title</th>
@@ -322,10 +317,7 @@
                         </table>
                     </div>
                 {% else %}
-                    <div class="text-center py-4" style="color:#6B7280;">
-                        <i class="bi bi-journal-x" style="font-size:2rem;"></i>
-                        <p class="mt-2 mb-0" style="font-size:0.85rem;">No reports filed yet. <a href="{{ url_for('responder.responder_report') }}" style="color:#38BDF8;">Submit your first report.</a></p>
-                    </div>
+                    {{ es.render('bi-journal-x', 'No Reports Filed Yet', subtitle='Submit a field report to keep the EOC informed.', cta_text='Submit Report', cta_href=url_for('responder.responder_report'), size='sm') }}
                 {% endif %}
             </div>
         </div>

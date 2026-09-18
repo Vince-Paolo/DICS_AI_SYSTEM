@@ -122,23 +122,7 @@
                                     <div class="d-flex align-items-start justify-content-between gap-3">
                                         <div class="flex-grow-1">
                                             <div class="d-flex align-items-center gap-2 mb-2">
-                                                {% if alert.level|lower in ['unknown','insufficient_data','insufficient-data','insufficient data'] %}
-                                                    <span class="badge badge-unknown">
-                                                        <i class="bi bi-question-circle-fill me-1"></i>UNKNOWN
-                                                    </span>
-                                                {% elif alert.level|lower == 'high' %}
-                                                    <span class="badge badge-high">
-                                                        <i class="bi bi-exclamation-octagon-fill me-1"></i>CRITICAL
-                                                    </span>
-                                                {% elif alert.level|lower == 'moderate' %}
-                                                    <span class="badge badge-mod">
-                                                        <i class="bi bi-exclamation-triangle-fill me-1"></i>WARNING
-                                                    </span>
-                                                {% else %}
-                                                    <span class="badge" style="background: rgba(59,130,246,0.12); color: var(--accent-glow); border: 1px solid rgba(59,130,246,0.3); font-weight: 700;">
-                                                        <i class="bi bi-info-circle-fill me-1"></i>INFO
-                                                    </span>
-                                                {% endif %}
+                                                {{ hz.risk_badge(alert.level) }}
                                                 <strong>{{ hz.hazard_icon(alert.hazard_type) }} {{ alert.hazard_type|upper }}</strong>
                                             </div>
                                             <div class="small text-muted mb-2">
@@ -173,15 +157,15 @@
                             </div>
                             <div class="vstack gap-3">
                                 <div class="info-tile info-tile-danger">
-                                    <h6 class="mb-1" style="color: #FCA5A5;"><i class="bi bi-exclamation-octagon-fill me-2"></i>HIGH — Critical</h6>
+                                    <h6 class="mb-1" style="color: var(--status-danger);"><i class="bi bi-exclamation-octagon-fill me-2"></i>HIGH — Critical</h6>
                                     <p class="small text-muted mb-0">Immediate threat to life. Evacuate now if ordered by authorities.</p>
                                 </div>
                                 <div class="info-tile info-tile-warning">
-                                    <h6 class="mb-1" style="color: #FCD34D;"><i class="bi bi-exclamation-triangle-fill me-2"></i>MODERATE — Warning</h6>
+                                    <h6 class="mb-1" style="color: var(--status-warning);"><i class="bi bi-exclamation-triangle-fill me-2"></i>MODERATE — Warning</h6>
                                     <p class="small text-muted mb-0">Significant danger present. Prepare for potential evacuation.</p>
                                 </div>
                                 <div class="info-tile info-tile-primary">
-                                    <h6 class="mb-1" style="color: #93C5FD;"><i class="bi bi-info-circle-fill me-2"></i>LOW — Info</h6>
+                                    <h6 class="mb-1" style="color: var(--status-info);"><i class="bi bi-info-circle-fill me-2"></i>LOW — Info</h6>
                                     <p class="small text-muted mb-0">Manageable risk level. Stay alert and monitor the situation.</p>
                                 </div>
                             </div>
@@ -199,15 +183,15 @@
                             </div>
                             <div class="vstack gap-3">
                                 <div class="info-tile info-tile-success">
-                                    <h6 class="mb-1" style="color: #86EFAC;"><i class="bi bi-bell-fill me-2"></i>Stay Informed</h6>
+                                    <h6 class="mb-1" style="color: var(--status-success);"><i class="bi bi-bell-fill me-2"></i>Stay Informed</h6>
                                     <p class="small text-muted mb-0">Enable notifications and check this page regularly for real-time updates.</p>
                                 </div>
                                 <div class="info-tile info-tile-success">
-                                    <h6 class="mb-1" style="color: #86EFAC;"><i class="bi bi-sign-turn-right-fill me-2"></i>Know Your Routes</h6>
+                                    <h6 class="mb-1" style="color: var(--status-success);"><i class="bi bi-sign-turn-right-fill me-2"></i>Know Your Routes</h6>
                                     <p class="small text-muted mb-0">Know your evacuation routes and nearest designated evacuation center.</p>
                                 </div>
                                 <div class="info-tile info-tile-success">
-                                    <h6 class="mb-1" style="color: #86EFAC;"><i class="bi bi-shield-check me-2"></i>Follow Authorities</h6>
+                                    <h6 class="mb-1" style="color: var(--status-success);"><i class="bi bi-shield-check me-2"></i>Follow Authorities</h6>
                                     <p class="small text-muted mb-0">Always follow official guidance from DRRMO and local government units.</p>
                                 </div>
                             </div>
