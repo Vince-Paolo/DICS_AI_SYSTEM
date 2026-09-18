@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import text
 
 from services.realtime_data import (
+    CALABARZON_CITY_COORDINATES,
     get_all_weather_data,
     get_weather_data,
     get_earthquake_data,
@@ -484,11 +485,12 @@ def _monitor_hazards_once(app):
                     )
                     continue
 
+                city_coordinates = CALABARZON_CITY_COORDINATES.get(city)
                 incident = Incident(
                     hazard_type=prediction.get("type", config["hazard_type"]),
                     location=city,
-                    latitude=weather_data.get('lat'),
-                    longitude=weather_data.get('lon'),
+                    latitude=(weather_data.get('lat') if weather_data.get('lat') is not None else (city_coordinates[0] if city_coordinates else None)),
+                    longitude=(weather_data.get('lon') if weather_data.get('lon') is not None else (city_coordinates[1] if city_coordinates else None)),
                     rainfall_mm=rainfall_mm,
                     river_level_m=river_level_m,
                     humidity_pct=humidity_pct,

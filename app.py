@@ -681,12 +681,37 @@ def verify_password(user, password):
     )
 
 
+def _resolve_session_user():
+    """Reject stale browser sessions after a user has been deleted or role changed.
+    The redirect loop here happens when the browser still holds a session cookie
+    for a responder that no longer exists in the database; the app was redirecting
+    back to the responder dashboard without first checking whether that user still
+    actually exists. Clearing the stale session prevents the loop and lets the user
+    land on the login page again."""
+    username = session.get('username')
+    if not username:
+        return None
+
+    user = User.query.filter_by(username=username).first()
+    if user is None:
+        session.clear()
+        return None
+
+    if session.get('role') != user.role:
+        session['role'] = user.role
+    if not session.get('agency'):
+        session['agency'] = user.agency or 'FIELD UNIT'
+
+    return user
+
+
 @app.route('/login', methods=['GET', 'POST'])
 @app.route('/', methods=['GET', 'POST'])
-@limiter.limit("10 per minute")
+@limiter.limit("10 per minute", methods=['POST'])
 def login():
-    if 'username' in session:
-        role = session.get('role')
+    session_user = _resolve_session_user()
+    if session_user:
+        role = session_user.role
         if role == 'incident_commander':
             return redirect(url_for('commander.incident_commander_dashboard'))
         elif role == 'agency_coordinator':
@@ -737,7 +762,7 @@ def login():
 
 
 @app.route('/register', methods=['GET', 'POST'])
-@limiter.limit("5 per hour")
+@limiter.limit("5 per hour", methods=['POST'])
 def register():
     if 'username' in session:
         return redirect(url_for('dashboard'))
@@ -826,7 +851,7 @@ def send_password_reset_email(user, token):
 
 
 @app.route('/forgot-password', methods=['GET', 'POST'])
-@limiter.limit("10 per minute")
+@limiter.limit("10 per minute", methods=['POST'])
 def forgot_password():
     if 'username' in session:
         return redirect(url_for('dashboard'))
@@ -851,7 +876,7 @@ def forgot_password():
 
 
 @app.route('/reset-password/<token>', methods=['GET', 'POST'])
-@limiter.limit("10 per minute")
+@limiter.limit("10 per minute", methods=['POST'])
 def reset_password(token):
     user = User.query.filter_by(reset_token=token).first()
     if not user or not user.reset_token_expires_at or user.reset_token_expires_at < datetime.now(timezone.utc).replace(tzinfo=None):
@@ -896,7 +921,7 @@ def logout():
 
 
 @app.route('/change-password', methods=['GET', 'POST'])
-@limiter.limit("10 per minute")
+@limiter.limit("10 per minute", methods=['POST'])
 def change_password():
     if 'username' not in session:
         return redirect(url_for('login'))

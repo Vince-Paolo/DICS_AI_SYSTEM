@@ -366,6 +366,57 @@ class ResponderRoutesTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'Access denied.', response.data)
 
+    def test_coordinator_response_detail_uses_shared_response_header(self):
+        with self.app.app_context():
+            commander = User(
+                username='commander5',
+                email='commander5@example.com',
+                password='secret',
+                role='incident_commander',
+                email_verified=True,
+            )
+            coordinator = User(
+                username='coordinator5',
+                email='coord5@example.com',
+                password='secret',
+                role='agency_coordinator',
+                agency='BFP',
+                email_verified=True,
+            )
+            db.session.add_all([commander, coordinator])
+            db.session.commit()
+
+            incident = Incident(user_id=commander.id, hazard_type='fire', location='Test District', message='Test', level='High', alert=True, status='ACTIVE')
+            db.session.add(incident)
+            db.session.commit()
+
+            response = IncidentResponse(incident_id=incident.id, commander_id=commander.id, status='ACTIVE')
+            db.session.add(response)
+            db.session.commit()
+
+            task = Task(
+                incident_response_id=response.id,
+                assigned_to_agency='BFP',
+                assigned_by_id=commander.id,
+                title='Coordinate firefighting response',
+                description='Support field operations',
+                status='PENDING',
+            )
+            db.session.add(task)
+            db.session.commit()
+            response_id = response.id
+
+        with self.client.session_transaction() as session:
+            session['username'] = 'coordinator5'
+            session['role'] = 'agency_coordinator'
+            session['agency'] = 'BFP'
+
+        response = self.client.get(f'/coordinator/response/{response_id}')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'response-header-card', response.data)
+        self.assertIn(b'Overview', response.data)
+        self.assertIn(b'Close Response', response.data)
+
     def test_create_default_admin_requires_password_env(self):
         with self.app.app_context():
             os.environ.pop('ADMIN_PASSWORD', None)
@@ -522,6 +573,18 @@ class ResponderRoutesTestCase(unittest.TestCase):
             self.assertEqual(upload_response.status_code, 200)
             self.assertGreater(len(upload_response.data), 0)
             self.assertTrue(upload_response.data.startswith(b'\xff\xd8'))
+
+    def test_citizen_report_page_does_not_show_severity_field(self):
+        with self.client.session_transaction() as session:
+            session['username'] = 'responder1'
+            session['role'] = 'user'
+
+        response = self.client.get('/citizen-report')
+
+        self.assertEqual(response.status_code, 200)
+        html = response.get_data(as_text=True)
+        self.assertNotIn('Severity Level', html)
+        self.assertNotIn('id="severity"', html)
 
     def test_upload_requires_authentication(self):
         response = self.client.get('/uploads/nonexistent.jpg')
@@ -855,6 +918,41 @@ class ResponderRoutesTestCase(unittest.TestCase):
             rendered = render_template_string('Status: {{ alert_count }}', alert_count=0)
 
         self.assertEqual(rendered, 'Status: 0')
+
+    def test_monitor_hazards_uses_city_coordinates_when_weather_has_no_lat_lon(self):
+        weather_data = {
+            'city': 'Calamba',
+            'humidity': 85,
+            'rainfall': 20,
+            'fetched_at': 'now',
+        }
+        prediction = {
+            'type': 'flood',
+            'score': 80.0,
+            'level': 'Severe',
+            'message': 'Severe hazard risk.',
+            'alert': True,
+        }
+
+        prediction.update({
+            'provider': 'anthropic',
+            'model': 'claude-test',
+            'confidence': 84.0,
+            'recommended_agencies': ['BFP'],
+            'recommended_resources': ['Water'],
+            'primary_factors': ['rainfall'],
+        })
+
+        with patch.object(scheduler, 'get_all_weather_data', return_value={'Calamba': weather_data}), \
+            patch.object(scheduler, 'predict_hazard', return_value=prediction):
+            with self.app.app_context():
+                scheduler.monitor_hazards()
+
+        with self.app.app_context():
+            incident = Incident.query.filter_by(hazard_type='flood', location='Calamba').order_by(Incident.created_at.desc()).first()
+            self.assertIsNotNone(incident)
+            self.assertEqual(incident.latitude, 14.2117)
+            self.assertEqual(incident.longitude, 121.1653)
 
     def test_monitor_hazards_creates_incident_for_high_risk_prediction(self):
         weather_data = {
@@ -1266,6 +1364,25 @@ class ResponderRoutesTestCase(unittest.TestCase):
         with self.app.app_context():
             refreshed = db.session.get(Resource, resource_b_id)
             self.assertEqual(refreshed.status, 'AVAILABLE')
+
+    def test_login_get_requests_are_not_rate_limited(self):
+        statuses = []
+        for _ in range(12):
+            response = self.client.get('/login')
+            statuses.append(response.status_code)
+        self.assertNotIn(429, statuses, "GET /login should stay available for normal page loads and browser refreshes")
+        self.assertEqual(statuses[-1], 200)
+
+    def test_stale_session_does_not_redirect_to_deleted_user_dashboard(self):
+        with self.client.session_transaction() as session:
+            session['username'] = 'ghost_user'
+            session['role'] = 'field_responder'
+
+        response = self.client.get('/login', follow_redirects=False)
+        self.assertEqual(response.status_code, 200)
+        with self.client.session_transaction() as session:
+            self.assertNotIn('username', session)
+            self.assertNotIn('role', session)
 
     def test_register_rate_limited_after_five_requests_per_hour(self):
         statuses = []
