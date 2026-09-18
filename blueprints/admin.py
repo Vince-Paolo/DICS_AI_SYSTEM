@@ -62,14 +62,14 @@ def admin():
 
 
 @admin_bp.route('/admin/alerts')
-def admin_alerts():
+def eoc_verifications():
     if not is_eoc_staff():
         flash('EOC staff access required.', 'danger')
         return redirect(url_for('dashboard'))
 
     incidents = Incident.query.order_by(Incident.created_at.desc()).all()
     commanders = User.query.filter_by(role='incident_commander', is_disabled=False).all()
-    return render_template('pages/admin_alerts.html', incidents=incidents, commanders=commanders)
+    return render_template('pages/eoc_verifications.html', incidents=incidents, commanders=commanders)
 
 
 @admin_bp.route('/all-incidents')
@@ -262,7 +262,7 @@ def toggle_user_status(user_id):
 
 
 @admin_bp.route('/admin/responses')
-def admin_responses():
+def eoc_operations():
     """EOC staff view of all active IncidentResponse records."""
     if not is_eoc_staff():
         flash('EOC staff access required.', 'danger')
@@ -278,7 +278,7 @@ def admin_responses():
 
     commanders = User.query.filter_by(role='incident_commander', is_disabled=False).all()
 
-    return render_template('pages/admin_responses.html',
+    return render_template('pages/eoc_operations.html',
                            active_responses=active_responses,
                            closed_responses=closed_responses,
                            commanders=commanders)

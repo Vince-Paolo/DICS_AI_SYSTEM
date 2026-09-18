@@ -1,4 +1,6 @@
 from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, session, url_for
+from sqlalchemy import and_
+from sqlalchemy.orm import aliased
 
 from models import AIRecommendation, AuditEvent, db, Incident, IncidentResponse, Resource, ResourceRequest, Alert, Report, User, Task, utcnow
 from blueprints.common import is_eoc_staff, current_user
@@ -100,9 +102,18 @@ def eoc_incident_monitoring():
     if hazard_filter:
         query = query.filter(Incident.hazard_type == hazard_filter)
     if status_filter == 'responded':
-        query = query.join(IncidentResponse, isouter=False)
+        query = query.join(IncidentResponse).filter(
+            IncidentResponse.status.in_(['ACTIVE', 'MONITORING'])
+        )
     elif status_filter == 'unresponded':
-        query = query.outerjoin(IncidentResponse).filter(IncidentResponse.id.is_(None))
+        active_response = aliased(IncidentResponse)
+        query = query.outerjoin(
+            active_response,
+            and_(
+                active_response.incident_id == Incident.id,
+                active_response.status.in_(['ACTIVE', 'MONITORING'])
+            )
+        ).filter(active_response.id.is_(None))
     elif status_filter == 'alert':
         query = query.filter(Incident.alert.is_(True))
 
@@ -112,10 +123,19 @@ def eoc_incident_monitoring():
 
     total_incidents = db.session.query(Incident).count()
     total_alerts = db.session.query(Incident).filter(Incident.alert.is_(True)).count()
-    total_critical = db.session.query(Incident).filter(Incident.level == 'Severe').count()
+    total_critical = db.session.query(Incident).filter(
+        Incident.level.in_(['Severe', 'High'])
+    ).count()
+    active_response = aliased(IncidentResponse)
     total_unresponded = db.session.query(Incident).filter(
         Incident.level.in_(['Severe', 'High'])
-    ).outerjoin(IncidentResponse).filter(IncidentResponse.id.is_(None)).count()
+    ).outerjoin(
+        active_response,
+        and_(
+            active_response.incident_id == Incident.id,
+            active_response.status.in_(['ACTIVE', 'MONITORING'])
+        )
+    ).filter(active_response.id.is_(None)).count()
 
     return render_template('pages/eoc_incident_monitoring.html',
                          incidents=incidents,
@@ -199,9 +219,9 @@ def toggle_alert(incident_id):
         db.session.rollback()
         current_app.logger.exception('EOC operation failed')
         flash('Unable to complete the EOC operation. Please try again.', 'error')
-        return redirect(url_for('admin.admin_alerts'))
+        return redirect(url_for('admin.eoc_verifications'))
     flash('Alert status updated.', 'success')
-    return redirect(url_for('admin.admin_alerts'))
+    return redirect(url_for('admin.eoc_verifications'))
 
 
 @eoc_bp.route('/admin/incidents/<int:incident_id>/verify', methods=['POST'])
@@ -233,10 +253,10 @@ def verify_incident(incident_id):
         db.session.rollback()
         current_app.logger.exception('EOC operation failed')
         flash('Unable to complete the EOC operation. Please try again.', 'error')
-        return redirect(url_for('admin.admin_alerts'))
+        return redirect(url_for('admin.eoc_verifications'))
 
     flash('Incident marked as verified.', 'success')
-    return redirect(url_for('admin.admin_alerts'))
+    return redirect(url_for('admin.eoc_verifications'))
 
 
 @eoc_bp.route('/admin/incidents/<int:incident_id>/reject', methods=['POST'])
@@ -253,7 +273,7 @@ def reject_incident(incident_id):
     reason = request.form.get('reason', '').strip()
     if not reason:
         flash('A reason is required to mark an incident as a false alarm.', 'error')
-        return redirect(url_for('admin.admin_alerts'))
+        return redirect(url_for('admin.eoc_verifications'))
 
     incident.status = 'REJECTED'
     incident.alert = False
@@ -283,10 +303,10 @@ def reject_incident(incident_id):
         db.session.rollback()
         current_app.logger.exception('Failed to reject incident')
         flash('Unable to mark the incident as rejected. Please try again.', 'error')
-        return redirect(url_for('admin.admin_alerts'))
+        return redirect(url_for('admin.eoc_verifications'))
 
     flash('Incident marked as rejected false alarm.', 'success')
-    return redirect(url_for('commander.incident_commander_dashboard') if permission_service.is_commander() else url_for('admin.admin_alerts'))
+    return redirect(url_for('commander.incident_commander_dashboard') if permission_service.is_commander() else url_for('admin.eoc_verifications'))
 
 
 @eoc_bp.route('/admin/incidents/<int:incident_id>/assign-commander', methods=['POST'])
@@ -294,24 +314,24 @@ def assign_commander(incident_id):
     """Dispatch: assign a commander to an unresponded incident, creating an IncidentResponse."""
     if not is_eoc_staff():
         flash('EOC staff access required.', 'danger')
-        return redirect(url_for('admin.admin_alerts'))
+        return redirect(url_for('admin.eoc_verifications'))
 
     incident = db.get_or_404(Incident, incident_id)
 
     existing = IncidentResponse.query.filter_by(incident_id=incident_id).first()
     if existing:
         flash('An incident response already exists for this incident.', 'warning')
-        return redirect(url_for('admin.admin_alerts'))
+        return redirect(url_for('admin.eoc_verifications'))
 
     commander_id = request.form.get('commander_id', type=int)
     if not commander_id:
         flash('Please select a commander.', 'error')
-        return redirect(url_for('admin.admin_alerts'))
+        return redirect(url_for('admin.eoc_verifications'))
 
     commander = db.session.get(User, commander_id)
     if not commander or commander.role != 'incident_commander':
         flash('Invalid commander selected.', 'error')
-        return redirect(url_for('admin.admin_alerts'))
+        return redirect(url_for('admin.eoc_verifications'))
 
     response = IncidentResponse(
         incident_id=incident_id,
@@ -339,10 +359,10 @@ def assign_commander(incident_id):
         db.session.rollback()
         current_app.logger.exception('Failed to assign commander')
         flash('Unable to assign the commander. Please try again.', 'error')
-        return redirect(url_for('admin.admin_alerts'))
+        return redirect(url_for('admin.eoc_verifications'))
 
     flash(f'Commander "{commander.full_name or commander.username}" assigned to incident #{incident_id}.', 'success')
-    return redirect(url_for('admin.admin_alerts'))
+    return redirect(url_for('admin.eoc_verifications'))
 
 
 @eoc_bp.route('/admin/responses/<int:response_id>/transfer', methods=['POST'])
@@ -350,19 +370,19 @@ def transfer_commander(response_id):
     """Dispatch: transfer an active response to a different commander."""
     if not is_eoc_staff():
         flash('EOC staff access required.', 'danger')
-        return redirect(url_for('admin.admin_responses'))
+        return redirect(url_for('admin.eoc_operations'))
 
     response = db.get_or_404(IncidentResponse, response_id)
     new_commander_id = request.form.get('commander_id', type=int)
 
     if not new_commander_id:
         flash('Please select a commander.', 'error')
-        return redirect(url_for('admin.admin_responses'))
+        return redirect(url_for('admin.eoc_operations'))
 
     new_commander = db.session.get(User, new_commander_id)
     if not new_commander or new_commander.role != 'incident_commander':
         flash('Invalid commander selected.', 'error')
-        return redirect(url_for('admin.admin_responses'))
+        return redirect(url_for('admin.eoc_operations'))
 
     old_commander_name = response.commander.username if response.commander else 'Unknown'
     response.commander_id = new_commander_id
@@ -384,10 +404,10 @@ def transfer_commander(response_id):
         db.session.rollback()
         current_app.logger.exception('Failed to transfer commander')
         flash('Unable to transfer the commander. Please try again.', 'error')
-        return redirect(url_for('admin.admin_responses'))
+        return redirect(url_for('admin.eoc_operations'))
 
     flash(f'Response #{response_id} transferred from {old_commander_name} to {new_commander.username}.', 'success')
-    return redirect(url_for('admin.admin_responses'))
+    return redirect(url_for('admin.eoc_operations'))
 
 
 @eoc_bp.route('/eoc/resource-requests')

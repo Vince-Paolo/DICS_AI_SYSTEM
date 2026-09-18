@@ -316,10 +316,15 @@ def citizen_dashboard():
     # all active alerts system-wide.
     alert_count = Incident.query.filter_by(alert=True).count()
 
-    earthquake_data = get_earthquake_data()
-    latest_earthquake_magnitude = 0
-    if earthquake_data and len(earthquake_data) > 0:
-        latest_earthquake_magnitude = earthquake_data[0].get('magnitude', 0)
+    current_risk_level = 'Low'
+    current_risk_detail = 'No active alerts in your area right now.'
+    if alert_count > 0:
+        if alert_count >= 3:
+            current_risk_level = 'High'
+            current_risk_detail = 'Several active hazards are being tracked nearby.'
+        else:
+            current_risk_level = 'Moderate'
+            current_risk_detail = 'Some local conditions are elevated and may need attention.'
 
     return render_template(
         'pages/citizen_dashboard.html',
@@ -328,7 +333,8 @@ def citizen_dashboard():
         pending_count=pending_count,
         alert_count=alert_count,
         incidents=incidents[:5],
-        latest_earthquake_magnitude=latest_earthquake_magnitude,
+        current_risk_level=current_risk_level,
+        current_risk_detail=current_risk_detail,
     )
 
 
