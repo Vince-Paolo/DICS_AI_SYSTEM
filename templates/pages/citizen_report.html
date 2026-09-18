@@ -343,9 +343,9 @@
                                                             <div class="photo-preview-name text-truncate" id="photoPreviewName"></div>
                                                             <div class="photo-preview-size" id="photoPreviewSize"></div>
                                                         </div>
-                                                        <button type="button" class="photo-preview-remove" id="photoRemoveBtn" aria-label="Remove photo">
+                                                        <span class="photo-preview-remove" id="photoRemoveBtn" role="button" tabindex="0" aria-label="Remove photo">
                                                             <i class="bi bi-x-lg"></i>
-                                                        </button>
+                                                        </span>
                                                     </div>
                                                 </button>
                                                 <small class="detail-help mt-2">Optional image upload for the report.</small>
@@ -940,6 +940,21 @@ document.addEventListener('DOMContentLoaded', function () {
         removeBtn.addEventListener('click', function (e) {
             e.stopPropagation();
             clearPreview();
+        });
+
+        // removeBtn is a <span role="button">, not a real <button> (nesting
+        // it inside the dropzone's own <button> is invalid HTML and browsers
+        // silently reparent it out of this container -- confirmed via direct
+        // DOM inspection: it ended up as a sibling of the dropzone entirely,
+        // outside the d-none wrapper, which is why it stayed visible even
+        // with no photo selected). Native buttons get Enter/Space activation
+        // for free; this one needs it added explicitly to stay keyboard-accessible.
+        removeBtn.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                e.stopPropagation();
+                clearPreview();
+            }
         });
     }
 
