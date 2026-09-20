@@ -7,6 +7,34 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" />
+<style>
+    .map-container-wrap {
+        position: relative;
+    }
+    .map-empty-state {
+        position: absolute;
+        inset: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 1.25rem 1.5rem;
+        border-radius: 12px;
+        background: rgba(15, 23, 42, 0.72);
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        color: #f8fafc;
+        backdrop-filter: blur(3px);
+        z-index: 10;
+    }
+    .map-empty-state strong {
+        font-size: 1.05rem;
+    }
+    .map-empty-state small {
+        opacity: 0.85;
+        margin-top: 0.35rem;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -22,7 +50,7 @@
                                 <span class="badge bg-light text-primary rounded-circle p-3 me-3"><i class="bi bi-geo-alt-fill fs-5"></i></span>
                                 <div>
                                     <small class="text-muted">Hazard Zones</small>
-                                    <h5 class="mb-0">12</h5>
+                                    <h5 class="mb-0" id="statHazardZones">&mdash;</h5>
                                 </div>
                             </div>
                             <p class="text-muted mb-0">Zones with recent alerts and risk classification.</p>
@@ -36,10 +64,10 @@
                                 <span class="badge bg-light text-success rounded-circle p-3 me-3"><i class="bi bi-filter-circle fs-5"></i></span>
                                 <div>
                                     <small class="text-muted">Filtered Views</small>
-                                    <h5 class="mb-0">3</h5>
+                                    <h5 class="mb-0" id="statFilteredViews">0</h5>
                                 </div>
                             </div>
-                            <p class="text-muted mb-0">Risk filters for severe, high, moderate, and low zones.</p>
+                            <p class="text-muted mb-0">Number of filters currently applied to the map.</p>
                         </div>
                     </div>
                 </div>
@@ -50,7 +78,7 @@
                                 <span class="badge bg-light text-danger rounded-circle p-3 me-3"><i class="bi bi-exclamation-octagon-fill fs-5"></i></span>
                                 <div>
                                     <small class="text-muted">Active Alerts</small>
-                                    <h5 class="mb-0">5</h5>
+                                    <h5 class="mb-0" id="statActiveAlerts">0</h5>
                                 </div>
                             </div>
                             <p class="text-muted mb-0">Critical locations needing immediate attention.</p>
@@ -72,24 +100,45 @@
                         <div class="col-md-5">
                             <div class="input-group">
                                 <span class="input-group-text"><i class="bi bi-search"></i></span>
-                                <input type="text" class="form-control" placeholder="Search hazard areas...">
+                                <input id="hazardSearchInput" type="text" class="form-control" placeholder="Search hazard areas..." aria-label="Search hazard areas">
+                                <button id="hazardSearchClear" type="button" class="btn btn-outline-secondary" aria-label="Clear search">Clear</button>
                             </div>
                         </div>
                         <div class="col-md-7">
                             <div class="row g-2 mb-2">
-                                <div class="col-sm-4">
+                                <div class="col-sm-3">
                                     <select id="provinceFilter" class="form-select form-select-sm" aria-label="Filter by province">
                                         <option value="">All Provinces</option>
+                                        {% for province in provinces %}
+                                        <option value="{{ province.name }}" data-id="{{ province.id }}">{{ province.name }}</option>
+                                        {% endfor %}
                                     </select>
                                 </div>
-                                <div class="col-sm-4">
+                                <div class="col-sm-3">
                                     <select id="municipalityFilter" class="form-select form-select-sm" aria-label="Filter by municipality">
                                         <option value="">All Municipalities</option>
                                     </select>
                                 </div>
-                                <div class="col-sm-4">
+                                <div class="col-sm-3">
                                     <select id="statusFilter" class="form-select form-select-sm" aria-label="Filter by status">
                                         <option value="">All Statuses</option>
+                                        <option value="NEW">New</option>
+                                        <option value="VERIFIED">Verified</option>
+                                        <option value="RESOLVED">Resolved</option>
+                                        <option value="REJECTED">Rejected</option>
+                                    </select>
+                                </div>
+                                <div class="col-sm-3">
+                                    <select id="hazardTypeFilter" class="form-select form-select-sm" aria-label="Filter by hazard type">
+                                        <option value="all">All Hazards</option>
+                                        <option value="flood">Flood</option>
+                                        <option value="earthquake">Earthquake</option>
+                                        <option value="volcanic">Volcanic</option>
+                                        <option value="fire">Fire</option>
+                                        <option value="landslide">Landslide</option>
+                                        <option value="storm">Storm</option>
+                                        <option value="emergency">Emergency</option>
+                                        <option value="other">Other</option>
                                     </select>
                                 </div>
                             </div>
@@ -99,16 +148,7 @@
                                 <button id="highRisk" class="btn btn-outline-danger btn-sm">High Risk</button>
                                 <button id="moderateRisk" class="btn btn-outline-warning btn-sm">Moderate Risk</button>
                                 <button id="lowRisk" class="btn btn-outline-success btn-sm">Low Risk</button>
-                                <span class="w-100"></span>
-                                <button id="allHazards" class="btn btn-outline-primary btn-sm active">All Hazards</button>
-                                <button id="floodHazard" class="btn btn-outline-info btn-sm">Flood</button>
-                                <button id="earthquakeHazard" class="btn btn-outline-danger btn-sm">Earthquake</button>
-                                <button id="volcanicHazard" class="btn btn-outline-warning btn-sm">Volcanic</button>
-                                <button id="fireHazard" class="btn btn-outline-secondary btn-sm">Fire</button>
-                                <button id="landslideHazard" class="btn btn-outline-warning btn-sm">Landslide</button>
-                                <button id="stormHazard" class="btn btn-outline-primary btn-sm">Storm</button>
-                                <button id="otherHazard" class="btn btn-outline-secondary btn-sm">Other</button>
-                                <button id="emergencyHazard" class="btn btn-outline-danger btn-sm">Emergency</button>
+                                <span class="w-100 d-none d-md-block" style="height:0;"></span>
                                 <button id="evacuationCentersToggle" class="btn btn-outline-info btn-sm active">Evacuation Centers</button>
                                 <button id="resourcesToggle" class="btn btn-outline-secondary btn-sm active">Resources</button>
                             </div>
@@ -116,6 +156,10 @@
                     </div>
                     <div class="map-container-wrap">
                         <div id="map" class="rounded hazard-map"></div>
+                        <div id="mapNoResults" class="map-empty-state d-none">
+                            <strong>No matching hazard areas</strong>
+                            <small>Try clearing your filters or searching for a different location.</small>
+                        </div>
                         <div id="mapLoadingPill" class="map-loading-pill">
                             <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                             Loading incident markers&hellip;
@@ -178,7 +222,7 @@ function createHazardClusterIcon(cluster) {
 let markersData = [];
 let activeFilter = 'all';
 let activeHazardFilter = 'all';
-const mapFilters = { province: '', municipality: '', status: '' };
+const mapFilters = { province: '', municipality: '', status: '', search: '' };
 let evacuationCentersData = [];
 let resourcesData = [];
 let evacuationCentersVisible = true;
@@ -226,16 +270,27 @@ function renderOperationalLayers() {
 function renderMarkers(filter, hazardFilter = activeHazardFilter) {
     activeFilter = filter;
     activeHazardFilter = hazardFilter;
+    const searchQuery = (mapFilters.search || '').trim().toLowerCase();
     clusterGroup.clearLayers();
     markersData.forEach(item => {
         const level = (item.level || 'Moderate').toLowerCase();
         const hazardType = (item.hazard_type || '').toLowerCase();
+        const textFields = [
+            item.label,
+            item.location,
+            item.message,
+            item.province,
+            item.municipality,
+            item.hazard_type,
+            item.status,
+        ].filter(Boolean).join(' ').toLowerCase();
         const matchesSeverity = filter === 'all' || (filter === 'severe' && level === 'severe') || (filter === 'high' && level === 'high') || (filter === 'moderate' && level === 'moderate') || (filter === 'low' && level === 'low');
         const matchesHazard = hazardFilter === 'all' || hazardType === hazardFilter;
         const matchesLocation = (!mapFilters.province || item.province === mapFilters.province)
             && (!mapFilters.municipality || item.municipality === mapFilters.municipality)
             && (!mapFilters.status || item.status === mapFilters.status);
-        if (matchesSeverity && matchesHazard && matchesLocation) {
+        const matchesSearch = !searchQuery || textFields.includes(searchQuery);
+        if (matchesSeverity && matchesHazard && matchesLocation && matchesSearch) {
             const marker = L.marker([item.lat, item.lng], {
                 icon: createHazardIcon(item.level),
                 hazardType,
@@ -244,30 +299,130 @@ function renderMarkers(filter, hazardFilter = activeHazardFilter) {
             clusterGroup.addLayer(marker);
         }
     });
+
+    const hasAnyFilters = [
+        activeFilter !== 'all',
+        activeHazardFilter !== 'all',
+        Boolean(mapFilters.province),
+        Boolean(mapFilters.municipality),
+        Boolean(mapFilters.status),
+        Boolean(mapFilters.search && mapFilters.search.trim()),
+    ].some(Boolean);
+    const noResultsEl = document.getElementById('mapNoResults');
+    if (noResultsEl) {
+        const shouldShowEmptyState = clusterGroup.getLayers().length === 0 && hasAnyFilters && markersData.length > 0;
+        noResultsEl.classList.toggle('d-none', !shouldShowEmptyState);
+    }
 }
 
-function populateFilter(selectId, values, filterName) {
-    const select = document.getElementById(selectId);
-    [...new Set(values.filter(Boolean))].sort().forEach(value => {
-        const option = document.createElement('option');
-        option.value = value;
-        option.textContent = value;
-        select.appendChild(option);
-    });
-    select.addEventListener('change', event => {
-        mapFilters[filterName] = event.target.value;
-        renderMarkers(activeFilter);
-    });
+function updateStats() {
+    const total = markersData.length;
+    const activeAlerts = markersData.filter(item => {
+        const level = (item.level || '').toLowerCase();
+        return level === 'severe' || level === 'high';
+    }).length;
+    const filtersApplied = [
+        activeFilter !== 'all',
+        activeHazardFilter !== 'all',
+        Boolean(mapFilters.province),
+        Boolean(mapFilters.municipality),
+        Boolean(mapFilters.status),
+        Boolean(mapFilters.search && mapFilters.search.trim()),
+    ].filter(Boolean).length;
+
+    const zonesEl = document.getElementById('statHazardZones');
+    const alertsEl = document.getElementById('statActiveAlerts');
+    const filtersEl = document.getElementById('statFilteredViews');
+    if (zonesEl) zonesEl.textContent = total;
+    if (alertsEl) alertsEl.textContent = activeAlerts;
+    if (filtersEl) filtersEl.textContent = filtersApplied;
 }
+
+function resetSelectOptions(select, placeholder) {
+    select.innerHTML = '';
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = placeholder;
+    select.appendChild(option);
+}
+
+// Province -> Municipality cascade, same pattern and same
+// /api/municipalities/<province_id> endpoint as the citizen report form's
+// cascade -- municipalities are fetched on demand for the selected
+// province rather than derived from whatever incidents happen to be
+// currently plotted, so the filter stays useful even when the map has
+// few or no markers yet.
+const provinceFilterSelect = document.getElementById('provinceFilter');
+const municipalityFilterSelect = document.getElementById('municipalityFilter');
+const statusFilterSelect = document.getElementById('statusFilter');
+const hazardSearchInput = document.getElementById('hazardSearchInput');
+const hazardSearchClear = document.getElementById('hazardSearchClear');
+let searchDebounceTimer = null;
+
+hazardSearchInput.addEventListener('input', event => {
+    mapFilters.search = event.target.value;
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => {
+        renderMarkers(activeFilter);
+        updateStats();
+    }, 200);
+});
+
+hazardSearchClear.addEventListener('click', () => {
+    hazardSearchInput.value = '';
+    mapFilters.search = '';
+    renderMarkers(activeFilter);
+    updateStats();
+});
+
+provinceFilterSelect.addEventListener('change', event => {
+    const selectedOption = event.target.selectedOptions[0];
+    mapFilters.province = event.target.value;
+    mapFilters.municipality = '';
+
+    if (!event.target.value) {
+        resetSelectOptions(municipalityFilterSelect, 'All Municipalities');
+        renderMarkers(activeFilter);
+        updateStats();
+        return;
+    }
+
+    resetSelectOptions(municipalityFilterSelect, 'Loading...');
+    fetch('/api/municipalities/' + selectedOption.dataset.id)
+        .then(response => response.ok ? response.json() : { municipalities: [] })
+        .then(data => {
+            resetSelectOptions(municipalityFilterSelect, 'All Municipalities');
+            (data.municipalities || []).forEach(municipality => {
+                const option = document.createElement('option');
+                option.value = municipality.name;
+                option.textContent = municipality.name;
+                municipalityFilterSelect.appendChild(option);
+            });
+        })
+        .catch(() => resetSelectOptions(municipalityFilterSelect, 'Unable to load municipalities'))
+        .finally(() => {
+            renderMarkers(activeFilter);
+            updateStats();
+        });
+});
+
+municipalityFilterSelect.addEventListener('change', event => {
+    mapFilters.municipality = event.target.value;
+    renderMarkers(activeFilter);
+    updateStats();
+});
+
+statusFilterSelect.addEventListener('change', event => {
+    mapFilters.status = event.target.value;
+    renderMarkers(activeFilter);
+    updateStats();
+});
 
 function loadMarkers() {
     fetch('/api/map-pins')
         .then(response => response.json())
         .then(data => {
             markersData = Array.isArray(data) ? data : [];
-            populateFilter('provinceFilter', markersData.map(item => item.province), 'province');
-            populateFilter('municipalityFilter', markersData.map(item => item.municipality), 'municipality');
-            populateFilter('statusFilter', markersData.map(item => item.status), 'status');
             renderMarkers(activeFilter);
             if (markersData.length > 0) {
                 const first = markersData[0];
@@ -279,6 +434,7 @@ function loadMarkers() {
             renderMarkers(activeFilter);
         })
         .finally(() => {
+            updateStats();
             const pill = document.getElementById('mapLoadingPill');
             if (pill) pill.classList.add('is-hidden');
         });
@@ -307,6 +463,7 @@ buttons.forEach(button => {
         if (button.id === 'moderateRisk') filter = 'moderate';
         if (button.id === 'lowRisk') filter = 'low';
         renderMarkers(filter);
+        updateStats();
         buttons.forEach(btn => btn.classList.remove('active'));
         button.classList.add('active');
     });
@@ -324,14 +481,10 @@ document.getElementById('resourcesToggle').addEventListener('click', event => {
     renderOperationalLayers();
 });
 
-const hazardButtons = document.querySelectorAll('#allHazards, #floodHazard, #earthquakeHazard, #volcanicHazard, #fireHazard, #landslideHazard, #stormHazard, #otherHazard, #emergencyHazard');
-hazardButtons.forEach(button => {
-    button.addEventListener('click', () => {
-        const hazardFilter = button.id === 'allHazards' ? 'all' : button.id.replace('Hazard', '').toLowerCase();
-        renderMarkers(activeFilter, hazardFilter);
-        hazardButtons.forEach(btn => btn.classList.remove('active'));
-        button.classList.add('active');
-    });
+const hazardTypeFilter = document.getElementById('hazardTypeFilter');
+hazardTypeFilter.addEventListener('change', event => {
+    renderMarkers(activeFilter, event.target.value);
+    updateStats();
 });
 </script>
 {% endblock %}

@@ -14,10 +14,11 @@
 </head>
 <body>
 <a class="visually-hidden-focusable" href="#main-content">Skip to main content</a>
-{% if request.endpoint not in ['login', 'register', 'forgot_password', 'reset_password'] %}
+{% set current_endpoint = request.endpoint or '' %}
+{% if current_endpoint and current_endpoint not in ['login', 'register', 'forgot_password', 'reset_password'] %}
     {% include 'partials/sidebar.html' %}
 {% endif %}
-<main id="main-content" class="container{% if request.endpoint not in ['login', 'register', 'forgot_password', 'reset_password'] %} pt-4{% endif %} mb-4">
+<main id="main-content" class="container{% if current_endpoint and current_endpoint not in ['login', 'register', 'forgot_password', 'reset_password'] %} pt-4{% endif %} mb-4">
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
@@ -57,8 +58,10 @@
 <script>
     (function () {
         const authPages = ['login', 'register', 'forgot_password', 'reset_password'];
-        const endpoint = '{{ request.endpoint | default("") }}';
-        const isAuthPage = authPages.includes(endpoint);
+        const endpoint = '{{ request.endpoint or "" }}';
+        const normalizedEndpoint = endpoint === 'None' ? '' : endpoint;
+        const isAuthPage = authPages.includes(normalizedEndpoint);
+        const isMissingEndpoint = !normalizedEndpoint;
         const isLoggedIn = {{ 'true' if 'username' in session else 'false' }};
         const loginUrl = '{{ url_for('login') }}';
         const dashboardUrl = '{{ url_for('dashboard') }}';
@@ -69,7 +72,7 @@
             return;
         }
 
-        if (!isLoggedIn && !isAuthPage) {
+        if (!isLoggedIn && !isAuthPage && !isMissingEndpoint) {
             window.history.replaceState(null, '', loginUrl);
             window.location.reload();
             return;

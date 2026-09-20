@@ -71,6 +71,34 @@ class ApiEndpointFunctionalTestCase(unittest.TestCase):
         self.assertEqual(names, sorted(names))
         self.assertTrue(all(set(item) == {'id', 'name'} for item in payload['municipalities']))
 
+    def test_hazard_map_province_dropdown_lists_real_provinces(self):
+        """The province filter used to only ever show whatever provinces
+        happened to be attached to currently-plotted incidents, so with few
+        or no incidents on the map it rendered as good as empty. It should
+        always list the real, seeded provinces regardless of what's
+        currently plotted."""
+        self._login('api_citizen', 'citizen')
+
+        response = self.client.get('/hazard-map')
+
+        self.assertEqual(response.status_code, 200)
+        html = response.data.decode()
+        with self.app.app_context():
+            province_names = [p.name for p in Province.query.all()]
+        self.assertTrue(len(province_names) > 0)
+        for name in province_names:
+            self.assertIn(f'>{name}<', html)
+
+    def test_hazard_map_search_bar_is_rendered_for_client_filtering(self):
+        self._login('api_citizen', 'citizen')
+
+        response = self.client.get('/hazard-map')
+
+        self.assertEqual(response.status_code, 200)
+        html = response.data.decode()
+        self.assertIn('id="hazardSearchInput"', html)
+        self.assertIn('Search hazard areas...', html)
+
     def test_barangays_api_returns_sorted_records_for_a_municipality(self):
         self._login('api_citizen', 'citizen')
         with self.app.app_context():

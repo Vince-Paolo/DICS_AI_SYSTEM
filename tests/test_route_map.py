@@ -18,6 +18,13 @@ class RouteMapTestCase(unittest.TestCase):
         }
         self.assertEqual(duplicates, {})
 
+    def test_anonymous_error_pages_are_exempt_from_login_redirect(self):
+        response = app.test_client().get('/definitely-missing-page', follow_redirects=False)
+
+        self.assertEqual(response.status_code, 404)
+        self.assertIn('isMissingEndpoint', response.get_data(as_text=True))
+        self.assertNotIn("endpoint = 'None'", response.get_data(as_text=True))
+
     def test_mutating_application_routes_do_not_accept_get(self):
         mutation_paths = {
             '/admin/users/add',
