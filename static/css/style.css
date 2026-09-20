@@ -214,6 +214,41 @@ button:focus-visible,
     box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
 }
 
+.error-card {
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(10, 15, 27, 0.98));
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    box-shadow: 0 20px 45px rgba(2, 6, 23, 0.45);
+    color: var(--text-primary);
+}
+
+.error-card .error-code {
+    color: #dbeafe !important;
+    letter-spacing: -0.06em;
+    text-shadow: 0 0 18px rgba(59, 130, 246, 0.35);
+}
+
+.error-card .error-title {
+    color: #f8fafc;
+    font-weight: 700;
+}
+
+.error-card .error-copy {
+    color: #cbd5e1;
+}
+
+.error-card .btn-outline-light {
+    color: #f8fafc;
+    border-color: rgba(255, 255, 255, 0.28);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.error-card .btn-outline-light:hover,
+.error-card .btn-outline-light:focus-visible {
+    color: #0f172a;
+    background: #f8fafc;
+    border-color: #f8fafc;
+}
+
 /* Strategic Header & Navbar Override */
 .navbar-custom {
     background-color: var(--bg-nav) !important;
