@@ -1,0 +1,44 @@
+{% extends 'pages/base.html' %}
+
+{% block title %}Register | DICS AI{% endblock %}
+
+{% block content %}
+<h1 class="visually-hidden">Register</h1>
+<div class="auth-shell">
+    <div class="auth-card">
+        {% include 'partials/auth_header.html' %}
+
+        <div class="auth-body">
+            {% if error %}
+                <div class="alert alert-danger rounded-3">{{ error }}</div>
+            {% endif %}
+
+            <form method="post" action="/register">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <label class="auth-label" for="full_name">Full name</label>
+                <input type="text" class="form-control" id="full_name" name="full_name" placeholder="Enter full name" required>
+
+                <label class="auth-label" for="email">Email</label>
+                <input type="email" class="form-control" id="email" name="email" placeholder="Enter email address" required>
+
+                <label class="auth-label" for="username">Username</label>
+                <input type="text" class="form-control" id="username" name="username" placeholder="Enter username" required>
+
+                <label class="auth-label" for="contact_number">Contact number</label>
+                <input type="tel" class="form-control" id="contact_number" name="contact_number" placeholder="Enter contact number" required>
+
+                <label class="auth-label" for="password">Password</label>
+                <input type="password" class="form-control" id="password" name="password" placeholder="Enter password" required>
+
+                <button class="btn btn-auth w-100 mt-1" type="submit">Create account</button>
+            </form>
+
+            <div class="auth-footer">
+                <span>v2.4 &middot; Region IV-A</span>
+                <a href="/">Already have an account? Login</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

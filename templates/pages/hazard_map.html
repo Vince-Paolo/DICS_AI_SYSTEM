@@ -1,0 +1,490 @@
+{% extends 'pages/base.html' %}
+
+{% block title %}Hazard Map | DICS AI{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" />
+<style>
+    .map-container-wrap {
+        position: relative;
+    }
+    .map-empty-state {
+        position: absolute;
+        inset: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 1.25rem 1.5rem;
+        border-radius: 12px;
+        background: rgba(15, 23, 42, 0.72);
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        color: #f8fafc;
+        backdrop-filter: blur(3px);
+        z-index: 10;
+    }
+    .map-empty-state strong {
+        font-size: 1.05rem;
+    }
+    .map-empty-state small {
+        opacity: 0.85;
+        margin-top: 0.35rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 class="visually-hidden">Hazard Map</h1>
+<div class="container-fluid p-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="row g-4 mb-4">
+                <div class="col-md-4">
+                    <div class="card card-custom h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center mb-3">
+                                <span class="badge bg-light text-primary rounded-circle p-3 me-3"><i class="bi bi-geo-alt-fill fs-5"></i></span>
+                                <div>
+                                    <small class="text-muted">Hazard Zones</small>
+                                    <h5 class="mb-0" id="statHazardZones">&mdash;</h5>
+                                </div>
+                            </div>
+                            <p class="text-muted mb-0">Zones with recent alerts and risk classification.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card card-custom h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center mb-3">
+                                <span class="badge bg-light text-success rounded-circle p-3 me-3"><i class="bi bi-filter-circle fs-5"></i></span>
+                                <div>
+                                    <small class="text-muted">Filtered Views</small>
+                                    <h5 class="mb-0" id="statFilteredViews">0</h5>
+                                </div>
+                            </div>
+                            <p class="text-muted mb-0">Number of filters currently applied to the map.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card card-custom h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center mb-3">
+                                <span class="badge bg-light text-danger rounded-circle p-3 me-3"><i class="bi bi-exclamation-octagon-fill fs-5"></i></span>
+                                <div>
+                                    <small class="text-muted">Active Alerts</small>
+                                    <h5 class="mb-0" id="statActiveAlerts">0</h5>
+                                </div>
+                            </div>
+                            <p class="text-muted mb-0">Critical locations needing immediate attention.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card card-custom mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h2 class="card-title mb-1">Hazard Map Viewer</h2>
+                            <p class="text-muted mb-0">Visualize location markers with risk filters and zone details.</p>
+                        </div>
+                        <button class="btn btn-outline-secondary btn-sm">Refresh Map</button>
+                    </div>
+                    <div class="row g-3 align-items-center mb-3">
+                        <div class="col-md-5">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                <input id="hazardSearchInput" type="text" class="form-control" placeholder="Search hazard areas..." aria-label="Search hazard areas">
+                                <button id="hazardSearchClear" type="button" class="btn btn-outline-secondary" aria-label="Clear search">Clear</button>
+                            </div>
+                        </div>
+                        <div class="col-md-7">
+                            <div class="row g-2 mb-2">
+                                <div class="col-sm-3">
+                                    <select id="provinceFilter" class="form-select form-select-sm" aria-label="Filter by province">
+                                        <option value="">All Provinces</option>
+                                        {% for province in provinces %}
+                                        <option value="{{ province.name }}" data-id="{{ province.id }}">{{ province.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-sm-3">
+                                    <select id="municipalityFilter" class="form-select form-select-sm" aria-label="Filter by municipality">
+                                        <option value="">All Municipalities</option>
+                                    </select>
+                                </div>
+                                <div class="col-sm-3">
+                                    <select id="statusFilter" class="form-select form-select-sm" aria-label="Filter by status">
+                                        <option value="">All Statuses</option>
+                                        <option value="NEW">New</option>
+                                        <option value="VERIFIED">Verified</option>
+                                        <option value="RESOLVED">Resolved</option>
+                                        <option value="REJECTED">Rejected</option>
+                                    </select>
+                                </div>
+                                <div class="col-sm-3">
+                                    <select id="hazardTypeFilter" class="form-select form-select-sm" aria-label="Filter by hazard type">
+                                        <option value="all">All Hazards</option>
+                                        <option value="flood">Flood</option>
+                                        <option value="earthquake">Earthquake</option>
+                                        <option value="volcanic">Volcanic</option>
+                                        <option value="fire">Fire</option>
+                                        <option value="landslide">Landslide</option>
+                                        <option value="storm">Storm</option>
+                                        <option value="emergency">Emergency</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="d-flex flex-wrap gap-2 justify-content-md-end">
+                                <button id="allZones" class="btn btn-outline-primary btn-sm active">All Zones</button>
+                                <button id="severeRisk" class="btn btn-outline-danger btn-sm">Severe Risk</button>
+                                <button id="highRisk" class="btn btn-outline-danger btn-sm">High Risk</button>
+                                <button id="moderateRisk" class="btn btn-outline-warning btn-sm">Moderate Risk</button>
+                                <button id="lowRisk" class="btn btn-outline-success btn-sm">Low Risk</button>
+                                <span class="w-100 d-none d-md-block" style="height:0;"></span>
+                                <button id="evacuationCentersToggle" class="btn btn-outline-info btn-sm active">Evacuation Centers</button>
+                                <button id="resourcesToggle" class="btn btn-outline-secondary btn-sm active">Resources</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="map-container-wrap">
+                        <div id="map" class="rounded hazard-map"></div>
+                        <div id="mapNoResults" class="map-empty-state d-none">
+                            <strong>No matching hazard areas</strong>
+                            <small>Try clearing your filters or searching for a different location.</small>
+                        </div>
+                        <div id="mapLoadingPill" class="map-loading-pill">
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            Loading incident markers&hellip;
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+<script>
+const map = L.map('map').setView([13.9411, 121.1622], 10);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap'
+}).addTo(map);
+
+const hazardColors = {
+    flood: '#0284c7',
+    earthquake: '#dc2626',
+    volcanic: '#ea580c',
+    fire: '#b91c1c',
+    landslide: '#92400e',
+    storm: '#2563eb',
+    other: '#64748b',
+    emergency: '#be123c',
+};
+
+function createHazardIcon(level) {
+    const normalizedLevel = (level || 'Moderate').toLowerCase();
+    const color = normalizedLevel === 'severe' ? '#991b1b' : normalizedLevel === 'high' ? '#dc2626' : normalizedLevel === 'moderate' ? '#f59e0b' : '#10b981';
+    const symbol = normalizedLevel === 'severe' || normalizedLevel === 'high' ? '!' : normalizedLevel === 'moderate' ? '!' : '•';
+    return L.divIcon({
+        className: `hazard-marker-icon ${normalizedLevel}`,
+        html: `<div style="background:${color}; border: 2px solid #ffffff; width: 40px; height: 40px; border-radius: 50%; display:flex; align-items:center; justify-content:center; color:#ffffff; font-weight:700; font-size:1.05rem; text-shadow:0 0 6px rgba(0,0,0,0.35);">${symbol}</div>`,
+        iconSize: [40, 40],
+        iconAnchor: [20, 40],
+        popupAnchor: [0, -36]
+    });
+}
+
+function createHazardClusterIcon(cluster) {
+    const hazardTypes = [...new Set(cluster.getAllChildMarkers()
+        .map(marker => marker.options.hazardType)
+        .filter(Boolean))];
+    const color = hazardTypes.length === 1 ? hazardColors[hazardTypes[0]] || '#475569' : '#475569';
+    const label = cluster.getChildCount();
+    return L.divIcon({
+        className: 'hazard-cluster-icon',
+        html: `<div style="background:${color}; border:3px solid #ffffff; width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#ffffff; font-weight:700; box-shadow:0 1px 4px rgba(0,0,0,0.35);">${label}</div>`,
+        iconSize: [42, 42],
+    });
+}
+
+let markersData = [];
+let activeFilter = 'all';
+let activeHazardFilter = 'all';
+const mapFilters = { province: '', municipality: '', status: '', search: '' };
+let evacuationCentersData = [];
+let resourcesData = [];
+let evacuationCentersVisible = true;
+let resourcesVisible = true;
+
+const clusterGroup = L.markerClusterGroup({
+    chunkedLoading: true,
+    spiderfyOnMaxZoom: true,
+    showCoverageOnHover: false,
+    iconCreateFunction: createHazardClusterIcon,
+});
+clusterGroup.addTo(map);
+const evacuationCentersLayer = L.layerGroup().addTo(map);
+const resourcesLayer = L.layerGroup().addTo(map);
+
+function createPointIcon(color, symbol) {
+    return L.divIcon({
+        className: 'map-point-icon',
+        html: `<div style="background:${color}; border:2px solid #ffffff; width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#ffffff; font-weight:700; font-size:0.9rem;">${symbol}</div>`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 32],
+        popupAnchor: [0, -28]
+    });
+}
+
+function renderOperationalLayers() {
+    evacuationCentersLayer.clearLayers();
+    resourcesLayer.clearLayers();
+    if (evacuationCentersVisible) {
+        evacuationCentersData.forEach(center => {
+            const marker = L.marker([center.lat, center.lng], { icon: createPointIcon('#0891b2', 'E') });
+            marker.bindPopup(`<strong>${center.name}</strong><br/>Status: ${center.status}<br/>Occupancy: ${center.occupancy}/${center.capacity ?? '—'}<br/>${center.address || ''}`);
+            evacuationCentersLayer.addLayer(marker);
+        });
+    }
+    if (resourcesVisible) {
+        resourcesData.forEach(resource => {
+            const marker = L.marker([resource.lat, resource.lng], { icon: createPointIcon('#64748b', 'R') });
+            marker.bindPopup(`<strong>${resource.resource_type}</strong><br/>Agency: ${resource.agency}<br/>Quantity: ${resource.quantity}<br/>Status: ${resource.status}<br/>${resource.location || ''}`);
+            resourcesLayer.addLayer(marker);
+        });
+    }
+}
+
+function renderMarkers(filter, hazardFilter = activeHazardFilter) {
+    activeFilter = filter;
+    activeHazardFilter = hazardFilter;
+    const searchQuery = (mapFilters.search || '').trim().toLowerCase();
+    clusterGroup.clearLayers();
+    markersData.forEach(item => {
+        const level = (item.level || 'Moderate').toLowerCase();
+        const hazardType = (item.hazard_type || '').toLowerCase();
+        const textFields = [
+            item.label,
+            item.location,
+            item.message,
+            item.province,
+            item.municipality,
+            item.hazard_type,
+            item.status,
+        ].filter(Boolean).join(' ').toLowerCase();
+        const matchesSeverity = filter === 'all' || (filter === 'severe' && level === 'severe') || (filter === 'high' && level === 'high') || (filter === 'moderate' && level === 'moderate') || (filter === 'low' && level === 'low');
+        const matchesHazard = hazardFilter === 'all' || hazardType === hazardFilter;
+        const matchesLocation = (!mapFilters.province || item.province === mapFilters.province)
+            && (!mapFilters.municipality || item.municipality === mapFilters.municipality)
+            && (!mapFilters.status || item.status === mapFilters.status);
+        const matchesSearch = !searchQuery || textFields.includes(searchQuery);
+        if (matchesSeverity && matchesHazard && matchesLocation && matchesSearch) {
+            const marker = L.marker([item.lat, item.lng], {
+                icon: createHazardIcon(item.level),
+                hazardType,
+            });
+            marker.bindPopup(`<strong>${item.label}</strong><br/><span style='color:#b8c2ff'>Risk: ${item.level}</span><br/>${item.message || ''}`);
+            clusterGroup.addLayer(marker);
+        }
+    });
+
+    const hasAnyFilters = [
+        activeFilter !== 'all',
+        activeHazardFilter !== 'all',
+        Boolean(mapFilters.province),
+        Boolean(mapFilters.municipality),
+        Boolean(mapFilters.status),
+        Boolean(mapFilters.search && mapFilters.search.trim()),
+    ].some(Boolean);
+    const noResultsEl = document.getElementById('mapNoResults');
+    if (noResultsEl) {
+        const shouldShowEmptyState = clusterGroup.getLayers().length === 0 && hasAnyFilters && markersData.length > 0;
+        noResultsEl.classList.toggle('d-none', !shouldShowEmptyState);
+    }
+}
+
+function updateStats() {
+    const total = markersData.length;
+    const activeAlerts = markersData.filter(item => {
+        const level = (item.level || '').toLowerCase();
+        return level === 'severe' || level === 'high';
+    }).length;
+    const filtersApplied = [
+        activeFilter !== 'all',
+        activeHazardFilter !== 'all',
+        Boolean(mapFilters.province),
+        Boolean(mapFilters.municipality),
+        Boolean(mapFilters.status),
+        Boolean(mapFilters.search && mapFilters.search.trim()),
+    ].filter(Boolean).length;
+
+    const zonesEl = document.getElementById('statHazardZones');
+    const alertsEl = document.getElementById('statActiveAlerts');
+    const filtersEl = document.getElementById('statFilteredViews');
+    if (zonesEl) zonesEl.textContent = total;
+    if (alertsEl) alertsEl.textContent = activeAlerts;
+    if (filtersEl) filtersEl.textContent = filtersApplied;
+}
+
+function resetSelectOptions(select, placeholder) {
+    select.innerHTML = '';
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = placeholder;
+    select.appendChild(option);
+}
+
+// Province -> Municipality cascade, same pattern and same
+// /api/municipalities/<province_id> endpoint as the citizen report form's
+// cascade -- municipalities are fetched on demand for the selected
+// province rather than derived from whatever incidents happen to be
+// currently plotted, so the filter stays useful even when the map has
+// few or no markers yet.
+const provinceFilterSelect = document.getElementById('provinceFilter');
+const municipalityFilterSelect = document.getElementById('municipalityFilter');
+const statusFilterSelect = document.getElementById('statusFilter');
+const hazardSearchInput = document.getElementById('hazardSearchInput');
+const hazardSearchClear = document.getElementById('hazardSearchClear');
+let searchDebounceTimer = null;
+
+hazardSearchInput.addEventListener('input', event => {
+    mapFilters.search = event.target.value;
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => {
+        renderMarkers(activeFilter);
+        updateStats();
+    }, 200);
+});
+
+hazardSearchClear.addEventListener('click', () => {
+    hazardSearchInput.value = '';
+    mapFilters.search = '';
+    renderMarkers(activeFilter);
+    updateStats();
+});
+
+provinceFilterSelect.addEventListener('change', event => {
+    const selectedOption = event.target.selectedOptions[0];
+    mapFilters.province = event.target.value;
+    mapFilters.municipality = '';
+
+    if (!event.target.value) {
+        resetSelectOptions(municipalityFilterSelect, 'All Municipalities');
+        renderMarkers(activeFilter);
+        updateStats();
+        return;
+    }
+
+    resetSelectOptions(municipalityFilterSelect, 'Loading...');
+    fetch('/api/municipalities/' + selectedOption.dataset.id)
+        .then(response => response.ok ? response.json() : { municipalities: [] })
+        .then(data => {
+            resetSelectOptions(municipalityFilterSelect, 'All Municipalities');
+            (data.municipalities || []).forEach(municipality => {
+                const option = document.createElement('option');
+                option.value = municipality.name;
+                option.textContent = municipality.name;
+                municipalityFilterSelect.appendChild(option);
+            });
+        })
+        .catch(() => resetSelectOptions(municipalityFilterSelect, 'Unable to load municipalities'))
+        .finally(() => {
+            renderMarkers(activeFilter);
+            updateStats();
+        });
+});
+
+municipalityFilterSelect.addEventListener('change', event => {
+    mapFilters.municipality = event.target.value;
+    renderMarkers(activeFilter);
+    updateStats();
+});
+
+statusFilterSelect.addEventListener('change', event => {
+    mapFilters.status = event.target.value;
+    renderMarkers(activeFilter);
+    updateStats();
+});
+
+function loadMarkers() {
+    fetch('/api/map-pins')
+        .then(response => response.json())
+        .then(data => {
+            markersData = Array.isArray(data) ? data : [];
+            renderMarkers(activeFilter);
+            if (markersData.length > 0) {
+                const first = markersData[0];
+                map.setView([first.lat, first.lng], 10);
+            }
+        })
+        .catch(() => {
+            markersData = [];
+            renderMarkers(activeFilter);
+        })
+        .finally(() => {
+            updateStats();
+            const pill = document.getElementById('mapLoadingPill');
+            if (pill) pill.classList.add('is-hidden');
+        });
+}
+
+loadMarkers();
+
+Promise.all([
+    fetch('/api/map-evacuation-centers').then(response => response.json()),
+    fetch('/api/map-resources').then(response => response.json())
+]).then(([centers, resources]) => {
+    evacuationCentersData = Array.isArray(centers) ? centers : [];
+    resourcesData = Array.isArray(resources) ? resources : [];
+    renderOperationalLayers();
+}).catch(() => {
+    evacuationCentersData = [];
+    resourcesData = [];
+});
+
+const buttons = document.querySelectorAll('#allZones, #severeRisk, #highRisk, #moderateRisk, #lowRisk');
+buttons.forEach(button => {
+    button.addEventListener('click', () => {
+        let filter = 'all';
+        if (button.id === 'severeRisk') filter = 'severe';
+        if (button.id === 'highRisk') filter = 'high';
+        if (button.id === 'moderateRisk') filter = 'moderate';
+        if (button.id === 'lowRisk') filter = 'low';
+        renderMarkers(filter);
+        updateStats();
+        buttons.forEach(btn => btn.classList.remove('active'));
+        button.classList.add('active');
+    });
+});
+
+document.getElementById('evacuationCentersToggle').addEventListener('click', event => {
+    evacuationCentersVisible = !evacuationCentersVisible;
+    event.currentTarget.classList.toggle('active', evacuationCentersVisible);
+    renderOperationalLayers();
+});
+
+document.getElementById('resourcesToggle').addEventListener('click', event => {
+    resourcesVisible = !resourcesVisible;
+    event.currentTarget.classList.toggle('active', resourcesVisible);
+    renderOperationalLayers();
+});
+
+const hazardTypeFilter = document.getElementById('hazardTypeFilter');
+hazardTypeFilter.addEventListener('change', event => {
+    renderMarkers(activeFilter, event.target.value);
+    updateStats();
+});
+</script>
+{% endblock %}

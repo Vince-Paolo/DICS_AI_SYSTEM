@@ -1,0 +1,980 @@
+{% extends 'pages/base.html' %}
+
+{% block title %}Report Incident | DICS AI Citizen Portal{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<style>
+    .gps-marker-icon {
+        background: transparent;
+        border: none;
+    }
+
+    .gps-marker-icon svg {
+        display: block;
+        filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.28));
+    }
+
+    .report-triage-intro {
+        padding: 0.85rem 1rem;
+        margin-bottom: 1.5rem;
+        border-left: 3px solid var(--accent-glow);
+        background: rgba(56, 189, 248, 0.08);
+        color: #D1D5DB;
+    }
+
+    .report-secondary {
+        margin: 1.5rem 0;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    .report-secondary summary {
+        cursor: pointer;
+        padding: 1rem 1.15rem;
+        color: var(--accent-glow);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+    }
+
+    .report-secondary-content {
+        padding: 0 1.15rem 0.25rem;
+    }
+
+    .report-progress {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.75rem;
+        margin: 0 0 1.75rem;
+    }
+
+    .report-progress-step {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        padding: 0.65rem 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-muted);
+        font-size: var(--type-sm);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .report-progress-step.is-current {
+        border-color: var(--accent-glow);
+        background: rgba(59, 130, 246, 0.1);
+        color: var(--text-primary);
+    }
+
+    .report-progress-number {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.6rem;
+        height: 1.6rem;
+        flex: 0 0 1.6rem;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--text-muted);
+        font-size: var(--type-xs);
+    }
+
+    .is-current .report-progress-number {
+        background: var(--accent-glow);
+        color: #fff;
+    }
+
+    .location-status {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        margin-top: 0.5rem;
+        color: var(--text-muted);
+        font-size: var(--type-sm);
+    }
+
+    .location-status.is-ready {
+        color: var(--status-success);
+    }
+
+    .location-status.is-warning {
+        color: var(--status-warning);
+    }
+
+    @media (max-width: 575.98px) {
+        .report-progress {
+            grid-template-columns: 1fr;
+            gap: 0.5rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .report-progress-step {
+            min-height: 2.75rem;
+        }
+
+        #incidentReportForm > .form-section-header {
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+        }
+
+        #incidentReportForm .form-pair-grid,
+        #incidentReportForm .row.g-3 {
+            row-gap: 1rem;
+        }
+
+        #incidentReportForm .form-label {
+            margin-top: 0.25rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 class="visually-hidden">Report Incident | DICS AI Citizen Portal</h1>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Report Form Card -->
+            <div class="card card-custom shadow-lg">
+                <div class="card-body">
+                    <div class="section-header">
+                        <span class="section-header-icon"><i class="bi bi-exclamation-circle"></i></span>
+                        <h4>Report an Incident</h4>
+                    </div>
+                    <div class="report-triage-intro" role="note">
+                        <strong>Start with the essentials:</strong> tell us what is happening and where. You can add context, evidence, and impact details afterward.
+                    </div>
+
+                    <div class="report-progress" aria-label="Report progress">
+                        <div class="report-progress-step is-current" data-report-step="1" aria-current="step">
+                            <span class="report-progress-number">1</span>
+                            <span>What happened</span>
+                        </div>
+                        <div class="report-progress-step" data-report-step="2">
+                            <span class="report-progress-number">2</span>
+                            <span>Where it is</span>
+                        </div>
+                        <div class="report-progress-step" data-report-step="3">
+                            <span class="report-progress-number">3</span>
+                            <span>Extra details</span>
+                        </div>
+                    </div>
+
+                    <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate id="incidentReportForm">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <!-- Incident Details Section -->
+                        <div class="form-section-header">
+                            <h5><i class="bi bi-info-circle me-2"></i>Incident Details</h5>
+                        </div>
+                        
+                        <div class="row form-pair-grid">
+                            <div class="form-pair-field">
+                                <label for="hazard_type" class="form-label">
+                                    <i class="bi bi-lightning-charge me-2"></i>Type of Incident
+                                </label>
+                                <select class="form-select" id="hazard_type" name="hazard_type" required>
+                                    <option value="">Choose incident type...</option>
+                                    <option value="flood">Flood</option>
+                                    <option value="landslide">Landslide</option>
+                                    <option value="earthquake">Earthquake</option>
+                                    <option value="storm">Severe Storm</option>
+                                    <option value="fire">Fire</option>
+                                    <option value="volcanic">Volcanic Activity</option>
+                                    <option value="other">Other Emergency</option>
+                                </select>
+                                <div class="invalid-feedback">Please select the type of incident.</div>
+                            </div>
+
+                        </div>
+
+                        <div class="mb-4" id="locationFieldGroup">
+                            <label class="form-label" for="location">
+                                <i class="bi bi-geo-alt me-2"></i>Where is it happening?
+                            </label>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label for="province_id" class="form-label small">Province</label>
+                                    <select class="form-select" id="province_id" name="province_id">
+                                        <option value="">Select province</option>
+                                        {% for province in provinces %}
+                                        <option value="{{ province.id }}">{{ province.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="municipality_id" class="form-label small">Municipality</label>
+                                    <select class="form-select" id="municipality_id" name="municipality_id" disabled>
+                                        <option value="">Select province first</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="barangay_id" class="form-label small">Barangay</label>
+                                    <select class="form-select" id="barangay_id" name="barangay_id" disabled>
+                                        <option value="">Select municipality first</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <input type="text" class="form-control mt-3" id="location" name="location"
+                                   placeholder="e.g., Near the market or along the river" required>
+                            <div class="invalid-feedback">Please enter a nearby landmark or area.</div>
+                            <div id="locationStatus" class="location-status" role="status" aria-live="polite">
+                                <i class="bi bi-info-circle" aria-hidden="true"></i>
+                                <span>Select the area and add a nearby landmark.</span>
+                            </div>
+                        </div>
+
+                        <details class="report-secondary">
+                            <summary><i class="bi bi-plus-circle me-2"></i>Add context and impact details <span class="text-muted fw-normal">(optional)</span></summary>
+                            <div class="report-secondary-content">
+                        <div class="mb-4">
+                            <label for="description" class="form-label">
+                                <i class="bi bi-chat-square-text me-2"></i>Detailed Description
+                            </label>
+                            <textarea class="form-control" id="description" name="description" rows="5" 
+                                      placeholder="Describe what you're experiencing in detail..."></textarea>
+                            <small class="text-muted d-block mt-2">Be as specific as possible to help authorities respond effectively</small>
+                        </div>
+
+                        <!-- Impact Assessment Section -->
+                        <div class="form-section-header section-subheader">
+                            <h5><i class="bi bi-bar-chart me-2"></i>Impact Assessment</h5>
+                        </div>
+
+                        <div class="row form-pair-grid">
+                            <div class="form-pair-field">
+                                <label for="affected_people" class="form-label">
+                                    <i class="bi bi-people me-2"></i>Number of People Affected (if known)
+                                </label>
+                                <input type="number" class="form-control" id="affected_people" name="affected_people" 
+                                       min="0" placeholder="0">
+                            </div>
+
+                            <div class="form-pair-field">
+                                <label for="injuries" class="form-label">
+                                    <i class="bi bi-heart-pulse me-2"></i>Injuries or Casualties
+                                </label>
+                                <input type="number" class="form-control" id="injuries" name="injuries" 
+                                       min="0" placeholder="0">
+                            </div>
+                        </div>
+
+                        <!-- Assistance Section -->
+                        <div class="form-section-header section-subheader">
+                            <h5><i class="bi bi-hand-thumbs-up me-2"></i>Assistance Needed</h5>
+                        </div>
+
+                        <div class="mb-4 p-3 assistance-panel">
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="medical" name="assistance" value="medical">
+                                <label class="form-check-label" for="medical">
+                                    <i class="bi bi-hospital me-2" style="color: var(--hazard-high);"></i>Medical Help Required
+                                </label>
+                            </div>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="evacuation" name="assistance" value="evacuation">
+                                <label class="form-check-label" for="evacuation">
+                                    <i class="bi bi-arrow-right-square me-2" style="color: var(--hazard-mod);"></i>Evacuation Needed
+                                </label>
+                            </div>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="shelter" name="assistance" value="shelter">
+                                <label class="form-check-label" for="shelter">
+                                    <i class="bi bi-house-door me-2" style="color: var(--hazard-low);"></i>Shelter Required
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="supplies" name="assistance" value="supplies">
+                                <label class="form-check-label" for="supplies">
+                                    <i class="bi bi-basket2 me-2" style="color: var(--accent-glow);"></i>Food/Water Supplies Needed
+                                </label>
+                            </div>
+                        </div>
+                            </div>
+                        </details>
+
+                        <details class="report-secondary report-secondary-optional">
+                            <summary><i class="bi bi-phone me-2"></i>Add contact and evidence details <span class="text-muted fw-normal">(optional)</span></summary>
+                            <div class="report-secondary-content">
+                                <div class="detail-card mb-4">
+                                    <div class="detail-label-row">
+                                        <label for="contact" class="form-label mb-0">
+                                            <i class="bi bi-phone me-2"></i>Contact Number
+                                        </label>
+                                    </div>
+                                    <input type="tel" class="form-control detail-input" id="contact" name="contact" 
+                                           placeholder="09XXXXXXXXX" pattern="^(09\d{9}|\+639\d{9})$" inputmode="numeric"
+                                           oninput="this.value = this.value.replace(/[^0-9+]/g, '')" 
+                                           maxlength="13">
+                                    <div class="invalid-feedback">Enter a valid Philippine number: 09XXXXXXXXX or +639XXXXXXXXX.</div>
+                                    <small class="detail-help">Optional: leave blank if you prefer to submit anonymously or if you do not want to share your number.</small>
+                                </div>
+
+                                <div class="row form-pair-grid">
+                                    <div class="form-pair-field">
+                                        <div class="detail-card">
+                                            <div class="detail-label-row">
+                                                <label for="photo" class="form-label mb-0">
+                                                    <i class="bi bi-image me-2"></i>Photo Evidence
+                                                </label>
+                                                <span class="detail-tag">Optional</span>
+                                            </div>
+
+                                            <div class="field-card">
+                                                <button type="button" class="photo-dropzone" id="photoDropzone"
+                                                        aria-label="Upload photo evidence"
+                                                        aria-describedby="photoDropzoneHint">
+                                                    <input type="file" class="visually-hidden" id="photo" name="photo" accept="image/*">
+
+                                                    <div class="photo-dropzone-empty" id="photoDropzoneEmpty">
+                                                        <div class="icon-badge icon-badge-primary mb-3">
+                                                            <i class="bi bi-cloud-arrow-up-fill"></i>
+                                                        </div>
+                                                        <p class="mb-1 fw-semibold">Drag & drop a photo here</p>
+                                                        <p id="photoDropzoneHint" class="text-muted small mb-0">or click to browse · JPG, PNG, up to 10MB</p>
+                                                    </div>
+
+                                                    <div class="photo-dropzone-preview d-none" id="photoDropzonePreview">
+                                                        <img id="photoPreviewImg" src="" alt="Selected photo preview">
+                                                        <div class="photo-preview-info">
+                                                            <div class="photo-preview-name text-truncate" id="photoPreviewName"></div>
+                                                            <div class="photo-preview-size" id="photoPreviewSize"></div>
+                                                        </div>
+                                                        <span class="photo-preview-remove" id="photoRemoveBtn" role="button" tabindex="0" aria-label="Remove photo">
+                                                            <i class="bi bi-x-lg"></i>
+                                                        </span>
+                                                    </div>
+                                                </button>
+                                                <small class="detail-help mt-2">Optional image upload for the report.</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-pair-field">
+                                        <div class="detail-card">
+                                            <div class="detail-label-row">
+                                                <label class="form-label mb-0" for="gps_lat">
+                                                    <i class="bi bi-geo-alt me-2"></i>GPS Location
+                                                </label>
+                                                <span class="detail-tag">Optional</span>
+                                            </div>
+                                            <input type="hidden" id="gps_lat" name="gps_lat">
+                                            <input type="hidden" id="gps_lng" name="gps_lng">
+                                            <input type="hidden" id="gps_accuracy" name="gps_accuracy">
+
+                                            <div class="field-card">
+                                                <div class="location-preview" id="locationPreview">
+                                                    <div class="location-preview-empty" id="locationPreviewEmpty">
+                                                        <div class="icon-badge icon-badge-primary mb-2">
+                                                            <i class="bi bi-pin-map-fill"></i>
+                                                        </div>
+                                                        <p class="mb-0 text-muted small">No location captured yet</p>
+                                                    </div>
+                                                    <div class="location-preview-map d-none" id="locationPreviewMap"></div>
+                                                </div>
+
+                                                <small id="gpsStatus" class="detail-help mt-2 mb-2" role="status" aria-live="polite" aria-atomic="true">Allow browser location access to capture GPS automatically.</small>
+                                                <small id="gpsDragHint" class="detail-help d-none d-block mb-2"><i class="bi bi-info-circle me-1"></i>Not quite right? Drag the pin to the exact spot.</small>
+
+                                                <div class="location-manual-row">
+                                                    <input type="text" class="form-control form-control-sm" id="manualLocationInput"
+                                                           placeholder="Or type an address / landmark...">
+                                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="manualLocationSearch" aria-label="Search address">
+                                                        <i class="bi bi-search"></i>
+                                                    </button>
+                                                </div>
+
+                                                <button type="button" class="btn btn-outline-secondary w-100 mt-auto" id="gpsButton">
+                                                    <i class="bi bi-crosshair me-2"></i>Use Current Location
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-check mb-4 detail-anonymous">
+                                    <input class="form-check-input" type="checkbox" id="anonymous" name="anonymous">
+                                    <label class="form-check-label" for="anonymous">
+                                        Submit this report anonymously
+                                    </label>
+                                </div>
+                            </div>
+                        </details>
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex gap-2 mt-5 pt-3 border-top border-secondary form-actions-row">
+                            <button type="submit" id="submitReportBtn" class="btn btn-primary-modern btn-modern form-submit-button">
+                                <i class="bi bi-check-circle me-2"></i><span id="submitReportBtnText">Submit Report</span>
+                            </button>
+                            <a href="/dashboard" class="btn btn-outline-secondary form-cancel-button">
+                                <i class="bi bi-x-circle me-2"></i>Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="row g-3 mt-4 mb-5">
+                <div class="col-md-6">
+                    <div class="stat-card card-gradient-primary">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <div class="stat-label">Your Reports</div>
+                                <div class="stat-value">{{ total_incidents }}</div>
+                                <div class="stat-description">Total incident reports submitted</div>
+                            </div>
+                            <div class="icon-badge icon-badge-primary">
+                                <i class="bi bi-file-earmark-text"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="stat-card card-gradient-warning">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <div class="stat-label">Pending Review</div>
+                                <div class="stat-value">{{ pending_count }}</div>
+                                <div class="stat-description">Awaiting authority response</div>
+                            </div>
+                            <div class="icon-badge icon-badge-warning">
+                                <i class="bi bi-hourglass-split"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# SOS logic and styles consolidated into global assets. #}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // ── Province -> Municipality -> Barangay cascade ─────────
+    // Only the ~5 provinces are rendered server-side; municipalities and
+    // barangays (142 and 4,018 across all of CALABARZON) are fetched on
+    // demand for just the selected parent, both to keep this page light
+    // and so each dropdown only ever shows options that actually belong
+    // to what's selected above it.
+    const provinceSelect = document.getElementById('province_id');
+    const municipalitySelect = document.getElementById('municipality_id');
+    const barangaySelect = document.getElementById('barangay_id');
+    const locationInput = document.getElementById('location');
+    const locationStatus = document.getElementById('locationStatus');
+    const progressSteps = Array.from(document.querySelectorAll('[data-report-step]'));
+    const optionalDetails = Array.from(document.querySelectorAll('.report-secondary'));
+
+    function updateReportProgress() {
+        const essentialsComplete = document.getElementById('hazard_type')?.value;
+        const locationComplete = locationInput && locationInput.value.trim() && provinceSelect?.value && municipalitySelect?.value;
+        const optionalOpen = optionalDetails.some(function (details) { return details.open; });
+        const currentStep = optionalOpen ? 3 : locationComplete ? 3 : essentialsComplete ? 2 : 1;
+
+        progressSteps.forEach(function (step) {
+            const isCurrent = Number(step.dataset.reportStep) === currentStep;
+            step.classList.toggle('is-current', isCurrent);
+            if (isCurrent) {
+                step.setAttribute('aria-current', 'step');
+            } else {
+                step.removeAttribute('aria-current');
+            }
+        });
+    }
+
+    function updateLocationStatus() {
+        if (!locationStatus || !locationInput) return;
+
+        const areaSelected = provinceSelect && provinceSelect.value && municipalitySelect && municipalitySelect.value;
+        const landmarkEntered = locationInput.value.trim().length > 0;
+        locationStatus.classList.remove('is-ready', 'is-warning');
+
+        if (areaSelected && landmarkEntered) {
+            locationStatus.classList.add('is-ready');
+            locationStatus.innerHTML = '<i class="bi bi-check-circle-fill" aria-hidden="true"></i><span>Location details are ready to submit.</span>';
+        } else if (landmarkEntered) {
+            locationStatus.classList.add('is-warning');
+            locationStatus.innerHTML = '<i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i><span>Add the province and municipality to help responders find you.</span>';
+        } else {
+            locationStatus.innerHTML = '<i class="bi bi-info-circle" aria-hidden="true"></i><span>Select the area and add a nearby landmark.</span>';
+        }
+    }
+
+    function resetSelect(select, placeholderText) {
+        select.innerHTML = '';
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = placeholderText;
+        select.appendChild(placeholder);
+        select.disabled = true;
+    }
+
+    function populateSelect(select, items, placeholderText) {
+        resetSelect(select, placeholderText);
+        items.forEach(function (item) {
+            const option = document.createElement('option');
+            option.value = item.id;
+            option.textContent = item.name;
+            select.appendChild(option);
+        });
+        select.disabled = false;
+    }
+
+    if (provinceSelect && municipalitySelect && barangaySelect) {
+        provinceSelect.addEventListener('change', function () {
+            resetSelect(barangaySelect, 'Select municipality first');
+            updateLocationStatus();
+            if (!provinceSelect.value) {
+                resetSelect(municipalitySelect, 'Select province first');
+                return;
+            }
+            resetSelect(municipalitySelect, 'Loading...');
+            fetch('/api/municipalities/' + provinceSelect.value)
+                .then(function (response) { return response.ok ? response.json() : { municipalities: [] }; })
+                .then(function (data) {
+                    populateSelect(municipalitySelect, data.municipalities || [], 'Select municipality');
+                    updateLocationStatus();
+                })
+                .catch(function () { resetSelect(municipalitySelect, 'Unable to load municipalities'); });
+        });
+
+        municipalitySelect.addEventListener('change', function () {
+            updateLocationStatus();
+            if (!municipalitySelect.value) {
+                resetSelect(barangaySelect, 'Select municipality first');
+                return;
+            }
+            resetSelect(barangaySelect, 'Loading...');
+            fetch('/api/barangays/' + municipalitySelect.value)
+                .then(function (response) { return response.ok ? response.json() : { barangays: [] }; })
+                .then(function (data) { populateSelect(barangaySelect, data.barangays || [], 'Select barangay'); })
+                .catch(function () { resetSelect(barangaySelect, 'Unable to load barangays'); });
+        });
+    }
+
+    if (locationInput) {
+        locationInput.addEventListener('input', updateLocationStatus);
+        updateLocationStatus();
+    }
+
+    ['hazard_type'].forEach(function (fieldId) {
+        const field = document.getElementById(fieldId);
+        if (field) field.addEventListener('change', updateReportProgress);
+    });
+    optionalDetails.forEach(function (details) {
+        details.addEventListener('toggle', updateReportProgress);
+    });
+    updateReportProgress();
+
+    const gpsButton = document.getElementById('gpsButton');
+    const gpsStatus = document.getElementById('gpsStatus');
+    const gpsDragHint = document.getElementById('gpsDragHint');
+    const gpsLat = document.getElementById('gps_lat');
+    const gpsLng = document.getElementById('gps_lng');
+    const gpsAccuracyField = document.getElementById('gps_accuracy');
+    const manualInput = document.getElementById('manualLocationInput');
+    const manualSearchBtn = document.getElementById('manualLocationSearch');
+
+    // ── Location map preview ─────────────────────────────────
+    const previewEmpty = document.getElementById('locationPreviewEmpty');
+    const previewMapEl = document.getElementById('locationPreviewMap');
+    let locationMap = null;
+    let locationMarker = null;
+    let accuracyCircle = null;
+
+    function accuracyColor(radius) {
+        if (radius <= 20) return '#22c55e';   // high precision
+        if (radius <= 100) return '#f59e0b';  // moderate precision
+        return '#ef4444';                     // low precision
+    }
+
+    function accuracyLabel(radius) {
+        if (radius <= 20) return 'high precision';
+        if (radius <= 100) return 'moderate precision';
+        return 'low precision — consider dragging the pin';
+    }
+
+    // Draws/updates/removes the accuracy ring around the pin. Pass null to
+    // clear it (address search and manual drags aren't a device GPS fix,
+    // so there's no radius to show).
+    function setAccuracyCircle(lat, lng, radius) {
+        if (accuracyCircle) {
+            locationMap.removeLayer(accuracyCircle);
+            accuracyCircle = null;
+        }
+        if (radius == null) return;
+        accuracyCircle = L.circle([lat, lng], {
+            radius: radius,
+            color: accuracyColor(radius),
+            fillColor: accuracyColor(radius),
+            fillOpacity: 0.15,
+            weight: 1,
+        }).addTo(locationMap);
+    }
+
+    function createGpsMarkerIcon() {
+        return L.divIcon({
+            className: 'gps-marker-icon',
+            html: `
+                <svg width="28" height="36" viewBox="0 0 28 36" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M14 1C7.4 1 2 6.5 2 13.1c0 8.4 12 21.9 12 21.9s12-13.5 12-21.9C26 6.5 20.6 1 14 1Z" fill="#ef4444"/>
+                    <circle cx="14" cy="13" r="5.2" fill="#ffffff"/>
+                    <circle cx="14" cy="13" r="2.5" fill="#ef4444"/>
+                </svg>
+            `,
+            iconSize: [28, 36],
+            iconAnchor: [14, 36],
+            popupAnchor: [0, -30],
+        });
+    }
+
+    function showLocationOnMap(lat, lng, accuracyMeters) {
+        previewEmpty.classList.add('d-none');
+        previewMapEl.classList.remove('d-none');
+        gpsDragHint.classList.remove('d-none');
+
+        // Leaflet needs the container visible with real dimensions before
+        // it can measure itself, so init/resize only after we un-hide it.
+        if (!locationMap) {
+            locationMap = L.map(previewMapEl, {
+                zoomControl: false,
+                attributionControl: false,
+            }).setView([lat, lng], 17);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+            }).addTo(locationMap);
+
+            // Draggable so a citizen can nudge the pin onto the exact spot
+            // themselves - GPS drift from foliage, tall buildings, or a
+            // weak indoor signal routinely puts the raw fix tens of
+            // meters off, and a human eye on a map corrects that instantly.
+            locationMarker = L.marker([lat, lng], {
+                draggable: true,
+                icon: createGpsMarkerIcon(),
+            }).addTo(locationMap);
+            locationMarker.on('dragend', function () {
+                const pos = locationMarker.getLatLng();
+                // A manual drag is the citizen's own correction, so it
+                // overrides whatever GPS accuracy was showing - clear the
+                // ring and the stored accuracy rather than leave a stale,
+                // now-misleading value for whoever reviews the report.
+                setAccuracyCircle(pos.lat, pos.lng, null);
+                gpsLat.value = pos.lat;
+                gpsLng.value = pos.lng;
+                gpsAccuracyField.value = '';
+                gpsStatus.textContent = `Pin adjusted: ${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)} — looking up address...`;
+                reverseGeocode(pos.lat, pos.lng).then(function (address) {
+                    gpsStatus.textContent = address || `Pin adjusted: ${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`;
+                });
+            });
+        } else {
+            locationMap.setView([lat, lng], Math.max(locationMap.getZoom(), 17));
+            locationMarker.setLatLng([lat, lng]);
+        }
+
+        setAccuracyCircle(lat, lng, accuracyMeters);
+
+        setTimeout(function () {
+            locationMap.invalidateSize();
+        }, 50);
+    }
+
+    // Shared by "Use Current Location", manual address search, and pin
+    // drags, so the map/coordinates/status text stay consistent no matter
+    // which path set the location. `accuracyMeters` is null for anything
+    // that isn't a device GPS fix.
+    function setLocation(lat, lng, address, accuracyMeters) {
+        gpsLat.value = lat;
+        gpsLng.value = lng;
+        gpsAccuracyField.value = accuracyMeters != null ? accuracyMeters : '';
+
+        if (accuracyMeters != null) {
+            gpsStatus.textContent = `Captured GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)} (±${Math.round(accuracyMeters)}m, ${accuracyLabel(accuracyMeters)})`;
+        } else {
+            gpsStatus.textContent = address || `Location set: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        }
+
+        showLocationOnMap(lat, lng, accuracyMeters);
+
+        // Helps citizens who'd otherwise leave "Location (Barangay/Area)"
+        // blank - never overwrites something they already typed themselves.
+        const locationField = document.getElementById('location');
+        if (locationField && address && !locationField.value.trim()) {
+            locationField.value = address;
+        }
+    }
+
+    // OpenStreetMap's free Nominatim endpoint - no API key needed, matches
+    // the tile provider already used for the map itself.
+    function reverseGeocode(lat, lng) {
+        return fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`)
+            .then(res => res.json())
+            .then(data => data && data.display_name ? data.display_name : null)
+            .catch(() => null);
+    }
+
+    function geolocationErrorMessage(error) {
+        switch (error.code) {
+            case error.PERMISSION_DENIED:
+                return 'Location access was denied. Enable it in your browser/site settings, or type an address below.';
+            case error.POSITION_UNAVAILABLE:
+                return 'Your location could not be determined. Try moving outdoors or near a window, or type an address below.';
+            case error.TIMEOUT:
+                return 'Location capture timed out. Check your GPS/network signal and try again, or type an address below.';
+            default:
+                return 'Unable to access your location. You can still type an address below, or submit the report manually.';
+        }
+    }
+
+    if (gpsButton) {
+        gpsButton.addEventListener('click', function () {
+            if (!navigator.geolocation) {
+                gpsStatus.textContent = 'Geolocation is not supported by this browser.';
+                return;
+            }
+
+            gpsButton.disabled = true;
+            gpsStatus.textContent = 'Capturing your current location...';
+
+            // A single getCurrentPosition() call very often returns a
+            // coarse network/cell-tower fix before the device's GPS chip
+            // has locked on. watchPosition() keeps listening for a few
+            // seconds and we keep only the most accurate reading seen, so
+            // the pin lands on the tightest fix the device can produce in
+            // that window rather than whatever arrived first.
+            let bestPosition = null;
+            let watchId = null;
+            let settled = false;
+
+            function finish() {
+                if (settled) return;
+                settled = true;
+                if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+                gpsButton.disabled = false;
+
+                if (!bestPosition) {
+                    gpsStatus.textContent = 'Could not get a location fix in time. Check your GPS signal, or type an address below.';
+                    return;
+                }
+
+                const lat = bestPosition.coords.latitude;
+                const lng = bestPosition.coords.longitude;
+                const accuracy = bestPosition.coords.accuracy;
+                setLocation(lat, lng, null, accuracy);
+                gpsStatus.textContent += ' — looking up address...';
+                reverseGeocode(lat, lng).then(function (address) {
+                    if (address) {
+                        const locationField = document.getElementById('location');
+                        if (locationField && !locationField.value.trim()) {
+                            locationField.value = address;
+                        }
+                        gpsStatus.textContent = `${address} (±${Math.round(accuracy)}m)`;
+                    }
+                });
+            }
+
+            watchId = navigator.geolocation.watchPosition(function (position) {
+                if (!bestPosition || position.coords.accuracy < bestPosition.coords.accuracy) {
+                    bestPosition = position;
+                    gpsStatus.textContent = `Refining fix... current best: ±${Math.round(position.coords.accuracy)}m`;
+                }
+                // A GPS-grade fix this tight won't meaningfully improve by
+                // waiting longer, so stop early instead of holding up the
+                // citizen's report.
+                if (position.coords.accuracy <= 15) {
+                    finish();
+                }
+            }, function (error) {
+                if (settled) return;
+                if (!bestPosition) {
+                    gpsStatus.textContent = geolocationErrorMessage(error);
+                }
+                settled = true;
+                if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+                gpsButton.disabled = false;
+            }, {
+                enableHighAccuracy: true,
+                timeout: 20000,
+                maximumAge: 0,
+            });
+
+            // Hard cap so a slow-converging fix still submits something
+            // (or a clear failure message) instead of leaving the citizen
+            // waiting indefinitely during an emergency report.
+            setTimeout(finish, 8000);
+        });
+    }
+
+    if (manualSearchBtn && manualInput) {
+        function runManualSearch() {
+            const query = manualInput.value.trim();
+            if (!query) return;
+
+            gpsStatus.textContent = 'Searching for that location...';
+            manualSearchBtn.disabled = true;
+
+            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1`)
+                .then(res => res.json())
+                .then(function (results) {
+                    manualSearchBtn.disabled = false;
+                    if (!results || !results.length) {
+                        gpsStatus.textContent = `Couldn't find "${query}". Try a more specific address or landmark.`;
+                        return;
+                    }
+                    const result = results[0];
+                    // Address search gives a street/landmark centroid, not
+                    // a device GPS fix, so there's no accuracy radius to
+                    // draw - the drag hint (shown once the pin appears) is
+                    // how the citizen tightens it up from here.
+                    setLocation(parseFloat(result.lat), parseFloat(result.lon), result.display_name, null);
+                })
+                .catch(function () {
+                    manualSearchBtn.disabled = false;
+                    gpsStatus.textContent = 'Address lookup failed. Check your connection and try again.';
+                });
+        }
+
+        manualSearchBtn.addEventListener('click', runManualSearch);
+        manualInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                runManualSearch();
+            }
+        });
+    }
+
+
+    // ── Photo Evidence dropzone ──────────────────────────────
+    const dropzone = document.getElementById('photoDropzone');
+    const fileInput = document.getElementById('photo');
+    const emptyState = document.getElementById('photoDropzoneEmpty');
+    const previewState = document.getElementById('photoDropzonePreview');
+    const previewImg = document.getElementById('photoPreviewImg');
+    const previewName = document.getElementById('photoPreviewName');
+    const previewSize = document.getElementById('photoPreviewSize');
+    const removeBtn = document.getElementById('photoRemoveBtn');
+
+    if (dropzone && fileInput) {
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        function showPreview(file) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                previewImg.src = e.target.result;
+                previewName.textContent = file.name;
+                previewSize.textContent = formatFileSize(file.size);
+                emptyState.classList.add('d-none');
+                previewState.classList.remove('d-none');
+                dropzone.classList.add('has-file');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearPreview() {
+            fileInput.value = '';
+            previewImg.src = '';
+            emptyState.classList.remove('d-none');
+            previewState.classList.add('d-none');
+            dropzone.classList.remove('has-file');
+        }
+
+        function handleFiles(files) {
+            if (!files || !files.length) return;
+            const file = files[0];
+            if (!file.type.startsWith('image/')) return;
+
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            fileInput.files = dt.files;
+            showPreview(file);
+        }
+
+        dropzone.addEventListener('click', function (e) {
+            if (e.target.closest('#photoRemoveBtn')) return;
+            fileInput.click();
+        });
+
+        dropzone.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                fileInput.click();
+            }
+        });
+
+        fileInput.addEventListener('change', function () {
+            handleFiles(fileInput.files);
+        });
+
+        ['dragenter', 'dragover'].forEach(evt => {
+            dropzone.addEventListener(evt, function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.add('is-dragover');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(evt => {
+            dropzone.addEventListener(evt, function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.remove('is-dragover');
+            });
+        });
+
+        dropzone.addEventListener('drop', function (e) {
+            handleFiles(e.dataTransfer.files);
+        });
+
+        removeBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            clearPreview();
+        });
+
+        // removeBtn is a <span role="button">, not a real <button> (nesting
+        // it inside the dropzone's own <button> is invalid HTML and browsers
+        // silently reparent it out of this container -- confirmed via direct
+        // DOM inspection: it ended up as a sibling of the dropzone entirely,
+        // outside the d-none wrapper, which is why it stayed visible even
+        // with no photo selected). Native buttons get Enter/Space activation
+        // for free; this one needs it added explicitly to stay keyboard-accessible.
+        removeBtn.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                e.stopPropagation();
+                clearPreview();
+            }
+        });
+    }
+
+    // ── Duplicate submission protection ──────────────────────
+    const incidentForm = document.getElementById('incidentReportForm');
+    const submitReportBtn = document.getElementById('submitReportBtn');
+    const submitReportBtnText = document.getElementById('submitReportBtnText');
+
+    if (incidentForm && submitReportBtn) {
+        incidentForm.addEventListener('submit', function (e) {
+            // Prevent double submission by disabling the button
+            if (submitReportBtn.disabled) {
+                e.preventDefault();
+                return;
+            }
+
+            submitReportBtn.disabled = true;
+            submitReportBtnText.textContent = 'Submitting your report...';
+        });
+    }
+});
+</script>
+{% endblock %}
