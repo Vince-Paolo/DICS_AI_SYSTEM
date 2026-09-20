@@ -1326,7 +1326,12 @@ def hazard_map():
         flash('You do not have permission to view the hazard map.', 'danger')
         return redirect(url_for('dashboard'))
 
-    return render_template('pages/hazard_map.html', sidebar_variant='hazard')
+    # Provinces are rendered server-side (there are only ~5); municipalities
+    # are fetched on demand per selected province via the same
+    # /api/municipalities/<province_id> endpoint the citizen report form's
+    # cascade already uses, rather than duplicating that data here.
+    provinces = Province.query.order_by(Province.name).all()
+    return render_template('pages/hazard_map.html', sidebar_variant='hazard', provinces=provinces)
 
 
 @app.route('/ics')
