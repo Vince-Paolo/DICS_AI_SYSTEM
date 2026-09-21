@@ -9,7 +9,7 @@ from pathlib import Path
 from flask import Flask, current_app, render_template, request, redirect, url_for, session, flash, send_from_directory
 import requests
 from sqlalchemy import text
-from flask_wtf.csrf import CSRFProtect, generate_csrf
+from flask_wtf.csrf import CSRFProtect, CSRFError, generate_csrf
 from flask_migrate import Migrate
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask_apscheduler import APScheduler
@@ -270,12 +270,50 @@ app.view_functions['citizen.emergency_sos'] = limiter.limit("5 per minute")(app.
 
 @app.errorhandler(404)
 def handle_not_found(error):
-    return render_template('pages/error_404.html', error=error), 404
+    return render_template(
+        'pages/error_page.html',
+        code='404',
+        title='Page Not Found',
+        message='The link may be outdated or the page may have moved. Please check the URL or return to the dashboard.',
+        variant='danger',
+        icon='bi-exclamation-triangle-fill',
+    ), 404
+
+
+@app.errorhandler(403)
+def handle_forbidden(error):
+    return render_template(
+        'pages/error_page.html',
+        code='403',
+        title='Access Denied',
+        message="You don't have permission to view this page or complete that action.",
+        variant='warning',
+        icon='bi-shield-exclamation',
+    ), 403
+
+
+@app.errorhandler(CSRFError)
+def handle_csrf_error(error):
+    return render_template(
+        'pages/error_page.html',
+        code='400',
+        title='Your Session Expired',
+        message='Your session expired or the form is no longer valid. Please refresh the page and try again.',
+        variant='warning',
+        icon='bi-clock-history',
+    ), 400
 
 
 @app.errorhandler(500)
 def handle_server_error(error):
-    return render_template('pages/error_500.html', error=error), 500
+    return render_template(
+        'pages/error_page.html',
+        code='500',
+        title='Something Went Wrong',
+        message='The system hit an unexpected issue while processing your request. Please try again shortly, or return to the dashboard.',
+        variant='danger',
+        icon='bi-bug-fill',
+    ), 500
 
 
 @app.context_processor

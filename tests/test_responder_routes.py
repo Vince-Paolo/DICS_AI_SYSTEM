@@ -20,7 +20,7 @@ os.environ.setdefault('SECRET_KEY', os.environ.get('SECRET_KEY') or 'development
 TEST_DB_PATH = os.path.abspath(os.path.join('instance', 'test_responder_routes.db'))
 os.environ.setdefault('DATABASE_URL', f'sqlite:///{TEST_DB_PATH}')
 
-from flask import render_template_string
+from flask import abort, render_template_string
 
 import app as app_module
 from app import app, db, create_default_admin
@@ -32,6 +32,11 @@ import scheduler
 @app.route('/force-500')
 def force_500():
     raise RuntimeError('intentional test failure')
+
+
+@app.route('/force-403')
+def force_403():
+    abort(403)
 
 
 class ResponderRoutesTestCase(unittest.TestCase):
@@ -907,11 +912,29 @@ class ResponderRoutesTestCase(unittest.TestCase):
         response = self.client.get('/does-not-exist')
         self.assertEqual(response.status_code, 404)
         self.assertIn(b'Page Not Found', response.data)
-        self.assertIn(b'The page you requested could not be found.', response.data)
+        self.assertIn(b'The link may be outdated or the page may have moved', response.data)
 
         response = self.client.get('/force-500')
         self.assertEqual(response.status_code, 500)
-        self.assertIn(b'Something went wrong on our side.', response.data)
+        self.assertIn(b'Something Went Wrong', response.data)
+
+        response = self.client.get('/force-403')
+        self.assertEqual(response.status_code, 403)
+        self.assertIn(b'Access Denied', response.data)
+
+    def test_csrf_error_shows_friendly_expired_session_message(self):
+        # Real CSRF failure, not just calling the handler directly: enable
+        # enforcement and POST to a real CSRF-protected endpoint with no
+        # token at all, the way an actually-expired form would.
+        self.app.config.update(WTF_CSRF_ENABLED=True)
+        try:
+            response = self.client.post('/login', data={'username': 'x', 'password': 'y'})
+        finally:
+            self.app.config.update(WTF_CSRF_ENABLED=False)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn(b'Your Session Expired', response.data)
+        self.assertNotIn(b'CSRF', response.data)
 
     def test_template_rendering_without_request_context_is_safe(self):
         with self.app.app_context():
