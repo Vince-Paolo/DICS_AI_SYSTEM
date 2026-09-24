@@ -76,6 +76,30 @@ The application also supports a local environment file (`.env`) at the project
 root. The AI module loads values from that file before it looks at the process
 environment.
 
+## Citizen Emergency Assistance (hotline page)
+
+Citizens no longer type and submit incident reports. `/emergency-assistance`
+is a public "call first" page: pick the kind of help (medical, police, fire and
+rescue, disaster response) and tap **Call now**, which opens the phone's call
+screen through a `tel:` link. There is no account, form or upload, and the
+service worker keeps a copy so the page still opens without internet (the
+phone call itself uses the cellular network).
+
+Numbers come from environment variables (see `.env.example`); nothing is
+hard-coded:
+
+| Variable | Used for | Notes |
+|---|---|---|
+| `HOTLINE_GENERAL` | Main "Call Emergency" button | Defaults to `911` |
+| `HOTLINE_MEDICAL`, `HOTLINE_POLICE`, `HOTLINE_FIRE` | Service cards | Fall back to `HOTLINE_GENERAL` |
+| `HOTLINE_CDRRMO` | Disaster Response / CDRRMO card | No fallback; unset shows "not set up yet" and admin/EOC users see a notice |
+
+Values that are not plausible phone numbers are ignored. Incidents now enter
+the system through the automated monitoring feeds and staff/responder tools.
+The legacy citizen report form and `/emergency-sos` are kept behind
+`PUBLIC_REPORTING_ENABLED` (default `false`): `/citizen-report` redirects to
+the hotline page and `/emergency-sos` returns `410 Gone`.
+
 ## Database Migrations
 
 Production schema changes are managed with Flask-Migrate/Alembic. The

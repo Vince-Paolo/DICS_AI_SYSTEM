@@ -1,0 +1,480 @@
+msgid ""
+msgstr ""
+"Language: tl\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Switch to English"
+msgstr "Lumipat sa English"
+
+msgid "Switch to Tagalog"
+msgstr "Lumipat sa Tagalog"
+
+msgid "Confirm action"
+msgstr "Kumpirmahin ang aksyon"
+
+msgid "Cancel"
+msgstr "Kanselahin"
+
+msgid "Continue"
+msgstr "Magpatuloy"
+
+msgid "Login"
+msgstr "Pag-login"
+
+msgid "Username"
+msgstr "Username"
+
+msgid "Enter username"
+msgstr "Ilagay ang username"
+
+msgid "Password"
+msgstr "Password"
+
+msgid "Enter password"
+msgstr "Ilagay ang password"
+
+msgid "Sign in"
+msgstr "Mag-sign in"
+
+msgid "Forgot password?"
+msgstr "Nakalimutan ang password?"
+
+msgid "Register new account"
+msgstr "Magrehistro ng bagong account"
+
+msgid "Digital incident command"
+msgstr "Digital na pamamahala ng insidente"
+
+msgid "Resources and Emergency Info"
+msgstr "Mga Mapagkukunan at Impormasyong Pang-emergency"
+
+msgid "Emergency Resources and Information"
+msgstr "Mga Mapagkukunan at Impormasyong Pang-emergency"
+
+msgid "Emergency Hotlines"
+msgstr "Mga Hotline ng Emergency"
+
+msgid "National Emergency"
+msgstr "Pambansang Emergency"
+
+msgid "Calabarzon Police"
+msgstr "Pulisya ng Calabarzon"
+
+msgid "Fire Department"
+msgstr "Kagawaran ng Bumbero"
+
+msgid "Medical Emergency"
+msgstr "Medikal na Emergency"
+
+msgid "EOC Command Dashboard"
+msgstr "Dashboard ng Command ng EOC"
+
+msgid "MONITORING ALL INCIDENTS"
+msgstr "MINOMONITOR ANG LAHAT NG INSIDENTE"
+
+msgid "System-wide view across every active incident, response, and resource in the region."
+msgstr "Malawakang view ng lahat ng aktibong insidente, tugon, at resource sa rehiyon."
+
+msgid "Regional Incident Map"
+msgstr "Mapa ng mga Insidente sa Rehiyon"
+
+msgid "Monitoring-first view of active incidents across the response area."
+msgstr "Pangunahing view para sa pag-monitor ng mga aktibong insidente sa lugar ng pagtugon."
+
+msgid "Open full map"
+msgstr "Buksan ang buong mapa"
+
+msgid "Counts"
+msgstr "Mga Bilang"
+
+msgid "Active"
+msgstr "Aktibo"
+
+msgid "Severe / High"
+msgstr "Malubha / Mataas"
+
+msgid "Open tasks"
+msgstr "Mga bukas na gawain"
+
+msgid "Resources"
+msgstr "Mga Resource"
+
+msgid "Latest incidents"
+msgstr "Mga pinakabagong insidente"
+
+msgid "Active Incident Responses"
+msgstr "Mga Aktibong Tugon sa Insidente"
+
+msgid "LIVE"
+msgstr "LIVE"
+
+msgid "Full Incident Log"
+msgstr "Buong Talaan ng Insidente"
+
+msgid "Incident"
+msgstr "Insidente"
+
+msgid "Hazard"
+msgstr "Panganib"
+
+msgid "Location"
+msgstr "Lokasyon"
+
+msgid "Commander"
+msgstr "Commander"
+
+msgid "Priority"
+msgstr "Prayoridad"
+
+msgid "Started"
+msgstr "Nagsimula"
+
+msgid "No Active Responses"
+msgstr "Walang Aktibong Tugon"
+
+msgid "All clear - no incidents currently being managed anywhere in the region."
+msgstr "Ligtas ang sitwasyon - walang insidenteng kasalukuyang inaasikaso sa rehiyon."
+
+msgid "Hazard Breakdown"
+msgstr "Pagkakahati ng mga Panganib"
+
+msgid "incidents logged system-wide"
+msgstr "insidenteng naitala sa buong sistema"
+
+msgid "No Incident Data Yet"
+msgstr "Wala Pang Datos ng Insidente"
+
+msgid "Incident totals will appear here as reports arrive."
+msgstr "Lilitaw dito ang kabuuan ng insidente habang dumarating ang mga ulat."
+
+msgid "Critical Incidents Requiring Response"
+msgstr "Mga Kritikal na Insidenteng Nangangailangan ng Tugon"
+
+msgid "ID"
+msgstr "ID"
+
+msgid "Risk Level"
+msgstr "Antas ng Panganib"
+
+msgid "Score"
+msgstr "Iskor"
+
+msgid "Status"
+msgstr "Katayuan"
+
+msgid "Detected"
+msgstr "Natukoy"
+
+msgid "RESPONSE ACTIVE"
+msgstr "AKTIBO ANG TUGON"
+
+msgid "AWAITING COMMANDER"
+msgstr "HINIHINTAY ANG COMMANDER"
+
+msgid "No Severe or High Incidents"
+msgstr "Walang Malubha o Mataas na Insidente"
+
+msgid "Nothing at Severe or High risk level right now."
+msgstr "Walang insidenteng nasa malubha o mataas na antas ng panganib ngayon."
+
+msgid "Live Incident Feed"
+msgstr "Live na Feed ng Insidente"
+
+msgid "LATEST"
+msgstr "PINAKABAGO"
+
+msgid "Level"
+msgstr "Antas"
+
+msgid "Alert"
+msgstr "Alerto"
+
+msgid "Logged"
+msgstr "Naitala"
+
+msgid "INACTIVE"
+msgstr "HINDI AKTIBO"
+
+msgid "No Incidents Logged Yet"
+msgstr "Wala Pang Naitatalang Insidente"
+
+msgid "Incoming reports and sensor data will appear here in real time."
+msgstr "Lilitaw dito nang real time ang mga papasok na ulat at datos ng sensor."
+
+msgid "Hazard Map"
+msgstr "Mapa ng Panganib"
+
+msgid "Hazard Zones"
+msgstr "Mga Sonang Panganib"
+
+msgid "Zones with recent alerts and risk classification."
+msgstr "Mga sonang may bagong alerto at klasipikasyon ng panganib."
+
+msgid "Filtered Views"
+msgstr "Mga Na-filter na View"
+
+msgid "Number of filters currently applied to the map."
+msgstr "Bilang ng mga filter na kasalukuyang inilapat sa mapa."
+
+msgid "Active Alerts"
+msgstr "Mga Aktibong Alerto"
+
+msgid "Critical locations needing immediate attention."
+msgstr "Mga kritikal na lokasyong nangangailangan ng agarang atensyon."
+
+msgid "Hazard Map Viewer"
+msgstr "Viewer ng Mapa ng Panganib"
+
+msgid "Visualize location markers with risk filters and zone details."
+msgstr "Tingnan ang mga marker ng lokasyon, filter ng panganib, at detalye ng sona."
+
+msgid "Refresh Map"
+msgstr "I-refresh ang Mapa"
+
+msgid "Search hazard areas..."
+msgstr "Maghanap ng mga lugar na may panganib..."
+
+msgid "Search hazard areas"
+msgstr "Maghanap ng mga lugar na may panganib"
+
+msgid "Clear search"
+msgstr "I-clear ang paghahanap"
+
+msgid "Clear"
+msgstr "I-clear"
+
+msgid "All Provinces"
+msgstr "Lahat ng Lalawigan"
+
+msgid "All Municipalities"
+msgstr "Lahat ng Munisipalidad"
+
+msgid "All Statuses"
+msgstr "Lahat ng Katayuan"
+
+msgid "New"
+msgstr "Bago"
+
+msgid "Verified"
+msgstr "Na-verify"
+
+msgid "Resolved"
+msgstr "Nalutas"
+
+msgid "Rejected"
+msgstr "Tinanggihan"
+
+msgid "All Hazards"
+msgstr "Lahat ng Panganib"
+
+msgid "Flood"
+msgstr "Baha"
+
+msgid "Earthquake"
+msgstr "Lindol"
+
+msgid "Volcanic"
+msgstr "Bulcaniko"
+
+msgid "Fire"
+msgstr "Sunog"
+
+msgid "Landslide"
+msgstr "Pagguho ng lupa"
+
+msgid "Storm"
+msgstr "Bagyo"
+
+msgid "Emergency"
+msgstr "Emergency"
+
+msgid "Other"
+msgstr "Iba pa"
+
+msgid "Dashboard"
+msgstr "Dashboard"
+
+msgid "Administration"
+msgstr "Administrasyon"
+
+msgid "Users"
+msgstr "Mga User"
+
+msgid "Backup"
+msgstr "Backup"
+
+msgid "Operations"
+msgstr "Mga Operasyon"
+
+msgid "Tasks"
+msgstr "Mga Gawain"
+
+msgid "Resources"
+msgstr "Mga Resource"
+
+msgid "Monitoring"
+msgstr "Pag-monitor"
+
+msgid "Reports"
+msgstr "Mga Ulat"
+
+msgid "Hazard Map"
+msgstr "Mapa ng Panganib"
+
+msgid "Communication"
+msgstr "Komunikasyon"
+
+msgid "Communications"
+msgstr "Mga Komunikasyon"
+
+msgid "Command Center"
+msgstr "Command Center"
+
+msgid "Resource Requests"
+msgstr "Mga Kahilingan sa Resource"
+
+msgid "Incident History"
+msgstr "Kasaysayan ng Insidente"
+
+msgid "Facilities"
+msgstr "Mga Pasilidad"
+
+msgid "Public Advisories"
+msgstr "Mga Pampublikong Abiso"
+
+msgid "Overview"
+msgstr "Pangkalahatang-ideya"
+
+msgid "Analytics"
+msgstr "Analytics"
+
+msgid "Incidents"
+msgstr "Mga Insidente"
+
+msgid "Dispatch"
+msgstr "Dispatch"
+
+msgid "Verification Queue"
+msgstr "Pila ng Beripikasyon"
+
+msgid "Active Operations"
+msgstr "Mga Aktibong Operasyon"
+
+msgid "Alerts & Updates"
+msgstr "Mga Alerto at Update"
+
+msgid "Support"
+msgstr "Suporta"
+
+msgid "Evacuation Centers"
+msgstr "Mga Evacuation Center"
+
+msgid "Emergency SOS"
+msgstr "Emergency SOS"
+
+msgid "Report Incident"
+msgstr "Mag-ulat ng Insidente"
+
+msgid "Alerts"
+msgstr "Mga Alerto"
+
+msgid "Logout"
+msgstr "Mag-logout"
+
+msgid "Emergency Assistance"
+msgstr "Tulong sa Emergency"
+
+msgid "Need immediate help?"
+msgstr "Kailangan ng agarang tulong?"
+
+msgid "For life-threatening emergencies, call now. No account or form is needed."
+msgstr "Kung nasa panganib ang buhay, tumawag na ngayon. Hindi kailangan ng account o form."
+
+msgid "Call Emergency"
+msgstr "Tumawag sa Emergency"
+
+msgid "Your phone's calling app will open with the number ready."
+msgstr "Magbubukas ang calling app ng iyong telepono na nakalagay na ang numero."
+
+msgid "What kind of help do you need?"
+msgstr "Anong tulong ang kailangan mo?"
+
+msgid "Ambulance and medical assistance"
+msgstr "Ambulansya at tulong medikal"
+
+msgid "Police / Security"
+msgstr "Pulis / Seguridad"
+
+msgid "Police emergency assistance"
+msgstr "Tulong ng pulis sa emergency"
+
+msgid "Fire and Rescue"
+msgstr "Sunog at Rescue"
+
+msgid "Fire and rescue assistance"
+msgstr "Tulong ng bumbero at rescue"
+
+msgid "Disaster Response"
+msgstr "Pagtugon sa Sakuna"
+
+msgid "CDRRMO / Emergency Operations Center"
+msgstr "CDRRMO / Emergency Operations Center"
+
+msgid "This office line is not set up yet. Call %(number)s instead."
+msgstr "Wala pang nakalagay na numero ng opisina. Tumawag na lang sa %(number)s."
+
+msgid "Call %(service)s at %(number)s"
+msgstr "Tawagan ang %(service)s sa %(number)s"
+
+msgid "Call now"
+msgstr "Tumawag na"
+
+msgid "What to tell the operator"
+msgstr "Ano ang sasabihin sa operator"
+
+msgid "What happened"
+msgstr "Ano ang nangyari"
+
+msgid "Exact location, barangay and nearby landmark"
+msgstr "Eksaktong lokasyon, barangay, at kalapit na landmark"
+
+msgid "How many people are hurt or in danger"
+msgstr "Ilan ang sugatan o nasa panganib"
+
+msgid "Your name and a number they can call back"
+msgstr "Pangalan mo at numerong maaari nilang tawagan pabalik"
+
+msgid "Stay on the line until the operator tells you to hang up."
+msgstr "Huwag ibaba ang tawag hangga't hindi sinasabi ng operator."
+
+msgid "Other ways to get help"
+msgstr "Iba pang paraan para makahingi ng tulong"
+
+msgid "Visit your Barangay Emergency Response Center for local assistance."
+msgstr "Pumunta sa inyong Barangay Emergency Response Center para sa tulong sa inyong lugar."
+
+msgid "DICS is a monitoring system for CDRRMO personnel and responders. You do not need to report incidents through it."
+msgstr "Ang DICS ay monitoring system para sa mga tauhan ng CDRRMO at mga responder. Hindi mo kailangang mag-ulat ng insidente rito."
+
+msgid "Sign in to see active alerts and evacuation centers."
+msgstr "Mag-sign in para makita ang mga aktibong alerto at evacuation center."
+
+msgid "Call for Help"
+msgstr "Tumawag para sa Tulong"
+
+msgid "Emergency? Call for help"
+msgstr "Emergency? Tumawag para sa tulong"
+
+msgid "Review safety guidance, call the emergency hotline if you are in danger, and follow official instructions."
+msgstr "Basahin ang gabay sa kaligtasan, tumawag sa emergency hotline kung nasa panganib ka, at sundin ang opisyal na tagubilin."
+
+msgid "Continue monitoring conditions. If you are in danger, call the emergency hotline."
+msgstr "Patuloy na subaybayan ang kalagayan. Kung nasa panganib ka, tumawag sa emergency hotline."
+
+msgid "The online incident report form is no longer used. Please call an emergency hotline instead."
+msgstr "Hindi na ginagamit ang online na form ng ulat ng insidente. Mangyaring tumawag na lang sa emergency hotline."
+
+msgid "Online SOS is no longer available. Please call an emergency hotline."
+msgstr "Hindi na available ang online SOS. Mangyaring tumawag sa emergency hotline."

@@ -1,6 +1,7 @@
 import os
 import sqlite3
 import unittest
+from datetime import datetime
 from unittest.mock import patch
 
 os.environ.setdefault('SECRET_KEY', os.environ.get('SECRET_KEY') or 'development-secret')
@@ -8,14 +9,16 @@ TEST_DB_PATH = os.path.abspath(os.path.join('instance', 'test_api_endpoints.db')
 os.environ.setdefault('DATABASE_URL', f'sqlite:///{TEST_DB_PATH}')
 
 from app import app, db
-from models import CitizenReport, EvacuationCenter, Facility, Incident, IncidentResponse, Municipality, Province, Resource, Task, User
+from models import Barangay, CitizenReport, EvacuationCenter, Facility, Incident, IncidentResponse, Municipality, Province, Resource, Task, User
 from seed.demo_data import seed_geography_data
 
 
 class ApiEndpointFunctionalTestCase(unittest.TestCase):
     def setUp(self):
         self.app = app
-        self.app.config.update(TESTING=True, WTF_CSRF_ENABLED=False)
+        # These tests cover the legacy citizen report form / SOS, which are
+        # retired by default (see tests/test_emergency_assistance.py).
+        self.app.config.update(TESTING=True, WTF_CSRF_ENABLED=False, PUBLIC_REPORTING_ENABLED=True)
         self.client = self.app.test_client()
 
         with self.app.app_context():
@@ -237,6 +240,22 @@ class ApiEndpointFunctionalTestCase(unittest.TestCase):
         self.assertIsNotNone(pins[0]['municipality'])
         self.assertEqual(pins[0]['status'], 'ACTIVE')
 
+    def test_emergency_sos_incident_appears_on_hazard_map_with_coordinates(self):
+        self._login('api_citizen', 'citizen')
+
+        response = self.client.post('/emergency-sos', json={
+            'location': 'Barangay Uno',
+            'latitude': 14.32,
+            'longitude': 120.9,
+        })
+
+        self.assertEqual(response.status_code, 200)
+        pins = self.client.get('/api/map-pins').get_json()
+        self.assertTrue(any(
+            pin.get('hazard_type') == 'EMERGENCY' and pin.get('lat') == 14.32 and pin.get('lng') == 120.9
+            for pin in pins
+        ))
+
     def test_login_and_logout_responses_disable_browser_cache(self):
         response = self.client.get('/login')
         self.assertEqual(response.status_code, 200)
@@ -364,6 +383,64 @@ class ApiEndpointFunctionalTestCase(unittest.TestCase):
         self.assertIn('resource_utilization', payload)
         self.assertEqual(payload['resource_utilization']['status_counts'], {})
         self.assertEqual(payload['resource_utilization']['type_counts'], {})
+
+    def test_analytics_api_includes_monthly_and_geography_breakdowns(self):
+        self._login('api_coordinator', 'agency_coordinator')
+        with self.app.app_context():
+            municipality = Municipality.query.first()
+            barangay = Barangay.query.filter_by(municipality_id=municipality.id).first()
+            municipality_name = municipality.name
+            barangay_name = barangay.name
+            other_municipality = Municipality.query.filter(Municipality.id != municipality.id).first()
+            other_barangay = Barangay.query.filter_by(municipality_id=other_municipality.id).first()
+            db.session.add_all([
+                Incident(
+                    hazard_type='flood',
+                    location='Flooded barangay',
+                    message='Flooding in same barangay',
+                    level='Severe',
+                    municipality_id=municipality.id,
+                    barangay_id=barangay.id,
+                    status='ACTIVE',
+                    created_at=datetime(2026, 2, 5),
+                ),
+                Incident(
+                    hazard_type='flood',
+                    location='Flooded barangay again',
+                    message='Flooding repeated',
+                    level='High',
+                    municipality_id=municipality.id,
+                    barangay_id=barangay.id,
+                    status='VERIFIED',
+                    created_at=datetime(2026, 2, 17),
+                ),
+                Incident(
+                    hazard_type='fire',
+                    location='Fire elsewhere',
+                    message='Warehouse fire',
+                    level='High',
+                    municipality_id=other_municipality.id,
+                    barangay_id=other_barangay.id,
+                    status='ACTIVE',
+                    created_at=datetime(2026, 2, 18),
+                ),
+            ])
+            db.session.commit()
+
+        response = self.client.get('/api/analytics-data?year=2026&month=2')
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertGreaterEqual(len(payload['monthly_counts']), 1)
+        self.assertTrue(any(item['month'] == '2026-02' and item['count'] >= 2 for item in payload['monthly_counts']))
+        self.assertTrue(any(
+            item['hazard_type'] == 'flood' and item['municipality'] == municipality_name and item['barangay'] == barangay_name and item['count'] == 2
+            for item in payload['geo_counts']
+        ))
+
+        export_response = self.client.get('/api/analytics-export?format=csv&year=2026&month=2')
+        self.assertEqual(export_response.status_code, 200)
+        self.assertIn('hazard_type', export_response.get_data(as_text=True))
 
     def test_incident_response_stats_api_returns_commander_counts(self):
         self._login('api_commander', 'incident_commander')

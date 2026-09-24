@@ -1,14 +1,18 @@
-import os
+import csv
 import glob
+import io
+import os
 import sqlite3
 import threading
 import secrets
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from flask import Flask, current_app, render_template, request, redirect, url_for, session, flash, send_from_directory
+from flask import Flask, current_app, render_template, request, redirect, url_for, session, flash, send_from_directory, Response, has_request_context
+from flask_babel import Babel, get_locale
 import requests
 from sqlalchemy import text
+from sqlalchemy.orm import selectinload
 from flask_wtf.csrf import CSRFProtect, CSRFError, generate_csrf
 from flask_migrate import Migrate
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -16,7 +20,7 @@ from flask_apscheduler import APScheduler
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
-from models import db, User, Incident, IncidentResponse, Task, Resource, CitizenReport, Agency, PostIncidentReport, EvacuationCenter, Province, Municipality
+from models import db, User, Incident, IncidentResponse, Task, Resource, CitizenReport, Agency, PostIncidentReport, EvacuationCenter, Province, Municipality, Barangay
 from scheduler import monitor_hazards
 from services.realtime_data import (
     get_all_weather_data,
@@ -223,10 +227,29 @@ app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE', 'f
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['ENABLE_HSTS'] = os.environ.get('ENABLE_HSTS', 'false').lower() == 'true'
+# Citizen-facing incident reporting (the /citizen-report form and the online
+# SOS button) is retired in favour of the Emergency Assistance hotline page.
+# The code is kept behind this flag so it can be re-enabled for testing.
+app.config['PUBLIC_REPORTING_ENABLED'] = str(os.environ.get('PUBLIC_REPORTING_ENABLED', 'false')).strip().lower() in {'1', 'true', 'yes', 'on'}
 app.config['RESEND_API_KEY'] = os.environ.get('RESEND_API_KEY', '')
 app.config['RESEND_API_URL'] = os.environ.get('RESEND_API_URL', 'https://api.resend.com/emails')
 app.config['RESEND_FROM_EMAIL'] = os.environ.get('RESEND_FROM_EMAIL', 'onboarding@resend.dev')
 app.config['RESEND_SUPPRESS_SEND'] = os.environ.get('RESEND_SUPPRESS_SEND', 'false').lower() == 'true'
+app.config['BABEL_DEFAULT_LOCALE'] = 'en'
+app.config['BABEL_SUPPORTED_LOCALES'] = ['en', 'tl']
+app.config['BABEL_TRANSLATION_DIRECTORIES'] = os.path.join(base_dir, 'translations')
+
+
+def select_locale():
+    if not has_request_context():
+        return app.config['BABEL_DEFAULT_LOCALE']
+    selected = session.get('language')
+    if selected in app.config['BABEL_SUPPORTED_LOCALES']:
+        return selected
+    return request.accept_languages.best_match(app.config['BABEL_SUPPORTED_LOCALES']) or 'en'
+
+
+babel = Babel(app, locale_selector=select_locale)
 
 
 @app.after_request
@@ -323,6 +346,14 @@ def inject_csrf_token():
 
 
 @app.context_processor
+def inject_locale():
+    return {
+        'current_locale': str(get_locale()),
+        'public_reporting_enabled': current_app.config.get('PUBLIC_REPORTING_ENABLED', False),
+    }
+
+
+@app.context_processor
 def inject_ai_provider():
     provider_name = (AI_PROVIDER or 'gemini').strip().lower() or 'gemini'
     provider_label = {
@@ -334,6 +365,17 @@ def inject_ai_provider():
         'active_ai_provider': provider_name,
         'active_ai_provider_label': provider_label,
     }
+
+
+@app.route('/language/<locale>')
+def set_language(locale):
+    if locale not in app.config['BABEL_SUPPORTED_LOCALES']:
+        locale = app.config['BABEL_DEFAULT_LOCALE']
+    session['language'] = locale
+    next_url = request.args.get('next', '')
+    if not next_url.startswith('/') or next_url.startswith('//'):
+        next_url = url_for('dashboard') if session.get('username') else url_for('login')
+    return redirect(next_url)
 
 
 app.register_blueprint(admin_bp)
@@ -1156,24 +1198,47 @@ def get_map_pins():
     if 'username' not in session:
         return {'error': 'Unauthorized'}, 401
 
-    incidents = Incident.query.order_by(Incident.created_at.desc()).all()
-    pins = []
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    query = Incident.query.options(selectinload(Incident.citizen_report)).filter(
+        Incident.alert.is_(True) | Incident.status.in_({'ACTIVE', 'NEW', 'MONITORING', 'VERIFIED', 'PENDING'})
+    )
 
+    if start_date:
+        try:
+            start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+            query = query.filter(Incident.created_at >= start_dt)
+        except ValueError:
+            pass
+
+    if end_date:
+        try:
+            end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+            query = query.filter(Incident.created_at <= end_dt + timedelta(days=1))
+        except ValueError:
+            pass
+
+    incidents = query.order_by(Incident.created_at.desc()).all()
+
+    report_ids = [incident.citizen_report_id for incident in incidents if incident.citizen_report_id]
+    report_map = {}
+    if report_ids:
+        report_rows = CitizenReport.query.filter(CitizenReport.id.in_(report_ids)).all()
+        report_map = {report.id: report for report in report_rows}
+
+    province_ids = [report.province_id for report in report_map.values() if getattr(report, 'province_id', None) is not None]
+    municipality_ids = [report.municipality_id for report in report_map.values() if getattr(report, 'municipality_id', None) is not None]
+    province_map = {province.id: province for province in Province.query.filter(Province.id.in_(province_ids)).all()} if province_ids else {}
+    municipality_map = {municipality.id: municipality for municipality in Municipality.query.filter(Municipality.id.in_(municipality_ids)).all()} if municipality_ids else {}
+
+    pins = []
     for incident in incidents:
-        is_active = incident.alert or incident.status in {'ACTIVE', 'NEW', 'MONITORING', 'VERIFIED', 'PENDING'}
-        if not is_active:
-            continue
+        report = incident.citizen_report if incident.citizen_report_id else None
+        if report is None and incident.user_id is not None:
+            report = report_map.get(incident.citizen_report_id)
 
         latitude = incident.latitude
         longitude = incident.longitude
-        report = incident.citizen_report
-        if report is None:
-            report = CitizenReport.query.filter(
-                CitizenReport.user_id == incident.user_id,
-                CitizenReport.location == incident.location,
-                CitizenReport.hazard_type == incident.hazard_type,
-            ).order_by(CitizenReport.created_at.desc()).first()
-
         if latitude is None or longitude is None:
             latitude = report.gps_latitude if report else None
             longitude = report.gps_longitude if report else None
@@ -1181,8 +1246,8 @@ def get_map_pins():
             continue
 
         level = str(incident.level or ('High' if incident.alert else 'Moderate'))
-        province = db.session.get(Province, report.province_id) if report and report.province_id else None
-        municipality = db.session.get(Municipality, report.municipality_id) if report and report.municipality_id else None
+        province = province_map.get(report.province_id) if report and report.province_id else None
+        municipality = municipality_map.get(report.municipality_id) if report and report.municipality_id else None
         pins.append({
             'id': incident.id,
             'hazard_type': incident.hazard_type,
@@ -1340,6 +1405,18 @@ def serve_upload(filename):
     return response
 
 
+@app.route('/service-worker.js')
+def service_worker():
+    response = send_from_directory(
+        os.path.join(app.static_folder, 'js'),
+        'service-worker.js',
+        mimetype='application/javascript',
+    )
+    response.headers['Service-Worker-Allowed'] = '/'
+    response.headers['Cache-Control'] = 'no-cache'
+    return response
+
+
 @app.route('/api/realtime-data')
 def get_realtime_data():
     if 'username' not in session:
@@ -1370,21 +1447,86 @@ def get_dashboard_stats():
     }
 
 
-@app.route('/api/analytics-data')
-def get_analytics_data():
-    if 'username' not in session:
-        return {'error': 'Unauthorized'}, 401
-    user = User.query.filter_by(username=session['username']).first()
-    if not permission_service.can_view_analytics(user):
-        return {'error': 'Forbidden'}, 403
+def _parse_analytics_window():
+    selected_year = request.args.get('year', type=int)
+    selected_month = request.args.get('month', type=int)
+    current_year = datetime.now().year
 
-    incident_rows = db.session.query(
-        Incident.hazard_type,
-        db.func.count(Incident.id)
-    ).group_by(Incident.hazard_type).all()
-    incident_counts = {row[0] or 'Unknown': row[1] for row in incident_rows}
+    if selected_year is None or selected_year < 2000:
+        selected_year = current_year
+    if selected_month is not None:
+        if selected_month < 1 or selected_month > 12:
+            selected_month = None
+    return selected_year, selected_month
 
-    resolved_responses = db.session.query(IncidentResponse).filter(IncidentResponse.resolved_at.isnot(None)).all()
+
+def _build_analytics_payload(year=None, month=None):
+    current_year = datetime.now().year
+    selected_year = year if year is not None else current_year
+    selected_month = month
+
+    incidents = Incident.query.all()
+    filtered_incidents = []
+    for incident in incidents:
+        if not incident.created_at:
+            continue
+        if incident.created_at.year != selected_year:
+            continue
+        if selected_month is not None and incident.created_at.month != selected_month:
+            continue
+        filtered_incidents.append(incident)
+
+    incident_counts = {}
+    for incident in filtered_incidents:
+        hazard_name = incident.hazard_type or 'Unknown'
+        incident_counts[hazard_name] = incident_counts.get(hazard_name, 0) + 1
+
+    monthly_counts = []
+    for month_idx in range(1, 13):
+        month_count = sum(1 for incident in incidents if incident.created_at and incident.created_at.year == selected_year and incident.created_at.month == month_idx)
+        monthly_counts.append({
+            'month': f'{selected_year}-{month_idx:02d}',
+            'count': month_count,
+        })
+
+    geo_counts = []
+    geo_lookup = {}
+    for incident in filtered_incidents:
+        municipality_name = 'Unknown'
+        if incident.municipality_id:
+            municipality = db.session.get(Municipality, incident.municipality_id)
+            if municipality:
+                municipality_name = municipality.name
+
+        barangay_name = 'Unknown'
+        if incident.barangay_id:
+            barangay = db.session.get(Barangay, incident.barangay_id)
+            if barangay:
+                barangay_name = barangay.name
+
+        key = (incident.hazard_type or 'Unknown', municipality_name, barangay_name)
+        geo_lookup[key] = geo_lookup.get(key, 0) + 1
+
+    for (hazard_type, municipality_name, barangay_name), count in sorted(geo_lookup.items(), key=lambda item: (-item[1], item[0][0], item[0][1], item[0][2])):
+        geo_counts.append({
+            'hazard_type': hazard_type,
+            'municipality': municipality_name,
+            'barangay': barangay_name,
+            'count': count,
+        })
+
+    resolved_responses = []
+    for response in IncidentResponse.query.filter(IncidentResponse.resolved_at.isnot(None)).all():
+        if not response.incident:
+            continue
+        if not response.incident.created_at:
+            continue
+        if response.incident.created_at.year != selected_year:
+            continue
+        if selected_month is not None and response.incident.created_at.month != selected_month:
+            continue
+        resolved_responses.append(response)
+
     response_durations = []
     for response in resolved_responses:
         if response.started_at and response.resolved_at:
@@ -1392,13 +1534,8 @@ def get_analytics_data():
             if duration >= 0:
                 response_durations.append(duration)
 
-    avg_response_time = round(sum(response_durations) / len(response_durations), 1) if response_durations else 0
-    response_buckets = {
-        '< 30 min': 0,
-        '30-60 min': 0,
-        '60-120 min': 0,
-        '> 120 min': 0,
-    }
+    average_minutes = round(sum(response_durations) / len(response_durations), 1) if response_durations else 0
+    response_buckets = {'< 30 min': 0, '30-60 min': 0, '60-120 min': 0, '> 120 min': 0}
     for minutes in response_durations:
         if minutes < 30:
             response_buckets['< 30 min'] += 1
@@ -1409,30 +1546,121 @@ def get_analytics_data():
         else:
             response_buckets['> 120 min'] += 1
 
-    resource_status_rows = db.session.query(
-        Resource.status,
-        db.func.sum(Resource.quantity)
-    ).group_by(Resource.status).all()
-    resources_by_status = {row[0]: int(row[1] or 0) for row in resource_status_rows}
+    resource_entries = []
+    for resource in Resource.query.all():
+        if resource.incident_response and resource.incident_response.incident and resource.incident_response.incident.created_at:
+            incident = resource.incident_response.incident
+            if incident.created_at.year != selected_year:
+                continue
+            if selected_month is not None and incident.created_at.month != selected_month:
+                continue
+        resource_entries.append(resource)
 
-    resource_type_rows = db.session.query(
-        Resource.resource_type,
-        db.func.sum(Resource.quantity)
-    ).group_by(Resource.resource_type).all()
-    resources_by_type = {row[0]: int(row[1] or 0) for row in resource_type_rows}
+    status_totals = {}
+    type_totals = {}
+    for resource in resource_entries:
+        status_totals[resource.status or 'Unknown'] = status_totals.get(resource.status or 'Unknown', 0) + int(resource.quantity or 0)
+        type_totals[resource.resource_type or 'Unknown'] = type_totals.get(resource.resource_type or 'Unknown', 0) + int(resource.quantity or 0)
 
     return {
+        'selected_year': selected_year,
+        'selected_month': selected_month,
         'incident_counts': incident_counts,
+        'monthly_counts': monthly_counts,
+        'geo_counts': geo_counts,
         'response_time': {
-            'average_minutes': avg_response_time,
+            'average_minutes': average_minutes,
             'buckets': response_buckets,
             'total_resolved': len(response_durations),
         },
         'resource_utilization': {
-            'status_counts': resources_by_status,
-            'type_counts': resources_by_type,
+            'status_counts': status_totals,
+            'type_counts': type_totals,
         },
     }
+
+
+@app.route('/api/analytics-data')
+def get_analytics_data():
+    if 'username' not in session:
+        return {'error': 'Unauthorized'}, 401
+    user = User.query.filter_by(username=session['username']).first()
+    if not permission_service.can_view_analytics(user):
+        return {'error': 'Forbidden'}, 403
+
+    selected_year, selected_month = _parse_analytics_window()
+    return _build_analytics_payload(selected_year, selected_month)
+
+
+@app.route('/api/analytics-export')
+def export_analytics_data():
+    if 'username' not in session:
+        return {'error': 'Unauthorized'}, 401
+    user = User.query.filter_by(username=session['username']).first()
+    if not permission_service.can_view_analytics(user):
+        return {'error': 'Forbidden'}, 403
+
+    export_format = (request.args.get('format', 'csv') or 'csv').lower()
+    selected_year, selected_month = _parse_analytics_window()
+    payload = _build_analytics_payload(selected_year, selected_month)
+    rows = payload['geo_counts']
+
+    if export_format == 'csv':
+        output = io.StringIO()
+        writer = csv.DictWriter(output, fieldnames=['hazard_type', 'municipality', 'barangay', 'count', 'year', 'month'])
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({
+                'hazard_type': row['hazard_type'],
+                'municipality': row['municipality'],
+                'barangay': row['barangay'],
+                'count': row['count'],
+                'year': payload['selected_year'],
+                'month': payload['selected_month'] or 'all',
+            })
+        csv_response = Response(output.getvalue(), mimetype='text/csv')
+        csv_response.headers['Content-Disposition'] = 'attachment; filename="analytics_export.csv"'
+        return csv_response
+
+    if export_format == 'pdf':
+        pdf_lines = [
+            f'Analytics report for {payload["selected_year"]}-{payload["selected_month"]:02d}' if payload['selected_month'] else f'Analytics report for {payload["selected_year"]}',
+        ]
+        for row in rows:
+            pdf_lines.append(f"{row['hazard_type']} | {row['municipality']} | {row['barangay']} | {row['count']}")
+
+        def pdf_escape(value):
+            return str(value).replace('\\', '\\\\').replace('(', '\\(').replace(')', '\\)')
+
+        content_lines = []
+        y_position = 760
+        for line in pdf_lines:
+            content_lines.append(f'BT /F1 12 Tf 72 {y_position} Td ({pdf_escape(line)}) Tj ET')
+            y_position -= 18
+        content = '\n'.join(content_lines).encode('latin-1', 'replace')
+        objects = [
+            '<< /Type /Catalog /Pages 2 0 R >>',
+            '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+            '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
+            '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+            f'<< /Length {len(content)} >>\nstream\n' + content.decode('latin-1', 'replace') + '\nendstream',
+        ]
+        pdf_data = bytearray(b'%PDF-1.4\n')
+        offsets = [0]
+        for index, obj in enumerate(objects, start=1):
+            offsets.append(len(pdf_data))
+            pdf_data.extend(f'{index} 0 obj\n{obj}\nendobj\n'.encode('latin-1', 'replace'))
+        xref_position = len(pdf_data)
+        pdf_data.extend(f'xref\n0 {len(offsets)}\n'.encode('latin-1', 'replace'))
+        pdf_data.extend(b'0000000000 65535 f \n')
+        for offset in offsets[1:]:
+            pdf_data.extend(f'{offset:010d} 00000 n \n'.encode('latin-1', 'replace'))
+        pdf_data.extend(f'trailer\n<< /Size {len(offsets)} /Root 1 0 R >>\nstartxref\n{xref_position}\n%%EOF\n'.encode('latin-1', 'replace'))
+        pdf_response = Response(pdf_data, mimetype='application/pdf')
+        pdf_response.headers['Content-Disposition'] = 'attachment; filename="analytics_export.pdf"'
+        return pdf_response
+
+    return {'error': 'Unsupported export format'}, 400
 
 
 @app.route('/live-prediction')

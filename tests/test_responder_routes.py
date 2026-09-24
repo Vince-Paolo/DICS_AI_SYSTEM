@@ -42,7 +42,9 @@ def force_403():
 class ResponderRoutesTestCase(unittest.TestCase):
     def setUp(self):
         self.app = app
-        self.app.config.update(TESTING=True, WTF_CSRF_ENABLED=False)
+        # These tests cover the legacy citizen report form / SOS, which are
+        # retired by default (see tests/test_emergency_assistance.py).
+        self.app.config.update(TESTING=True, WTF_CSRF_ENABLED=False, PUBLIC_REPORTING_ENABLED=True)
         self.client = self.app.test_client()
 
         # Flask-Limiter's storage is a module-level singleton, not reset by
@@ -543,6 +545,45 @@ class ResponderRoutesTestCase(unittest.TestCase):
                 os.environ['SECRET_KEY'] = original_secret
             importlib.reload(app_module)
 
+    def test_language_toggle_renders_tagalog_login(self):
+        response = self.client.get('/language/tl?next=/login')
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers['Location'], '/login')
+
+        response = self.client.get('/login')
+        html = response.get_data(as_text=True)
+        self.assertIn('lang="fil_PH"', html)
+        self.assertIn('Pag-login', html)
+        self.assertIn('Ilagay ang username', html)
+
+        self.client.get('/language/en?next=/login')
+        response = self.client.get('/login')
+        self.assertIn('Sign in', response.get_data(as_text=True))
+
+    def test_citizen_report_requires_coordinates_before_submission(self):
+        with self.client.session_transaction() as session:
+            session['username'] = 'responder1'
+            session['role'] = 'user'
+
+        response = self.client.post('/citizen-report', data={
+            'hazard_type': 'flood',
+            'severity': 'high',
+            'location': 'Barangay Test',
+            'description': 'Water rising',
+            'affected_people': '5',
+            'injuries': '0',
+            'contact': '09171234567',
+            'gps_lat': '',
+            'gps_lng': '',
+        }, follow_redirects=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'GPS coordinates are required', response.data)
+        with self.app.app_context():
+            self.assertEqual(CitizenReport.query.count(), 0)
+            self.assertEqual(Incident.query.count(), 0)
+
     def test_citizen_report_creates_record_with_photo_and_anonymous_flag(self):
         with self.client.session_transaction() as session:
             session['username'] = 'responder1'
@@ -623,6 +664,8 @@ class ResponderRoutesTestCase(unittest.TestCase):
             'severity': 'low',
             'location': 'Lipa',
             'description': 'Water rising quickly',
+            'gps_lat': '14.1234',
+            'gps_lng': '121.5678',
         }, follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
@@ -1556,6 +1599,26 @@ class ResponderRoutesTestCase(unittest.TestCase):
         html = response.get_data(as_text=True)
         self.assertIn('sosAlertBanner', html)
         self.assertIn('/eoc/sos-incidents/pending', html)
+
+    def test_eoc_dashboard_uses_map_first_layout_with_latest_incents(self):
+        with self.app.app_context():
+            incident = Incident(
+                hazard_type='Flood', location='Barangay Luma', message='Flooding reported',
+                level='High', status='NEW', alert=True, latitude=14.1187, longitude=121.3542,
+            )
+            db.session.add(incident)
+            db.session.commit()
+
+        with self.client.session_transaction() as session:
+            session['username'] = 'responder1'
+            session['role'] = 'eoc_staff'
+
+        response = self.client.get('/eoc-dashboard')
+        html = response.get_data(as_text=True)
+        self.assertIn('eocIncidentMap', html)
+        self.assertIn('Regional Incident Map', html)
+        self.assertIn('Latest incidents', html)
+        self.assertIn('Barangay Luma', html)
 
     def test_create_default_admin_does_not_touch_password_of_differently_named_admin(self):
         """Regression test for a real bug found while testing the
