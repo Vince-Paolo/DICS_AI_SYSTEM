@@ -404,9 +404,10 @@ def monitor_hazards():
 
 
 def _monitor_hazards_once(app):
-        monitor_earthquakes(app)
-        monitor_floods_gdacs(app)
-        monitor_volcanoes_eonet(app)
+        if not app.config.get('TESTING', False):
+            monitor_earthquakes(app)
+            monitor_floods_gdacs(app)
+            monitor_volcanoes_eonet(app)
 
         weather_by_city = get_all_weather_data()
         if not weather_by_city:

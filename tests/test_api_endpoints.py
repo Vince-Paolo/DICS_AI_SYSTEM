@@ -99,6 +99,27 @@ class ApiEndpointFunctionalTestCase(unittest.TestCase):
         self.assertIn('id="hazardSearchInput"', html)
         self.assertIn('Search hazard areas...', html)
 
+    def test_hazard_map_rainfall_and_typhoon_tracking_apis_return_data(self):
+        self._login('api_citizen', 'citizen')
+
+        rainfall_response = self.client.get('/api/hazard-layers/rainfall')
+        typhoon_response = self.client.get('/api/hazard-layers/typhoon-tracks')
+
+        self.assertEqual(rainfall_response.status_code, 200)
+        self.assertEqual(typhoon_response.status_code, 200)
+
+        rainfall = rainfall_response.get_json()
+        typhoon = typhoon_response.get_json()
+
+        self.assertIsInstance(rainfall, list)
+        self.assertIsInstance(typhoon, list)
+        self.assertGreater(len(rainfall), 0)
+        self.assertGreater(len(typhoon), 0)
+
+        self.assertIn('lat', rainfall[0])
+        self.assertIn('lon', rainfall[0])
+        self.assertIn('track', typhoon[0])
+
     def test_barangays_api_returns_sorted_records_for_a_municipality(self):
         self._login('api_citizen', 'citizen')
         with self.app.app_context():

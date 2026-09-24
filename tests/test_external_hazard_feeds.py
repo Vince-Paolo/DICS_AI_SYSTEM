@@ -28,6 +28,7 @@ GDACS_SAMPLE_RESPONSE = {
             "geometry": {"type": "Point", "coordinates": [121.0, 14.1]},
             "properties": {
                 "eventid": 1234567,
+                "episodeid": 7654321,
                 "eventtype": "FL",
                 "eventname": "Flood in Batangas",
                 "country": "Philippines",
@@ -99,6 +100,27 @@ EONET_SAMPLE_RESPONSE = {
 }
 
 
+# NASA FIRMS Area API sample -- VIIRS_NOAA20_NRT CSV response shape per
+# https://firms.modaps.eosdis.nasa.gov/api/area/
+FIRMS_CSV_SAMPLE = (
+    "latitude,longitude,bright_ti4,scan,track,acq_date,acq_time,satellite,"
+    "confidence,version,bright_ti5,frp,daynight\n"
+    "14.00,120.99,330.5,0.4,0.4,2026-08-12,0512,N20,n,2.0NRT,290.1,12.3,N\n"
+    "14.60,121.10,301.2,0.4,0.4,2026-08-12,0512,N20,l,2.0NRT,280.0,3.1,N\n"
+)
+
+GDACS_FOOTPRINT_SAMPLE = {
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "geometry": {"type": "Polygon", "coordinates": [[[121.0, 14.0], [121.2, 14.0], [121.2, 14.2], [121.0, 14.2], [121.0, 14.0]]]},
+            "properties": {},
+        },
+    ],
+}
+
+
 class ExternalHazardFeedParsingTestCase(unittest.TestCase):
     """Unit tests for the fetch/filter/parse logic, independent of network access."""
 
@@ -107,6 +129,8 @@ class ExternalHazardFeedParsingTestCase(unittest.TestCase):
         realtime_data._cache['earthquakes'] = {'data': None, 'timestamp': None}
         realtime_data._cache['flood_events'] = {'data': None, 'timestamp': None}
         realtime_data._cache['volcano_events'] = {'data': None, 'timestamp': None}
+        realtime_data._cache['thermal_hotspots'] = {'data': None, 'timestamp': None}
+        realtime_data._cache['flood_footprints'] = {'data': None, 'timestamp': None}
 
     def test_get_flood_events_filters_to_philippine_floods_only(self):
         with patch.object(realtime_data, '_fetch_json', return_value=GDACS_SAMPLE_RESPONSE):
@@ -139,6 +163,65 @@ class ExternalHazardFeedParsingTestCase(unittest.TestCase):
         with patch.object(realtime_data, '_fetch_json', return_value=None):
             volcanoes = realtime_data.get_volcano_events()
         self.assertEqual(volcanoes, [])
+
+    def test_get_thermal_hotspots_returns_empty_list_without_map_key(self):
+        with patch.object(realtime_data, '_get_firms_map_key', return_value=None), \
+             patch.object(realtime_data, '_fetch_text') as mock_fetch:
+            hotspots = realtime_data.get_thermal_hotspots()
+        self.assertEqual(hotspots, [])
+        mock_fetch.assert_not_called()
+
+    def test_get_thermal_hotspots_parses_firms_csv(self):
+        with patch.object(realtime_data, '_get_firms_map_key', return_value='fake-key'), \
+             patch.object(realtime_data, '_fetch_text', return_value=FIRMS_CSV_SAMPLE):
+            hotspots = realtime_data.get_thermal_hotspots()
+
+        self.assertEqual(len(hotspots), 2)
+        self.assertEqual(hotspots[0]['lat'], 14.00)
+        self.assertEqual(hotspots[0]['lon'], 120.99)
+        self.assertEqual(hotspots[0]['confidence'], 'n')
+        self.assertEqual(hotspots[0]['source'], 'NASA FIRMS')
+
+    def test_get_thermal_hotspots_returns_empty_list_on_fetch_failure(self):
+        with patch.object(realtime_data, '_get_firms_map_key', return_value='fake-key'), \
+             patch.object(realtime_data, '_fetch_text', return_value=None):
+            hotspots = realtime_data.get_thermal_hotspots()
+        self.assertEqual(hotspots, [])
+
+    def test_get_flood_footprints_fetches_polygon_for_events_with_episode_id(self):
+        def fake_fetch_json(url):
+            if 'geteventlist' in url:
+                return GDACS_SAMPLE_RESPONSE
+            if 'polygons/getgeometry' in url:
+                self.assertIn('eventid=1234567', url)
+                self.assertIn('episodeid=7654321', url)
+                return GDACS_FOOTPRINT_SAMPLE
+            return None
+
+        with patch.object(realtime_data, '_fetch_json', side_effect=fake_fetch_json):
+            footprints = realtime_data.get_flood_footprints()
+
+        self.assertEqual(len(footprints), 1)
+        self.assertEqual(footprints[0]['event_id'], 1234567)
+        self.assertEqual(footprints[0]['source'], 'GDACS / EC-JRC')
+        self.assertEqual(footprints[0]['geojson'], GDACS_FOOTPRINT_SAMPLE)
+
+    def test_get_flood_footprints_skips_events_without_episode_id(self):
+        no_episode_response = {
+            "type": "FeatureCollection",
+            "features": [{
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [121.0, 14.1]},
+                "properties": {
+                    "eventid": 42, "eventtype": "FL", "eventname": "No episode",
+                    "country": "Philippines", "alertlevel": "Green",
+                    "severitydata": {}, "fromdate": "", "todate": "", "iscurrent": True,
+                },
+            }],
+        }
+        with patch.object(realtime_data, '_fetch_json', return_value=no_episode_response):
+            footprints = realtime_data.get_flood_footprints()
+        self.assertEqual(footprints, [])
 
     def test_earthquake_cache_is_persisted_for_other_workers(self):
         feature = {

@@ -16,4 +16,9 @@ app = module.app
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    debug_mode = str(__import__('os').environ.get('FLASK_DEBUG', '0')).strip().lower() in {'1', 'true', 'yes', 'on'}
+    app.run(
+        debug=debug_mode,
+        host=__import__('os').environ.get('HOST', '127.0.0.1'),
+        port=int(__import__('os').environ.get('PORT', 5000))
+    )

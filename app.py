@@ -18,7 +18,15 @@ from flask_limiter.util import get_remote_address
 
 from models import db, User, Incident, IncidentResponse, Task, Resource, CitizenReport, Agency, PostIncidentReport, EvacuationCenter, Province, Municipality
 from scheduler import monitor_hazards
-from services.realtime_data import get_all_weather_data, get_weather_data, get_earthquake_data
+from services.realtime_data import (
+    get_all_weather_data,
+    get_weather_data,
+    get_earthquake_data,
+    get_thermal_hotspots,
+    get_flood_footprints,
+    get_rainfall_watch,
+    get_typhoon_tracks,
+)
 from services import permissions as permission_service
 from services.passwords import verify_and_migrate
 from ai.decision_support import predict_hazard, AI_PROVIDER
@@ -40,6 +48,61 @@ instance_dir = os.path.join(base_dir, 'instance')
 os.makedirs(instance_dir, exist_ok=True)
 upload_dir = os.path.join(instance_dir, 'uploads', 'citizen_reports')
 os.makedirs(upload_dir, exist_ok=True)
+
+
+def _load_dotenv_file(dotenv_path=None):
+    """Load a project-local .env file before configuration is read.
+
+    The project intentionally keeps a small dev .env file in the repo root for
+    local work, but production deployments should keep the same values in the
+    host environment. This helper fills any missing variables without
+    overwriting values already set in the current process.
+    """
+    candidates = []
+    if dotenv_path:
+        candidates.append(Path(dotenv_path))
+    candidates.extend([
+        Path(base_dir) / '.env',
+        Path.cwd() / '.env',
+    ])
+
+    seen = set()
+    for candidate in candidates:
+        candidate = Path(candidate)
+        if not candidate or candidate in seen:
+            continue
+        seen.add(candidate)
+        if not candidate.exists():
+            continue
+
+        try:
+            from dotenv import dotenv_values
+            values = dotenv_values(candidate)
+            if values:
+                for key, value in values.items():
+                    if key and value is not None and key not in os.environ:
+                        os.environ[key] = str(value)
+                return
+        except ImportError:
+            pass
+
+        with candidate.open('r', encoding='utf-8') as env_file:
+            for raw_line in env_file:
+                line = raw_line.strip()
+                if not line or line.startswith('#') or '=' not in line:
+                    continue
+                key, value = line.split('=', 1)
+                key = key.strip()
+                if key.startswith('export '):
+                    key = key[len('export '):].strip()
+                value = value.strip().strip('"').strip("'")
+                if key and value and key not in os.environ:
+                    os.environ[key] = value
+        return
+
+
+_load_dotenv_file()
+
 
 def _normalize_database_url():
     configured_url = os.environ.get('DATABASE_URL')
@@ -64,6 +127,31 @@ def _normalize_database_url():
 
 app.config['SQLALCHEMY_DATABASE_URI'] = _normalize_database_url()
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+_original_db_drop_all = db.drop_all
+
+
+def _safe_db_drop_all(*args, **kwargs):
+    """SQLite requires foreign keys to be disabled during a full schema reset;
+    otherwise dropping a parent table can fail while child tables still exist in
+    the same database. The project tests rely on `db.drop_all()` as a clean-room
+    reset hook, so make that reset safe across the app's test and dev flows.
+    """
+    with app.app_context():
+        engine = db.engine
+        if engine.dialect.name == 'sqlite':
+            with engine.begin() as conn:
+                conn.execute(text('PRAGMA foreign_keys = OFF'))
+            try:
+                db.metadata.drop_all(bind=engine)
+            finally:
+                with engine.begin() as conn:
+                    conn.execute(text('PRAGMA foreign_keys = ON'))
+            return
+        _original_db_drop_all(*args, **kwargs)
+
+
+db.drop_all = _safe_db_drop_all
 
 
 def _resolve_sqlite_db_path():
@@ -112,8 +200,9 @@ if not _secret_key:
         'Set the SECRET_KEY environment variable before deploying.',
         RuntimeWarning
     )
+app.config['DEBUG'] = str(os.environ.get('FLASK_DEBUG', '0')).strip().lower() in {'1', 'true', 'yes', 'on'}
 app.config['SECRET_KEY'] = _secret_key
-app.config['TEMPLATES_AUTO_RELOAD'] = True
+app.config['TEMPLATES_AUTO_RELOAD'] = app.config['DEBUG']
 app.config['UPLOAD_FOLDER'] = upload_dir
 app.config['INSTANCE_DIR'] = instance_dir
 app.config['FILE_STORAGE_BACKEND'] = os.environ.get('FILE_STORAGE_BACKEND', 'local')
@@ -159,7 +248,8 @@ def add_security_headers(response):
         "style-src 'self' 'unsafe-inline' "
         "https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com; "
         "font-src 'self' https://cdn.jsdelivr.net data:; "
-        "img-src 'self' data: blob: https://tile.openstreetmap.org https://*.tile.openstreetmap.org; "
+        "img-src 'self' data: blob: https://tile.openstreetmap.org https://*.tile.openstreetmap.org "
+        "https://server.arcgisonline.com; "
         "connect-src 'self' https://nominatim.openstreetmap.org; "
         "media-src 'self' blob:; "
         "worker-src 'self' blob:"
@@ -1111,6 +1201,43 @@ def get_map_pins():
     return pins
 
 
+@app.route('/api/hazard-layers/thermal-hotspots')
+def get_thermal_hotspots_api():
+    """Satellite-derived thermal-anomaly points (NASA FIRMS), rendered as a
+    separate overlay from Incident markers -- see get_thermal_hotspots()
+    docstring for why these aren't promoted to Incident records.
+    """
+    if 'username' not in session:
+        return {'error': 'Unauthorized'}, 401
+    return get_thermal_hotspots()
+
+
+@app.route('/api/hazard-layers/flood-footprints')
+def get_flood_footprints_api():
+    """Satellite/hydrological-model flood-extent polygons (GDACS / EC-JRC),
+    rendered as filled shapes rather than point markers.
+    """
+    if 'username' not in session:
+        return {'error': 'Unauthorized'}, 401
+    return get_flood_footprints()
+
+
+@app.route('/api/hazard-layers/rainfall')
+def get_rainfall_api():
+    """Rainfall watch layer for the hazard map."""
+    if 'username' not in session:
+        return {'error': 'Unauthorized'}, 401
+    return get_rainfall_watch()
+
+
+@app.route('/api/hazard-layers/typhoon-tracks')
+def get_typhoon_tracks_api():
+    """Typhoon/tracking layer for the hazard map."""
+    if 'username' not in session:
+        return {'error': 'Unauthorized'}, 401
+    return get_typhoon_tracks()
+
+
 @app.route('/api/map-evacuation-centers')
 def get_map_evacuation_centers():
     if 'username' not in session:
@@ -1398,4 +1525,9 @@ def protocols():
 
 if __name__ == '__main__':
     create_tables()
-    app.run(debug=os.environ.get('FLASK_DEBUG', '0') == '1', use_reloader=False, host='127.0.0.1', port=5000)
+    app.run(
+        debug=app.config.get('DEBUG', False),
+        use_reloader=False,
+        host=os.environ.get('HOST', '127.0.0.1'),
+        port=int(os.environ.get('PORT', 5000))
+    )
