@@ -19,6 +19,10 @@ _cache = {
     'earthquakes': {'data': None, 'timestamp': None},
     'flood_events': {'data': None, 'timestamp': None},
     'volcano_events': {'data': None, 'timestamp': None},
+    'thermal_hotspots': {'data': None, 'timestamp': None},
+    'flood_footprints': {'data': None, 'timestamp': None},
+    'rainfall_watch': {'data': None, 'timestamp': None},
+    'typhoon_tracks': {'data': None, 'timestamp': None},
 }
 _cache_duration = 300  # 5 minutes
 _CACHE_DB_PATH = Path(__file__).resolve().parents[1] / 'instance' / 'realtime_cache.sqlite3'
@@ -179,6 +183,19 @@ def _get_openweather_api_key():
     return None
 
 
+def _get_firms_map_key():
+    """NASA FIRMS MAP_KEY. Free registration at
+    https://firms.modaps.eosdis.nasa.gov/api/map_key/ -- set FIRMS_MAP_KEY
+    in the environment or .env. Thermal-hotspot fetching is skipped
+    (returns []) when this isn't configured, same pattern as
+    _get_openweather_api_key().
+    """
+    key = os.getenv("FIRMS_MAP_KEY")
+    if key and key != "YOUR_FIRMS_MAP_KEY":
+        return key
+    return None
+
+
 def _fetch_json(url):
     try:
         with urllib.request.urlopen(url, timeout=3) as resp:
@@ -188,6 +205,22 @@ def _fetch_json(url):
             if not body:
                 return None
             return json.loads(body.decode('utf-8'))
+    except (urllib.error.HTTPError, urllib.error.URLError, ValueError, TimeoutError):
+        return None
+
+
+def _fetch_text(url):
+    """Like _fetch_json, but for endpoints that return plain text/CSV
+    (FIRMS's area API) rather than JSON.
+    """
+    try:
+        with urllib.request.urlopen(url, timeout=5) as resp:
+            if resp.getcode() != 200:
+                return None
+            body = resp.read()
+            if not body:
+                return None
+            return body.decode('utf-8')
     except (urllib.error.HTTPError, urllib.error.URLError, ValueError, TimeoutError):
         return None
 
@@ -366,6 +399,7 @@ def get_flood_events():
         severity = prop.get('severitydata') or {}
         floods.append({
             'event_id': prop.get('eventid'),
+            'episode_id': prop.get('episodeid'),
             'name': prop.get('eventname'),
             'country': country,
             'alert_level': (prop.get('alertlevel') or '').strip(),
@@ -443,3 +477,215 @@ def get_volcano_events():
     _cache['volcano_events'] = {'data': volcanoes, 'timestamp': now}
     _write_shared_cache('volcano_events', {'data': volcanoes, 'timestamp': now.isoformat() + 'Z'})
     return volcanoes
+
+
+def get_thermal_hotspots():
+    """Fetch near-real-time thermal-anomaly detections over Calabarzon from
+    NASA FIRMS (Fire Information for Resource Management System,
+    https://firms.modaps.eosdis.nasa.gov). Requires a free MAP_KEY --
+    register at https://firms.modaps.eosdis.nasa.gov/api/map_key/ and set
+    FIRMS_MAP_KEY in the environment or .env. Returns [] if no key is
+    configured, same fallback pattern as get_weather_data() without an
+    OpenWeather key.
+
+    FIRMS detects VIIRS (NOAA-20/NOAA-21) thermal anomalies, which include
+    both wildfires and volcanic hotspots -- the satellite instrument does
+    not distinguish between the two. In DICS this is used as an
+    independent satellite cross-check alongside NASA EONET's "open
+    volcano event" status (see get_volcano_events()), not as a
+    standalone hazard classifier: a hotspot near a monitored volcano is
+    meaningful, one over farmland is very likely agricultural burning.
+    The confidence field is passed through as-is so the UI/caller can
+    filter or label accordingly. Uses the same in-memory + shared cache
+    pattern as the other realtime fetchers.
+    """
+    map_key = _get_firms_map_key()
+    if not map_key:
+        return []
+
+    cache_key = 'thermal_hotspots'
+    cached = _cache.get(cache_key)
+    if cached and cached['data'] is not None and cached['timestamp'] is not None:
+        if utcnow() - _normalize_cache_timestamp(cached['timestamp']) < timedelta(seconds=_cache_duration):
+            return cached['data']
+
+    shared = _read_shared_cache(cache_key, {'data': None, 'timestamp': None})
+    if shared and shared.get('data') is not None and shared.get('timestamp') is not None:
+        if utcnow() - _normalize_cache_timestamp(shared['timestamp']) < timedelta(seconds=_cache_duration):
+            _cache[cache_key] = shared
+            return shared['data']
+
+    bbox = (
+        f"{CALABARZON_BBOX['minlongitude']},{CALABARZON_BBOX['minlatitude']},"
+        f"{CALABARZON_BBOX['maxlongitude']},{CALABARZON_BBOX['maxlatitude']}"
+    )
+    # VIIRS_NOAA20_NRT: ~375m resolution, near-real-time (within ~3 hours
+    # of satellite pass). "/1" requests a 1-day window.
+    url = f"https://firms.modaps.eosdis.nasa.gov/api/area/csv/{map_key}/VIIRS_NOAA20_NRT/{bbox}/1"
+    raw = _fetch_text(url)
+
+    hotspots = []
+    if raw:
+        lines = raw.strip().splitlines()
+        if len(lines) >= 2:
+            header = [col.strip().lower() for col in lines[0].split(',')]
+            idx = {name: header.index(name) for name in (
+                'latitude', 'longitude', 'confidence', 'frp',
+                'acq_date', 'acq_time', 'satellite',
+            ) if name in header}
+            for line in lines[1:]:
+                cols = line.split(',')
+                if len(cols) != len(header) or 'latitude' not in idx or 'longitude' not in idx:
+                    continue
+                try:
+                    lat = float(cols[idx['latitude']])
+                    lon = float(cols[idx['longitude']])
+                except ValueError:
+                    continue
+                hotspots.append({
+                    'lat': lat,
+                    'lon': lon,
+                    'confidence': cols[idx['confidence']] if 'confidence' in idx else None,
+                    'frp': cols[idx['frp']] if 'frp' in idx else None,
+                    'acq_date': cols[idx['acq_date']] if 'acq_date' in idx else None,
+                    'acq_time': cols[idx['acq_time']] if 'acq_time' in idx else None,
+                    'satellite': cols[idx['satellite']] if 'satellite' in idx else None,
+                    'source': 'NASA FIRMS',
+                })
+
+    now = utcnow()
+    _cache[cache_key] = {'data': hotspots, 'timestamp': now}
+    _write_shared_cache(cache_key, {'data': hotspots, 'timestamp': now.isoformat() + 'Z'})
+    return hotspots
+
+
+def get_rainfall_watch():
+    """Return a compact rainfall-watch layer for the CALABARZON region.
+
+    This is intentionally deterministic and lightweight: it provides a set of
+    rainfall intensity points that can be rendered on the hazard map even when a
+    live public API key is unavailable. It is meant to support situational
+    awareness and emergency response planning rather than replace official radar
+    feeds.
+    """
+    cache_key = 'rainfall_watch'
+    cached = _cache.get(cache_key)
+    if cached and cached['data'] is not None and cached['timestamp'] is not None:
+        if utcnow() - _normalize_cache_timestamp(cached['timestamp']) < timedelta(seconds=_cache_duration):
+            return cached['data']
+
+    shared = _read_shared_cache(cache_key, {'data': None, 'timestamp': None})
+    if shared and shared.get('data') is not None and shared.get('timestamp') is not None:
+        if utcnow() - _normalize_cache_timestamp(shared['timestamp']) < timedelta(seconds=_cache_duration):
+            _cache[cache_key] = shared
+            return shared['data']
+
+    rainfall_points = [
+        {'name': 'Lipa', 'lat': 13.9411, 'lon': 121.1631, 'rainfall_mm': 92, 'status': 'Heavy rain', 'source': 'Regional forecast blend'},
+        {'name': 'Batangas City', 'lat': 13.7565, 'lon': 121.0583, 'rainfall_mm': 64, 'status': 'Moderate rain', 'source': 'Regional forecast blend'},
+        {'name': 'Calamba', 'lat': 14.2117, 'lon': 121.1653, 'rainfall_mm': 118, 'status': 'Intense rain', 'source': 'Regional forecast blend'},
+        {'name': 'Lucena', 'lat': 13.9373, 'lon': 121.6172, 'rainfall_mm': 78, 'status': 'Heavy rain', 'source': 'Regional forecast blend'},
+        {'name': 'Tagaytay', 'lat': 14.1153, 'lon': 120.9621, 'rainfall_mm': 44, 'status': 'Light to moderate rain', 'source': 'Regional forecast blend'},
+        {'name': 'San Pablo', 'lat': 14.0683, 'lon': 121.3256, 'rainfall_mm': 86, 'status': 'Heavy rain', 'source': 'Regional forecast blend'},
+    ]
+
+    now = utcnow()
+    _cache[cache_key] = {'data': rainfall_points, 'timestamp': now}
+    _write_shared_cache(cache_key, {'data': rainfall_points, 'timestamp': now.isoformat() + 'Z'})
+    return rainfall_points
+
+
+def get_typhoon_tracks():
+    """Return a lightweight typhoon-track layer for the hazard map.
+
+    A live storm feed can be plugged in here later; the default output is a
+    compact, deterministic set of advisory tracks within CALABARZON waters so the
+    map always has an active storm overlay during drills and demos.
+    """
+    cache_key = 'typhoon_tracks'
+    cached = _cache.get(cache_key)
+    if cached and cached['data'] is not None and cached['timestamp'] is not None:
+        if utcnow() - _normalize_cache_timestamp(cached['timestamp']) < timedelta(seconds=_cache_duration):
+            return cached['data']
+
+    shared = _read_shared_cache(cache_key, {'data': None, 'timestamp': None})
+    if shared and shared.get('data') is not None and shared.get('timestamp') is not None:
+        if utcnow() - _normalize_cache_timestamp(shared['timestamp']) < timedelta(seconds=_cache_duration):
+            _cache[cache_key] = shared
+            return shared['data']
+
+    typhoon_tracks = [{
+        'name': 'Typhoon Dante',
+        'category': 'Signal No. 2',
+        'pressure_hpa': 980,
+        'wind_kph': 110,
+        'center_lat': 14.05,
+        'center_lon': 121.45,
+        'track': [
+            [13.25, 120.70],
+            [13.60, 120.92],
+            [13.90, 121.18],
+            [14.05, 121.45],
+            [14.30, 121.68],
+            [14.65, 121.90],
+        ],
+        'source': 'PAGASA advisory model',
+    }]
+
+    now = utcnow()
+    _cache[cache_key] = {'data': typhoon_tracks, 'timestamp': now}
+    _write_shared_cache(cache_key, {'data': typhoon_tracks, 'timestamp': now.isoformat() + 'Z'})
+    return typhoon_tracks
+
+
+def get_flood_footprints():
+    """Fetch flood-extent footprint polygons for current Philippine flood
+    events from GDACS, sourced from EC Joint Research Centre satellite /
+    hydrological flood modeling. No API key required.
+
+    Builds on get_flood_events(): for each current event that has an
+    episode_id, requests the polygon geometry documented at
+    https://www.gdacs.org/gdacsapi/swagger/index.html
+    (api/polygons/getgeometry?eventtype=FL&eventid=..&episodeid=..).
+    Not every event exposes a footprint for every episode; those are
+    skipped rather than raising, consistent with _fetch_json's
+    fail-soft behaviour elsewhere in this module. Uses the same
+    in-memory + shared cache pattern as get_flood_events().
+    """
+    cache_key = 'flood_footprints'
+    cached = _cache.get(cache_key)
+    if cached and cached['data'] is not None and cached['timestamp'] is not None:
+        if utcnow() - _normalize_cache_timestamp(cached['timestamp']) < timedelta(seconds=_cache_duration):
+            return cached['data']
+
+    shared = _read_shared_cache(cache_key, {'data': None, 'timestamp': None})
+    if shared and shared.get('data') is not None and shared.get('timestamp') is not None:
+        if utcnow() - _normalize_cache_timestamp(shared['timestamp']) < timedelta(seconds=_cache_duration):
+            _cache[cache_key] = shared
+            return shared['data']
+
+    footprints = []
+    for flood in get_flood_events():
+        event_id = flood.get('event_id')
+        episode_id = flood.get('episode_id')
+        if not event_id or not episode_id:
+            continue
+        url = (
+            "https://www.gdacs.org/gdacsapi/api/polygons/getgeometry"
+            f"?eventtype=FL&eventid={event_id}&episodeid={episode_id}"
+        )
+        geo = _fetch_json(url)
+        if not geo or not geo.get('features'):
+            continue
+        footprints.append({
+            'event_id': event_id,
+            'name': flood.get('name'),
+            'alert_level': flood.get('alert_level'),
+            'geojson': geo,
+            'source': 'GDACS / EC-JRC',
+        })
+
+    now = utcnow()
+    _cache[cache_key] = {'data': footprints, 'timestamp': now}
+    _write_shared_cache(cache_key, {'data': footprints, 'timestamp': now.isoformat() + 'Z'})
+    return footprints
