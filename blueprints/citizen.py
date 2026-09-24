@@ -5,6 +5,7 @@ from datetime import timedelta
 from io import BytesIO
 
 from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, session, url_for
+from flask_babel import gettext as _
 from PIL import Image, UnidentifiedImageError
 from werkzeug.utils import secure_filename
 
@@ -21,10 +22,20 @@ from models import (
     utcnow,
 )
 from services.permissions import can_view_incident
+from services.hotlines import build_hotline_services, cdrrmo_hotline_configured, get_general_hotline
 from services.realtime_data import get_earthquake_data, get_weather_data
 from ai.decision_support import predict_hazard
 
 citizen_bp = Blueprint('citizen', __name__)
+
+
+def public_reporting_enabled():
+    """Whether the legacy citizen report form / online SOS are switched on.
+
+    Off by default: citizens are sent to the Emergency Assistance page and
+    call the hotline instead of typing a report.
+    """
+    return bool(current_app.config.get('PUBLIC_REPORTING_ENABLED', False))
 
 ALLOWED_PHOTO_EXTENSIONS = {
     '.jpg': 'image/jpeg',
@@ -109,8 +120,30 @@ def api_barangays_for_municipality(municipality_id):
     return {'barangays': [{'id': b.id, 'name': b.name} for b in barangays]}
 
 
+@citizen_bp.route('/emergency-assistance')
+def emergency_assistance():
+    """Public 'Call First' page: pick the kind of help, tap Call.
+
+    Deliberately has no login requirement and no form -- someone in an
+    emergency should not need an account or an internet round-trip beyond
+    loading this page (the service worker keeps a copy for offline use).
+    """
+    return render_template(
+        'pages/citizen_emergency_assistance.html',
+        general=get_general_hotline(),
+        services=build_hotline_services(),
+        show_config_warning=(
+            session.get('role') in {'admin', 'eoc_staff'} and not cdrrmo_hotline_configured()
+        ),
+    )
+
+
 @citizen_bp.route('/citizen-report', methods=['GET', 'POST'])
 def citizen_report():
+    if not public_reporting_enabled():
+        flash(_('The online incident report form is no longer used. Please call an emergency hotline instead.'), 'info')
+        return redirect(url_for('citizen.emergency_assistance'))
+
     if 'username' not in session:
         return redirect(url_for('login'))
 
@@ -162,7 +195,7 @@ def citizen_report():
                 flash('Photo upload was invalid.', 'error')
                 return redirect(url_for('citizen.citizen_report'))
 
-            image_bytes, _, ext = validated_photo
+            image_bytes, _photo_name, ext = validated_photo
             upload_dir = current_app.config['UPLOAD_FOLDER']
             if not _is_safe_upload_directory(upload_dir):
                 flash('Photo upload was invalid.', 'error')
@@ -178,6 +211,10 @@ def citizen_report():
         except ValueError:
             gps_latitude_value = None
             gps_longitude_value = None
+
+        if gps_latitude_value is None or gps_longitude_value is None:
+            flash('GPS coordinates are required. Please allow browser location access or place the pin on the map before submitting.', 'error')
+            return redirect(url_for('citizen.citizen_report'))
 
         try:
             gps_accuracy_value = float(gps_accuracy) if gps_accuracy else None
@@ -335,6 +372,7 @@ def citizen_dashboard():
         incidents=incidents[:5],
         current_risk_level=current_risk_level,
         current_risk_detail=current_risk_detail,
+        general=get_general_hotline(),
     )
 
 
@@ -411,7 +449,11 @@ def citizen_report_detail(incident_id):
 def citizen_resources():
     if 'username' not in session:
         return redirect(url_for('login'))
-    return render_template('pages/citizen_resources.html')
+    return render_template(
+        'pages/citizen_resources.html',
+        general=get_general_hotline(),
+        services=build_hotline_services(),
+    )
 
 
 @citizen_bp.route('/incidents')
@@ -446,16 +488,46 @@ def emergency_sos():
     Emergency SOS endpoint for citizens.
     Creates a high-priority EMERGENCY incident with immediate alert.
     """
+    if not public_reporting_enabled():
+        return jsonify({
+            'success': False,
+            'message': _('Online SOS is no longer available. Please call an emergency hotline.'),
+            'redirect': url_for('citizen.emergency_assistance'),
+        }), 410
+
     if 'username' not in session:
         return jsonify({'success': False, 'message': 'Not authenticated'}), 401
-    
+
     user = User.query.filter_by(username=session['username']).first()
     if not user:
         return jsonify({'success': False, 'message': 'User not found'}), 404
-    
-    # Get location from request if available, otherwise use generic
-    location = request.json.get('location', 'User Emergency Location') if request.is_json else 'User Emergency Location'
-    
+
+    payload = request.get_json(silent=True) or {}
+    location = (payload.get('location') or request.form.get('location') or 'User Emergency Location').strip()
+    if not location:
+        location = 'User Emergency Location'
+
+    try:
+        latitude = float(payload.get('latitude', request.form.get('latitude')))
+    except (TypeError, ValueError):
+        latitude = None
+
+    try:
+        longitude = float(payload.get('longitude', request.form.get('longitude')))
+    except (TypeError, ValueError):
+        longitude = None
+
+    province_id = payload.get('province_id') or request.form.get('province_id', type=int)
+    municipality_id = payload.get('municipality_id') or request.form.get('municipality_id', type=int)
+
+    if latitude is None or longitude is None:
+        latest_report = CitizenReport.query.filter_by(user_id=user.id).order_by(CitizenReport.created_at.desc()).first()
+        if latest_report is not None:
+            latitude = latitude if latitude is not None else latest_report.gps_latitude
+            longitude = longitude if longitude is not None else latest_report.gps_longitude
+            province_id = province_id or latest_report.province_id
+            municipality_id = municipality_id or latest_report.municipality_id
+
     try:
         emergency_incident = Incident(
             user_id=user.id,
@@ -463,19 +535,23 @@ def emergency_sos():
             location=location,
             message='EMERGENCY SOS Alert from citizen',
             level='Severe',
-            alert=True,  # Immediately create alert
+            alert=True,
             status='NEW',
             reported_by='citizen',
+            province_id=province_id,
+            municipality_id=municipality_id,
+            latitude=latitude,
+            longitude=longitude,
         )
         db.session.add(emergency_incident)
         db.session.commit()
-        
+
         return jsonify({
-            'success': True, 
+            'success': True,
             'message': 'Emergency alert sent! Authorities have been notified immediately.',
             'incident_id': emergency_incident.id
         }), 200
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         current_app.logger.exception('Failed to create emergency alert')
         return jsonify({'success': False, 'message': 'Unable to send emergency alert. Please try again.'}), 500
