@@ -358,7 +358,7 @@
                                                 <label class="form-label mb-0" for="gps_lat">
                                                     <i class="bi bi-geo-alt me-2"></i>GPS Location
                                                 </label>
-                                                <span class="detail-tag">Optional</span>
+                                                <span class="detail-tag">Required</span>
                                             </div>
                                             <input type="hidden" id="gps_lat" name="gps_lat">
                                             <input type="hidden" id="gps_lng" name="gps_lng">
@@ -965,6 +965,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (incidentForm && submitReportBtn) {
         incidentForm.addEventListener('submit', function (e) {
+            const lat = gpsLat && gpsLat.value ? Number(gpsLat.value) : null;
+            const lng = gpsLng && gpsLng.value ? Number(gpsLng.value) : null;
+
+            if (lat === null || lng === null || Number.isNaN(lat) || Number.isNaN(lng)) {
+                e.preventDefault();
+                gpsStatus.textContent = 'GPS coordinates are required. Please allow location access or place the pin on the map before submitting.';
+                gpsStatus.classList.add('text-warning');
+                const firstError = document.getElementById('gps_lat');
+                if (firstError) firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return;
+            }
+
             // Prevent double submission by disabling the button
             if (submitReportBtn.disabled) {
                 e.preventDefault();

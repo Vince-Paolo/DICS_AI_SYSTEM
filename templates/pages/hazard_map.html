@@ -1,6 +1,6 @@
 {% extends 'pages/base.html' %}
 
-{% block title %}Hazard Map | DICS AI{% endblock %}
+{% block title %}{{ _('Hazard Map') }} | DICS AI{% endblock %}
 
 {% block extra_head %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
@@ -34,11 +34,118 @@
         opacity: 0.85;
         margin-top: 0.35rem;
     }
+    #satelliteBasemapToggle,
+    #rainfallWatchToggle,
+    #typhoonTrackToggle {
+        font-weight: 600;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+    }
+    #satelliteBasemapToggle {
+        background: rgba(59, 130, 246, 0.12);
+        border: 1px solid rgba(147, 197, 253, 0.8);
+        color: #eaf2ff;
+    }
+    #rainfallWatchToggle,
+    #typhoonTrackToggle {
+        background: rgba(14, 165, 233, 0.12);
+        border: 1px solid rgba(125, 211, 252, 0.8);
+        color: #dff7ff;
+    }
+    #satelliteBasemapToggle:hover,
+    #satelliteBasemapToggle:focus-visible,
+    #rainfallWatchToggle:hover,
+    #rainfallWatchToggle:focus-visible,
+    #typhoonTrackToggle:hover,
+    #typhoonTrackToggle:focus-visible {
+        background: rgba(59, 130, 246, 0.2);
+        border-color: rgba(147, 197, 253, 1);
+        color: #ffffff;
+    }
+    #satelliteBasemapToggle.active,
+    #rainfallWatchToggle.active,
+    #typhoonTrackToggle.active {
+        background: linear-gradient(180deg, rgba(59, 130, 246, 0.96), rgba(37, 99, 235, 0.96));
+        border-color: rgba(191, 219, 254, 0.95);
+        color: #ffffff;
+        box-shadow: 0 0 0 1px rgba(191, 219, 254, 0.35), 0 8px 18px rgba(37, 99, 235, 0.25);
+    }
+    .map-legend {
+        position: absolute;
+        right: 16px;
+        bottom: 16px;
+        z-index: 450;
+        background: rgba(15, 23, 42, 0.78);
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        border-radius: 12px;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.28);
+        backdrop-filter: blur(6px);
+        padding: 0.6rem 0.8rem;
+        min-width: 210px;
+    }
+    .map-legend-title {
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: rgba(226, 232, 240, 0.8);
+        margin-bottom: 0.45rem;
+        font-weight: 700;
+    }
+    .map-legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.18rem 0;
+        color: #e2e8f0;
+        font-size: 0.8rem;
+    }
+    .map-legend-swatch {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        border: 1px solid rgba(255, 255, 255, 0.75);
+        box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.18);
+    }
+    .map-legend-line {
+        width: 18px;
+        height: 3px;
+        border-radius: 999px;
+        display: inline-block;
+    }
+    .map-legend-toggle {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        display: inline-block;
+        border: 1px solid rgba(255, 255, 255, 0.8);
+        background: currentColor;
+    }
+    .map-legend-typhoon {
+        width: 18px;
+        height: 18px;
+        display: inline-block;
+        flex-shrink: 0;
+        filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.35));
+    }
+    .offline-map-banner {
+        background: rgba(15, 23, 42, 0.8);
+        color: #f8fafc;
+        border: 1px solid rgba(148, 163, 184, 0.4);
+        border-radius: 12px;
+        padding: 0.55rem 0.8rem;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.28);
+        font-size: 0.8rem;
+        line-height: 1.35;
+        max-width: 280px;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<h1 class="visually-hidden">Hazard Map</h1>
+<h1 class="visually-hidden">{{ _('Hazard Map') }}</h1>
 <div class="container-fluid p-4">
     <div class="row">
         <div class="col-12">
@@ -49,11 +156,11 @@
                             <div class="d-flex align-items-center mb-3">
                                 <span class="badge bg-light text-primary rounded-circle p-3 me-3"><i class="bi bi-geo-alt-fill fs-5"></i></span>
                                 <div>
-                                    <small class="text-muted">Hazard Zones</small>
+                                    <small class="text-muted">{{ _('Hazard Zones') }}</small>
                                     <h5 class="mb-0" id="statHazardZones">&mdash;</h5>
                                 </div>
                             </div>
-                            <p class="text-muted mb-0">Zones with recent alerts and risk classification.</p>
+                            <p class="text-muted mb-0">{{ _('Zones with recent alerts and risk classification.') }}</p>
                         </div>
                     </div>
                 </div>
@@ -63,11 +170,11 @@
                             <div class="d-flex align-items-center mb-3">
                                 <span class="badge bg-light text-success rounded-circle p-3 me-3"><i class="bi bi-filter-circle fs-5"></i></span>
                                 <div>
-                                    <small class="text-muted">Filtered Views</small>
+                                    <small class="text-muted">{{ _('Filtered Views') }}</small>
                                     <h5 class="mb-0" id="statFilteredViews">0</h5>
                                 </div>
                             </div>
-                            <p class="text-muted mb-0">Number of filters currently applied to the map.</p>
+                            <p class="text-muted mb-0">{{ _('Number of filters currently applied to the map.') }}</p>
                         </div>
                     </div>
                 </div>
@@ -77,11 +184,11 @@
                             <div class="d-flex align-items-center mb-3">
                                 <span class="badge bg-light text-danger rounded-circle p-3 me-3"><i class="bi bi-exclamation-octagon-fill fs-5"></i></span>
                                 <div>
-                                    <small class="text-muted">Active Alerts</small>
+                                    <small class="text-muted">{{ _('Active Alerts') }}</small>
                                     <h5 class="mb-0" id="statActiveAlerts">0</h5>
                                 </div>
                             </div>
-                            <p class="text-muted mb-0">Critical locations needing immediate attention.</p>
+                            <p class="text-muted mb-0">{{ _('Critical locations needing immediate attention.') }}</p>
                         </div>
                     </div>
                 </div>
@@ -91,24 +198,24 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div>
-                            <h2 class="card-title mb-1">Hazard Map Viewer</h2>
-                            <p class="text-muted mb-0">Visualize location markers with risk filters and zone details.</p>
+                            <h2 class="card-title mb-1">{{ _('Hazard Map Viewer') }}</h2>
+                            <p class="text-muted mb-0">{{ _('Visualize location markers with risk filters and zone details.') }}</p>
                         </div>
-                        <button class="btn btn-outline-secondary btn-sm">Refresh Map</button>
+                        <button class="btn btn-outline-secondary btn-sm">{{ _('Refresh Map') }}</button>
                     </div>
                     <div class="row g-3 align-items-center mb-3">
                         <div class="col-md-5">
                             <div class="input-group">
                                 <span class="input-group-text"><i class="bi bi-search"></i></span>
-                                <input id="hazardSearchInput" type="text" class="form-control" placeholder="Search hazard areas..." aria-label="Search hazard areas">
-                                <button id="hazardSearchClear" type="button" class="btn btn-outline-secondary" aria-label="Clear search">Clear</button>
+                                <input id="hazardSearchInput" type="text" class="form-control" placeholder="{{ _('Search hazard areas...') }}" aria-label="{{ _('Search hazard areas') }}">
+                                <button id="hazardSearchClear" type="button" class="btn btn-outline-secondary" aria-label="{{ _('Clear search') }}">{{ _('Clear') }}</button>
                             </div>
                         </div>
                         <div class="col-md-7">
                             <div class="row g-2 mb-2">
                                 <div class="col-sm-3">
                                     <select id="provinceFilter" class="form-select form-select-sm" aria-label="Filter by province">
-                                        <option value="">All Provinces</option>
+                                        <option value="">{{ _('All Provinces') }}</option>
                                         {% for province in provinces %}
                                         <option value="{{ province.name }}" data-id="{{ province.id }}">{{ province.name }}</option>
                                         {% endfor %}
@@ -116,30 +223,43 @@
                                 </div>
                                 <div class="col-sm-3">
                                     <select id="municipalityFilter" class="form-select form-select-sm" aria-label="Filter by municipality">
-                                        <option value="">All Municipalities</option>
+                                        <option value="">{{ _('All Municipalities') }}</option>
                                     </select>
                                 </div>
                                 <div class="col-sm-3">
                                     <select id="statusFilter" class="form-select form-select-sm" aria-label="Filter by status">
-                                        <option value="">All Statuses</option>
-                                        <option value="NEW">New</option>
-                                        <option value="VERIFIED">Verified</option>
-                                        <option value="RESOLVED">Resolved</option>
-                                        <option value="REJECTED">Rejected</option>
+                                        <option value="">{{ _('All Statuses') }}</option>
+                                        <option value="NEW">{{ _('New') }}</option>
+                                        <option value="VERIFIED">{{ _('Verified') }}</option>
+                                        <option value="RESOLVED">{{ _('Resolved') }}</option>
+                                        <option value="REJECTED">{{ _('Rejected') }}</option>
                                     </select>
                                 </div>
                                 <div class="col-sm-3">
                                     <select id="hazardTypeFilter" class="form-select form-select-sm" aria-label="Filter by hazard type">
-                                        <option value="all">All Hazards</option>
-                                        <option value="flood">Flood</option>
-                                        <option value="earthquake">Earthquake</option>
-                                        <option value="volcanic">Volcanic</option>
-                                        <option value="fire">Fire</option>
-                                        <option value="landslide">Landslide</option>
-                                        <option value="storm">Storm</option>
-                                        <option value="emergency">Emergency</option>
-                                        <option value="other">Other</option>
+                                        <option value="all">{{ _('All Hazards') }}</option>
+                                        <option value="flood">{{ _('Flood') }}</option>
+                                        <option value="earthquake">{{ _('Earthquake') }}</option>
+                                        <option value="volcanic">{{ _('Volcanic') }}</option>
+                                        <option value="fire">{{ _('Fire') }}</option>
+                                        <option value="landslide">{{ _('Landslide') }}</option>
+                                        <option value="storm">{{ _('Storm') }}</option>
+                                        <option value="emergency">{{ _('Emergency') }}</option>
+                                        <option value="other">{{ _('Other') }}</option>
                                     </select>
+                                </div>
+                            </div>
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-4">
+                                    <label for="incidentStartDate" class="form-label small text-muted mb-1">From</label>
+                                    <input id="incidentStartDate" type="date" class="form-control form-control-sm" aria-label="Incident start date" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="incidentEndDate" class="form-label small text-muted mb-1">To</label>
+                                    <input id="incidentEndDate" type="date" class="form-control form-control-sm" aria-label="Incident end date" />
+                                </div>
+                                <div class="col-md-4 d-flex align-items-end">
+                                    <button id="applyDateRange" type="button" class="btn btn-sm btn-outline-light w-100">Apply date range</button>
                                 </div>
                             </div>
                             <div class="d-flex flex-wrap gap-2 justify-content-md-end">
@@ -151,6 +271,13 @@
                                 <span class="w-100 d-none d-md-block" style="height:0;"></span>
                                 <button id="evacuationCentersToggle" class="btn btn-outline-info btn-sm active">Evacuation Centers</button>
                                 <button id="resourcesToggle" class="btn btn-outline-secondary btn-sm active">Resources</button>
+                                <button id="heatMapToggle" class="btn btn-outline-warning btn-sm active">Heat Map</button>
+                                <span class="w-100 d-none d-md-block" style="height:0;"></span>
+                                <button id="satelliteBasemapToggle" class="btn btn-outline-dark btn-sm" title="Switch between street map and satellite imagery">Satellite View</button>
+                                <button id="rainfallWatchToggle" class="btn btn-outline-cyan btn-sm active" title="Rainfall watch layer for CALABARZON weather intensity">Rainfall Watch</button>
+                                <button id="typhoonTrackToggle" class="btn btn-outline-info btn-sm active" title="Typhoon advisory and projected storm track">Typhoon Track</button>
+                                <button id="thermalHotspotsToggle" class="btn btn-outline-warning btn-sm active" title="NASA FIRMS thermal-anomaly detections (volcanic + fire signatures)">Satellite Thermal Hotspots</button>
+                                <button id="floodFootprintsToggle" class="btn btn-outline-primary btn-sm active" title="GDACS/EC-JRC satellite-modeled flood extent">Flood Extent (Satellite)</button>
                             </div>
                         </div>
                     </div>
@@ -164,6 +291,27 @@
                             <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                             Loading incident markers&hellip;
                         </div>
+                        <div id="mapLegend" class="map-legend" aria-label="Map legend">
+                            <div class="map-legend-title">Legend</div>
+                            <div class="map-legend-item"><span class="map-legend-swatch" style="background:#10b981; color:#10b981;">&nbsp;</span>Low risk</div>
+                            <div class="map-legend-item"><span class="map-legend-swatch" style="background:#f59e0b; color:#f59e0b;">&nbsp;</span>Moderate risk</div>
+                            <div class="map-legend-item"><span class="map-legend-swatch" style="background:#dc2626; color:#dc2626;">&nbsp;</span>High / severe risk</div>
+                            <div class="map-legend-item"><span class="map-legend-swatch" style="background:#0891b2; color:#0891b2;">&nbsp;</span>Evacuation center</div>
+                            <div class="map-legend-item"><span class="map-legend-swatch" style="background:#64748b; color:#64748b;">&nbsp;</span>Resource</div>
+                            <div class="map-legend-item"><span class="map-legend-swatch" style="background:#38bdf8; color:#38bdf8;">&nbsp;</span>Rainfall watch</div>
+                            <div class="map-legend-item">
+                                <svg class="map-legend-typhoon" viewBox="0 0 18 18" aria-label="Typhoon marker" role="img">
+                                    <circle cx="9" cy="9" r="7" fill="#e11d2e" />
+                                    <path d="M9 3.3c-2.9 0-5.2 2.3-5.2 5.2S6.1 13.7 9 13.7 14.2 11.4 14.2 8.5 11.9 3.3 9 3.3Z" fill="#d6112a" opacity="0.9"/>
+                                    <path d="M5.7 8.4c1.7-3.1 5-4.5 8.8-2.6-1.5.5-2.5 1.5-3.4 2.8 2.1.1 4.1 1.1 5 3-2.4 2.4-6 3.1-8.9 1.3.9-1.6 1.2-3.1-1.5-4.5Z" fill="#e42d36" opacity="0.8"/>
+                                    <circle cx="9" cy="9" r="2.3" fill="#ffffff"/>
+                                    <circle cx="9" cy="9" r="0.8" fill="#1f2937"/>
+                                </svg>
+                                Typhoon
+                            </div>
+                            <div class="map-legend-item"><span class="map-legend-line" style="background:#f97316;">&nbsp;</span>Thermal hotspot</div>
+                            <div class="map-legend-item"><span class="map-legend-line" style="background:#0284c7;">&nbsp;</span>Flood extent</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -175,12 +323,75 @@
 {% block scripts %}
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+<script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
 <script>
 const map = L.map('map').setView([13.9411, 121.1622], 10);
-L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+const streetBasemap = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '© OpenStreetMap'
-}).addTo(map);
+});
+// Esri World Imagery: free satellite basemap, no API key. Gives responders
+// actual terrain/ground context (flood plains, urban density, vegetation)
+// under the hazard markers instead of just street lines.
+const satelliteBasemap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom: 19,
+    crossOrigin: true,
+    attribution: 'Esri, Maxar, Earthstar Geographics'
+});
+
+const offlineMapNotice = L.control({ position: 'bottomleft' });
+let offlineNoticeVisible = false;
+offlineMapNotice.onAdd = function () {
+    const div = L.DomUtil.create('div', 'offline-map-banner');
+    div.innerHTML = 'Offline mode: using the last cached incident snapshot and disabling live map tiles.';
+    return div;
+};
+
+function syncTileLayersForConnectivity() {
+    const offline = !navigator.onLine;
+    if (offline) {
+        if (map.hasLayer(satelliteBasemap)) {
+            map.removeLayer(satelliteBasemap);
+        }
+        if (map.hasLayer(streetBasemap)) {
+            map.removeLayer(streetBasemap);
+        }
+        if (!offlineNoticeVisible) {
+            offlineMapNotice.addTo(map);
+            offlineNoticeVisible = true;
+        }
+        const toggle = document.getElementById('satelliteBasemapToggle');
+        if (toggle) {
+            toggle.classList.remove('active');
+        }
+    } else {
+        if (!map.hasLayer(streetBasemap) && !map.hasLayer(satelliteBasemap)) {
+            streetBasemap.addTo(map);
+        }
+        if (offlineNoticeVisible) {
+            map.removeControl(offlineMapNotice);
+            offlineNoticeVisible = false;
+        }
+    }
+}
+
+streetBasemap.addTo(map);
+
+satelliteBasemap.on('tileerror', () => {
+    if (map.hasLayer(satelliteBasemap)) {
+        map.removeLayer(satelliteBasemap);
+        map.addLayer(streetBasemap);
+        const toggle = document.getElementById('satelliteBasemapToggle');
+        if (toggle) {
+            toggle.classList.remove('active');
+            toggle.title = 'Satellite imagery is unavailable; showing the standard street map instead.';
+        }
+    }
+});
+
+syncTileLayersForConnectivity();
+window.addEventListener('online', syncTileLayersForConnectivity);
+window.addEventListener('offline', syncTileLayersForConnectivity);
 
 const hazardColors = {
     flood: '#0284c7',
@@ -227,6 +438,28 @@ let evacuationCentersData = [];
 let resourcesData = [];
 let evacuationCentersVisible = true;
 let resourcesVisible = true;
+let thermalHotspotsData = [];
+let floodFootprintsData = [];
+let rainfallWatchData = [];
+let typhoonTrackData = [];
+let thermalHotspotsVisible = true;
+let floodFootprintsVisible = true;
+let rainfallWatchVisible = true;
+let typhoonTrackVisible = true;
+let heatMapVisible = true;
+
+const heatLayer = L.heatLayer([], {
+    radius: 24,
+    blur: 18,
+    maxZoom: 15,
+    minOpacity: 0.5,
+    gradient: {
+        0.15: '#38bdf8',
+        0.45: '#f59e0b',
+        0.8: '#f97316',
+        1.0: '#ef4444'
+    }
+}).addTo(map);
 
 const clusterGroup = L.markerClusterGroup({
     chunkedLoading: true,
@@ -237,6 +470,10 @@ const clusterGroup = L.markerClusterGroup({
 clusterGroup.addTo(map);
 const evacuationCentersLayer = L.layerGroup().addTo(map);
 const resourcesLayer = L.layerGroup().addTo(map);
+const rainfallLayer = L.layerGroup().addTo(map);
+const typhoonLayer = L.layerGroup().addTo(map);
+const thermalHotspotsLayer = L.layerGroup().addTo(map);
+const floodFootprintLayer = L.layerGroup().addTo(map);
 
 function createPointIcon(color, symbol) {
     return L.divIcon({
@@ -267,12 +504,152 @@ function renderOperationalLayers() {
     }
 }
 
+function createThermalIcon(confidence) {
+    const conf = (confidence || '').toLowerCase();
+    const color = conf === 'h' || conf === 'high' ? '#ea580c' : conf === 'n' || conf === 'nominal' ? '#f97316' : '#fdba74';
+    return L.divIcon({
+        className: 'thermal-hotspot-icon',
+        html: `<div style="background:${color}; opacity:0.9; width:12px; height:12px; border-radius:50%; border:1px solid #ffffff; box-shadow:0 0 3px rgba(0,0,0,0.4);"></div>`,
+        iconSize: [12, 12],
+        iconAnchor: [6, 6],
+    });
+}
+
+function renderThermalHotspots() {
+    thermalHotspotsLayer.clearLayers();
+    if (!thermalHotspotsVisible) return;
+    thermalHotspotsData.forEach(point => {
+        if (point.lat == null || point.lon == null) return;
+        const marker = L.marker([point.lat, point.lon], { icon: createThermalIcon(point.confidence) });
+        marker.bindPopup(
+            `<strong>Satellite thermal anomaly</strong><br/>` +
+            `Source: ${point.source || 'NASA FIRMS'}<br/>` +
+            `Detected: ${point.acq_date || '—'} ${point.acq_time || ''}<br/>` +
+            `Confidence: ${point.confidence || 'n/a'}${point.frp ? ' &middot; ' + point.frp + ' MW' : ''}<br/>` +
+            `<small class="text-muted">May reflect agricultural burning as well as volcanic activity — cross-check against known volcano status.</small>`
+        );
+        thermalHotspotsLayer.addLayer(marker);
+    });
+}
+
+function renderFloodFootprints() {
+    floodFootprintLayer.clearLayers();
+    if (!floodFootprintsVisible) return;
+    floodFootprintsData.forEach(item => {
+        if (!item.geojson) return;
+        try {
+            const layer = L.geoJSON(item.geojson, {
+                style: { color: '#0284c7', weight: 2, fillColor: '#38bdf8', fillOpacity: 0.35 }
+            });
+            layer.bindPopup(
+                `<strong>${item.name || 'Flood extent'}</strong><br/>` +
+                `Alert level: ${item.alert_level || 'n/a'}<br/>` +
+                `Source: ${item.source || 'GDACS / EC-JRC'}`
+            );
+            floodFootprintLayer.addLayer(layer);
+        } catch (err) {
+            // Skip malformed geometry rather than breaking the whole layer.
+        }
+    });
+}
+
+function getRainfallColor(rainfallMm) {
+    if (rainfallMm >= 100) return '#dc2626';
+    if (rainfallMm >= 75) return '#f97316';
+    if (rainfallMm >= 50) return '#facc15';
+    return '#38bdf8';
+}
+
+function renderRainfallWatch() {
+    rainfallLayer.clearLayers();
+    if (!rainfallWatchVisible) return;
+    rainfallWatchData.forEach(station => {
+        if (station.lat == null || station.lon == null) return;
+        const color = getRainfallColor(station.rainfall_mm || 0);
+        const circle = L.circleMarker([station.lat, station.lon], {
+            radius: 9 + (station.rainfall_mm || 0) / 14,
+            color: '#ffffff',
+            weight: 1.5,
+            fillColor: color,
+            fillOpacity: 0.82,
+        });
+        circle.bindPopup(
+            `<strong>${station.name || 'Rainfall station'}</strong><br/>` +
+            `${station.status || 'Rainfall watch'}<br/>` +
+            `Rainfall: ${(station.rainfall_mm || 0)} mm/hr<br/>` +
+            `Source: ${station.source || 'Regional forecast blend'}`
+        );
+        rainfallLayer.addLayer(circle);
+
+        const halo = L.circle([station.lat, station.lon], {
+            radius: 7000,
+            color: color,
+            fillColor: color,
+            fillOpacity: 0.12,
+            weight: 1,
+        });
+        rainfallLayer.addLayer(halo);
+    });
+}
+
+function createTyphoonIcon() {
+    return L.divIcon({
+        className: 'typhoon-marker-icon',
+        html: `
+            <svg width="52" height="52" viewBox="0 0 52 52" role="img" aria-label="Typhoon indicator">
+                <path d="M26 7c-10 0-18 8-18 18s8 18 18 18 18-8 18-18S36 7 26 7Z" fill="#e11d2e"/>
+                <path d="M26 11c-8 0-14 6-14 14s6 14 14 14 14-6 14-14S34 11 26 11Z" fill="#d6112a"/>
+                <path d="M14 27c7-11 18-14 29-9-5 1-10 4-14 8 8 0 15 5 17 13-10 7-24 7-32-12Z" fill="#d60f2a"/>
+                <path d="M27 15c-9 5-13 12-12 21 8-4 13-5 18-4-5 5-10 10-19 12 5 4 13 6 22 4-3-5-4-11 0-17-3-2-6-4-9-8Z" fill="#e42d36" opacity="0.9"/>
+                <circle cx="26" cy="26" r="6.8" fill="#f4f8ff"/>
+                <circle cx="26" cy="26" r="2.6" fill="#131a27"/>
+                <path d="M12 30c7-12 21-15 30-5-8-3-14-2-22 1 7 0 12 3 16 9-11 8-25 7-31-5Z" fill="#fff" opacity="0.08"/>
+            </svg>
+        `,
+        iconSize: [60, 60],
+        iconAnchor: [30, 30],
+        popupAnchor: [0, -30]
+    });
+}
+
+function renderTyphoonTracks() {
+    typhoonLayer.clearLayers();
+    if (!typhoonTrackVisible) return;
+    typhoonTrackData.forEach(track => {
+        if (!Array.isArray(track.track) || !track.track.length) return;
+        const line = L.polyline(track.track.map(([lat, lon]) => [lat, lon]), {
+            color: '#38bdf8',
+            weight: 3,
+            opacity: 0.9,
+            dashArray: '7 7',
+        });
+        line.bindPopup(
+            `<strong>${track.name || 'Typhoon track'}</strong><br/>` +
+            `Status: ${track.category || 'Advisory'}<br/>` +
+            `Wind: ${track.wind_kph || '—'} kph<br/>` +
+            `Pressure: ${track.pressure_hpa || '—'} hPa<br/>` +
+            `Source: ${track.source || 'PAGASA advisory model'}`
+        );
+        typhoonLayer.addLayer(line);
+
+        const eye = track.track[track.track.length - 1];
+        if (eye) {
+            const marker = L.marker([eye[0], eye[1]], {
+                icon: createTyphoonIcon(),
+                zIndexOffset: 1000,
+            });
+            marker.bindPopup(`<strong>${track.name}</strong><br/>Projected center near ${eye[0].toFixed(2)}, ${eye[1].toFixed(2)}`);
+            typhoonLayer.addLayer(marker);
+        }
+    });
+}
+
 function renderMarkers(filter, hazardFilter = activeHazardFilter) {
     activeFilter = filter;
     activeHazardFilter = hazardFilter;
     const searchQuery = (mapFilters.search || '').trim().toLowerCase();
     clusterGroup.clearLayers();
-    markersData.forEach(item => {
+    getFilteredMapItems().forEach(item => {
         const level = (item.level || 'Moderate').toLowerCase();
         const hazardType = (item.hazard_type || '').toLowerCase();
         const textFields = [
@@ -313,6 +690,50 @@ function renderMarkers(filter, hazardFilter = activeHazardFilter) {
         const shouldShowEmptyState = clusterGroup.getLayers().length === 0 && hasAnyFilters && markersData.length > 0;
         noResultsEl.classList.toggle('d-none', !shouldShowEmptyState);
     }
+}
+
+function getHeatWeight(level) {
+    const normalized = (level || 'moderate').toLowerCase();
+    if (normalized === 'severe') return 1.0;
+    if (normalized === 'high') return 0.85;
+    if (normalized === 'moderate') return 0.6;
+    if (normalized === 'low') return 0.35;
+    return 0.5;
+}
+
+function getFilteredMapItems() {
+    const searchQuery = (mapFilters.search || '').trim().toLowerCase();
+    return markersData.filter(item => {
+        const level = (item.level || 'Moderate').toLowerCase();
+        const hazardType = (item.hazard_type || '').toLowerCase();
+        const textFields = [
+            item.label,
+            item.location,
+            item.message,
+            item.province,
+            item.municipality,
+            item.hazard_type,
+            item.status,
+        ].filter(Boolean).join(' ').toLowerCase();
+        const matchesSeverity = activeFilter === 'all' || (activeFilter === 'severe' && level === 'severe') || (activeFilter === 'high' && level === 'high') || (activeFilter === 'moderate' && level === 'moderate') || (activeFilter === 'low' && level === 'low');
+        const matchesHazard = activeHazardFilter === 'all' || hazardType === activeHazardFilter;
+        const matchesLocation = (!mapFilters.province || item.province === mapFilters.province)
+            && (!mapFilters.municipality || item.municipality === mapFilters.municipality)
+            && (!mapFilters.status || item.status === mapFilters.status);
+        const matchesSearch = !searchQuery || textFields.includes(searchQuery);
+        return matchesSeverity && matchesHazard && matchesLocation && matchesSearch;
+    });
+}
+
+function renderHeatLayer() {
+    if (!heatMapVisible) {
+        heatLayer.setLatLngs([]);
+        return;
+    }
+    const points = getFilteredMapItems()
+        .filter(item => item && Number.isFinite(item.lat) && Number.isFinite(item.lng))
+        .map(item => [item.lat, item.lng, getHeatWeight(item.level)]);
+    heatLayer.setLatLngs(points);
 }
 
 function updateStats() {
@@ -418,12 +839,25 @@ statusFilterSelect.addEventListener('change', event => {
     updateStats();
 });
 
+function getMapPinQueryParams() {
+    const params = new URLSearchParams();
+    const start = document.getElementById('incidentStartDate')?.value;
+    const end = document.getElementById('incidentEndDate')?.value;
+    if (start) params.set('start_date', start);
+    if (end) params.set('end_date', end);
+    return params;
+}
+
 function loadMarkers() {
-    fetch('/api/map-pins')
+    const queryString = getMapPinQueryParams().toString();
+    const url = queryString ? '/api/map-pins?' + queryString : '/api/map-pins';
+
+    fetch(url)
         .then(response => response.json())
         .then(data => {
             markersData = Array.isArray(data) ? data : [];
             renderMarkers(activeFilter);
+            renderHeatLayer();
             if (markersData.length > 0) {
                 const first = markersData[0];
                 map.setView([first.lat, first.lng], 10);
@@ -432,6 +866,7 @@ function loadMarkers() {
         .catch(() => {
             markersData = [];
             renderMarkers(activeFilter);
+            renderHeatLayer();
         })
         .finally(() => {
             updateStats();
@@ -439,6 +874,13 @@ function loadMarkers() {
             if (pill) pill.classList.add('is-hidden');
         });
 }
+
+const defaultStart = new Date();
+defaultStart.setDate(defaultStart.getDate() - 30);
+const incidentStartDateInput = document.getElementById('incidentStartDate');
+const incidentEndDateInput = document.getElementById('incidentEndDate');
+if (incidentStartDateInput) incidentStartDateInput.value = defaultStart.toISOString().slice(0, 10);
+if (incidentEndDateInput) incidentEndDateInput.value = new Date().toISOString().slice(0, 10);
 
 loadMarkers();
 
@@ -453,6 +895,38 @@ Promise.all([
     evacuationCentersData = [];
     resourcesData = [];
 });
+
+fetch('/api/hazard-layers/thermal-hotspots')
+    .then(response => response.json())
+    .then(data => {
+        thermalHotspotsData = Array.isArray(data) ? data : [];
+        renderThermalHotspots();
+    })
+    .catch(() => { thermalHotspotsData = []; });
+
+fetch('/api/hazard-layers/flood-footprints')
+    .then(response => response.json())
+    .then(data => {
+        floodFootprintsData = Array.isArray(data) ? data : [];
+        renderFloodFootprints();
+    })
+    .catch(() => { floodFootprintsData = []; });
+
+fetch('/api/hazard-layers/rainfall')
+    .then(response => response.json())
+    .then(data => {
+        rainfallWatchData = Array.isArray(data) ? data : [];
+        renderRainfallWatch();
+    })
+    .catch(() => { rainfallWatchData = []; });
+
+fetch('/api/hazard-layers/typhoon-tracks')
+    .then(response => response.json())
+    .then(data => {
+        typhoonTrackData = Array.isArray(data) ? data : [];
+        renderTyphoonTracks();
+    })
+    .catch(() => { typhoonTrackData = []; });
 
 const buttons = document.querySelectorAll('#allZones, #severeRisk, #highRisk, #moderateRisk, #lowRisk');
 buttons.forEach(button => {
@@ -479,6 +953,52 @@ document.getElementById('resourcesToggle').addEventListener('click', event => {
     resourcesVisible = !resourcesVisible;
     event.currentTarget.classList.toggle('active', resourcesVisible);
     renderOperationalLayers();
+});
+
+document.getElementById('heatMapToggle').addEventListener('click', event => {
+    heatMapVisible = !heatMapVisible;
+    event.currentTarget.classList.toggle('active', heatMapVisible);
+    renderHeatLayer();
+});
+
+document.getElementById('applyDateRange').addEventListener('click', () => {
+    loadMarkers();
+});
+
+document.getElementById('thermalHotspotsToggle').addEventListener('click', event => {
+    thermalHotspotsVisible = !thermalHotspotsVisible;
+    event.currentTarget.classList.toggle('active', thermalHotspotsVisible);
+    renderThermalHotspots();
+});
+
+document.getElementById('floodFootprintsToggle').addEventListener('click', event => {
+    floodFootprintsVisible = !floodFootprintsVisible;
+    event.currentTarget.classList.toggle('active', floodFootprintsVisible);
+    renderFloodFootprints();
+});
+
+document.getElementById('rainfallWatchToggle').addEventListener('click', event => {
+    rainfallWatchVisible = !rainfallWatchVisible;
+    event.currentTarget.classList.toggle('active', rainfallWatchVisible);
+    renderRainfallWatch();
+});
+
+document.getElementById('typhoonTrackToggle').addEventListener('click', event => {
+    typhoonTrackVisible = !typhoonTrackVisible;
+    event.currentTarget.classList.toggle('active', typhoonTrackVisible);
+    renderTyphoonTracks();
+});
+
+document.getElementById('satelliteBasemapToggle').addEventListener('click', event => {
+    const showSatellite = !map.hasLayer(satelliteBasemap);
+    event.currentTarget.classList.toggle('active', showSatellite);
+    if (showSatellite) {
+        map.removeLayer(streetBasemap);
+        satelliteBasemap.addTo(map);
+    } else {
+        map.removeLayer(satelliteBasemap);
+        streetBasemap.addTo(map);
+    }
 });
 
 const hazardTypeFilter = document.getElementById('hazardTypeFilter');

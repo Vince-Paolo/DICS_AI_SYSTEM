@@ -158,6 +158,27 @@ async function triggerSOS() {
         sosButton.disabled = true;
     }
 
+    const payload = {
+        location: 'User Emergency Location'
+    };
+
+    if (navigator.geolocation) {
+        try {
+            const position = await new Promise((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(resolve, reject, {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0,
+                });
+            });
+            payload.latitude = position.coords.latitude;
+            payload.longitude = position.coords.longitude;
+            payload.location = `GPS ${position.coords.latitude.toFixed(5)}, ${position.coords.longitude.toFixed(5)}`;
+        } catch (error) {
+            console.warn('GPS unavailable for SOS; submitting emergency alert without coordinates.', error);
+        }
+    }
+
     try {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
         const response = await fetch('/emergency-sos', {
@@ -166,9 +187,7 @@ async function triggerSOS() {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': csrfToken,
             },
-            body: JSON.stringify({
-                location: 'User Emergency Location'
-            })
+            body: JSON.stringify(payload)
         });
         const data = await response.json();
         if (data.success) {
@@ -340,6 +359,28 @@ window.addEventListener('DOMContentLoaded', function () {
     initRequiredFieldIndicators();
     initFormValidation();
     initPageTransitions();
+
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/service-worker.js', { scope: '/' }).catch(error => {
+            console.warn('Service worker registration failed:', error);
+        });
+    }
+
+    const updateOfflineStatus = () => {
+        const statusNode = document.getElementById('pageStatus');
+        if (!statusNode) return;
+        const isOnline = navigator.onLine;
+        statusNode.textContent = isOnline
+            ? 'Online. Live updates are available.'
+            : 'Offline. Showing the last cached dashboard snapshot.';
+        statusNode.classList.toggle('d-none', false);
+        statusNode.classList.toggle('alert-success', isOnline);
+        statusNode.classList.toggle('alert-warning', !isOnline);
+    };
+
+    updateOfflineStatus();
+    window.addEventListener('online', updateOfflineStatus);
+    window.addEventListener('offline', updateOfflineStatus);
 
     /* NOTE: Sidebar toggle is handled entirely inside sidebar.html's own
        <script> block. Do NOT add sidebar logic here to avoid double-binding. */

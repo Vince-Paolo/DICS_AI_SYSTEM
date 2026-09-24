@@ -1,16 +1,16 @@
 {% extends 'pages/base.html' %}
 {% import 'partials/hazard_macros.html' as hz %}
 
-{% block title %}Resources & Emergency Info | DICS AI Citizen Portal{% endblock %}
+{% block title %}{{ _('Resources and Emergency Info') }} | DICS AI Citizen Portal{% endblock %}
 
 {% block content %}
-<h1 class="visually-hidden">Resources & Emergency Info | DICS AI Citizen Portal</h1>
+<h1 class="visually-hidden">{{ _('Resources and Emergency Info') }} | DICS AI Citizen Portal</h1>
 <div class="container-fluid">
     <div class="row mt-4">
         <div class="col-12">
             <div class="section-header">
                 <span class="section-header-icon"><i class="bi bi-info-square"></i></span>
-                <h4>Emergency Resources & Information</h4>
+                <h4>{{ _('Emergency Resources and Information') }}</h4>
             </div>
 
             <div class="row g-3 mb-4 citizen-highlight-row">
@@ -21,25 +21,20 @@
                                 <div class="icon-badge" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.1)); color: var(--hazard-high); border: 1px solid rgba(239, 68, 68, 0.3);">
                                     <i class="bi bi-telephone-fill"></i>
                                 </div>
-                                <h5 class="mb-0">Emergency Hotlines</h5>
+                                <h5 class="mb-0">{{ _('Emergency Hotlines') }}</h5>
                             </div>
                             <div class="vstack gap-3 flex-grow-1">
                                 <div class="info-tile info-tile-danger h-100">
-                                    <p class="small text-muted mb-1"><i class="bi bi-broadcast me-1"></i>National Emergency</p>
-                                    <p class="text-white fw-bold fs-5 mb-0">911</p>
+                                    <p class="small text-muted mb-1"><i class="bi bi-broadcast me-1"></i>{{ _('National Emergency') }}</p>
+                                    <a href="tel:{{ general.dial }}" class="text-white fw-bold fs-5 mb-0 text-decoration-none">{{ general.display }}</a>
                                 </div>
+                                {% for service in services if service.dial and service.dial != general.dial %}
                                 <div class="info-tile info-tile-primary h-100">
-                                    <p class="small text-muted mb-1"><i class="bi bi-shield-fill me-1"></i>Calabarzon Police</p>
-                                    <p class="text-white fw-bold fs-5 mb-0">117</p>
+                                    <p class="small text-muted mb-1"><span aria-hidden="true">{{ service.emoji }}</span> {{ service.label }}</p>
+                                    <a href="tel:{{ service.dial }}" class="text-white fw-bold fs-5 mb-0 text-decoration-none">{{ service.display }}</a>
                                 </div>
-                                <div class="info-tile info-tile-danger h-100">
-                                    <p class="small text-muted mb-1"><i class="bi bi-fire me-1"></i>Fire Department</p>
-                                    <p class="text-white fw-bold fs-5 mb-0">(02) 427-8888</p>
-                                </div>
-                                <div class="info-tile info-tile-success h-100">
-                                    <p class="small text-muted mb-1"><i class="bi bi-heart-pulse-fill me-1"></i>Medical Emergency</p>
-                                    <p class="text-white fw-bold fs-5 mb-0">(02) 819-9999</p>
-                                </div>
+                                {% endfor %}
+                                <a href="/emergency-assistance" class="btn btn-danger fw-bold"><i class="bi bi-telephone-fill me-2" aria-hidden="true"></i>{{ _('Call for Help') }}</a>
                             </div>
                         </div>
                     </div>

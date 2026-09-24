@@ -1,0 +1,11 @@
+{
+  "name": "DICS AI Operations",
+  "short_name": "DICS AI",
+  "description": "Digital Incident Command System operations dashboard with incident monitoring and hazard maps.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b1220",
+  "theme_color": "#0f172a",
+  "orientation": "portrait",
+  "scope": "/"
+}

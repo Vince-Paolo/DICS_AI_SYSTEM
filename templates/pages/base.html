@@ -1,9 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ current_locale }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0f172a">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link rel="manifest" href="/static/manifest.webmanifest">
     <title>{% block title %}DICS ACCELERATED HAZARD FRAMEWORK{% endblock %}</title>
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
@@ -14,11 +16,21 @@
 </head>
 <body>
 <a class="visually-hidden-focusable" href="#main-content">Skip to main content</a>
+<div class="language-switcher position-fixed top-0 end-0 m-2" style="z-index: 1100;">
+    {% if current_locale == 'tl' %}
+        <a class="btn btn-sm btn-outline-light" href="{{ url_for('set_language', locale='en', next=request.full_path) }}" lang="en" aria-label="{{ _('Switch to English') }}">EN</a>
+    {% else %}
+        <a class="btn btn-sm btn-outline-light" href="{{ url_for('set_language', locale='tl', next=request.full_path) }}" lang="tl" aria-label="{{ _('Switch to Tagalog') }}">TL</a>
+    {% endif %}
+</div>
 {% set current_endpoint = request.endpoint or '' %}
-{% if current_endpoint and current_endpoint not in ['login', 'register', 'forgot_password', 'reset_password'] %}
+{# Pages a signed-out visitor may open (the hotline page). They show the plain
+   layout without the sidebar until the visitor is signed in. #}
+{% set hide_app_chrome = current_endpoint in ['login', 'register', 'forgot_password', 'reset_password'] or (current_endpoint == 'citizen.emergency_assistance' and not session.get('username')) %}
+{% if current_endpoint and not hide_app_chrome %}
     {% include 'partials/sidebar.html' %}
 {% endif %}
-<main id="main-content" class="container{% if current_endpoint and current_endpoint not in ['login', 'register', 'forgot_password', 'reset_password'] %} pt-4{% endif %} mb-4">
+<main id="main-content" class="container{% if current_endpoint and not hide_app_chrome %} pt-4{% endif %} mb-4">
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
@@ -33,22 +45,22 @@
     {% block content %}{% endblock %}
 </main>
 
-<div id="pageStatus" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
+<div id="pageStatus" class="alert alert-secondary bg-dark text-light border-secondary mb-3 d-none" role="status" aria-live="polite" aria-atomic="true"></div>
 <div class="toast-container position-fixed bottom-0 end-0 p-3" id="appToastContainer" aria-live="polite" aria-atomic="true"></div>
 
 <div class="modal fade" id="globalConfirmModal" tabindex="-1" aria-labelledby="globalConfirmTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content modal-surface">
             <div class="modal-header border-0">
-                <h5 class="modal-title" id="globalConfirmTitle">Confirm action</h5>
+                <h5 class="modal-title" id="globalConfirmTitle">{{ _('Confirm action') }}</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <p class="mb-0" id="globalConfirmBody"></p>
             </div>
             <div class="modal-footer border-0">
-                <button type="button" class="btn btn-outline-secondary" id="globalConfirmCancel">Cancel</button>
-                <button type="button" class="btn btn-danger" id="globalConfirmAction">Continue</button>
+                <button type="button" class="btn btn-outline-secondary" id="globalConfirmCancel">{{ _('Cancel') }}</button>
+                <button type="button" class="btn btn-danger" id="globalConfirmAction">{{ _('Continue') }}</button>
             </div>
         </div>
     </div>
@@ -61,6 +73,9 @@
         const endpoint = '{{ request.endpoint or "" }}';
         const normalizedEndpoint = endpoint === 'None' ? '' : endpoint;
         const isAuthPage = authPages.includes(normalizedEndpoint);
+        // Signed-out visitors may open the emergency hotline page without logging in.
+        const publicPages = ['citizen.emergency_assistance'];
+        const isPublicPage = publicPages.includes(normalizedEndpoint);
         const isMissingEndpoint = !normalizedEndpoint;
         const isLoggedIn = {{ 'true' if 'username' in session else 'false' }};
         const loginUrl = '{{ url_for('login') }}';
@@ -72,7 +87,7 @@
             return;
         }
 
-        if (!isLoggedIn && !isAuthPage && !isMissingEndpoint) {
+        if (!isLoggedIn && !isAuthPage && !isPublicPage && !isMissingEndpoint) {
             window.history.replaceState(null, '', loginUrl);
             window.location.reload();
             return;

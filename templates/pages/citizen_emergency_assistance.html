@@ -1,0 +1,118 @@
+{% extends 'pages/base.html' %}
+
+{% block title %}{{ _('Emergency Assistance') }} | DICS AI{% endblock %}
+
+{% block extra_head %}
+{# Self-contained on purpose: no Bootstrap classes and no icon font, only emoji,
+   so the page stays readable if it is opened from the offline cache and the
+   CDN assets are unavailable. #}
+<style>
+    .ea-wrap { max-width: 720px; margin: 0 auto; padding: 0.5rem 0 2rem; color: #f8fafc; }
+    .ea-wrap h1, .ea-wrap h2, .ea-wrap h3, .ea-wrap p, .ea-wrap ul { margin: 0; }
+    .ea-hero { background: #7f1d1d; border: 1px solid #b91c1c; border-radius: 1rem; padding: 1.5rem 1.25rem; text-align: center; }
+    .ea-eyebrow { font-size: 0.85rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #fecaca; }
+    .ea-hero h1 { font-size: 1.75rem; font-weight: 800; margin-top: 0.35rem; color: #ffffff; }
+    .ea-hero-text { margin-top: 0.5rem; color: #fee2e2; font-size: 1rem; line-height: 1.5; }
+    .ea-hint { margin-top: 0.75rem; font-size: 0.85rem; color: #fecaca; }
+    .ea-call { display: flex; align-items: center; justify-content: center; gap: 0.5rem; min-height: 56px; padding: 0.75rem 1.25rem;
+               border-radius: 0.75rem; background: #dc2626; color: #ffffff; font-size: 1.1rem; font-weight: 800;
+               text-decoration: none; border: 2px solid transparent; }
+    .ea-call:hover, .ea-call:focus { color: #ffffff; filter: brightness(1.1); }
+    .ea-call:focus-visible { outline: 3px solid #fde68a; outline-offset: 2px; }
+    .ea-call-primary { margin-top: 1rem; background: #ffffff; color: #991b1b; font-size: 1.3rem; }
+    .ea-call-primary:hover, .ea-call-primary:focus { color: #7f1d1d; }
+    .ea-number { font-variant-numeric: tabular-nums; margin-left: 0.35rem; }
+    .ea-section { margin-top: 1.75rem; }
+    .ea-section h2 { font-size: 1.15rem; font-weight: 700; margin-bottom: 0.75rem; color: #ffffff; }
+    .ea-cards { display: grid; gap: 0.75rem; }
+    .ea-card { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1rem; padding: 1rem; background: #1e293b;
+               border: 1px solid #334155; border-left-width: 6px; border-radius: 0.75rem; }
+    .ea-card-emoji { font-size: 2rem; line-height: 1; }
+    .ea-card-body { flex: 1 1 12rem; min-width: 0; }
+    .ea-card h3 { font-size: 1.05rem; font-weight: 700; color: #ffffff; }
+    .ea-card-desc { color: #cbd5e1; font-size: 0.9rem; margin-top: 0.15rem; }
+    .ea-card-number { color: #ffffff; font-size: 1.05rem; font-weight: 700; margin-top: 0.25rem; font-variant-numeric: tabular-nums; }
+    .ea-card-note { color: #fde68a; font-size: 0.85rem; margin-top: 0.25rem; }
+    .ea-card .ea-call { flex: 1 1 100%; font-size: 1rem; }
+    @media (min-width: 576px) { .ea-card .ea-call { flex: 0 0 auto; min-width: 9rem; } }
+    .ea-card-medical { border-left-color: #16a34a; }   .ea-card-medical .ea-call { background: #15803d; }
+    .ea-card-police { border-left-color: #2563eb; }    .ea-card-police .ea-call { background: #1d4ed8; }
+    .ea-card-fire { border-left-color: #ea580c; }      .ea-card-fire .ea-call { background: #c2410c; }
+    .ea-card-disaster { border-left-color: #0891b2; }  .ea-card-disaster .ea-call { background: #0e7490; }
+    .ea-panel { background: #1e293b; border: 1px solid #334155; border-radius: 0.75rem; padding: 1rem 1.25rem; color: #e2e8f0; line-height: 1.5; }
+    .ea-panel ul { padding-left: 1.25rem; }
+    .ea-panel li + li { margin-top: 0.35rem; }
+    .ea-panel p + p, .ea-panel ul + p { margin-top: 0.75rem; }
+    .ea-panel a { color: #93c5fd; }
+    .ea-admin-note { margin-bottom: 1rem; padding: 0.75rem 1rem; border-radius: 0.5rem; background: #78350f; border: 1px solid #b45309; color: #fef3c7; font-size: 0.9rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ea-wrap">
+    {% if show_config_warning %}
+    <div class="ea-admin-note" role="note">
+        Admin notice: the CDRRMO hotline number is not configured (HOTLINE_CDRRMO), so the Disaster Response card currently falls back to {{ general.display }}. Set it to the office's verified number.
+    </div>
+    {% endif %}
+
+    <section class="ea-hero" aria-labelledby="ea-title">
+        <p class="ea-eyebrow">&#128680; {{ _('Emergency Assistance') }}</p>
+        <h1 id="ea-title">{{ _('Need immediate help?') }}</h1>
+        <p class="ea-hero-text">{{ _('For life-threatening emergencies, call now. No account or form is needed.') }}</p>
+        <a class="ea-call ea-call-primary" href="tel:{{ general.dial }}"
+           aria-label="{{ _('Call Emergency') }} {{ general.display }}">
+            <span aria-hidden="true">&#128222;</span> {{ _('Call Emergency') }} <span class="ea-number">{{ general.display }}</span>
+        </a>
+        <p class="ea-hint">{{ _("Your phone's calling app will open with the number ready.") }}</p>
+    </section>
+
+    <section class="ea-section" aria-labelledby="ea-services-title">
+        <h2 id="ea-services-title">{{ _('What kind of help do you need?') }}</h2>
+        <div class="ea-cards">
+            {% for s in services %}
+            <article class="ea-card ea-card-{{ s.key }}">
+                <div class="ea-card-emoji" aria-hidden="true">{{ s.emoji }}</div>
+                <div class="ea-card-body">
+                    <h3>{{ s.label }}</h3>
+                    <p class="ea-card-desc">{{ s.description }}</p>
+                    {% if s.dial %}
+                    <p class="ea-card-number">{{ s.display }}</p>
+                    {% else %}
+                    <p class="ea-card-note">{{ _('This office line is not set up yet. Call %(number)s instead.', number=general.display) }}</p>
+                    {% endif %}
+                </div>
+                <a class="ea-call" href="tel:{{ s.dial or general.dial }}"
+                   aria-label="{{ _('Call %(service)s at %(number)s', service=s.label, number=s.display or general.display) }}">
+                    <span aria-hidden="true">&#128222;</span> {{ _('Call now') }}
+                </a>
+            </article>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="ea-section" aria-labelledby="ea-tell-title">
+        <h2 id="ea-tell-title">{{ _('What to tell the operator') }}</h2>
+        <div class="ea-panel">
+            <ul>
+                <li>{{ _('What happened') }}</li>
+                <li>{{ _('Exact location, barangay and nearby landmark') }}</li>
+                <li>{{ _('How many people are hurt or in danger') }}</li>
+                <li>{{ _('Your name and a number they can call back') }}</li>
+            </ul>
+            <p>{{ _('Stay on the line until the operator tells you to hang up.') }}</p>
+        </div>
+    </section>
+
+    <section class="ea-section" aria-labelledby="ea-other-title">
+        <h2 id="ea-other-title">{{ _('Other ways to get help') }}</h2>
+        <div class="ea-panel">
+            <p>&#128205; {{ _('Visit your Barangay Emergency Response Center for local assistance.') }}</p>
+            <p>&#128187; {{ _('DICS is a monitoring system for CDRRMO personnel and responders. You do not need to report incidents through it.') }}</p>
+            {% if not session.get('username') %}
+            <p><a href="{{ url_for('login') }}">{{ _('Sign in to see active alerts and evacuation centers.') }}</a></p>
+            {% endif %}
+        </div>
+    </section>
+</div>
+{% endblock %}
