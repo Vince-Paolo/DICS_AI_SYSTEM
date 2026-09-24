@@ -1,7 +1,6 @@
-const APP_CACHE = 'dics-app-shell-v2';
+const APP_CACHE = 'dics-app-shell-v3';
 const MAP_CACHE = 'dics-map-cache-v1';
 const APP_SHELL = [
-  '/',
   '/static/css/style.css',
   '/static/js/app.js',
   '/static/manifest.webmanifest',
@@ -33,6 +32,13 @@ self.addEventListener('fetch', event => {
   const isSameOrigin = url.origin === self.location.origin;
 
   if (!isSameOrigin) return;
+
+  // Auth pages contain session-bound CSRF tokens and must never come from a
+  // cache created during an earlier browser session.
+  if (url.pathname === '/' || url.pathname === '/login' || url.pathname === '/register' || url.pathname === '/forgot-password' || url.pathname.startsWith('/reset-password')) {
+    event.respondWith(fetch(request));
+    return;
+  }
 
   // Emergency hotline page: network first so the numbers and language are
   // always current, with the last copy kept for when there is no connection.
