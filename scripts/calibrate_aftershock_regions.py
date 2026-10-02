@@ -216,7 +216,7 @@ def fit_spatial_density(near_field_events, mainshock_lat, mainshock_lon):
 
 def calibrate_one(candidate, catalog):
     name = candidate['name']
-    mtime, mlat, mlon, mmag = candidate['time'], candidate['lat'], candidate['lon'], candidate['magnitude']
+    mtime, mlat, mlon = candidate['time'], candidate['lat'], candidate['lon']
     print(f"\n--- {name} ---")
 
     contaminated = [

@@ -21,8 +21,7 @@ _cache = {
     'volcano_events': {'data': None, 'timestamp': None},
     'thermal_hotspots': {'data': None, 'timestamp': None},
     'flood_footprints': {'data': None, 'timestamp': None},
-    'rainfall_watch': {'data': None, 'timestamp': None},
-    'typhoon_tracks': {'data': None, 'timestamp': None},
+    'typhoon_tracks_live': {'data': None, 'timestamp': None},
 }
 _cache_duration = 300  # 5 minutes
 _CACHE_DB_PATH = Path(__file__).resolve().parents[1] / 'instance' / 'realtime_cache.sqlite3'
@@ -128,6 +127,8 @@ CALABARZON_CITY_COORDINATES = {
     'Nagcarlan': (14.1364, 121.4165),
     'San Fernando': (14.8127, 120.4642),
 }
+
+RAINFALL_WATCH_CITIES = ('lipa', 'batangas', 'calamba', 'lucena', 'tagaytay', 'san pablo')
 
 
 def _canonical_city_key(city):
@@ -560,49 +561,61 @@ def get_thermal_hotspots():
 
 
 def get_rainfall_watch():
-    """Return a compact rainfall-watch layer for the CALABARZON region.
+    """Return current hourly rainfall observations for supported CALABARZON cities.
 
-    This is intentionally deterministic and lightweight: it provides a set of
-    rainfall intensity points that can be rendered on the hazard map even when a
-    live public API key is unavailable. It is meant to support situational
-    awareness and emergency response planning rather than replace official radar
-    feeds.
+    ``get_weather_data`` provides the upstream weather cache and returns no
+    reading when live weather is unavailable. Do not substitute sample values:
+    an empty layer is more useful than presenting simulated rain as current.
     """
-    cache_key = 'rainfall_watch'
-    cached = _cache.get(cache_key)
-    if cached and cached['data'] is not None and cached['timestamp'] is not None:
-        if utcnow() - _normalize_cache_timestamp(cached['timestamp']) < timedelta(seconds=_cache_duration):
-            return cached['data']
+    rainfall_points = []
+    for city_key in RAINFALL_WATCH_CITIES:
+        city_name = CALABARZON_CITIES[city_key]
+        weather = get_weather_data(city_key)
+        if not weather:
+            continue
 
-    shared = _read_shared_cache(cache_key, {'data': None, 'timestamp': None})
-    if shared and shared.get('data') is not None and shared.get('timestamp') is not None:
-        if utcnow() - _normalize_cache_timestamp(shared['timestamp']) < timedelta(seconds=_cache_duration):
-            _cache[cache_key] = shared
-            return shared['data']
+        try:
+            rainfall_mm = max(0.0, float(weather.get('rainfall') or 0))
+        except (TypeError, ValueError):
+            continue
 
-    rainfall_points = [
-        {'name': 'Lipa', 'lat': 13.9411, 'lon': 121.1631, 'rainfall_mm': 92, 'status': 'Heavy rain', 'source': 'Regional forecast blend'},
-        {'name': 'Batangas City', 'lat': 13.7565, 'lon': 121.0583, 'rainfall_mm': 64, 'status': 'Moderate rain', 'source': 'Regional forecast blend'},
-        {'name': 'Calamba', 'lat': 14.2117, 'lon': 121.1653, 'rainfall_mm': 118, 'status': 'Intense rain', 'source': 'Regional forecast blend'},
-        {'name': 'Lucena', 'lat': 13.9373, 'lon': 121.6172, 'rainfall_mm': 78, 'status': 'Heavy rain', 'source': 'Regional forecast blend'},
-        {'name': 'Tagaytay', 'lat': 14.1153, 'lon': 120.9621, 'rainfall_mm': 44, 'status': 'Light to moderate rain', 'source': 'Regional forecast blend'},
-        {'name': 'San Pablo', 'lat': 14.0683, 'lon': 121.3256, 'rainfall_mm': 86, 'status': 'Heavy rain', 'source': 'Regional forecast blend'},
-    ]
+        fallback_lat, fallback_lon = CALABARZON_CITY_COORDINATES[city_name]
+        try:
+            lat = float(weather.get('lat') if weather.get('lat') is not None else fallback_lat)
+            lon = float(weather.get('lon') if weather.get('lon') is not None else fallback_lon)
+        except (TypeError, ValueError):
+            lat, lon = fallback_lat, fallback_lon
 
-    now = utcnow()
-    _cache[cache_key] = {'data': rainfall_points, 'timestamp': now}
-    _write_shared_cache(cache_key, {'data': rainfall_points, 'timestamp': now.isoformat() + 'Z'})
+        if not (13.1 <= lat <= 14.8 and 120.4 <= lon <= 122.0):
+            lat, lon = fallback_lat, fallback_lon
+
+        if rainfall_mm == 0:
+            status = 'No measurable rain'
+        elif rainfall_mm < 2.5:
+            status = 'Light rain'
+        elif rainfall_mm < 7.5:
+            status = 'Moderate rain'
+        elif rainfall_mm < 30:
+            status = 'Heavy rain'
+        else:
+            status = 'Intense rain'
+
+        rainfall_points.append({
+            'name': weather.get('city') or city_name,
+            'lat': lat,
+            'lon': lon,
+            'rainfall_mm': rainfall_mm,
+            'status': status,
+            'source': 'OpenWeatherMap current weather',
+            'fetched_at': weather.get('fetched_at'),
+        })
+
     return rainfall_points
 
 
 def get_typhoon_tracks():
-    """Return a lightweight typhoon-track layer for the hazard map.
-
-    A live storm feed can be plugged in here later; the default output is a
-    compact, deterministic set of advisory tracks within CALABARZON waters so the
-    map always has an active storm overlay during drills and demos.
-    """
-    cache_key = 'typhoon_tracks'
+    """Return current Philippines-relevant tropical cyclone tracks from GDACS."""
+    cache_key = 'typhoon_tracks_live'
     cached = _cache.get(cache_key)
     if cached and cached['data'] is not None and cached['timestamp'] is not None:
         if utcnow() - _normalize_cache_timestamp(cached['timestamp']) < timedelta(seconds=_cache_duration):
@@ -614,23 +627,97 @@ def get_typhoon_tracks():
             _cache[cache_key] = shared
             return shared['data']
 
-    typhoon_tracks = [{
-        'name': 'Typhoon Dante',
-        'category': 'Signal No. 2',
-        'pressure_hpa': 980,
-        'wind_kph': 110,
-        'center_lat': 14.05,
-        'center_lon': 121.45,
-        'track': [
-            [13.25, 120.70],
-            [13.60, 120.92],
-            [13.90, 121.18],
-            [14.05, 121.45],
-            [14.30, 121.68],
-            [14.65, 121.90],
-        ],
-        'source': 'PAGASA advisory model',
-    }]
+    feed_url = 'https://www.gdacs.org/gdacsapi/api/events/geteventlist/EVENTS4APP'
+    feed = _fetch_json(feed_url) or {}
+    typhoon_tracks = []
+    philippines_bbox = {'min_lat': 0.0, 'max_lat': 30.0, 'min_lon': 112.0, 'max_lon': 140.0}
+
+    for feature in feed.get('features', []):
+        properties = feature.get('properties') or {}
+        if str(properties.get('eventtype', '')).upper() != 'TC':
+            continue
+        if str(properties.get('iscurrent', '')).lower() != 'true':
+            continue
+
+        geometry = feature.get('geometry') or {}
+        coordinates = geometry.get('coordinates') or []
+        current_position = None
+        if geometry.get('type') == 'Point' and len(coordinates) >= 2:
+            try:
+                current_lon, current_lat = float(coordinates[0]), float(coordinates[1])
+                current_position = [current_lat, current_lon]
+            except (TypeError, ValueError):
+                pass
+
+        affected_countries = properties.get('affectedcountries') or []
+        affects_philippines = (
+            'philippines' in str(properties.get('country') or '').lower()
+            or any(str(country.get('iso3') or '').upper() == 'PHL' for country in affected_countries)
+        )
+        near_philippines = bool(current_position) and (
+            philippines_bbox['min_lat'] <= current_position[0] <= philippines_bbox['max_lat']
+            and philippines_bbox['min_lon'] <= current_position[1] <= philippines_bbox['max_lon']
+        )
+        if not affects_philippines and not near_philippines:
+            continue
+
+        event_id = properties.get('eventid')
+        episode_id = properties.get('episodeid')
+        if event_id is None or episode_id is None:
+            continue
+
+        geometry_url = 'https://www.gdacs.org/gdacsapi/api/polygons/getgeometry?' + urllib.parse.urlencode({
+            'eventtype': 'TC',
+            'eventid': event_id,
+            'episodeid': episode_id,
+        })
+        track_geometry = _fetch_json(geometry_url) or {}
+        segments = []
+        for path_feature in track_geometry.get('features', []):
+            path_properties = path_feature.get('properties') or {}
+            path_geometry = path_feature.get('geometry') or {}
+            if path_geometry.get('type') != 'LineString':
+                continue
+            path_coordinates = path_geometry.get('coordinates') or []
+            points = []
+            for point in path_coordinates:
+                if len(point) < 2:
+                    continue
+                try:
+                    lon, lat = float(point[0]), float(point[1])
+                except (TypeError, ValueError):
+                    continue
+                if -90 <= lat <= 90 and -180 <= lon <= 180:
+                    points.append([lat, lon])
+            if len(points) < 2:
+                continue
+
+            segments.append({
+                'coordinates': points,
+                'forecast': str(path_properties.get('forecast', '')).lower() == 'true',
+                'source': path_properties.get('source') or properties.get('source'),
+                'timestamp': path_properties.get('polygondate'),
+            })
+
+        severity = properties.get('severitydata') or {}
+        try:
+            wind_kph = round(float(severity.get('severity')))
+        except (TypeError, ValueError):
+            wind_kph = None
+
+        typhoon_tracks.append({
+            'event_id': event_id,
+            'name': properties.get('eventname') or properties.get('name') or 'Tropical cyclone',
+            'category': properties.get('alertlevel') or severity.get('severitytext') or 'Active',
+            'pressure_hpa': None,
+            'wind_kph': wind_kph,
+            'center_lat': current_position[0] if current_position else None,
+            'center_lon': current_position[1] if current_position else None,
+            'track': current_position and [current_position] or [],
+            'segments': segments,
+            'source': properties.get('source') or 'GDACS',
+            'updated_at': properties.get('datemodified') or properties.get('polygondate'),
+        })
 
     now = utcnow()
     _cache[cache_key] = {'data': typhoon_tracks, 'timestamp': now}

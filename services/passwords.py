@@ -1,8 +1,8 @@
-from werkzeug.security import check_password_hash, generate_password_hash
+from werkzeug.security import check_password_hash
 
 
 def verify_and_migrate(user, password, commit, rollback, log):
-    """Verify a password and transparently upgrade legacy plaintext values."""
+    """Verify only Werkzeug password hashes; plaintext values are never valid."""
     if user is None or not password:
         return False
 
@@ -11,21 +11,9 @@ def verify_and_migrate(user, password, commit, rollback, log):
         return False
 
     try:
-        if check_password_hash(stored, password):
-            return True
+        return check_password_hash(stored, password)
     except (ValueError, TypeError):
-        pass
+        return False
     except Exception:
         log.exception('Unexpected error while checking password for user %s', user.username)
-
-    if stored != password:
         return False
-
-    user.password = generate_password_hash(password)
-    try:
-        commit()
-    except Exception:
-        rollback()
-        log.exception('Failed to migrate legacy password for user %s', user.username)
-        return False
-    return True

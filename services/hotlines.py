@@ -6,12 +6,13 @@ deployment fills in with the verified official number from the LGU / CDRRMO /
 EOC:
 
     HOTLINE_GENERAL   national emergency number (defaults to 911)
-    HOTLINE_MEDICAL   medical / ambulance      (falls back to HOTLINE_GENERAL)
-    HOTLINE_POLICE    police / security        (falls back to HOTLINE_GENERAL)
-    HOTLINE_FIRE      fire and rescue          (falls back to HOTLINE_GENERAL)
-    HOTLINE_CDRRMO    CDRRMO / EOC office line (NO fallback: the office number
-                      is specific to the deployment, so an unset value shows
-                      the card as "not available" instead of a wrong number)
+    HOTLINE_CDRRMO    CDRRMO / EOC office line(s), separated by | (NO fallback:
+                      these numbers are specific to the deployment, so an
+                      unset value shows "not available" instead of a wrong one)
+    HOTLINE_CITY_HEALTH, HOTLINE_CTMO, HOTLINE_SAN_PABLO_PNP,
+    HOTLINE_SAN_PABLO_FIRE, HOTLINE_BARANGAY_RADIO_CONTROL, HOTLINE_MERALCO
+                      additional San Pablo City contacts; multiple numbers
+                      are separated by |
 
 A value that is not a plausible phone number is treated as unset.
 """
@@ -47,8 +48,25 @@ def normalize_number(raw):
     return display, dial
 
 
+def normalize_numbers(raw):
+    """Normalize a pipe-separated list, ignoring invalid and duplicate values."""
+    if raw is None:
+        return []
+    numbers = []
+    for candidate in str(raw).split('|'):
+        number = normalize_number(candidate)
+        if number and number not in numbers:
+            numbers.append(number)
+    return numbers
+
+
+def _from_env_numbers(name):
+    return normalize_numbers(os.environ.get(name))
+
+
 def _from_env(name):
-    return normalize_number(os.environ.get(name))
+    numbers = _from_env_numbers(name)
+    return numbers[0] if numbers else None
 
 
 def get_general_hotline():
@@ -58,7 +76,7 @@ def get_general_hotline():
 
 
 def build_hotline_services():
-    """The four help categories shown on the Emergency Assistance page.
+    """Build translated emergency and local contact cards for the assistance page.
 
     Labels are translated for the current request locale, so this must be
     called inside a request. Each item has ``key``, ``emoji``, ``label``,
@@ -68,37 +86,48 @@ def build_hotline_services():
     general = get_general_hotline()
 
     def resolve(env_name, fall_back_to_general):
-        number = _from_env(env_name)
-        if number:
-            return number
+        numbers = _from_env_numbers(env_name)
+        if numbers:
+            return numbers
         if fall_back_to_general:
-            return general['display'], general['dial']
-        return None, None
+            return [(general['display'], general['dial'])]
+        return []
 
     definitions = (
-        ('medical', '\U0001F691', _('Medical Emergency'),
-         _('Ambulance and medical assistance'), 'HOTLINE_MEDICAL', True),
-        ('police', '\U0001F693', _('Police / Security'),
-         _('Police emergency assistance'), 'HOTLINE_POLICE', True),
-        ('fire', '\U0001F525', _('Fire and Rescue'),
-         _('Fire and rescue assistance'), 'HOTLINE_FIRE', True),
         ('disaster', '\U0001F30A', _('Disaster Response'),
          _('CDRRMO / Emergency Operations Center'), 'HOTLINE_CDRRMO', False),
+        ('city_health', '\U0001F3E5', _('City Health Office (SPC - CHO)'),
+         _('City health and ambulance coordination'), 'HOTLINE_CITY_HEALTH', True),
+        ('city_traffic', '\U0001F6A6', _('City Traffic Management Office (CTMO)'),
+         _('Traffic management and assistance'), 'HOTLINE_CTMO', True),
+        ('san_pablo_pnp', '\U0001F6E1', _('San Pablo PNP'),
+         _('Police assistance in San Pablo City'), 'HOTLINE_SAN_PABLO_PNP', True),
+        ('san_pablo_fire', '\U0001F692', _('San Pablo Fire Station (BFP)'),
+         _('Fire and rescue assistance in San Pablo City'), 'HOTLINE_SAN_PABLO_FIRE', True),
+        ('barangay_radio', '\U0001F4E1', _('Barangay Radio Control'),
+         _('Barangay emergency radio coordination'), 'HOTLINE_BARANGAY_RADIO_CONTROL', True),
+        ('meralco', '\U000026A1', _('Meralco'),
+         _('Electric service emergencies and outage reports'), 'HOTLINE_MERALCO', True),
     )
 
     services = []
     for key, emoji, label, description, env_name, fall_back in definitions:
-        display, dial = resolve(env_name, fall_back)
+        contacts = [
+            {'display': display, 'dial': dial}
+            for display, dial in resolve(env_name, fall_back)
+        ]
+        primary = contacts[0] if contacts else {'display': None, 'dial': None}
         services.append({
             'key': key,
             'emoji': emoji,
             'label': label,
             'description': description,
-            'display': display,
-            'dial': dial,
+            'display': primary['display'],
+            'dial': primary['dial'],
+            'contacts': contacts,
         })
     return services
 
 
 def cdrrmo_hotline_configured():
-    return _from_env('HOTLINE_CDRRMO') is not None
+    return bool(_from_env_numbers('HOTLINE_CDRRMO'))

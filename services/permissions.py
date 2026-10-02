@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from typing import Iterable
 
 from flask import session
 
@@ -20,6 +19,7 @@ ROLE_ALIASES = {
     'eoc': 'EOC',
     'admin': 'ADMIN',
 }
+OPERATIONAL_STAFF_ROLES = ('ADMIN', 'RESPONDER', 'COORDINATOR', 'COMMANDER', 'EOC')
 
 
 def normalize_role(role: str | None) -> str | None:
@@ -64,6 +64,10 @@ def user_has_any_role(user, *roles: str) -> bool:
     if not role:
         return False
     return role in {normalize_role(r) for r in roles}
+
+
+def is_operational_staff(user) -> bool:
+    return user_has_any_role(user, *OPERATIONAL_STAFF_ROLES)
 
 
 def is_citizen() -> bool:
