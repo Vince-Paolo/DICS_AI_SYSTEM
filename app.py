@@ -1,26 +1,41 @@
 import csv
 import glob
 import io
+import hashlib
+import hmac
 import os
 import sqlite3
 import threading
 import secrets
+import smtplib
+import ssl
+from html import escape as html_escape
 from datetime import datetime, timedelta, timezone
+from email.message import EmailMessage
+from email.utils import formataddr
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from flask import Flask, current_app, render_template, request, redirect, url_for, session, flash, send_from_directory, Response, has_request_context
-from flask_babel import Babel, get_locale
+from flask_babel import Babel, get_locale, gettext as _
 import requests
-from sqlalchemy import text
+from sqlalchemy import case, or_, text
 from sqlalchemy.orm import selectinload
 from flask_wtf.csrf import CSRFProtect, CSRFError, generate_csrf
 from flask_migrate import Migrate
-from werkzeug.security import check_password_hash, generate_password_hash
+from werkzeug.security import generate_password_hash
+from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_apscheduler import APScheduler
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from sqlalchemy.exc import SQLAlchemyError
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import landscape, letter
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import inch
+from reportlab.platypus import LongTable, Paragraph, SimpleDocTemplate, Spacer, TableStyle
 
-from models import db, User, Incident, IncidentResponse, Task, Resource, CitizenReport, Agency, PostIncidentReport, EvacuationCenter, Province, Municipality, Barangay
+from models import db, User, Incident, IncidentResponse, Resource, CitizenReport, Agency, PostIncidentReport, EvacuationCenter, Province, Municipality, Barangay
 from scheduler import monitor_hazards
 from services.realtime_data import (
     get_all_weather_data,
@@ -47,6 +62,7 @@ from blueprints.facilities import facilities_bp
 from services.file_storage import FileStorage
 
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1)
 base_dir = os.path.abspath(os.path.dirname(__file__))
 instance_dir = os.path.join(base_dir, 'instance')
 os.makedirs(instance_dir, exist_ok=True)
@@ -220,7 +236,7 @@ app.extensions['file_storage'] = FileStorage(app)
 app.config['MAX_UPLOAD_SIZE_BYTES'] = int(os.environ.get('MAX_UPLOAD_SIZE_BYTES', 16 * 1024 * 1024))
 app.config['MAX_CONTENT_LENGTH'] = app.config['MAX_UPLOAD_SIZE_BYTES']
 app.config['WTF_CSRF_ENABLED'] = True
-app.config['SCHEDULER_API_ENABLED'] = True
+app.config['SCHEDULER_API_ENABLED'] = False
 app.config['SCHEDULER_TIMEZONE'] = 'UTC'
 app.config['PROPAGATE_EXCEPTIONS'] = False
 app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE', 'false').lower() == 'true'
@@ -235,18 +251,73 @@ app.config['RESEND_API_KEY'] = os.environ.get('RESEND_API_KEY', '')
 app.config['RESEND_API_URL'] = os.environ.get('RESEND_API_URL', 'https://api.resend.com/emails')
 app.config['RESEND_FROM_EMAIL'] = os.environ.get('RESEND_FROM_EMAIL', 'onboarding@resend.dev')
 app.config['RESEND_SUPPRESS_SEND'] = os.environ.get('RESEND_SUPPRESS_SEND', 'false').lower() == 'true'
+app.config['OTP_EMAIL_BACKEND'] = os.environ.get('OTP_EMAIL_BACKEND', 'resend').strip().lower()
+app.config['SMTP_HOST'] = os.environ.get('SMTP_HOST', 'smtp.gmail.com')
+app.config['SMTP_PORT'] = int(os.environ.get('SMTP_PORT', '587'))
+app.config['SMTP_USERNAME'] = os.environ.get('SMTP_USERNAME', '')
+app.config['SMTP_PASSWORD'] = os.environ.get('SMTP_PASSWORD', '')
+app.config['SMTP_FROM_EMAIL'] = os.environ.get('SMTP_FROM_EMAIL', '')
+app.config['SMTP_FROM_NAME'] = os.environ.get('SMTP_FROM_NAME', 'DICS AI')
 app.config['BABEL_DEFAULT_LOCALE'] = 'en'
-app.config['BABEL_SUPPORTED_LOCALES'] = ['en', 'tl']
+app.config['BABEL_SUPPORTED_LOCALES'] = ['en', 'fil_PH']
 app.config['BABEL_TRANSLATION_DIRECTORIES'] = os.path.join(base_dir, 'translations')
+
+_MANILA_TIMEZONE = ZoneInfo('Asia/Manila')
+_EMAIL_OTP_TTL_SECONDS = 10 * 60
+_EMAIL_OTP_MAX_ATTEMPTS = 5
+
+
+def _to_manila_datetime(value):
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone(_MANILA_TIMEZONE)
+
+
+def _manila_current_year():
+    return datetime.now(timezone.utc).astimezone(_MANILA_TIMEZONE).year
+
+
+def _format_manila_datetime(value, format_string):
+    local_value = _to_manila_datetime(value)
+    if local_value is None:
+        return ''
+    formatted = local_value.strftime(format_string)
+    if any(token in format_string for token in ('%H', '%I', '%M', '%S', '%X', '%c')):
+        formatted += ' PHT'
+    return formatted
+
+
+def _analytics_utc_bounds(year, month=None):
+    local_start = datetime(year, month or 1, 1, tzinfo=_MANILA_TIMEZONE)
+    if month is None:
+        local_end = datetime(year + 1, 1, 1, tzinfo=_MANILA_TIMEZONE)
+    elif month == 12:
+        local_end = datetime(year + 1, 1, 1, tzinfo=_MANILA_TIMEZONE)
+    else:
+        local_end = datetime(year, month + 1, 1, tzinfo=_MANILA_TIMEZONE)
+    return (
+        local_start.astimezone(timezone.utc).replace(tzinfo=None),
+        local_end.astimezone(timezone.utc).replace(tzinfo=None),
+    )
+
+
+app.add_template_filter(_format_manila_datetime, 'manila_time')
 
 
 def select_locale():
     if not has_request_context():
         return app.config['BABEL_DEFAULT_LOCALE']
-    selected = session.get('language')
+    selected = {'tl': 'fil_PH', 'tl-PH': 'fil_PH', 'tl_PH': 'fil_PH'}.get(
+        session.get('language'), session.get('language')
+    )
     if selected in app.config['BABEL_SUPPORTED_LOCALES']:
         return selected
-    return request.accept_languages.best_match(app.config['BABEL_SUPPORTED_LOCALES']) or 'en'
+    selected = request.accept_languages.best_match(
+        app.config['BABEL_SUPPORTED_LOCALES'] + ['tl', 'tl-PH']
+    ) or 'en'
+    return {'tl': 'fil_PH', 'tl-PH': 'fil_PH'}.get(selected, selected)
 
 
 babel = Babel(app, locale_selector=select_locale)
@@ -336,7 +407,14 @@ def start_scheduler():
     global _scheduler_started
     if _scheduler_started or app.config.get('TESTING'):
         return
-    scheduler.add_job(id='monitor_hazards', func=monitor_hazards, trigger='interval', minutes=5)
+    scheduler.add_job(
+        id='monitor_hazards',
+        func=monitor_hazards,
+        trigger='interval',
+        minutes=15,
+        max_instances=1,
+        coalesce=True,
+    )
     scheduler.start()
     _scheduler_started = True
 
@@ -369,6 +447,7 @@ def inject_ai_provider():
 
 @app.route('/language/<locale>')
 def set_language(locale):
+    locale = {'tl': 'fil_PH', 'tl-PH': 'fil_PH', 'tl_PH': 'fil_PH'}.get(locale, locale)
     if locale not in app.config['BABEL_SUPPORTED_LOCALES']:
         locale = app.config['BABEL_DEFAULT_LOCALE']
     session['language'] = locale
@@ -399,14 +478,15 @@ app.register_blueprint(facilities_bp)
 # real-time alert on the EOC dashboard (see /eoc/sos-incidents/pending),
 # which repeated fake submissions would actively disrupt.
 app.view_functions['citizen.emergency_sos'] = limiter.limit("5 per minute")(app.view_functions['citizen.emergency_sos'])
+app.view_functions['eoc.pending_sos_incidents'] = limiter.exempt(app.view_functions['eoc.pending_sos_incidents'])
 
 @app.errorhandler(404)
 def handle_not_found(error):
     return render_template(
         'pages/error_page.html',
         code='404',
-        title='Page Not Found',
-        message='The link may be outdated or the page may have moved. Please check the URL or return to the dashboard.',
+        title=_('Page Not Found'),
+        message=_('The link may be outdated or the page may have moved. Please check the URL or return to the dashboard.'),
         variant='danger',
         icon='bi-exclamation-triangle-fill',
     ), 404
@@ -417,11 +497,23 @@ def handle_forbidden(error):
     return render_template(
         'pages/error_page.html',
         code='403',
-        title='Access Denied',
-        message="You don't have permission to view this page or complete that action.",
+        title=_('Access Denied'),
+        message=_("You don't have permission to view this page or complete that action."),
         variant='warning',
         icon='bi-shield-exclamation',
     ), 403
+
+
+@app.errorhandler(429)
+def handle_rate_limit(error):
+    return render_template(
+        'pages/error_page.html',
+        code='429',
+        title=_('Too Many Requests'),
+        message=_('This action has been requested too many times. Please wait a moment and try again.'),
+        variant='warning',
+        icon='bi-hourglass-split',
+    ), 429
 
 
 @app.errorhandler(CSRFError)
@@ -429,8 +521,8 @@ def handle_csrf_error(error):
     return render_template(
         'pages/error_page.html',
         code='400',
-        title='Your Session Expired',
-        message='Your session expired or the form is no longer valid. Please refresh the page and try again.',
+        title=_('Your Session Expired'),
+        message=_('Your session expired or the form is no longer valid. Please refresh the page and try again.'),
         variant='warning',
         icon='bi-clock-history',
     ), 400
@@ -441,8 +533,8 @@ def handle_server_error(error):
     return render_template(
         'pages/error_page.html',
         code='500',
-        title='Something Went Wrong',
-        message='The system hit an unexpected issue while processing your request. Please try again shortly, or return to the dashboard.',
+        title=_('Something Went Wrong'),
+        message=_('The system hit an unexpected issue while processing your request. Please try again shortly, or return to the dashboard.'),
         variant='danger',
         icon='bi-bug-fill',
     ), 500
@@ -655,12 +747,6 @@ def migrate_external_event_id_constraint():
 
 
 def create_default_admin():
-    admin_password = os.environ.get('ADMIN_PASSWORD')
-    if not admin_password:
-        raise RuntimeError(
-            'ADMIN_PASSWORD must be set before startup. The application cannot create or update the admin account without an environment-provided password.'
-        )
-
     # Only these two lookups identify "the" bootstrap admin by a stable,
     # unambiguous identifier. A bare role='admin' match (removed below) is
     # NOT safe to use here: if it matches more than one admin-role user,
@@ -674,10 +760,15 @@ def create_default_admin():
     # and force them to change it again -- confusing, not a recovery.
     admin = User.query.filter_by(username='admin').first()
     if admin is None:
-        admin = User.query.filter_by(email='admin@dics-ai.local').first()
+        admin = User.query.filter(db.func.lower(User.email) == 'admin@dics-ai.local').first()
 
     created_new = False
     if admin is None:
+        admin_password = os.environ.get('ADMIN_PASSWORD')
+        if not admin_password:
+            raise RuntimeError(
+                'ADMIN_PASSWORD must be set to create the initial bootstrap admin account.'
+            )
         admin = User(
             username='admin',
             email='admin@dics-ai.local',
@@ -695,14 +786,6 @@ def create_default_admin():
             admin.email = 'admin@dics-ai.local'
         if admin.username != 'admin' and admin.username in {None, ''}:
             admin.username = 'admin'
-        if not admin.password or not check_password_hash(admin.password, admin_password):
-            # The env-provided password is either brand new or was just
-            # reset by whoever operates the deployment -- either way, it's
-            # a value known outside the account holder, so treat it the
-            # same as a fresh admin: force an in-app change before it can
-            # be used for anything else.
-            admin.password = generate_password_hash(admin_password)
-            admin.must_change_password = True
 
     try:
         db.session.commit()
@@ -829,6 +912,11 @@ def init_on_first_request():
 
 
 @app.before_request
+def refresh_authenticated_session():
+    _resolve_session_user()
+
+
+@app.before_request
 def enforce_password_change():
     """Defense-in-depth alongside the redirect already in login(): even if
     a session ends up with must_change_password set (e.g. an admin whose
@@ -851,8 +939,112 @@ def verify_password(user, password):
     )
 
 
+def _email_otp_digest(user, issued_at, code):
+    secret = str(app.config['SECRET_KEY']).encode('utf-8')
+    message = f'{user.id}:{user.email}:{issued_at}:{code}'.encode('utf-8')
+    return hmac.new(secret, message, hashlib.sha256).hexdigest()
+
+
+def _create_email_verification_code(user):
+    code = f'{secrets.randbelow(1_000_000):06d}'
+    issued_at = int(datetime.now(timezone.utc).timestamp())
+    digest = _email_otp_digest(user, issued_at, code)
+    user.verification_token = f'{issued_at}:0:{digest}'
+    return code
+
+
+def _check_email_verification_code(user, code):
+    try:
+        issued_at_raw, attempts_raw, saved_digest = (user.verification_token or '').split(':', 2)
+        issued_at = int(issued_at_raw)
+        attempts = int(attempts_raw)
+    except (TypeError, ValueError):
+        return 'expired'
+
+    now = int(datetime.now(timezone.utc).timestamp())
+    age = now - issued_at
+    if age < 0 or age > _EMAIL_OTP_TTL_SECONDS:
+        return 'expired'
+    if attempts >= _EMAIL_OTP_MAX_ATTEMPTS:
+        return 'locked'
+    if not (len(code) == 6 and code.isdigit()):
+        is_valid = False
+    else:
+        is_valid = hmac.compare_digest(saved_digest, _email_otp_digest(user, issued_at, code))
+    if is_valid:
+        return 'valid'
+
+    user.verification_token = f'{issued_at}:{attempts + 1}:{saved_digest}'
+    return 'invalid'
+
+
+def send_registration_otp_email(user, code):
+    subject = 'Verify your DICS AI account'
+    body = (
+        f'Your DICS AI email verification code is: {code}\n\n'
+        'This code expires in 10 minutes and can be used once. '
+        'If you did not request this account, you can ignore this email.'
+    )
+    try:
+        if app.config['RESEND_SUPPRESS_SEND']:
+            app.logger.info('Registration verification email suppressed for %s', user.email)
+            return True
+
+        if app.config['OTP_EMAIL_BACKEND'] == 'smtp':
+            username = app.config['SMTP_USERNAME'].strip()
+            password = ''.join(app.config['SMTP_PASSWORD'].split())
+            from_email = (app.config['SMTP_FROM_EMAIL'] or username).strip()
+            if not username or not password or not from_email:
+                app.logger.error('Gmail SMTP OTP delivery is missing username, App Password, or sender address')
+                return False
+
+            message = EmailMessage()
+            message['Subject'] = subject
+            message['From'] = formataddr((app.config['SMTP_FROM_NAME'], from_email))
+            message['To'] = user.email
+            message.set_content(body)
+            with smtplib.SMTP(app.config['SMTP_HOST'], app.config['SMTP_PORT'], timeout=15) as smtp:
+                smtp.ehlo()
+                smtp.starttls(context=ssl.create_default_context())
+                smtp.ehlo()
+                smtp.login(username, password)
+                smtp.send_message(message)
+            app.logger.info('Registration verification email sent to %s via SMTP', user.email)
+            return True
+
+        if app.config['OTP_EMAIL_BACKEND'] != 'resend':
+            app.logger.error('Unsupported OTP email backend: %s', app.config['OTP_EMAIL_BACKEND'])
+            return False
+
+        response = requests.post(
+            app.config['RESEND_API_URL'],
+            headers={
+                'Authorization': f"Bearer {app.config['RESEND_API_KEY']}",
+                'Content-Type': 'application/json',
+            },
+            json={
+                'from': app.config['RESEND_FROM_EMAIL'],
+                'to': [user.email],
+                'subject': subject,
+                'text': body,
+            },
+            timeout=10,
+        )
+        if not response.ok:
+            app.logger.error(
+                'Resend API rejected registration verification email to %s: HTTP %s - %s',
+                user.email, response.status_code, response.text,
+            )
+            return False
+        app.logger.info('Registration verification email sent to %s', user.email)
+        return True
+    except Exception:
+        app.logger.exception('Failed to send registration verification email to %s', user.email)
+        return False
+
+
 def _resolve_session_user():
-    """Reject stale browser sessions after a user has been deleted or role changed.
+    """Refresh the session role and reject deleted or disabled users.
     The redirect loop here happens when the browser still holds a session cookie
     for a responder that no longer exists in the database; the app was redirecting
     back to the responder dashboard without first checking whether that user still
@@ -862,8 +1054,15 @@ def _resolve_session_user():
     if not username:
         return None
 
-    user = User.query.filter_by(username=username).first()
-    if user is None:
+    try:
+        user = User.query.filter_by(username=username).first()
+    except SQLAlchemyError:
+        db.session.rollback()
+        session.clear()
+        app.logger.warning('Session user lookup failed; cleared stale session.', exc_info=True)
+        return None
+
+    if user is None or user.is_disabled or not user.email_verified:
         session.clear()
         return None
 
@@ -896,6 +1095,7 @@ def login():
             return redirect(url_for('dashboard'))
 
     error = None
+    verification_email = None
     if request.method == 'POST':
         try:
             username = request.form.get('username', '').strip()
@@ -904,31 +1104,36 @@ def login():
             if user and user.is_disabled:
                 error = 'This account has been disabled. Contact an administrator.'
             elif user and verify_password(user, password):
-                session['username'] = user.username
-                session['role'] = user.role
-                session['agency'] = user.agency or 'FIELD UNIT'
-                session['must_change_password'] = bool(user.must_change_password)
-                flash('Welcome back, ' + user.username + '!', 'success')
-                if user.must_change_password:
-                    return redirect(url_for('change_password'))
-                if user.role == 'incident_commander':
-                    return redirect(url_for('commander.incident_commander_dashboard'))
-                elif user.role == 'agency_coordinator':
-                    return redirect(url_for('coordinator.coordinator_dashboard'))
-                elif user.role == 'field_responder':
-                    return redirect(url_for('responder.responder_dashboard'))
-                elif user.role == 'eoc_staff':
-                    return redirect(url_for('eoc.eoc_dashboard'))
-                elif user.role == 'citizen':
-                    return redirect(url_for('citizen.citizen_dashboard'))
+                if not user.email_verified:
+                    verification_email = user.email
+                    session['pending_verification_email'] = user.email
+                    error = _('Please verify your email before signing in.')
                 else:
-                    return redirect(url_for('dashboard'))
+                    session['username'] = user.username
+                    session['role'] = user.role
+                    session['agency'] = user.agency or 'FIELD UNIT'
+                    session['must_change_password'] = bool(user.must_change_password)
+                    flash(_('Welcome back, %(username)s!') % {'username': user.username}, 'success')
+                    if user.must_change_password:
+                        return redirect(url_for('change_password'))
+                    if user.role == 'incident_commander':
+                        return redirect(url_for('commander.incident_commander_dashboard'))
+                    elif user.role == 'agency_coordinator':
+                        return redirect(url_for('coordinator.coordinator_dashboard'))
+                    elif user.role == 'field_responder':
+                        return redirect(url_for('responder.responder_dashboard'))
+                    elif user.role == 'eoc_staff':
+                        return redirect(url_for('eoc.eoc_dashboard'))
+                    elif user.role == 'citizen':
+                        return redirect(url_for('citizen.citizen_dashboard'))
+                    else:
+                        return redirect(url_for('dashboard'))
             else:
                 error = 'Invalid username or password.'
         except Exception as e:
             app.logger.error(f'Login error for user {username}: {str(e)}', exc_info=True)
             error = 'An error occurred during login. Please try again.'
-    return render_template('pages/login.html', error=error)
+    return render_template('pages/login.html', error=error, verification_email=verification_email)
 
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -940,7 +1145,7 @@ def register():
     error = None
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
-        email = request.form.get('email', '').strip()
+        email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '').strip()
         full_name = request.form.get('full_name', '').strip()
         contact_number = request.form.get('contact_number', '').strip()
@@ -950,7 +1155,7 @@ def register():
             error = 'Password must be at least 8 characters.'
         elif User.query.filter_by(username=username).first():
             error = 'Username already exists.'
-        elif User.query.filter_by(email=email).first():
+        elif User.query.filter(db.func.lower(User.email) == email).first():
             error = 'Email already registered.'
         else:
             new_user = User(
@@ -960,18 +1165,88 @@ def register():
                 full_name=full_name,
                 contact_number=contact_number,
                 role='citizen',
+                email_verified=False,
             )
             db.session.add(new_user)
             try:
+                db.session.flush()
+                verification_code = _create_email_verification_code(new_user)
                 db.session.commit()
-            except Exception as e:
+            except Exception:
                 db.session.rollback()
                 app.logger.exception('Failed to create account')
                 flash('Unable to create account. Please try again.', 'error')
                 return render_template('pages/register.html', error=None)
-            flash('Registration successful! You can now log in.', 'success')
-            return redirect(url_for('login'))
+            session['pending_verification_email'] = new_user.email
+            if send_registration_otp_email(new_user, verification_code):
+                flash(_('A verification code has been sent to your email.'), 'success')
+            else:
+                flash(_('Your account was created, but we could not deliver the verification email. Please contact support.'), 'warning')
+            return redirect(url_for('verify_email'))
     return render_template('pages/register.html', error=error)
+
+
+@app.route('/verify-email', methods=['GET', 'POST'])
+@limiter.limit('10 per minute', methods=['POST'])
+def verify_email():
+    email = (request.form.get('email') if request.method == 'POST' else None) or request.args.get('email') or session.get('pending_verification_email', '')
+    email = email.strip().lower()
+    error = None
+
+    if request.method == 'POST':
+        action = request.form.get('action', 'verify')
+        user = User.query.filter(db.func.lower(User.email) == email).first() if email else None
+
+        if action == 'resend':
+            email_sent = False
+            if user and not user.email_verified:
+                code = _create_email_verification_code(user)
+                try:
+                    db.session.commit()
+                    email_sent = send_registration_otp_email(user, code)
+                    if not email_sent:
+                        app.logger.warning('Could not resend registration verification email to %s', user.email)
+                except Exception:
+                    db.session.rollback()
+                    app.logger.exception('Failed to rotate registration verification code')
+            if email_sent:
+                flash(_('If an unverified account exists for that email, a new code has been sent.'), 'success')
+            else:
+                flash(_('We could not deliver a verification email. Please contact support.'), 'warning')
+            session['pending_verification_email'] = email
+            return redirect(url_for('verify_email'))
+
+        if not user or user.email_verified:
+            error = _('That code is invalid or has expired. Request a new code and try again.')
+        else:
+            result = _check_email_verification_code(user, request.form.get('code', '').strip())
+            if result == 'valid':
+                user.email_verified = True
+                user.verification_token = None
+                try:
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
+                    app.logger.exception('Failed to verify registered email')
+                    error = _('Unable to verify your email right now. Please try again.')
+                else:
+                    session.pop('pending_verification_email', None)
+                    flash(_('Email verified. You can now sign in.'), 'success')
+                    return redirect(url_for('login'))
+            elif result == 'locked':
+                error = _('Too many incorrect codes. Request a new code.')
+            elif result == 'expired':
+                error = _('That code has expired. Request a new code.')
+            else:
+                error = _('That code is incorrect. Please try again.')
+                try:
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
+                    app.logger.exception('Failed to record email verification attempt')
+                    error = _('Unable to verify your email right now. Please try again.')
+
+    return render_template('pages/verify_email.html', email=email, error=error)
 
 
 def send_password_reset_email(user, token):
@@ -1028,7 +1303,7 @@ def forgot_password():
 
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
-        user = User.query.filter_by(email=email).first() if email else None
+        user = User.query.filter(db.func.lower(User.email) == email).first() if email else None
         if user:
             token = secrets.token_urlsafe(32)
             user.reset_token = token
@@ -1036,7 +1311,7 @@ def forgot_password():
             try:
                 db.session.commit()
                 send_password_reset_email(user, token)
-            except Exception as exc:
+            except Exception:
                 db.session.rollback()
                 app.logger.exception('Failed to create password reset token')
         flash('If an account exists for that email, a reset link has been sent.', 'success')
@@ -1068,7 +1343,7 @@ def reset_password(token):
             user.must_change_password = False
             try:
                 db.session.commit()
-            except Exception as exc:
+            except Exception:
                 db.session.rollback()
                 app.logger.exception('Failed to update password from reset link')
                 flash('Unable to update password. Please try again.', 'error')
@@ -1120,7 +1395,7 @@ def change_password():
             user.must_change_password = False
             try:
                 db.session.commit()
-            except Exception as e:
+            except Exception:
                 db.session.rollback()
                 app.logger.exception('Failed to update password')
                 flash('Unable to update password. Please try again.', 'error')
@@ -1147,7 +1422,7 @@ def dashboard():
         return redirect(url_for('responder.responder_dashboard'))
     elif user.role == 'eoc_staff':
         return redirect(url_for('eoc.eoc_dashboard'))
-    elif user.role == 'citizen':
+    elif permission_service.user_has_any_role(user, 'CITIZEN'):
         return redirect(url_for('citizen.citizen_dashboard'))
     elif user.role == 'agency_coordinator':
         return redirect(url_for('coordinator.coordinator_dashboard'))
@@ -1195,14 +1470,23 @@ def dashboard():
 
 @app.route('/api/map-pins')
 def get_map_pins():
-    if 'username' not in session:
+    user = permission_service.current_user()
+    if not user:
         return {'error': 'Unauthorized'}, 401
+    is_staff = permission_service.is_operational_staff(user)
+    if not is_staff and not permission_service.user_has_any_role(user, 'CITIZEN'):
+        return {'error': 'Forbidden'}, 403
 
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
     query = Incident.query.options(selectinload(Incident.citizen_report)).filter(
         Incident.alert.is_(True) | Incident.status.in_({'ACTIVE', 'NEW', 'MONITORING', 'VERIFIED', 'PENDING'})
     )
+    if not is_staff:
+        query = query.filter(or_(
+            Incident.user_id == user.id,
+            Incident.citizen_report.has(CitizenReport.user_id == user.id),
+        ))
 
     if start_date:
         try:
@@ -1327,8 +1611,11 @@ def get_map_evacuation_centers():
 
 @app.route('/api/map-resources')
 def get_map_resources():
-    if 'username' not in session:
+    user = permission_service.current_user()
+    if not user:
         return {'error': 'Unauthorized'}, 401
+    if not permission_service.is_operational_staff(user):
+        return {'error': 'Forbidden'}, 403
 
     resources = Resource.query.join(IncidentResponse).join(Incident).all()
     pins = []
@@ -1450,7 +1737,7 @@ def get_dashboard_stats():
 def _parse_analytics_window():
     selected_year = request.args.get('year', type=int)
     selected_month = request.args.get('month', type=int)
-    current_year = datetime.now().year
+    current_year = _manila_current_year()
 
     if selected_year is None or selected_year < 2000:
         selected_year = current_year
@@ -1461,76 +1748,82 @@ def _parse_analytics_window():
 
 
 def _build_analytics_payload(year=None, month=None):
-    current_year = datetime.now().year
+    current_year = _manila_current_year()
     selected_year = year if year is not None else current_year
     selected_month = month
+    start_utc, end_utc = _analytics_utc_bounds(selected_year, selected_month)
 
-    incidents = Incident.query.all()
-    filtered_incidents = []
-    for incident in incidents:
-        if not incident.created_at:
-            continue
-        if incident.created_at.year != selected_year:
-            continue
-        if selected_month is not None and incident.created_at.month != selected_month:
-            continue
-        filtered_incidents.append(incident)
+    hazard_rows = db.session.query(
+        db.func.coalesce(Incident.hazard_type, 'Unknown'),
+        db.func.count(Incident.id),
+    ).filter(
+        Incident.created_at >= start_utc,
+        Incident.created_at < end_utc,
+    ).group_by(Incident.hazard_type).all()
+    incident_counts = {hazard_name: count for hazard_name, count in hazard_rows}
 
-    incident_counts = {}
-    for incident in filtered_incidents:
-        hazard_name = incident.hazard_type or 'Unknown'
-        incident_counts[hazard_name] = incident_counts.get(hazard_name, 0) + 1
-
-    monthly_counts = []
+    year_start_utc, year_end_utc = _analytics_utc_bounds(selected_year)
+    month_count_columns = []
     for month_idx in range(1, 13):
-        month_count = sum(1 for incident in incidents if incident.created_at and incident.created_at.year == selected_year and incident.created_at.month == month_idx)
-        monthly_counts.append({
-            'month': f'{selected_year}-{month_idx:02d}',
-            'count': month_count,
-        })
+        month_start_utc, month_end_utc = _analytics_utc_bounds(selected_year, month_idx)
+        month_count_columns.append(db.func.sum(case((
+            (Incident.created_at >= month_start_utc) & (Incident.created_at < month_end_utc),
+            1,
+        ), else_=0)))
+    monthly_row = db.session.query(*month_count_columns).filter(
+        Incident.created_at >= year_start_utc,
+        Incident.created_at < year_end_utc,
+    ).one()
+    monthly_counts = [
+        {'month': f'{selected_year}-{month_idx:02d}', 'count': int(monthly_row[month_idx - 1] or 0)}
+        for month_idx in range(1, 13)
+    ]
 
-    geo_counts = []
-    geo_lookup = {}
-    for incident in filtered_incidents:
-        municipality_name = 'Unknown'
-        if incident.municipality_id:
-            municipality = db.session.get(Municipality, incident.municipality_id)
-            if municipality:
-                municipality_name = municipality.name
-
-        barangay_name = 'Unknown'
-        if incident.barangay_id:
-            barangay = db.session.get(Barangay, incident.barangay_id)
-            if barangay:
-                barangay_name = barangay.name
-
-        key = (incident.hazard_type or 'Unknown', municipality_name, barangay_name)
-        geo_lookup[key] = geo_lookup.get(key, 0) + 1
-
-    for (hazard_type, municipality_name, barangay_name), count in sorted(geo_lookup.items(), key=lambda item: (-item[1], item[0][0], item[0][1], item[0][2])):
-        geo_counts.append({
-            'hazard_type': hazard_type,
-            'municipality': municipality_name,
-            'barangay': barangay_name,
+    hazard_name = db.func.coalesce(Incident.hazard_type, 'Unknown')
+    municipality_name = db.func.coalesce(Municipality.name, 'Unknown')
+    barangay_name = db.func.coalesce(Barangay.name, 'Unknown')
+    geo_rows = db.session.query(
+        hazard_name,
+        municipality_name,
+        barangay_name,
+        db.func.count(Incident.id),
+    ).outerjoin(
+        Municipality, Incident.municipality_id == Municipality.id,
+    ).outerjoin(
+        Barangay, Incident.barangay_id == Barangay.id,
+    ).filter(
+        Incident.created_at >= start_utc,
+        Incident.created_at < end_utc,
+    ).group_by(
+        hazard_name, municipality_name, barangay_name,
+    ).order_by(
+        db.func.count(Incident.id).desc(), hazard_name, municipality_name, barangay_name,
+    ).all()
+    geo_counts = [
+        {
+            'hazard_type': hazard,
+            'municipality': municipality,
+            'barangay': barangay,
             'count': count,
-        })
+        }
+        for hazard, municipality, barangay, count in geo_rows
+    ]
 
-    resolved_responses = []
-    for response in IncidentResponse.query.filter(IncidentResponse.resolved_at.isnot(None)).all():
-        if not response.incident:
-            continue
-        if not response.incident.created_at:
-            continue
-        if response.incident.created_at.year != selected_year:
-            continue
-        if selected_month is not None and response.incident.created_at.month != selected_month:
-            continue
-        resolved_responses.append(response)
+    response_rows = db.session.query(
+        IncidentResponse.started_at,
+        IncidentResponse.resolved_at,
+    ).join(
+        Incident, IncidentResponse.incident_id == Incident.id,
+    ).filter(
+        IncidentResponse.resolved_at.isnot(None),
+        Incident.created_at >= start_utc,
+        Incident.created_at < end_utc,
+    ).all()
 
     response_durations = []
-    for response in resolved_responses:
-        if response.started_at and response.resolved_at:
-            duration = (response.resolved_at - response.started_at).total_seconds() / 60.0
+    for started_at, resolved_at in response_rows:
+        if started_at and resolved_at:
+            duration = (resolved_at - started_at).total_seconds() / 60.0
             if duration >= 0:
                 response_durations.append(duration)
 
@@ -1546,21 +1839,29 @@ def _build_analytics_payload(year=None, month=None):
         else:
             response_buckets['> 120 min'] += 1
 
-    resource_entries = []
-    for resource in Resource.query.all():
-        if resource.incident_response and resource.incident_response.incident and resource.incident_response.incident.created_at:
-            incident = resource.incident_response.incident
-            if incident.created_at.year != selected_year:
-                continue
-            if selected_month is not None and incident.created_at.month != selected_month:
-                continue
-        resource_entries.append(resource)
-
     status_totals = {}
     type_totals = {}
-    for resource in resource_entries:
-        status_totals[resource.status or 'Unknown'] = status_totals.get(resource.status or 'Unknown', 0) + int(resource.quantity or 0)
-        type_totals[resource.resource_type or 'Unknown'] = type_totals.get(resource.resource_type or 'Unknown', 0) + int(resource.quantity or 0)
+    resource_rows = db.session.query(
+        Resource.status,
+        Resource.resource_type,
+        db.func.sum(Resource.quantity),
+    ).outerjoin(
+        IncidentResponse, Resource.incident_response_id == IncidentResponse.id,
+    ).outerjoin(
+        Incident, IncidentResponse.incident_id == Incident.id,
+    ).filter(
+        or_(
+            Incident.id.is_(None),
+            Incident.created_at.is_(None),
+            (Incident.created_at >= start_utc) & (Incident.created_at < end_utc),
+        )
+    ).group_by(Resource.status, Resource.resource_type).all()
+    for status, resource_type, quantity in resource_rows:
+        count = int(quantity or 0)
+        status_name = status or 'Unknown'
+        type_name = resource_type or 'Unknown'
+        status_totals[status_name] = status_totals.get(status_name, 0) + count
+        type_totals[type_name] = type_totals.get(type_name, 0) + count
 
     return {
         'selected_year': selected_year,
@@ -1623,40 +1924,116 @@ def export_analytics_data():
         return csv_response
 
     if export_format == 'pdf':
-        pdf_lines = [
-            f'Analytics report for {payload["selected_year"]}-{payload["selected_month"]:02d}' if payload['selected_month'] else f'Analytics report for {payload["selected_year"]}',
-        ]
+        pdf_buffer = io.BytesIO()
+        document = SimpleDocTemplate(
+            pdf_buffer,
+            pagesize=landscape(letter),
+            leftMargin=0.45 * inch,
+            rightMargin=0.45 * inch,
+            topMargin=0.55 * inch,
+            bottomMargin=0.5 * inch,
+        )
+        styles = getSampleStyleSheet()
+        title_style = styles['Title']
+        title_style.fontName = 'Helvetica-Bold'
+        title_style.fontSize = 16
+        title_style.leading = 20
+        title_style.alignment = 0
+        section_style = ParagraphStyle(
+            'AnalyticsSection',
+            parent=styles['Heading2'],
+            fontName='Helvetica-Bold',
+            fontSize=11,
+            leading=14,
+        )
+        cell_style = ParagraphStyle(
+            'AnalyticsCell',
+            parent=styles['BodyText'],
+            fontName='Helvetica',
+            fontSize=8,
+            leading=10,
+        )
+        header_style = ParagraphStyle(
+            'AnalyticsHeader',
+            parent=cell_style,
+            fontName='Helvetica-Bold',
+            textColor=colors.white,
+        )
+        title = (
+            f'Analytics report for {payload["selected_year"]}-{payload["selected_month"]:02d}'
+            if payload['selected_month']
+            else f'Analytics report for {payload["selected_year"]}'
+        )
+        table_data = [[
+            Paragraph('Hazard', header_style),
+            Paragraph('Municipality', header_style),
+            Paragraph('Barangay', header_style),
+            Paragraph('Incidents', header_style),
+        ]]
         for row in rows:
-            pdf_lines.append(f"{row['hazard_type']} | {row['municipality']} | {row['barangay']} | {row['count']}")
+            table_data.append([
+                Paragraph(html_escape(str(row['hazard_type'])), cell_style),
+                Paragraph(html_escape(str(row['municipality'])), cell_style),
+                Paragraph(html_escape(str(row['barangay'])), cell_style),
+                Paragraph(str(row['count']), cell_style),
+            ])
 
-        def pdf_escape(value):
-            return str(value).replace('\\', '\\\\').replace('(', '\\(').replace(')', '\\)')
+        table = LongTable(
+            table_data,
+            colWidths=[1.8 * inch, 2.2 * inch, 5.35 * inch, 0.65 * inch],
+            repeatRows=1,
+            splitByRow=1,
+        )
+        monthly_table_data = [[
+            Paragraph('Month', header_style),
+            Paragraph('Incidents', header_style),
+        ]]
+        monthly_table_data.extend([
+            Paragraph(html_escape(row['month']), cell_style),
+            Paragraph(str(row['count']), cell_style),
+        ] for row in payload['monthly_counts'])
+        monthly_table = LongTable(
+            monthly_table_data,
+            colWidths=[1.4 * inch, 1.0 * inch],
+            repeatRows=1,
+            splitByRow=1,
+        )
+        table_style = TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#243746')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('GRID', (0, 0), (-1, -1), 0.35, colors.HexColor('#CBD5E1')),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F1F5F9')]),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('ALIGN', (-1, 1), (-1, -1), 'RIGHT'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 6),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ])
+        table.setStyle(table_style)
+        monthly_table.setStyle(table_style)
 
-        content_lines = []
-        y_position = 760
-        for line in pdf_lines:
-            content_lines.append(f'BT /F1 12 Tf 72 {y_position} Td ({pdf_escape(line)}) Tj ET')
-            y_position -= 18
-        content = '\n'.join(content_lines).encode('latin-1', 'replace')
-        objects = [
-            '<< /Type /Catalog /Pages 2 0 R >>',
-            '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-            '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
-            '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
-            f'<< /Length {len(content)} >>\nstream\n' + content.decode('latin-1', 'replace') + '\nendstream',
-        ]
-        pdf_data = bytearray(b'%PDF-1.4\n')
-        offsets = [0]
-        for index, obj in enumerate(objects, start=1):
-            offsets.append(len(pdf_data))
-            pdf_data.extend(f'{index} 0 obj\n{obj}\nendobj\n'.encode('latin-1', 'replace'))
-        xref_position = len(pdf_data)
-        pdf_data.extend(f'xref\n0 {len(offsets)}\n'.encode('latin-1', 'replace'))
-        pdf_data.extend(b'0000000000 65535 f \n')
-        for offset in offsets[1:]:
-            pdf_data.extend(f'{offset:010d} 00000 n \n'.encode('latin-1', 'replace'))
-        pdf_data.extend(f'trailer\n<< /Size {len(offsets)} /Root 1 0 R >>\nstartxref\n{xref_position}\n%%EOF\n'.encode('latin-1', 'replace'))
-        pdf_response = Response(pdf_data, mimetype='application/pdf')
+        def draw_page_number(canvas, doc):
+            canvas.saveState()
+            canvas.setFont('Helvetica', 8)
+            canvas.setFillColor(colors.HexColor('#52606D'))
+            canvas.drawRightString(doc.pagesize[0] - doc.rightMargin, 0.25 * inch, f'Page {doc.page}')
+            canvas.restoreState()
+
+        document.build(
+            [
+                Paragraph(html_escape(title), title_style),
+                Spacer(1, 0.16 * inch),
+                Paragraph(f'Monthly consolidation for {payload["selected_year"]}', section_style),
+                monthly_table,
+                Spacer(1, 0.16 * inch),
+                Paragraph('Incidents by hazard and location', section_style),
+                table,
+            ],
+            onFirstPage=draw_page_number,
+            onLaterPages=draw_page_number,
+        )
+        pdf_response = Response(pdf_buffer.getvalue(), mimetype='application/pdf')
         pdf_response.headers['Content-Disposition'] = 'attachment; filename="analytics_export.pdf"'
         return pdf_response
 
@@ -1665,8 +2042,11 @@ def export_analytics_data():
 
 @app.route('/live-prediction')
 def live_prediction():
-    if 'username' not in session:
+    user = permission_service.current_user()
+    if not user:
         return {'error': 'Unauthorized'}, 401
+    if not permission_service.is_operational_staff(user):
+        return {'error': 'Forbidden'}, 403
     if not os.getenv('OPENWEATHER_API_KEY'):
         return {'error': 'OPENWEATHER_API_KEY is not configured.'}
 
@@ -1707,7 +2087,7 @@ def analytics():
     hazard_counts = [row[1] for row in hazard_rows]
     post_incident_reports = db.session.query(PostIncidentReport).join(IncidentResponse).order_by(PostIncidentReport.created_at.desc()).all()
     average_rating = db.session.query(db.func.avg(PostIncidentReport.response_rating)).scalar() or 0
-    return render_template('pages/analytics.html', total_incidents=total_incidents, avg_score=avg_score, active_responses=active_responses, active_alerts=active_alerts, hazard_labels=hazard_labels, hazard_counts=hazard_counts, post_incident_reports=post_incident_reports, average_rating=average_rating)
+    return render_template('pages/analytics.html', total_incidents=total_incidents, avg_score=avg_score, active_responses=active_responses, active_alerts=active_alerts, hazard_labels=hazard_labels, hazard_counts=hazard_counts, post_incident_reports=post_incident_reports, average_rating=average_rating, analytics_current_year=_manila_current_year())
 
 
 @app.route('/hazard-map')

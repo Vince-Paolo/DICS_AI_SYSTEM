@@ -1,16 +1,40 @@
 import os
+import re
 import sqlite3
 import unittest
-from datetime import datetime
+import base64
+from datetime import datetime, timezone
+import zlib
 from unittest.mock import patch
+from sqlalchemy import event
 
 os.environ.setdefault('SECRET_KEY', os.environ.get('SECRET_KEY') or 'development-secret')
 TEST_DB_PATH = os.path.abspath(os.path.join('instance', 'test_api_endpoints.db'))
-os.environ.setdefault('DATABASE_URL', f'sqlite:///{TEST_DB_PATH}')
+os.environ['DATABASE_URL'] = f'sqlite:///{TEST_DB_PATH}'
 
 from app import app, db
 from models import Barangay, CitizenReport, EvacuationCenter, Facility, Incident, IncidentResponse, Municipality, Province, Resource, Task, User
 from seed.demo_data import seed_geography_data
+
+
+def decompressed_pdf_content(pdf_data):
+    streams = re.findall(rb'stream\r?\n(.*?)(?=\r?\n?endstream)', pdf_data, re.DOTALL)
+    content = []
+    for stream in streams:
+        try:
+            encoded_stream = stream.strip()
+            if encoded_stream.startswith(b'<~'):
+                decoded_stream = base64.a85decode(encoded_stream, adobe=True)
+            else:
+                if encoded_stream.endswith(b'~>'):
+                    encoded_stream = encoded_stream[:-2]
+                decoded_stream = base64.a85decode(encoded_stream)
+            content.append(zlib.decompress(decoded_stream))
+        except zlib.error:
+            continue
+        except ValueError:
+            continue
+    return b'\n'.join(content)
 
 
 class ApiEndpointFunctionalTestCase(unittest.TestCase):
@@ -99,14 +123,75 @@ class ApiEndpointFunctionalTestCase(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         html = response.data.decode()
+        self.assertIn('id="languageSwitcher" class="language-switcher d-flex justify-content-end mb-3"', html)
+        self.assertNotIn('language-switcher position-fixed', html)
         self.assertIn('id="hazardSearchInput"', html)
         self.assertIn('Search hazard areas...', html)
+
+    def test_shared_layout_uses_local_bootstrap_assets(self):
+        response = self.client.get('/login')
+
+        self.assertEqual(response.status_code, 200)
+        html = response.get_data(as_text=True)
+        self.assertIn('/static/vendor/bootstrap/css/bootstrap.min.css', html)
+        self.assertIn('/static/vendor/bootstrap-icons/font/bootstrap-icons.css', html)
+        self.assertIn('/static/vendor/bootstrap/js/bootstrap.bundle.min.js', html)
+        self.assertNotIn('cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap', html)
+        self.assertNotIn('cdn.jsdelivr.net/npm/bootstrap-icons', html)
+
+        for asset in (
+            'vendor/bootstrap/css/bootstrap.min.css',
+            'vendor/bootstrap/js/bootstrap.bundle.min.js',
+            'vendor/bootstrap-icons/font/bootstrap-icons.css',
+            'vendor/bootstrap-icons/font/fonts/bootstrap-icons.woff2',
+        ):
+            with self.subTest(asset=asset):
+                asset_response = self.client.get(f'/static/{asset}')
+                self.assertEqual(asset_response.status_code, 200)
+
+        worker = self.client.get('/service-worker.js').get_data(as_text=True)
+        self.assertIn('/static/vendor/bootstrap/css/bootstrap.min.css', worker)
+        self.assertIn('/static/css/sidebar.css', worker)
+
+    def test_heat_map_and_navigation_are_available_without_tutorial(self):
+        self._login('api_commander', 'incident_commander')
+
+        response = self.client.get('/hazard-map')
+
+        self.assertEqual(response.status_code, 200)
+        html = response.get_data(as_text=True)
+        self.assertIn('href="/hazard-map"', html)
+        self.assertIn('id="heatMapToggle"', html)
+        self.assertIn("document.getElementById('heatMapToggle').addEventListener('click'", html)
+        self.assertIn('const heatLayer = L.heatLayer([],', html)
+        self.assertNotIn('tutorial', html.lower())
+        render_markers = html.split('function renderMarkers(', 1)[1].split('function getHeatWeight', 1)[0]
+        self.assertIn('renderHeatLayer();', render_markers)
+
+    def test_filipino_citizen_pages_and_flashes_use_fil_ph_catalog(self):
+        self._login('api_citizen', 'citizen')
+        self.client.get('/language/fil_PH?next=/citizen-alerts')
+        with self.client.session_transaction() as session:
+            session['_flashes'] = [('success', 'Registration successful! You can now log in.')]
+
+        alerts_html = self.client.get('/citizen-alerts').get_data(as_text=True)
+        self.assertIn('Mga Emergency Alert', alerts_html)
+        self.assertIn('Matagumpay ang pagpaparehistro! Maaari ka nang mag-log in.', alerts_html)
+
+        centers_html = self.client.get('/citizen-evacuation-centers').get_data(as_text=True)
+        self.assertIn('Mga Sentro ng Paglikas', centers_html)
 
     def test_hazard_map_rainfall_and_typhoon_tracking_apis_return_data(self):
         self._login('api_citizen', 'citizen')
 
         rainfall_response = self.client.get('/api/hazard-layers/rainfall')
-        typhoon_response = self.client.get('/api/hazard-layers/typhoon-tracks')
+        typhoon_sample = [{
+            'name': 'TEST-26',
+            'track': [[14.0, 121.1]],
+            'segments': [],
+        }]
+        with patch('app.get_typhoon_tracks', return_value=typhoon_sample):
+            typhoon_response = self.client.get('/api/hazard-layers/typhoon-tracks')
 
         self.assertEqual(rainfall_response.status_code, 200)
         self.assertEqual(typhoon_response.status_code, 200)
@@ -117,7 +202,7 @@ class ApiEndpointFunctionalTestCase(unittest.TestCase):
         self.assertIsInstance(rainfall, list)
         self.assertIsInstance(typhoon, list)
         self.assertGreater(len(rainfall), 0)
-        self.assertGreater(len(typhoon), 0)
+        self.assertEqual(len(typhoon), 1)
 
         self.assertIn('lat', rainfall[0])
         self.assertIn('lon', rainfall[0])
@@ -225,6 +310,19 @@ class ApiEndpointFunctionalTestCase(unittest.TestCase):
                 alert=True,
                 status='ACTIVE',
             ))
+            commander = User.query.filter_by(username='api_commander').one()
+            db.session.add(Incident(
+                user_id=commander.id,
+                hazard_type='storm',
+                location='Another household',
+                message='Private report from another user',
+                level='High',
+                alert=True,
+                status='ACTIVE',
+                reported_by='citizen',
+                latitude=14.4,
+                longitude=120.95,
+            ))
             db.session.commit()
 
         response = self.client.get('/api/map-pins')
@@ -239,6 +337,11 @@ class ApiEndpointFunctionalTestCase(unittest.TestCase):
         self.assertIsNotNone(pins[0]['province'])
         self.assertIsNotNone(pins[0]['municipality'])
         self.assertEqual(pins[0]['status'], 'ACTIVE')
+        self.assertEqual(pins[0]['reported_by'], 'citizen')
+
+        self._login('api_commander', 'incident_commander')
+        staff_pins = self.client.get('/api/map-pins').get_json()
+        self.assertEqual(len(staff_pins), 2)
 
     def test_emergency_sos_incident_appears_on_hazard_map_with_coordinates(self):
         self._login('api_citizen', 'citizen')
@@ -255,6 +358,24 @@ class ApiEndpointFunctionalTestCase(unittest.TestCase):
             pin.get('hazard_type') == 'EMERGENCY' and pin.get('lat') == 14.32 and pin.get('lng') == 120.9
             for pin in pins
         ))
+
+    def test_citizen_cannot_access_operational_map_resources(self):
+        self._login('api_citizen', 'citizen')
+
+        response = self.client.get('/api/map-resources')
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.get_json(), {'error': 'Forbidden'})
+
+    def test_citizen_cannot_trigger_live_prediction(self):
+        self._login('api_citizen', 'citizen')
+
+        with patch('app.get_weather_data') as get_weather, patch('app.predict_hazard') as predict_hazard:
+            response = self.client.get('/live-prediction?city=Lipa')
+
+        self.assertEqual(response.status_code, 403)
+        get_weather.assert_not_called()
+        predict_hazard.assert_not_called()
 
     def test_login_and_logout_responses_disable_browser_cache(self):
         response = self.client.get('/login')
@@ -329,9 +450,9 @@ class ApiEndpointFunctionalTestCase(unittest.TestCase):
         self.assertIn('updated_at', columns)
 
     def test_map_operational_layer_endpoints_return_geolocated_centers_and_resources(self):
-        self._login('api_citizen', 'citizen')
+        self._login('api_coordinator', 'agency_coordinator')
         with self.app.app_context():
-            user = User.query.filter_by(username='api_citizen').one()
+            user = User.query.filter_by(username='api_coordinator').one()
             report = CitizenReport(
                 user_id=user.id,
                 hazard_type='flood',
@@ -383,6 +504,29 @@ class ApiEndpointFunctionalTestCase(unittest.TestCase):
         self.assertIn('resource_utilization', payload)
         self.assertEqual(payload['resource_utilization']['status_counts'], {})
         self.assertEqual(payload['resource_utilization']['type_counts'], {})
+
+    def test_citizen_dashboard_labels_alert_count_as_system_wide(self):
+        self._login('api_citizen', 'citizen')
+        with self.app.app_context():
+            user = User.query.filter_by(username='api_citizen').one()
+            db.session.add(Incident(
+                user_id=user.id,
+                hazard_type='flood',
+                location='Test location',
+                message='Alert for dashboard scope test',
+                level='High',
+                status='ACTIVE',
+                alert=True,
+            ))
+            db.session.commit()
+
+        response = self.client.get('/citizen-dashboard')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'One active alert is recorded system-wide.', response.data)
+        self.assertIn(b'not a location-specific risk assessment', response.data)
+        self.assertNotIn(b'active alerts near you', response.data)
+        self.assertNotIn(b'No active alerts in your area', response.data)
 
     def test_analytics_api_includes_monthly_and_geography_breakdowns(self):
         self._login('api_coordinator', 'agency_coordinator')
@@ -441,6 +585,93 @@ class ApiEndpointFunctionalTestCase(unittest.TestCase):
         export_response = self.client.get('/api/analytics-export?format=csv&year=2026&month=2')
         self.assertEqual(export_response.status_code, 200)
         self.assertIn('hazard_type', export_response.get_data(as_text=True))
+
+    def test_analytics_monthly_counts_use_manila_calendar_boundaries(self):
+        self._login('api_coordinator', 'agency_coordinator')
+        with self.app.app_context():
+            db.session.add_all([
+                Incident(
+                    hazard_type='september-boundary', location='Manila', message='Just after local midnight',
+                    level='High', status='ACTIVE', created_at=datetime(2026, 8, 31, 16, 0),
+                ),
+                Incident(
+                    hazard_type='august-boundary', location='Manila', message='Just before local midnight',
+                    level='High', status='ACTIVE', created_at=datetime(2026, 8, 31, 15, 59),
+                ),
+            ])
+            db.session.commit()
+
+        september = self.client.get('/api/analytics-data?year=2026&month=9').get_json()
+        august = self.client.get('/api/analytics-data?year=2026&month=8').get_json()
+
+        self.assertEqual(september['incident_counts'], {'september-boundary': 1})
+        self.assertEqual(august['incident_counts'], {'august-boundary': 1})
+        self.assertEqual(
+            next(item['count'] for item in september['monthly_counts'] if item['month'] == '2026-09'),
+            1,
+        )
+
+    def test_analytics_year_selector_uses_manila_year_at_utc_rollover(self):
+        self._login('api_coordinator', 'agency_coordinator')
+        with patch('app.datetime') as datetime_mock:
+            datetime_mock.now.return_value = datetime(2025, 12, 31, 16, 30, tzinfo=timezone.utc)
+            response = self.client.get('/analytics')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('const currentYear = 2026;', response.get_data(as_text=True))
+
+    def test_analytics_pdf_paginates_and_queries_bounded_rows(self):
+        self._login('api_coordinator', 'agency_coordinator')
+        with self.app.app_context():
+            barangays = Barangay.query.limit(100).all()
+            db.session.add_all([
+                Incident(
+                    hazard_type='flood',
+                    location=f'Location {index}',
+                    message='Flooding reported',
+                    level='High',
+                    status='ACTIVE',
+                    municipality_id=barangay.municipality_id,
+                    barangay_id=barangay.id,
+                    created_at=datetime(2026, 4, 15, 12),
+                )
+                for index, barangay in enumerate(barangays)
+            ])
+            db.session.commit()
+
+        query_count = 0
+
+        def count_query(*args, **kwargs):
+            nonlocal query_count
+            query_count += 1
+
+        warmup_response = self.client.get('/api/analytics-data?year=2026&month=4')
+        self.assertEqual(warmup_response.status_code, 200)
+        with self.app.app_context():
+            event.listen(db.engine, 'before_cursor_execute', count_query)
+        try:
+            analytics_response = self.client.get('/api/analytics-data?year=2026&month=4')
+        finally:
+            with self.app.app_context():
+                event.remove(db.engine, 'before_cursor_execute', count_query)
+
+        self.assertEqual(analytics_response.status_code, 200)
+        self.assertLess(query_count, 25)
+
+        pdf_response = self.client.get('/api/analytics-export?format=pdf&year=2026&month=4')
+        self.assertEqual(pdf_response.status_code, 200)
+        self.assertEqual(pdf_response.mimetype, 'application/pdf')
+        self.assertGreaterEqual(len(re.findall(rb'/Type\s*/Page\b', pdf_response.data)), 2)
+        pdf_content = decompressed_pdf_content(pdf_response.data)
+        self.assertIn(b'Monthly consolidation for 2026', pdf_content)
+        self.assertIn(b'2026-04', pdf_content)
+
+    def test_manila_time_filter_converts_utc_and_labels_local_time(self):
+        formatter = self.app.jinja_env.filters['manila_time']
+
+        rendered = formatter(datetime(2026, 8, 31, 19, 0), '%b %d, %Y %I:%M %p')
+
+        self.assertEqual(rendered, 'Sep 01, 2026 03:00 AM PHT')
 
     def test_incident_response_stats_api_returns_commander_counts(self):
         self._login('api_commander', 'incident_commander')

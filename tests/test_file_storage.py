@@ -1,7 +1,6 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from app import app
 from services.file_storage import FileStorage
 
 

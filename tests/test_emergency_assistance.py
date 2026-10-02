@@ -5,14 +5,18 @@ from unittest.mock import patch
 
 os.environ.setdefault('SECRET_KEY', os.environ.get('SECRET_KEY') or 'development-secret')
 TEST_DB_PATH = os.path.abspath(os.path.join('instance', 'test_emergency_assistance.db'))
-os.environ.setdefault('DATABASE_URL', f'sqlite:///{TEST_DB_PATH}')
+os.environ['DATABASE_URL'] = f'sqlite:///{TEST_DB_PATH}'
 
 from app import app, db
 from models import User
 from seed.demo_data import seed_geography_data
 from services.hotlines import normalize_number
 
-HOTLINE_ENV_VARS = ('HOTLINE_GENERAL', 'HOTLINE_MEDICAL', 'HOTLINE_POLICE', 'HOTLINE_FIRE', 'HOTLINE_CDRRMO')
+HOTLINE_ENV_VARS = (
+    'HOTLINE_GENERAL', 'HOTLINE_CDRRMO',
+    'HOTLINE_CITY_HEALTH', 'HOTLINE_CTMO', 'HOTLINE_SAN_PABLO_PNP', 'HOTLINE_SAN_PABLO_FIRE',
+    'HOTLINE_BARANGAY_RADIO_CONTROL', 'HOTLINE_MERALCO',
+)
 
 
 def tel_links(html):
@@ -73,39 +77,118 @@ class EmergencyAssistancePageTestCase(unittest.TestCase):
     def test_page_is_public_and_has_no_form(self):
         response = self.client.get('/emergency-assistance')
         self.assertEqual(response.status_code, 200)
+        self.assertIn('public', response.headers.get('Cache-Control', ''))
         html = response.get_data(as_text=True)
         self.assertIn('Need immediate help?', html)
         self.assertNotIn('<form', html)
         self.assertNotIn('type="file"', html)
 
+    def test_signed_in_hotline_response_is_not_cacheable(self):
+        self._login('ea_citizen', 'citizen')
+
+        response = self.client.get('/emergency-assistance')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('private', response.headers.get('Cache-Control', ''))
+        self.assertIn('no-store', response.headers.get('Cache-Control', ''))
+
+    def test_flash_messages_use_category_specific_styles_and_icons(self):
+        with self.client.session_transaction() as session:
+            session['_flashes'] = [
+                ('success', 'Saved successfully.'),
+                ('warning', 'Review this change.'),
+                ('error', 'The action failed.'),
+                ('info', 'For your information.'),
+            ]
+
+        response = self.client.get('/login')
+        html = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        for flash_kind in ('success', 'warning', 'danger', 'info'):
+            self.assertIn(f'flash-message-{flash_kind}', html)
+        self.assertIn('bi-check-circle-fill', html)
+        self.assertIn('bi-exclamation-triangle-fill', html)
+        self.assertIn('bi-x-octagon-fill', html)
+        self.assertIn('bi-info-circle-fill', html)
+        self.assertNotIn('font-monospace', html)
+
+    def test_page_status_is_hidden_online_and_has_translated_offline_message(self):
+        html = self.client.get('/login').get_data(as_text=True)
+
+        self.assertRegex(html, r'id="pageStatus"[^>]*class="[^"]*d-none')
+        self.assertIn('data-offline-message="Offline. Showing the last cached dashboard snapshot."', html)
+
+        self.client.get('/language/tl')
+        translated_html = self.client.get('/login').get_data(as_text=True)
+        self.assertIn('data-offline-message="Walang koneksyon. Ipinapakita ang huling naka-cache na pahina."', translated_html)
+
     def test_defaults_to_national_number_and_never_invents_office_number(self):
         html = self.client.get('/emergency-assistance').get_data(as_text=True)
         links = tel_links(html)
-        # hero + medical + police + fire + disaster (falls back) = 5 links, all 911
-        self.assertEqual(links, ['911'] * 5)
+        self.assertEqual(links, ['911'] * 8)
         self.assertIn('This office line is not set up yet', html)
 
-    def test_configured_numbers_are_used_per_service(self):
+    def test_configured_cdrrmo_number_is_used(self):
         env = {
             'HOTLINE_GENERAL': '911',
-            'HOTLINE_MEDICAL': '(049) 111-2222',
-            'HOTLINE_POLICE': '117',
-            'HOTLINE_FIRE': '160',
             'HOTLINE_CDRRMO': '+63 49 502 0000',
         }
         with patch.dict(os.environ, env):
             html = self.client.get('/emergency-assistance').get_data(as_text=True)
-        self.assertEqual(tel_links(html), ['911', '0491112222', '117', '160', '+63495020000'])
-        self.assertIn('(049) 111-2222', html)
+        self.assertEqual(tel_links(html), ['911', '+63495020000'] + ['911'] * 6)
         self.assertIn('+63 49 502 0000', html)
         self.assertNotIn('This office line is not set up yet', html)
 
+    def test_multiple_cdrrmo_numbers_render_as_separate_dial_links(self):
+        numbers = '0998-540-7171|(049) 800-0405|(049) 549-0500'
+        with patch.dict(os.environ, {'HOTLINE_CDRRMO': numbers}):
+            html = self.client.get('/emergency-assistance').get_data(as_text=True)
+
+        self.assertEqual(tel_links(html), [
+            '911',
+            '09985407171', '0498000405', '0495490500',
+        ] + ['911'] * 6)
+        for number in ('0998-540-7171', '(049) 800-0405', '(049) 549-0500'):
+            self.assertIn(number, html)
+        self.assertNotIn('This office line is not set up yet', html)
+
+    def test_san_pablo_hotlines_render_every_supplied_contact(self):
+        env = {
+            'HOTLINE_CITY_HEALTH': '(049) 562-7874',
+            'HOTLINE_CTMO': '(049) 503-2200',
+            'HOTLINE_SAN_PABLO_PNP': '0908-193-0819|0927-837-7454|(049) 562-6474',
+            'HOTLINE_SAN_PABLO_FIRE': '0999-578-4943|(049) 562-7654|(049) 572-3868',
+            'HOTLINE_BARANGAY_RADIO_CONTROL': '(049) 562-3086',
+            'HOTLINE_MERALCO': '(02) 16211|0920-971-6211|0917-551-6211',
+        }
+        with patch.dict(os.environ, env):
+            html = self.client.get('/emergency-assistance').get_data(as_text=True)
+
+        self.assertEqual(tel_links(html), [
+            '911', '911',
+            '0495627874', '0495032200',
+            '09081930819', '09278377454', '0495626474',
+            '09995784943', '0495627654', '0495723868',
+            '0495623086',
+            '0216211', '09209716211', '09175516211',
+        ])
+        for label in (
+            'City Health Office (SPC - CHO)',
+            'City Traffic Management Office (CTMO)',
+            'San Pablo PNP',
+            'San Pablo Fire Station (BFP)',
+            'Barangay Radio Control',
+            'Meralco',
+        ):
+            self.assertIn(label, html)
+
     def test_invalid_configured_number_falls_back_instead_of_rendering_it(self):
-        with patch.dict(os.environ, {'HOTLINE_MEDICAL': 'ask at the office', 'HOTLINE_CDRRMO': '0917-XXX-XXXX'}):
+        with patch.dict(os.environ, {'HOTLINE_CITY_HEALTH': 'ask at the office', 'HOTLINE_CDRRMO': '0917-XXX-XXXX'}):
             html = self.client.get('/emergency-assistance').get_data(as_text=True)
         self.assertNotIn('ask at the office', html)
         self.assertNotIn('XXX', html)
-        self.assertEqual(tel_links(html), ['911'] * 5)
+        self.assertEqual(tel_links(html), ['911'] * 8)
 
     def test_signed_out_visitor_gets_plain_layout_and_not_the_login_redirect(self):
         html = self.client.get('/emergency-assistance').get_data(as_text=True)
@@ -124,6 +207,15 @@ class EmergencyAssistancePageTestCase(unittest.TestCase):
         html = self.client.get('/emergency-assistance').get_data(as_text=True)
         self.assertIn('Kailangan ng agarang tulong?', html)
         self.assertIn('Tumawag na', html)
+        for label in (
+            'Tanggapan ng Kalusugan ng Lungsod',
+            'Tanggapan ng Pamamahala ng Trapiko ng Lungsod',
+            'PNP ng San Pablo',
+            'Istasyon ng Bumbero ng San Pablo',
+            'Radio Control ng Barangay',
+            'Meralco',
+        ):
+            self.assertIn(label, html)
 
     def test_only_admin_and_eoc_see_the_missing_office_number_notice(self):
         self.assertNotIn('Admin notice', self.client.get('/emergency-assistance').get_data(as_text=True))
@@ -188,7 +280,7 @@ class EmergencyAssistancePageTestCase(unittest.TestCase):
 
     def test_resources_page_uses_configured_numbers_not_hardcoded_ones(self):
         self._login('ea_citizen', 'citizen')
-        with patch.dict(os.environ, {'HOTLINE_FIRE': '160', 'HOTLINE_CDRRMO': '(049) 502-0000'}):
+        with patch.dict(os.environ, {'HOTLINE_SAN_PABLO_FIRE': '160', 'HOTLINE_CDRRMO': '(049) 502-0000'}):
             html = self.client.get('/citizen-resources').get_data(as_text=True)
         self.assertIn('href="tel:160"', html)
         self.assertIn('href="tel:0495020000"', html)

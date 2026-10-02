@@ -1,480 +1,1984 @@
+
 msgid ""
 msgstr ""
-"Language: tl\n"
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2026-09-30 21:25+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: fil_PH\n"
+"Language-Team: Filipino <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
 
-msgid "Switch to English"
-msgstr "Lumipat sa English"
+#: app.py:468 templates/pages/error_404.html:3 templates/pages/error_404.html:6
+msgid "Page Not Found"
+msgstr "Hindi Nahanap ang Pahina"
 
-msgid "Switch to Tagalog"
-msgstr "Lumipat sa Tagalog"
+#: app.py:469
+msgid ""
+"The link may be outdated or the page may have moved. Please check the URL"
+" or return to the dashboard."
+msgstr ""
+"Maaaring luma na ang link o nailipat ang pahina. Suriin ang URL o bumalik"
+" sa dashboard."
 
-msgid "Confirm action"
-msgstr "Kumpirmahin ang aksyon"
+#: app.py:480
+msgid "Access Denied"
+msgstr "Walang Pahintulot"
 
-msgid "Cancel"
-msgstr "Kanselahin"
+#: app.py:481
+msgid "You don't have permission to view this page or complete that action."
+msgstr ""
+"Wala kang pahintulot na tingnan ang pahinang ito o isagawa ang pagkilos "
+"na iyon."
 
-msgid "Continue"
-msgstr "Magpatuloy"
+#: app.py:492
+msgid "Too Many Requests"
+msgstr "Napakaraming Kahilingan"
 
-msgid "Login"
-msgstr "Pag-login"
+#: app.py:493
+msgid ""
+"This action has been requested too many times. Please wait a moment and "
+"try again."
+msgstr ""
+"Masyadong maraming beses hiniling ang pagkilos na ito. Maghintay sandali "
+"at subukang muli."
 
-msgid "Username"
-msgstr "Username"
+#: app.py:504
+msgid "Your Session Expired"
+msgstr "Nag-expire ang Iyong Session"
 
-msgid "Enter username"
-msgstr "Ilagay ang username"
+#: app.py:505
+msgid ""
+"Your session expired or the form is no longer valid. Please refresh the "
+"page and try again."
+msgstr ""
+"Nag-expire ang iyong session o hindi na wasto ang form. I-refresh ang "
+"pahina at subukang muli."
 
-msgid "Password"
-msgstr "Password"
+#: app.py:516
+msgid "Something Went Wrong"
+msgstr "Nagkaroon ng Problema"
 
-msgid "Enter password"
-msgstr "Ilagay ang password"
+#: app.py:517 templates/pages/error_500.html:13
+msgid ""
+"The system hit an unexpected issue while processing your request. Please "
+"try again shortly, or return to the dashboard."
+msgstr ""
+"Nagkaroon ng hindi inaasahang problema habang pinoproseso ang iyong "
+"kahilingan. Subukang muli pagkalipas ng ilang sandali o bumalik sa "
+"dashboard."
 
-msgid "Sign in"
-msgstr "Mag-sign in"
+#: app.py:979
+#, python-format
+msgid "Welcome back, %(username)s!"
+msgstr "Maligayang pagbabalik, %(username)s!"
 
-msgid "Forgot password?"
-msgstr "Nakalimutan ang password?"
+#: app.py:1038
+msgid "Unable to create account. Please try again."
+msgstr "Hindi makagawa ng account. Pakisubukang muli."
 
-msgid "Register new account"
-msgstr "Magrehistro ng bagong account"
+#: app.py:1040
+msgid "Registration successful! You can now log in."
+msgstr "Matagumpay ang pagpaparehistro! Maaari ka nang mag-log in."
 
-msgid "Digital incident command"
-msgstr "Digital na pamamahala ng insidente"
+#: app.py:1110
+msgid "If an account exists for that email, a reset link has been sent."
+msgstr ""
+"Kung may account para sa email na iyon, naipadala na ang link para "
+"magtakda muli ng password."
 
-msgid "Resources and Emergency Info"
-msgstr "Mga Mapagkukunan at Impormasyong Pang-emergency"
+#: app.py:1121
+msgid "This password reset link is invalid or has expired."
+msgstr "Di-wasto o paso na ang link para magtakda muli ng password."
 
-msgid "Emergency Resources and Information"
-msgstr "Mga Mapagkukunan at Impormasyong Pang-emergency"
+#: app.py:1142 app.py:1194
+msgid "Unable to update password. Please try again."
+msgstr "Hindi ma-update ang password. Pakisubukang muli."
 
-msgid "Emergency Hotlines"
-msgstr "Mga Hotline ng Emergency"
+#: app.py:1144
+msgid "Password updated successfully. Please sign in with your new password."
+msgstr ""
+"Matagumpay na na-update ang password. Mag-sign in gamit ang bago mong "
+"password."
 
-msgid "National Emergency"
-msgstr "Pambansang Emergency"
+#: app.py:1153
+msgid "You have been logged out."
+msgstr "Nakapag-sign out ka na."
 
-msgid "Calabarzon Police"
-msgstr "Pulisya ng Calabarzon"
+#: app.py:1197
+msgid "Password updated successfully."
+msgstr "Matagumpay na na-update ang password."
 
-msgid "Fire Department"
-msgstr "Kagawaran ng Bumbero"
+#: app.py:1840
+msgid ""
+"You do not have permission to access analytics. Only admins, "
+"coordinators, commanders, and EOC staff can view system analytics."
+msgstr ""
+"Wala kang pahintulot na buksan ang analytics. Admin, coordinator, "
+"commander, at kawani ng EOC lamang ang maaaring tumingin sa analytics ng "
+"system."
 
+#: app.py:1861
+msgid "You do not have permission to view the hazard map."
+msgstr "Wala kang pahintulot na tingnan ang mapa ng panganib."
+
+#: app.py:1878
+msgid ""
+"You do not have permission to access the Incident Command System. Only "
+"admins and incident commanders can view this."
+msgstr ""
+"Wala kang pahintulot na buksan ang Incident Command System. Admin at "
+"incident commander lamang ang maaaring tumingin nito."
+
+#: app.py:1890
+msgid ""
+"You do not have permission to access ICS protocols. Only admins and "
+"incident commanders can view this."
+msgstr ""
+"Wala kang pahintulot na buksan ang mga protocol ng ICS. Admin at incident"
+" commander lamang ang maaaring tumingin nito."
+
+#: blueprints/admin.py:60 blueprints/admin.py:108 blueprints/admin.py:121
+#: blueprints/admin.py:188 blueprints/admin.py:236 blueprints/admin.py:302
+msgid "Admin access required."
+msgstr "Kailangan ng pahintulot ng admin."
+
+#: blueprints/admin.py:68 blueprints/admin.py:269 blueprints/eoc.py:199
+#: blueprints/eoc.py:232 blueprints/eoc.py:317 blueprints/eoc.py:376
+msgid "EOC staff access required."
+msgstr "Kailangan ng pahintulot ng kawani ng EOC."
+
+#: blueprints/admin.py:83
+msgid "You do not have permission to view all incidents."
+msgstr "Wala kang pahintulot na tingnan ang lahat ng insidente."
+
+#: blueprints/admin.py:97
+msgid "You do not have permission to view all alerts."
+msgstr "Wala kang pahintulot na tingnan ang lahat ng alerto."
+
+#: blueprints/admin.py:134
+msgid "Username, email, and password are required."
+msgstr "Kailangan ang username, email, at password."
+
+#: blueprints/admin.py:138
+msgid "Password must be at least 8 characters."
+msgstr "Dapat ay hindi bababa sa 8 character ang password."
+
+#: blueprints/admin.py:142
+msgid "Username already exists."
+msgstr "May gumagamit na ng username na ito."
+
+#: blueprints/admin.py:146
+msgid "Email already registered."
+msgstr "Nakarehistro na ang email na ito."
+
+#: blueprints/admin.py:152 blueprints/admin.py:206
+msgid ""
+"An agency must be selected for this role, or tasks/resources assigned to "
+"it will never reach this user."
+msgstr ""
+"Dapat pumili ng ahensya para sa role na ito; kung hindi, hindi "
+"matatanggap ng user na ito ang mga task o resource na itatalaga rito."
+
+#: blueprints/admin.py:155 blueprints/admin.py:209 blueprints/commander.py:591
+#, python-format
+msgid "Invalid agency \"%(agency)s\". Please select from the list."
+msgstr "Di-wasto ang ahensyang \"%(agency)s\". Pumili mula sa listahan."
+
+#: blueprints/admin.py:174 blueprints/admin.py:179
+msgid "Unable to create user. Please try again."
+msgstr "Hindi makagawa ng user. Pakisubukang muli."
+
+#: blueprints/admin.py:176
+#, python-format
+msgid "User \"%(username)s\" created successfully."
+msgstr "Matagumpay na nagawa ang user na \"%(username)s\"."
+
+#: blueprints/admin.py:197
+msgid "Cannot remove last admin account."
+msgstr "Hindi maaaring alisin ang huling admin account."
+
+#: blueprints/admin.py:222 blueprints/admin.py:227
+msgid "Unable to update user. Please try again."
+msgstr "Hindi ma-update ang user. Pakisubukang muli."
+
+#: blueprints/admin.py:224
+#, python-format
+msgid "User \"%(username)s\" updated successfully."
+msgstr "Matagumpay na na-update ang user na \"%(username)s\"."
+
+#: blueprints/admin.py:245
+msgid "Cannot disable last active admin account."
+msgstr "Hindi maaaring i-disable ang huling aktibong admin account."
+
+#: blueprints/admin.py:254 blueprints/admin.py:260
+msgid "Unable to update user status. Please try again."
+msgstr "Hindi ma-update ang status ng user. Pakisubukang muli."
+
+#: blueprints/admin.py:257
+#, python-format
+msgid "Status updated for user \"%(username)s\"."
+msgstr "Matagumpay na na-update ang status ng user na \"%(username)s\"."
+
+#: blueprints/admin.py:311
+msgid "Password verification failed. Backup export denied."
+msgstr ""
+"Nabigo ang pag-verify ng password. Hindi pinahintulutan ang pag-export ng"
+" backup."
+
+#: blueprints/admin.py:373
+msgid "Backup could not be created. Please try again."
+msgstr "Hindi magawa ang backup. Pakisubukang muli."
+
+#: blueprints/ai.py:39
+msgid ""
+"You do not have permission to run hazard predictions. Only incident "
+"commanders, EOC staff, and coordinators can perform this action."
+msgstr ""
+"Wala kang pahintulot na magpatakbo ng hula sa panganib. Incident "
+"commander, kawani ng EOC, at coordinator lamang ang maaaring gumawa nito."
+
+#: blueprints/ai.py:115
+msgid "Unable to save the AI prediction. Please try again."
+msgstr "Hindi ma-save ang hula ng AI. Pakisubukang muli."
+
+#: blueprints/citizen.py:149
+msgid ""
+"The online incident report form is no longer used. Please call an "
+"emergency hotline instead."
+msgstr ""
+"Hindi na ginagamit ang online na form ng ulat ng insidente. Mangyaring "
+"tumawag na lang sa emergency hotline."
+
+#: blueprints/citizen.py:187
+msgid "Selected municipality does not match the selected province."
+msgstr "Hindi tumutugma ang napiling munisipalidad sa napiling lalawigan."
+
+#: blueprints/citizen.py:192
+msgid "Selected barangay does not match the selected municipality."
+msgstr "Hindi tumutugma ang napiling barangay sa napiling munisipalidad."
+
+#: blueprints/citizen.py:200 blueprints/citizen.py:206
+msgid "Photo upload was invalid."
+msgstr "Di-wasto ang na-upload na larawan."
+
+#: blueprints/citizen.py:221
+msgid ""
+"GPS coordinates are required. Please allow browser location access or "
+"place the pin on the map before submitting."
+msgstr ""
+"Kailangan ang mga GPS coordinate. Payagan ang browser na gamitin ang "
+"iyong lokasyon o maglagay ng pin sa mapa bago magsumite."
+
+#: blueprints/citizen.py:269 blueprints/citizen.py:324
+msgid "Unable to save your report. Please try again."
+msgstr "Hindi ma-save ang iyong ulat. Pakisubukang muli."
+
+#: blueprints/citizen.py:272
+msgid ""
+"A similar report for this barangay was submitted recently. Your report "
+"has been recorded, but no duplicate incident was created."
+msgstr ""
+"May kahalintulad na ulat para sa barangay na ito kamakailan. Naitala ang "
+"iyong ulat, ngunit walang ginawang dobleng insidente."
+
+#: blueprints/citizen.py:326
+msgid "Incident report submitted successfully. Authorities have been notified."
+msgstr ""
+"Matagumpay na naisumite ang ulat ng insidente. Naabisuhan na ang mga "
+"awtoridad."
+
+#: blueprints/citizen.py:330
+msgid "Unable to submit your report. Please try again."
+msgstr "Hindi maisumite ang iyong ulat. Pakisubukang muli."
+
+#: blueprints/citizen.py:423
+msgid "You can only view your own reports."
+msgstr "Ang sarili mong mga ulat lamang ang maaari mong tingnan."
+
+#: blueprints/citizen.py:487
+msgid "Online SOS is no longer available. Please call an emergency hotline."
+msgstr ""
+"Hindi na available ang online SOS. Mangyaring tumawag sa emergency "
+"hotline."
+
+#: blueprints/commander.py:16 blueprints/commander.py:332
+#: blueprints/commander.py:380 blueprints/commander.py:403
+#: blueprints/commander.py:426 blueprints/commander.py:447
+#: blueprints/commander.py:468 blueprints/commander.py:571
+#: blueprints/commander.py:623 blueprints/commander.py:681
+msgid "Incident Commander access required."
+msgstr "Kailangan ng pahintulot ng incident commander."
+
+#: blueprints/commander.py:75
+msgid "A reason is required when modifying or rejecting an AI recommendation."
+msgstr "Kailangan ng dahilan sa pagbabago o pagtanggi sa rekomendasyon ng AI."
+
+#: blueprints/commander.py:83
+msgid "This incident has no AI recommendation to decide on."
+msgstr "Walang rekomendasyon ng AI sa insidenteng ito na kailangang pagpasyahan."
+
+#: blueprints/commander.py:117
+msgid "Unable to record the recommendation decision. Please try again."
+msgstr "Hindi maitala ang pasya sa rekomendasyon. Pakisubukang muli."
+
+#: blueprints/commander.py:119
+msgid "AI recommendation rejected; no incident response was activated."
+msgstr ""
+"Tinanggihan ang rekomendasyon ng AI; walang tugon sa insidente ang na-"
+"activate."
+
+#: blueprints/commander.py:147
+msgid "Unable to create the incident response. Please try again."
+msgstr "Hindi magawa ang tugon sa insidente. Pakisubukang muli."
+
+#: blueprints/commander.py:150
+#, python-format
+msgid "Incident response activated for incident %(incident_id)s."
+msgstr "Na-activate ang tugon para sa insidente %(incident_id)s."
+
+#: blueprints/commander.py:166 blueprints/eoc.py:276
+msgid "A reason is required to mark an incident as a false alarm."
+msgstr "Kailangan ng dahilan upang markahan ang insidente bilang maling alarma."
+
+#: blueprints/commander.py:196 blueprints/eoc.py:306
+msgid "Unable to mark the incident as rejected. Please try again."
+msgstr "Hindi mamarkahan ang insidente bilang tinanggihan. Pakisubukang muli."
+
+#: blueprints/commander.py:199 blueprints/eoc.py:309
+msgid "Incident marked as rejected false alarm."
+msgstr "Minarkahan ang insidente bilang tinanggihang maling alarma."
+
+#: blueprints/commander.py:303
+msgid "Response rating must be between 1 and 5."
+msgstr "Dapat nasa pagitan ng 1 at 5 ang rating ng tugon."
+
+#: blueprints/commander.py:315
+msgid "Unable to save the evaluation. Please try again."
+msgstr "Hindi ma-save ang pagsusuri. Pakisubukang muli."
+
+#: blueprints/commander.py:318
+msgid "Post-incident evaluation saved."
+msgstr "Na-save na ang pagsusuri pagkatapos ng insidente."
+
+#: blueprints/commander.py:325
+msgid "Please select an incident response from the Command Center."
+msgstr "Pumili ng tugon sa insidente mula sa Command Center."
+
+#: blueprints/commander.py:341 blueprints/commander.py:388
+#: blueprints/commander.py:411 blueprints/commander.py:434
+#: blueprints/commander.py:455
+msgid ""
+"The incident linked to this response could not be found. It may have been"
+" deleted."
+msgstr ""
+"Hindi makita ang insidenteng kaugnay ng tugon na ito. Maaaring nabura na "
+"ito."
+
+#: blueprints/commander.py:517
+msgid "Unable to close the incident response. Please try again."
+msgstr "Hindi maisara ang tugon sa insidente. Pakisubukang muli."
+
+#: blueprints/commander.py:520
+msgid "Incident response closed successfully and incident marked resolved."
+msgstr "Matagumpay na naisara ang tugon at minarkahang nalutas ang insidente."
+
+#: blueprints/commander.py:538
+msgid "Only closed incident responses can be reopened."
+msgstr "Mga naisara lamang na tugon sa insidente ang maaaring buksan muli."
+
+#: blueprints/commander.py:561
+msgid "Unable to reopen the incident response. Please try again."
+msgstr "Hindi mabuksan muli ang tugon sa insidente. Pakisubukang muli."
+
+#: blueprints/commander.py:564
+#, python-format
+msgid "Incident response #%(incident_id)s reopened."
+msgstr "Muling binuksan ang tugon sa insidente #%(incident_id)s."
+
+#: blueprints/commander.py:611 blueprints/commander.py:658
+#: blueprints/commander.py:798 blueprints/commander.py:833
+#: blueprints/commander.py:870
+msgid "Unable to complete the commander operation. Please try again."
+msgstr "Hindi makumpleto ang operasyon ng commander. Pakisubukang muli."
+
+#: blueprints/commander.py:614
+#, python-format
+msgid "Task \"%(title)s\" assigned to %(agency)s."
+msgstr "Itinalaga sa %(agency)s ang task na \"%(title)s\"."
+
+#: blueprints/commander.py:639 blueprints/coordinator.py:227
+msgid "Quantity must be at least 1."
+msgstr "Dapat hindi bababa sa 1 ang dami."
+
+#: blueprints/commander.py:661
+#, python-format
+msgid "Resource allocated: %(quantity)s x %(resource_type)s from %(agency)s."
+msgstr "Inilaan ang %(quantity)s x %(resource_type)s mula sa %(agency)s."
+
+#: blueprints/commander.py:693
+msgid "Enter a number of people greater than zero."
+msgstr "Maglagay ng bilang ng tao na higit sa zero."
+
+#: blueprints/commander.py:699
+#, python-format
+msgid ""
+"\"%(center)s\" only has room for %(remaining)s more people (capacity "
+"%(capacity)s). Choose another center or reduce the count."
+msgstr ""
+"May puwang lamang para sa %(remaining)s pang tao ang \"%(center)s\" "
+"(kapasidad: %(capacity)s). Pumili ng ibang sentro o bawasan ang bilang."
+
+#: blueprints/commander.py:701
+msgid "That center"
+msgstr "Ang sentrong iyon"
+
+#: blueprints/commander.py:735 blueprints/facilities.py:183
+msgid "This evacuation center was updated by another user. Reload and try again."
+msgstr ""
+"Na-update ng ibang user ang evacuation center na ito. I-reload at "
+"subukang muli."
+
+#: blueprints/commander.py:740
+msgid "Unable to record the evacuation. Please try again."
+msgstr "Hindi maitala ang paglikas. Pakisubukang muli."
+
+#: blueprints/commander.py:743
+#, python-format
+msgid "Recorded %(people_count)s people evacuated to %(center)s."
+msgstr "Naitala ang paglikas ng %(people_count)s tao papunta sa %(center)s."
+
+#: blueprints/commander.py:745
+msgid "the center"
+msgstr "sentro"
+
+#: blueprints/commander.py:761
+msgid ""
+"Only Incident Commanders can create situation reports. Coordinators use "
+"their Coordinator portal to submit reports."
+msgstr ""
+"Incident commander lamang ang maaaring gumawa ng situation report. Sa "
+"Coordinator portal nagsusumite ng ulat ang mga coordinator."
+
+#: blueprints/commander.py:767
+msgid "You can only create situation reports for incidents you command."
+msgstr ""
+"Maaari ka lamang gumawa ng situation report para sa mga insidenteng ikaw "
+"ang namumuno."
+
+#: blueprints/commander.py:801
+#, python-format
+msgid "Situation report \"%(title)s\" created successfully."
+msgstr "Matagumpay na nagawa ang situation report na \"%(title)s\"."
+
+#: blueprints/commander.py:828 blueprints/coordinator.py:286
+msgid "This resource was updated by another user. Reload and try again."
+msgstr "Na-update ng ibang user ang resource na ito. I-reload at subukang muli."
+
+#: blueprints/commander.py:836
+#, python-format
+msgid "Task status updated to %(status)s."
+msgstr "Na-update ang status ng task sa %(status)s."
+
+#: blueprints/commander.py:865 blueprints/coordinator.py:123
+#: blueprints/responder.py:282
+msgid "This task was updated by another user. Reload and try again."
+msgstr "Na-update ng ibang user ang task na ito. I-reload at subukang muli."
+
+#: blueprints/commander.py:873 blueprints/coordinator.py:293
+#, python-format
+msgid "Resource status updated to %(status)s."
+msgstr "Na-update ang status ng resource sa %(status)s."
+
+#: blueprints/coordinator.py:35 blueprints/coordinator.py:81
+#: blueprints/coordinator.py:103 blueprints/coordinator.py:141
+#: blueprints/coordinator.py:175 blueprints/coordinator.py:207
+#: blueprints/coordinator.py:266 blueprints/coordinator.py:304
+#: blueprints/coordinator.py:326 blueprints/coordinator.py:389
+#: blueprints/coordinator.py:411 blueprints/coordinator.py:416
+#: blueprints/coordinator.py:442 blueprints/coordinator.py:464
+msgid "Access denied."
+msgstr "Walang pahintulot."
+
+#: blueprints/coordinator.py:109
+msgid "You can only update tasks assigned to your agency."
+msgstr "Maaari mo lamang i-update ang mga task na nakatalaga sa iyong ahensya."
+
+#: blueprints/coordinator.py:128 blueprints/coordinator.py:291
+#: blueprints/coordinator.py:376 blueprints/coordinator.py:504
+msgid "Unable to complete the coordinator operation. Please try again."
+msgstr "Hindi makumpleto ang operasyon ng coordinator. Pakisubukang muli."
+
+#: blueprints/coordinator.py:130
+#, python-format
+msgid "Task \"%(title)s\" updated to %(status)s."
+msgstr "Na-update ang task na \"%(title)s\" sa status na %(status)s."
+
+#: blueprints/coordinator.py:219 blueprints/coordinator.py:347
+#: blueprints/coordinator.py:469
+msgid "Coordinator agency is not configured."
+msgstr "Hindi naka-configure ang ahensya ng coordinator."
+
+#: blueprints/coordinator.py:223 blueprints/coordinator.py:338
+msgid "Please fill in all required fields."
+msgstr "Punan ang lahat ng kinakailangang field."
+
+#: blueprints/coordinator.py:233
+msgid "You can only allocate resources to responses that include your agency."
+msgstr ""
+"Maaari ka lamang maglaan ng resource sa mga tugong kinabibilangan ng "
+"iyong ahensya."
+
+#: blueprints/coordinator.py:252
+msgid "Unable to allocate the resource. Please try again."
+msgstr "Hindi mailaan ang resource. Pakisubukang muli."
+
+#: blueprints/coordinator.py:254
+#, python-format
+msgid ""
+"%(quantity)s x %(resource_type)s (%(agency)s) allocated to Response "
+"#%(incident_id)s."
+msgstr ""
+"Inilaan ang %(quantity)s x %(resource_type)s (%(agency)s) sa Tugon "
+"#%(incident_id)s."
+
+#: blueprints/coordinator.py:272
+msgid "You can only update resources allocated to your agency."
+msgstr "Maaari mo lamang i-update ang mga resource na inilaan sa iyong ahensya."
+
+#: blueprints/coordinator.py:356
+msgid "You can only submit reports for responses that include your agency."
+msgstr ""
+"Maaari ka lamang magsumite ng ulat para sa mga tugong kinabibilangan ng "
+"iyong ahensya."
+
+#: blueprints/coordinator.py:378
+#, python-format
+msgid "Broadcast message \"%(title)s\" submitted successfully."
+msgstr "Matagumpay na naipadala ang broadcast na \"%(title)s\"."
+
+#: blueprints/coordinator.py:477
+msgid "Incident, resource type, and a valid quantity are required."
+msgstr "Kailangan ang insidente, uri ng resource, at wastong dami."
+
+#: blueprints/coordinator.py:507
+#, python-format
+msgid "Resource request for %(quantity)s x %(resource_type)s submitted."
+msgstr "Naipadala ang kahilingan para sa %(quantity)s x %(resource_type)s."
+
+#: blueprints/eoc.py:16 blueprints/eoc.py:93 blueprints/eoc.py:156
+#: blueprints/eoc.py:652
+msgid "EOC Staff access required."
+msgstr "Kailangan ng pahintulot ng kawani ng EOC."
+
+#: blueprints/eoc.py:222 blueprints/eoc.py:256 blueprints/eoc.py:519
+#: blueprints/eoc.py:609 blueprints/eoc.py:638 blueprints/eoc.py:705
+msgid "Unable to complete the EOC operation. Please try again."
+msgstr "Hindi makumpleto ang operasyon ng EOC. Pakisubukang muli."
+
+#: blueprints/eoc.py:224
+msgid "Alert status updated."
+msgstr "Na-update ang status ng alerto."
+
+#: blueprints/eoc.py:259
+msgid "Incident marked as verified."
+msgstr "Minarkahan bilang beripikado ang insidente."
+
+#: blueprints/eoc.py:324
+msgid "An incident response already exists for this incident."
+msgstr "May umiiral nang tugon para sa insidenteng ito."
+
+#: blueprints/eoc.py:329 blueprints/eoc.py:383
+msgid "Please select a commander."
+msgstr "Pumili ng commander."
+
+#: blueprints/eoc.py:334 blueprints/eoc.py:388
+msgid "Invalid commander selected."
+msgstr "Di-wasto ang napiling commander."
+
+#: blueprints/eoc.py:362
+msgid "Unable to assign the commander. Please try again."
+msgstr "Hindi maitalaga ang commander. Pakisubukang muli."
+
+#: blueprints/eoc.py:365
+#, python-format
+msgid "Commander \"%(name)s\" assigned to incident #%(incident_id)s."
+msgstr "Itinalaga si commander \"%(name)s\" sa insidente #%(incident_id)s."
+
+#: blueprints/eoc.py:410
+msgid "Unable to transfer the commander. Please try again."
+msgstr "Hindi mailipat ang commander. Pakisubukang muli."
+
+#: blueprints/eoc.py:413
+#, python-format
+msgid ""
+"Response #%(response_id)s transferred from %(old_commander)s to "
+"%(new_commander)s."
+msgstr ""
+"Inilipat ang Tugon #%(response_id)s mula kay %(old_commander)s kay "
+"%(new_commander)s."
+
+#: blueprints/eoc.py:425
+msgid "You do not have permission to review resource requests."
+msgstr "Wala kang pahintulot na suriin ang mga kahilingan sa resource."
+
+#: blueprints/eoc.py:452
+msgid "You do not have permission to decide resource requests."
+msgstr "Wala kang pahintulot na magpasya sa mga kahilingan sa resource."
+
+#: blueprints/eoc.py:464
+msgid "Invalid decision."
+msgstr "Di-wasto ang pasya."
+
+#: blueprints/eoc.py:475
+msgid ""
+"This incident has no active response yet. A commander must activate the "
+"response before this request can be fulfilled."
+msgstr ""
+"Wala pang aktibong tugon ang insidenteng ito. Kailangang i-activate ito "
+"ng commander bago matupad ang kahilingan."
+
+#: blueprints/eoc.py:523
+#, python-format
+msgid ""
+"Request #%(request_id)s marked fulfilled — %(quantity)s x "
+"%(resource_type)s allocated to response #%(incident_id)s."
+msgstr ""
+"Minarkahang natupad ang kahilingan #%(request_id)s — inilaan ang "
+"%(quantity)s x %(resource_type)s sa Tugon #%(incident_id)s."
+
+#: blueprints/eoc.py:531
+#, python-format
+msgid "Request #%(request_id)s marked %(decision)s."
+msgstr "Minarkahan ang kahilingan #%(request_id)s bilang %(decision)s."
+
+#: blueprints/eoc.py:546
+msgid "You do not have permission to view alerts."
+msgstr "Wala kang pahintulot na tingnan ang mga alerto."
+
+#: blueprints/eoc.py:572
+msgid "You do not have permission to issue alerts."
+msgstr "Wala kang pahintulot na maglabas ng mga alerto."
+
+#: blueprints/eoc.py:581
+msgid "Alert title and message are required."
+msgstr "Kailangan ang pamagat at mensahe ng alerto."
+
+#: blueprints/eoc.py:612
+#, python-format
+msgid "Alert \"%(title)s\" published."
+msgstr "Inilathala ang alertong \"%(title)s\"."
+
+#: blueprints/eoc.py:620
+msgid "You do not have permission to resolve alerts."
+msgstr "Wala kang pahintulot na lutasin ang mga alerto."
+
+#: blueprints/eoc.py:641
+msgid "Alert resolved."
+msgstr "Nalutas na ang alerto."
+
+#: blueprints/eoc.py:669
+msgid "You do not have permission to log incident reports."
+msgstr "Wala kang pahintulot na magtala ng mga ulat ng insidente."
+
+#: blueprints/eoc.py:678
+msgid "Report title and content are required."
+msgstr "Kailangan ang pamagat at nilalaman ng ulat."
+
+#: blueprints/eoc.py:708
+#, python-format
+msgid "Report \"%(title)s\" logged."
+msgstr "Naitala ang ulat na \"%(title)s\"."
+
+#: blueprints/facilities.py:55
+msgid "You do not have permission to view the facility directory."
+msgstr "Wala kang pahintulot na tingnan ang listahan ng mga pasilidad."
+
+#: blueprints/facilities.py:80
+msgid "Only EOC staff can add facilities."
+msgstr "Kawani lamang ng EOC ang maaaring magdagdag ng pasilidad."
+
+#: blueprints/facilities.py:94
+msgid "Facility name and type are required."
+msgstr "Kailangan ang pangalan at uri ng pasilidad."
+
+#: blueprints/facilities.py:97
+msgid "Evacuation center capacity cannot be negative."
+msgstr "Hindi maaaring negatibo ang kapasidad ng evacuation center."
+
+#: blueprints/facilities.py:103
+msgid "Please select a barangay within the selected municipality."
+msgstr "Pumili ng barangay na sakop ng napiling munisipalidad."
+
+#: blueprints/facilities.py:109
+msgid "Please select a municipality within the selected province."
+msgstr "Pumili ng munisipalidad na sakop ng napiling lalawigan."
+
+#: blueprints/facilities.py:113
+msgid "Please select a valid province."
+msgstr "Pumili ng wastong lalawigan."
+
+#: blueprints/facilities.py:148
+msgid "Unable to complete the facility operation. Please try again."
+msgstr "Hindi makumpleto ang operasyon ng pasilidad. Pakisubukang muli."
+
+#: blueprints/facilities.py:151
+#, python-format
+msgid "Facility \"%(name)s\" added."
+msgstr "Naidagdag ang pasilidad na \"%(name)s\"."
+
+#: blueprints/facilities.py:164
+msgid "You do not have permission to update evacuation centers."
+msgstr "Wala kang pahintulot na mag-update ng mga evacuation center."
+
+#: blueprints/facilities.py:188
+msgid "Unable to complete the evacuation center operation. Please try again."
+msgstr "Hindi makumpleto ang operasyon ng evacuation center. Pakisubukang muli."
+
+#: blueprints/facilities.py:191
+msgid "Evacuation center updated."
+msgstr "Na-update ang evacuation center."
+
+#: blueprints/responder.py:65
+msgid "Field responder access required."
+msgstr "Kailangan ng pahintulot ng field responder."
+
+#: blueprints/responder.py:147
+msgid "Pre-deployment checklist complete. You are cleared for deployment."
+msgstr "Kumpleto na ang checklist bago ang deployment. Maaari ka nang ipadala."
+
+#: blueprints/responder.py:150
+#, python-format
+msgid "%(count)s item(s) not confirmed. Complete all items before deployment."
+msgstr ""
+"Hindi pa nakukumpirma ang %(count)s item. Kumpirmahin ang lahat bago "
+"i-deploy."
+
+#: blueprints/responder.py:182
+msgid "Please complete the required fields before submitting your report."
+msgstr "Kumpletuhin ang mga kinakailangang field bago isumite ang iyong ulat."
+
+#: blueprints/responder.py:185
+msgid "Casualty and evacuation counts cannot be negative."
+msgstr "Hindi maaaring negatibo ang bilang ng nasawi at inilikas."
+
+#: blueprints/responder.py:216 blueprints/responder.py:287
+msgid "Unable to complete the responder operation. Please try again."
+msgstr "Hindi makumpleto ang operasyon ng responder. Pakisubukang muli."
+
+#: blueprints/responder.py:227
+#, python-format
+msgid "Attachment rejected: %(filename)s."
+msgstr "Tinanggihan ang attachment na %(filename)s."
+
+#: blueprints/responder.py:250
+msgid ""
+"Your field report was saved, but one or more attachments could not be "
+"saved or linked. Do not resubmit the report."
+msgstr ""
+"Na-save ang iyong field report, ngunit hindi na-save o naiugnay ang ilang"
+" attachment. Huwag isumite muli ang ulat."
+
+#: blueprints/responder.py:254
+msgid "Field report submitted successfully."
+msgstr "Matagumpay na naisumite ang field report."
+
+#: blueprints/responder.py:268
+msgid "You can only update tasks assigned to your unit."
+msgstr "Maaari mo lamang i-update ang mga task na nakatalaga sa iyong yunit."
+
+#: blueprints/responder.py:289
+msgid "Task status updated."
+msgstr "Na-update ang status ng task."
+
+#: blueprints/responder.py:291
+msgid "A valid task status was not provided."
+msgstr "Hindi nagbigay ng wastong status ng task."
+
+#: services/hotlines.py:100
 msgid "Medical Emergency"
 msgstr "Medikal na Emergency"
 
-msgid "EOC Command Dashboard"
-msgstr "Dashboard ng Command ng EOC"
-
-msgid "MONITORING ALL INCIDENTS"
-msgstr "MINOMONITOR ANG LAHAT NG INSIDENTE"
-
-msgid "System-wide view across every active incident, response, and resource in the region."
-msgstr "Malawakang view ng lahat ng aktibong insidente, tugon, at resource sa rehiyon."
-
-msgid "Regional Incident Map"
-msgstr "Mapa ng mga Insidente sa Rehiyon"
-
-msgid "Monitoring-first view of active incidents across the response area."
-msgstr "Pangunahing view para sa pag-monitor ng mga aktibong insidente sa lugar ng pagtugon."
-
-msgid "Open full map"
-msgstr "Buksan ang buong mapa"
-
-msgid "Counts"
-msgstr "Mga Bilang"
-
-msgid "Active"
-msgstr "Aktibo"
-
-msgid "Severe / High"
-msgstr "Malubha / Mataas"
-
-msgid "Open tasks"
-msgstr "Mga bukas na gawain"
-
-msgid "Resources"
-msgstr "Mga Resource"
-
-msgid "Latest incidents"
-msgstr "Mga pinakabagong insidente"
-
-msgid "Active Incident Responses"
-msgstr "Mga Aktibong Tugon sa Insidente"
-
-msgid "LIVE"
-msgstr "LIVE"
-
-msgid "Full Incident Log"
-msgstr "Buong Talaan ng Insidente"
-
-msgid "Incident"
-msgstr "Insidente"
-
-msgid "Hazard"
-msgstr "Panganib"
-
-msgid "Location"
-msgstr "Lokasyon"
-
-msgid "Commander"
-msgstr "Commander"
-
-msgid "Priority"
-msgstr "Prayoridad"
-
-msgid "Started"
-msgstr "Nagsimula"
-
-msgid "No Active Responses"
-msgstr "Walang Aktibong Tugon"
-
-msgid "All clear - no incidents currently being managed anywhere in the region."
-msgstr "Ligtas ang sitwasyon - walang insidenteng kasalukuyang inaasikaso sa rehiyon."
-
-msgid "Hazard Breakdown"
-msgstr "Pagkakahati ng mga Panganib"
-
-msgid "incidents logged system-wide"
-msgstr "insidenteng naitala sa buong sistema"
-
-msgid "No Incident Data Yet"
-msgstr "Wala Pang Datos ng Insidente"
-
-msgid "Incident totals will appear here as reports arrive."
-msgstr "Lilitaw dito ang kabuuan ng insidente habang dumarating ang mga ulat."
-
-msgid "Critical Incidents Requiring Response"
-msgstr "Mga Kritikal na Insidenteng Nangangailangan ng Tugon"
-
-msgid "ID"
-msgstr "ID"
-
-msgid "Risk Level"
-msgstr "Antas ng Panganib"
-
-msgid "Score"
-msgstr "Iskor"
-
-msgid "Status"
-msgstr "Katayuan"
-
-msgid "Detected"
-msgstr "Natukoy"
-
-msgid "RESPONSE ACTIVE"
-msgstr "AKTIBO ANG TUGON"
-
-msgid "AWAITING COMMANDER"
-msgstr "HINIHINTAY ANG COMMANDER"
-
-msgid "No Severe or High Incidents"
-msgstr "Walang Malubha o Mataas na Insidente"
-
-msgid "Nothing at Severe or High risk level right now."
-msgstr "Walang insidenteng nasa malubha o mataas na antas ng panganib ngayon."
-
-msgid "Live Incident Feed"
-msgstr "Live na Feed ng Insidente"
-
-msgid "LATEST"
-msgstr "PINAKABAGO"
-
-msgid "Level"
-msgstr "Antas"
-
-msgid "Alert"
-msgstr "Alerto"
-
-msgid "Logged"
-msgstr "Naitala"
-
-msgid "INACTIVE"
-msgstr "HINDI AKTIBO"
-
-msgid "No Incidents Logged Yet"
-msgstr "Wala Pang Naitatalang Insidente"
-
-msgid "Incoming reports and sensor data will appear here in real time."
-msgstr "Lilitaw dito nang real time ang mga papasok na ulat at datos ng sensor."
-
-msgid "Hazard Map"
-msgstr "Mapa ng Panganib"
-
-msgid "Hazard Zones"
-msgstr "Mga Sonang Panganib"
-
-msgid "Zones with recent alerts and risk classification."
-msgstr "Mga sonang may bagong alerto at klasipikasyon ng panganib."
-
-msgid "Filtered Views"
-msgstr "Mga Na-filter na View"
-
-msgid "Number of filters currently applied to the map."
-msgstr "Bilang ng mga filter na kasalukuyang inilapat sa mapa."
-
-msgid "Active Alerts"
-msgstr "Mga Aktibong Alerto"
-
-msgid "Critical locations needing immediate attention."
-msgstr "Mga kritikal na lokasyong nangangailangan ng agarang atensyon."
-
-msgid "Hazard Map Viewer"
-msgstr "Viewer ng Mapa ng Panganib"
-
-msgid "Visualize location markers with risk filters and zone details."
-msgstr "Tingnan ang mga marker ng lokasyon, filter ng panganib, at detalye ng sona."
-
-msgid "Refresh Map"
-msgstr "I-refresh ang Mapa"
-
-msgid "Search hazard areas..."
-msgstr "Maghanap ng mga lugar na may panganib..."
-
-msgid "Search hazard areas"
-msgstr "Maghanap ng mga lugar na may panganib"
-
-msgid "Clear search"
-msgstr "I-clear ang paghahanap"
-
-msgid "Clear"
-msgstr "I-clear"
-
-msgid "All Provinces"
-msgstr "Lahat ng Lalawigan"
-
-msgid "All Municipalities"
-msgstr "Lahat ng Munisipalidad"
-
-msgid "All Statuses"
-msgstr "Lahat ng Katayuan"
-
-msgid "New"
-msgstr "Bago"
-
-msgid "Verified"
-msgstr "Na-verify"
-
-msgid "Resolved"
-msgstr "Nalutas"
-
-msgid "Rejected"
-msgstr "Tinanggihan"
-
-msgid "All Hazards"
-msgstr "Lahat ng Panganib"
-
-msgid "Flood"
-msgstr "Baha"
-
-msgid "Earthquake"
-msgstr "Lindol"
-
-msgid "Volcanic"
-msgstr "Bulcaniko"
-
-msgid "Fire"
-msgstr "Sunog"
-
-msgid "Landslide"
-msgstr "Pagguho ng lupa"
-
-msgid "Storm"
-msgstr "Bagyo"
-
-msgid "Emergency"
-msgstr "Emergency"
-
-msgid "Other"
-msgstr "Iba pa"
-
-msgid "Dashboard"
-msgstr "Dashboard"
-
-msgid "Administration"
-msgstr "Administrasyon"
-
-msgid "Users"
-msgstr "Mga User"
-
-msgid "Backup"
-msgstr "Backup"
-
-msgid "Operations"
-msgstr "Mga Operasyon"
-
-msgid "Tasks"
-msgstr "Mga Gawain"
-
-msgid "Resources"
-msgstr "Mga Resource"
-
-msgid "Monitoring"
-msgstr "Pag-monitor"
-
-msgid "Reports"
-msgstr "Mga Ulat"
-
-msgid "Hazard Map"
-msgstr "Mapa ng Panganib"
-
-msgid "Communication"
-msgstr "Komunikasyon"
-
-msgid "Communications"
-msgstr "Mga Komunikasyon"
-
-msgid "Command Center"
-msgstr "Command Center"
-
-msgid "Resource Requests"
-msgstr "Mga Kahilingan sa Resource"
-
-msgid "Incident History"
-msgstr "Kasaysayan ng Insidente"
-
-msgid "Facilities"
-msgstr "Mga Pasilidad"
-
-msgid "Public Advisories"
-msgstr "Mga Pampublikong Abiso"
-
-msgid "Overview"
-msgstr "Pangkalahatang-ideya"
-
-msgid "Analytics"
-msgstr "Analytics"
-
-msgid "Incidents"
-msgstr "Mga Insidente"
-
-msgid "Dispatch"
-msgstr "Dispatch"
-
-msgid "Verification Queue"
-msgstr "Pila ng Beripikasyon"
-
-msgid "Active Operations"
-msgstr "Mga Aktibong Operasyon"
-
-msgid "Alerts & Updates"
-msgstr "Mga Alerto at Update"
-
-msgid "Support"
-msgstr "Suporta"
-
-msgid "Evacuation Centers"
-msgstr "Mga Evacuation Center"
-
-msgid "Emergency SOS"
-msgstr "Emergency SOS"
-
-msgid "Report Incident"
-msgstr "Mag-ulat ng Insidente"
-
-msgid "Alerts"
-msgstr "Mga Alerto"
-
-msgid "Logout"
-msgstr "Mag-logout"
-
-msgid "Emergency Assistance"
-msgstr "Tulong sa Emergency"
-
-msgid "Need immediate help?"
-msgstr "Kailangan ng agarang tulong?"
-
-msgid "For life-threatening emergencies, call now. No account or form is needed."
-msgstr "Kung nasa panganib ang buhay, tumawag na ngayon. Hindi kailangan ng account o form."
-
-msgid "Call Emergency"
-msgstr "Tumawag sa Emergency"
-
-msgid "Your phone's calling app will open with the number ready."
-msgstr "Magbubukas ang calling app ng iyong telepono na nakalagay na ang numero."
-
-msgid "What kind of help do you need?"
-msgstr "Anong tulong ang kailangan mo?"
-
+#: services/hotlines.py:101
 msgid "Ambulance and medical assistance"
 msgstr "Ambulansya at tulong medikal"
 
+#: services/hotlines.py:102
 msgid "Police / Security"
 msgstr "Pulis / Seguridad"
 
+#: services/hotlines.py:103
 msgid "Police emergency assistance"
 msgstr "Tulong ng pulis sa emergency"
 
+#: services/hotlines.py:104
 msgid "Fire and Rescue"
 msgstr "Sunog at Rescue"
 
+#: services/hotlines.py:105
 msgid "Fire and rescue assistance"
 msgstr "Tulong ng bumbero at rescue"
 
+#: services/hotlines.py:106
 msgid "Disaster Response"
 msgstr "Pagtugon sa Sakuna"
 
+#: services/hotlines.py:107
 msgid "CDRRMO / Emergency Operations Center"
 msgstr "CDRRMO / Emergency Operations Center"
 
-msgid "This office line is not set up yet. Call %(number)s instead."
-msgstr "Wala pang nakalagay na numero ng opisina. Tumawag na lang sa %(number)s."
+#: services/hotlines.py:108
+msgid "City Health Office (SPC - CHO)"
+msgstr "Tanggapan ng Kalusugan ng Lungsod (SPC - CHO)"
 
-msgid "Call %(service)s at %(number)s"
-msgstr "Tawagan ang %(service)s sa %(number)s"
+#: services/hotlines.py:109
+msgid "City health and ambulance coordination"
+msgstr "Koordinasyon para sa serbisyong pangkalusugan at ambulansya ng lungsod"
 
-msgid "Call now"
-msgstr "Tumawag na"
+#: services/hotlines.py:110
+msgid "City Traffic Management Office (CTMO)"
+msgstr "Tanggapan ng Pamamahala ng Trapiko ng Lungsod (CTMO)"
 
-msgid "What to tell the operator"
-msgstr "Ano ang sasabihin sa operator"
+#: services/hotlines.py:111
+msgid "Traffic management and assistance"
+msgstr "Pamamahala ng trapiko at tulong"
 
-msgid "What happened"
-msgstr "Ano ang nangyari"
+#: services/hotlines.py:112
+msgid "San Pablo PNP"
+msgstr "PNP ng San Pablo"
 
-msgid "Exact location, barangay and nearby landmark"
-msgstr "Eksaktong lokasyon, barangay, at kalapit na landmark"
+#: services/hotlines.py:113
+msgid "Police assistance in San Pablo City"
+msgstr "Tulong ng pulisya sa Lungsod ng San Pablo"
 
-msgid "How many people are hurt or in danger"
-msgstr "Ilan ang sugatan o nasa panganib"
+#: services/hotlines.py:114
+msgid "San Pablo Fire Station (BFP)"
+msgstr "Istasyon ng Bumbero ng San Pablo (BFP)"
 
-msgid "Your name and a number they can call back"
-msgstr "Pangalan mo at numerong maaari nilang tawagan pabalik"
+#: services/hotlines.py:115
+msgid "Fire and rescue assistance in San Pablo City"
+msgstr "Tulong sa sunog at pagsagip sa Lungsod ng San Pablo"
 
-msgid "Stay on the line until the operator tells you to hang up."
-msgstr "Huwag ibaba ang tawag hangga't hindi sinasabi ng operator."
+#: services/hotlines.py:116
+msgid "Barangay Radio Control"
+msgstr "Radio Control ng Barangay"
 
-msgid "Other ways to get help"
-msgstr "Iba pang paraan para makahingi ng tulong"
+#: services/hotlines.py:117
+msgid "Barangay emergency radio coordination"
+msgstr "Koordinasyon sa emergency radio ng barangay"
 
-msgid "Visit your Barangay Emergency Response Center for local assistance."
-msgstr "Pumunta sa inyong Barangay Emergency Response Center para sa tulong sa inyong lugar."
+#: services/hotlines.py:118
+msgid "Meralco"
+msgstr "Meralco"
 
-msgid "DICS is a monitoring system for CDRRMO personnel and responders. You do not need to report incidents through it."
-msgstr "Ang DICS ay monitoring system para sa mga tauhan ng CDRRMO at mga responder. Hindi mo kailangang mag-ulat ng insidente rito."
+#: services/hotlines.py:119
+msgid "Electric service emergencies and outage reports"
+msgstr "Mga emerhensiya sa serbisyong elektrisidad at ulat ng pagkawala ng kuryente"
 
-msgid "Sign in to see active alerts and evacuation centers."
-msgstr "Mag-sign in para makita ang mga aktibong alerto at evacuation center."
+#: templates/pages/base.html:33
+msgid "Switch to English"
+msgstr "Lumipat sa English"
 
+#: templates/pages/base.html:35
+msgid "Switch to Tagalog"
+msgstr "Lumipat sa Tagalog"
+
+#: templates/pages/base.html:55
+msgid "Offline. Showing the last cached dashboard snapshot."
+msgstr "Walang koneksyon. Ipinapakita ang huling naka-cache na pahina."
+
+#: templates/pages/base.html:62
+msgid "Confirm action"
+msgstr "Kumpirmahin ang aksyon"
+
+#: templates/pages/base.html:69
+msgid "Cancel"
+msgstr "Kanselahin"
+
+#: templates/pages/base.html:70
+msgid "Continue"
+msgstr "Magpatuloy"
+
+#: templates/pages/change_password.html:3
+#: templates/pages/change_password.html:6
+msgid "Change Password"
+msgstr "Palitan ang Password"
+
+#: templates/pages/change_password.html:14
+msgid "For security, you must set a new password before continuing."
+msgstr ""
+"Kabuuan ito ng buong system, hindi pagtatasa ng panganib sa isang "
+"partikular na lugar. Suriin ang mga lokasyon ng alerto at sundin ang "
+"opisyal na tagubilin.Para sa seguridad, kailangan mong magtakda ng bagong"
+" password bago magpatuloy."
+
+#: templates/pages/change_password.html:25
+msgid "Current password"
+msgstr "Kasalukuyang password"
+
+#: templates/pages/change_password.html:26
+msgid "Enter current password"
+msgstr "Ilagay ang kasalukuyang password"
+
+#: templates/pages/change_password.html:28
+#: templates/pages/reset_password.html:19
+msgid "New password"
+msgstr "Bagong password"
+
+#: templates/pages/change_password.html:29
+#: templates/pages/reset_password.html:20
+msgid "At least 8 characters"
+msgstr "Hindi bababa sa 8 character"
+
+#: templates/pages/change_password.html:31
+#: templates/pages/reset_password.html:22
+msgid "Confirm new password"
+msgstr "Kumpirmahin ang bagong password"
+
+#: templates/pages/change_password.html:32
+#: templates/pages/reset_password.html:23
+msgid "Re-enter new password"
+msgstr "Ilagay muli ang bagong password"
+
+#: templates/pages/change_password.html:34
+#: templates/pages/reset_password.html:25
+msgid "Update password"
+msgstr "I-update ang password"
+
+#: templates/pages/change_password.html:39
+msgid "Back to dashboard"
+msgstr "Bumalik sa dashboard"
+
+#: templates/pages/change_password.html:41
+msgid "Sign out instead"
+msgstr "Mag-sign out na lang"
+
+#: templates/pages/citizen_alerts.html:5 templates/pages/citizen_alerts.html:8
+#: templates/partials/sidebar.html:211
+msgid "Emergency Alerts"
+msgstr "Mga Emergency Alert"
+
+#: templates/pages/citizen_alerts.html:19 templates/pages/hazard_map.html:187
+msgid "Active Alerts"
+msgstr "Mga Aktibong Alerto"
+
+#: templates/pages/citizen_alerts.html:21
+msgid "Currently active emergency alerts"
+msgstr "Mga kasalukuyang aktibong emergency alert"
+
+#: templates/pages/citizen_alerts.html:33
+msgid "Your Zone"
+msgstr "Iyong Lugar"
+
+#: templates/pages/citizen_alerts.html:35
+msgid "Moderate Risk Level"
+msgstr "Katamtamang Antas ng Panganib"
+
+#: templates/pages/citizen_alerts.html:47
+msgid "Last Update"
+msgstr "Huling Update"
+
+#: templates/pages/citizen_alerts.html:49
+msgid "Information last refreshed"
+msgstr "Huling beses na na-refresh ang impormasyon"
+
+#: templates/pages/citizen_alerts.html:65
+msgid "Official Advisories"
+msgstr "Mga Opisyal na Pabatid"
+
+#: templates/pages/citizen_alerts.html:90
+msgid "No Official Advisories"
+msgstr "Walang Opisyal na Pabatid"
+
+#: templates/pages/citizen_alerts.html:90
+msgid "No official alerts have been issued at this time."
+msgstr "Wala pang inilalabas na opisyal na alerto sa ngayon."
+
+#: templates/pages/citizen_alerts.html:100
+msgid "Emergency Notifications"
+msgstr "Mga Abiso sa Emergency"
+
+#: templates/pages/citizen_alerts.html:103
+msgid "Refresh"
+msgstr "I-refresh"
+
+#: templates/pages/citizen_alerts.html:129
+msgid "Location not available"
+msgstr "Hindi available ang lokasyon"
+
+#: templates/pages/citizen_alerts.html:134
+msgid "Risk Score"
+msgstr "Iskor ng Panganib"
+
+#: templates/pages/citizen_alerts.html:142
+msgid "No Active Alerts"
+msgstr "Walang Aktibong Alerto"
+
+#: templates/pages/citizen_alerts.html:142
+msgid "No active emergency alerts at this time. Stay safe and vigilant."
+msgstr "Walang aktibong emergency alert sa ngayon. Manatiling ligtas at alerto."
+
+#: templates/pages/citizen_alerts.html:156
+msgid "Alert Severity Levels"
+msgstr "Mga Antas ng Tindi ng Alerto"
+
+#: templates/pages/citizen_alerts.html:160
+msgid "HIGH — Critical"
+msgstr "MATAAS — Kritikal"
+
+#: templates/pages/citizen_alerts.html:161
+msgid "Immediate threat to life. Evacuate now if ordered by authorities."
+msgstr "Agarang panganib sa buhay. Lumikas agad kung ipag-utos ng mga awtoridad."
+
+#: templates/pages/citizen_alerts.html:164
+msgid "MODERATE — Warning"
+msgstr "KATAMTAMAN — Babala"
+
+#: templates/pages/citizen_alerts.html:165
+msgid "Significant danger present. Prepare for potential evacuation."
+msgstr "May malaking panganib. Maghanda sakaling kailanganing lumikas."
+
+#: templates/pages/citizen_alerts.html:168
+msgid "LOW — Info"
+msgstr "MABABA — Impormasyon"
+
+#: templates/pages/citizen_alerts.html:169
+msgid "Manageable risk level. Stay alert and monitor the situation."
+msgstr ""
+"Kayang pangasiwaan ang antas ng panganib. Manatiling alerto at subaybayan"
+" ang sitwasyon."
+
+#: templates/pages/citizen_alerts.html:182
+msgid "What To Do"
+msgstr "Mga Dapat Gawin"
+
+#: templates/pages/citizen_alerts.html:186
+msgid "Stay Informed"
+msgstr "Manatiling May Alam"
+
+#: templates/pages/citizen_alerts.html:187
+msgid "Enable notifications and check this page regularly for real-time updates."
+msgstr ""
+"I-on ang mga abiso at regular na tingnan ang pahinang ito para sa mga "
+"update."
+
+#: templates/pages/citizen_alerts.html:190
+msgid "Know Your Routes"
+msgstr "Alamin ang mga Ruta"
+
+#: templates/pages/citizen_alerts.html:191
+msgid "Know your evacuation routes and nearest designated evacuation center."
+msgstr ""
+"Alamin ang mga ruta ng paglikas at pinakamalapit na itinalagang "
+"evacuation center."
+
+#: templates/pages/citizen_alerts.html:194
+msgid "Follow Authorities"
+msgstr "Sundin ang mga Awtoridad"
+
+#: templates/pages/citizen_alerts.html:195
+msgid "Always follow official guidance from DRRMO and local government units."
+msgstr "Palaging sundin ang opisyal na gabay ng DRRMO at lokal na pamahalaan."
+
+#: templates/pages/citizen_dashboard.html:40
+msgid ""
+"This is a system-wide count, not a location-specific risk assessment. "
+"Review alert locations and follow official instructions."
+msgstr ""
+"Kabuuan ito ng buong system, hindi pagtatasa ng panganib sa isang "
+"partikular na lugar. Suriin ang mga lokasyon ng alerto at sundin ang "
+"opisyal na tagubilin."
+
+#: templates/pages/citizen_dashboard.html:48
+#: templates/pages/citizen_resources.html:37
+#: templates/partials/sidebar.html:258 templates/partials/sidebar.html:260
+#: templates/partials/sidebar.html:287 templates/partials/sidebar.html:289
 msgid "Call for Help"
 msgstr "Tumawag para sa Tulong"
 
+#: templates/pages/citizen_dashboard.html:124
+#: templates/pages/citizen_resources.html:24
+#: templates/partials/sidebar.html:198 templates/partials/sidebar.html:200
+msgid "Emergency Hotlines"
+msgstr "Mga Hotline ng Emergency"
+
+#: templates/pages/citizen_dashboard.html:220
+#: templates/pages/citizen_resources.html:28
+msgid "National Emergency"
+msgstr "Pambansang Emergency"
+
+#: templates/pages/citizen_emergency_assistance.html:3
+#: templates/pages/citizen_emergency_assistance.html:57
+msgid "Emergency Assistance"
+msgstr "Tulong sa Emergency"
+
+#: templates/pages/citizen_emergency_assistance.html:58
+msgid "Need immediate help?"
+msgstr "Kailangan ng agarang tulong?"
+
+#: templates/pages/citizen_emergency_assistance.html:59
+msgid "For life-threatening emergencies, call now. No account or form is needed."
+msgstr ""
+"Kung nasa panganib ang buhay, tumawag na ngayon. Hindi kailangan ng "
+"account o form."
+
+#: templates/pages/citizen_emergency_assistance.html:61
+#: templates/pages/citizen_emergency_assistance.html:62
+msgid "Call Emergency"
+msgstr "Tumawag sa Emergency"
+
+#: templates/pages/citizen_emergency_assistance.html:64
+msgid "Your phone's calling app will open with the number ready."
+msgstr "Magbubukas ang calling app ng iyong telepono na nakalagay na ang numero."
+
+#: templates/pages/citizen_emergency_assistance.html:68
+msgid "What kind of help do you need?"
+msgstr "Anong tulong ang kailangan mo?"
+
+#: templates/pages/citizen_emergency_assistance.html:91
+#: templates/pages/citizen_emergency_assistance.html:98
+#, python-format
+msgid "Call %(service)s at %(number)s"
+msgstr "Tawagan ang %(service)s sa %(number)s"
+
+#: templates/pages/citizen_emergency_assistance.html:92
+#: templates/pages/citizen_emergency_assistance.html:99
+msgid "Call now"
+msgstr "Tumawag na"
+
+#: templates/pages/citizen_emergency_assistance.html:96
+#, python-format
+msgid "This office line is not set up yet. Call %(number)s instead."
+msgstr "Wala pang nakalagay na numero ng opisina. Tumawag na lang sa %(number)s."
+
+#: templates/pages/citizen_emergency_assistance.html:109
+msgid "What to tell the operator"
+msgstr "Ano ang sasabihin sa operator"
+
+#: templates/pages/citizen_emergency_assistance.html:112
+msgid "What happened"
+msgstr "Ano ang nangyari"
+
+#: templates/pages/citizen_emergency_assistance.html:113
+msgid "Exact location, barangay and nearby landmark"
+msgstr "Eksaktong lokasyon, barangay, at kalapit na landmark"
+
+#: templates/pages/citizen_emergency_assistance.html:114
+msgid "How many people are hurt or in danger"
+msgstr "Ilan ang sugatan o nasa panganib"
+
+#: templates/pages/citizen_emergency_assistance.html:115
+msgid "Your name and a number they can call back"
+msgstr "Pangalan mo at numerong maaari nilang tawagan pabalik"
+
+#: templates/pages/citizen_emergency_assistance.html:117
+msgid "Stay on the line until the operator tells you to hang up."
+msgstr "Huwag ibaba ang tawag hangga't hindi sinasabi ng operator."
+
+#: templates/pages/citizen_emergency_assistance.html:122
+msgid "Other ways to get help"
+msgstr "Iba pang paraan para makahingi ng tulong"
+
+#: templates/pages/citizen_emergency_assistance.html:124
+msgid "Visit your Barangay Emergency Response Center for local assistance."
+msgstr ""
+"Pumunta sa inyong Barangay Emergency Response Center para sa tulong sa "
+"inyong lugar."
+
+#: templates/pages/citizen_emergency_assistance.html:125
+msgid ""
+"DICS is a monitoring system for CDRRMO personnel and responders. You do "
+"not need to report incidents through it."
+msgstr ""
+"Ang DICS ay monitoring system para sa mga tauhan ng CDRRMO at mga "
+"responder. Hindi mo kailangang mag-ulat ng insidente rito."
+
+#: templates/pages/citizen_emergency_assistance.html:127
+msgid "Sign in to see active alerts and evacuation centers."
+msgstr "Mag-sign in para makita ang mga aktibong alerto at evacuation center."
+
+#: templates/pages/citizen_evacuation_centers.html:3
+#: templates/pages/citizen_evacuation_centers.html:6
+#: templates/pages/citizen_evacuation_centers.html:14
+#: templates/partials/sidebar.html:233 templates/partials/sidebar.html:235
+msgid "Evacuation Centers"
+msgstr "Mga Sentro ng Paglikas"
+
+#: templates/pages/citizen_evacuation_centers.html:17
+msgid ""
+"Where to go, and whether there is still room. Updated by EOC staff as "
+"centers fill up."
+msgstr ""
+"Alamin kung saan pupunta at kung may bakante pa. Ina-update ito ng kawani"
+" ng EOC habang napupuno ang mga sentro."
+
+#: templates/pages/citizen_evacuation_centers.html:33
+msgid "OPEN"
+msgstr "BUKAS"
+
+#: templates/pages/citizen_evacuation_centers.html:35
+msgid "FULL"
+msgstr "PUNO"
+
+#: templates/pages/citizen_evacuation_centers.html:37
+msgid "CLOSED"
+msgstr "SARADO"
+
+#: templates/pages/citizen_evacuation_centers.html:47
+msgid "Occupancy"
+msgstr "Bilang ng Nakatuloy"
+
+#: templates/pages/citizen_evacuation_centers.html:63
+msgid "No Evacuation Centers Listed Yet"
+msgstr "Wala Pang Nakalistang Evacuation Center"
+
+#: templates/pages/citizen_evacuation_centers.html:63
+msgid "EOC staff will publish evacuation centers here as they are designated."
+msgstr ""
+"Ilalagay dito ng kawani ng EOC ang mga evacuation center kapag naitalaga "
+"na ang mga ito."
+
+#: templates/pages/citizen_resources.html:4
+#: templates/pages/citizen_resources.html:7
+msgid "Resources and Emergency Info"
+msgstr "Mga Mapagkukunan at Impormasyong Pang-emergency"
+
+#: templates/pages/citizen_resources.html:13
+msgid "Emergency Resources and Information"
+msgstr "Mga Mapagkukunan at Impormasyong Pang-emergency"
+
+#: templates/pages/eoc_dashboard.html:5 templates/pages/eoc_dashboard.html:114
+#: templates/pages/eoc_dashboard.html:123
+msgid "EOC Command Dashboard"
+msgstr "Dashboard ng Command ng EOC"
+
+#: templates/pages/eoc_dashboard.html:126
+msgid "MONITORING ALL INCIDENTS"
+msgstr "MINOMONITOR ANG LAHAT NG INSIDENTE"
+
+#: templates/pages/eoc_dashboard.html:130
+msgid ""
+"System-wide view across every active incident, response, and resource in "
+"the region."
+msgstr ""
+"Malawakang view ng lahat ng aktibong insidente, tugon, at resource sa "
+"rehiyon."
+
+#: templates/pages/eoc_dashboard.html:145
+msgid "Regional Incident Map"
+msgstr "Mapa ng mga Insidente sa Rehiyon"
+
+#: templates/pages/eoc_dashboard.html:146
+msgid "Monitoring-first view of active incidents across the response area."
+msgstr ""
+"Pangunahing view para sa pag-monitor ng mga aktibong insidente sa lugar "
+"ng pagtugon."
+
+#: templates/pages/eoc_dashboard.html:149
+msgid "Open full map"
+msgstr "Buksan ang buong mapa"
+
+#: templates/pages/eoc_dashboard.html:155
+msgid "Map preview is unavailable. Open the full map to try again."
+msgstr ""
+"Hindi available ang preview ng mapa. Buksan ang buong mapa at subukang "
+"muli."
+
+#: templates/pages/eoc_dashboard.html:171
+msgid "Counts"
+msgstr "Mga Bilang"
+
+#: templates/pages/eoc_dashboard.html:176
+msgid "Active"
+msgstr "Aktibo"
+
+#: templates/pages/eoc_dashboard.html:183
+msgid "Severe / High"
+msgstr "Malubha / Mataas"
+
+#: templates/pages/eoc_dashboard.html:190
+msgid "Open tasks"
+msgstr "Mga bukas na gawain"
+
+#: templates/pages/eoc_dashboard.html:197 templates/partials/sidebar.html:72
+#: templates/partials/sidebar.html:74 templates/partials/sidebar.html:147
+#: templates/partials/sidebar.html:228 templates/partials/sidebar.html:230
+msgid "Resources"
+msgstr "Mga Resource"
+
+#: templates/pages/eoc_dashboard.html:214
+msgid "Latest incidents"
+msgstr "Mga pinakabagong insidente"
+
+#: templates/pages/eoc_dashboard.html:242
+msgid "Active Incident Responses"
+msgstr "Mga Aktibong Tugon sa Insidente"
+
+#: templates/pages/eoc_dashboard.html:243
+msgid "LIVE"
+msgstr "LIVE"
+
+#: templates/pages/eoc_dashboard.html:245
+msgid "Full Incident Log"
+msgstr "Buong Talaan ng Insidente"
+
+#: templates/pages/eoc_dashboard.html:254
+msgid "Incident"
+msgstr "Insidente"
+
+#: templates/pages/eoc_dashboard.html:255
+#: templates/pages/eoc_dashboard.html:335
+#: templates/pages/eoc_dashboard.html:393
+msgid "Hazard"
+msgstr "Panganib"
+
+#: templates/pages/eoc_dashboard.html:256
+#: templates/pages/eoc_dashboard.html:336
+#: templates/pages/eoc_dashboard.html:394
+msgid "Location"
+msgstr "Lokasyon"
+
+#: templates/pages/eoc_dashboard.html:257
+msgid "Commander"
+msgstr "Commander"
+
+#: templates/pages/eoc_dashboard.html:258
+msgid "Priority"
+msgstr "Prayoridad"
+
+#: templates/pages/eoc_dashboard.html:259
+msgid "Started"
+msgstr "Nagsimula"
+
+#: templates/pages/eoc_dashboard.html:283
+msgid "No Active Responses"
+msgstr "Walang Aktibong Tugon"
+
+#: templates/pages/eoc_dashboard.html:283
+msgid "All clear - no incidents currently being managed anywhere in the region."
+msgstr ""
+"Ligtas ang sitwasyon - walang insidenteng kasalukuyang inaasikaso sa "
+"rehiyon."
+
+#: templates/pages/eoc_dashboard.html:294
+msgid "Hazard Breakdown"
+msgstr "Pagkakahati ng mga Panganib"
+
+#: templates/pages/eoc_dashboard.html:311
+msgid "incidents logged system-wide"
+msgstr "insidenteng naitala sa buong sistema"
+
+#: templates/pages/eoc_dashboard.html:314
+msgid "No Incident Data Yet"
+msgstr "Wala Pang Datos ng Insidente"
+
+#: templates/pages/eoc_dashboard.html:314
+msgid "Incident totals will appear here as reports arrive."
+msgstr "Lilitaw dito ang kabuuan ng insidente habang dumarating ang mga ulat."
+
+#: templates/pages/eoc_dashboard.html:326
+msgid "Critical Incidents Requiring Response"
+msgstr "Mga Kritikal na Insidenteng Nangangailangan ng Tugon"
+
+#: templates/pages/eoc_dashboard.html:334
+#: templates/pages/eoc_dashboard.html:392
+msgid "ID"
+msgstr "ID"
+
+#: templates/pages/eoc_dashboard.html:337
+msgid "Risk Level"
+msgstr "Antas ng Panganib"
+
+#: templates/pages/eoc_dashboard.html:338
+msgid "Score"
+msgstr "Iskor"
+
+#: templates/pages/eoc_dashboard.html:339
+msgid "Status"
+msgstr "Katayuan"
+
+#: templates/pages/eoc_dashboard.html:340
+msgid "Detected"
+msgstr "Natukoy"
+
+#: templates/pages/eoc_dashboard.html:359
+msgid "RESPONSE ACTIVE"
+msgstr "AKTIBO ANG TUGON"
+
+#: templates/pages/eoc_dashboard.html:361
+msgid "AWAITING COMMANDER"
+msgstr "HINIHINTAY ANG COMMANDER"
+
+#: templates/pages/eoc_dashboard.html:371
+msgid "No Severe or High Incidents"
+msgstr "Walang Malubha o Mataas na Insidente"
+
+#: templates/pages/eoc_dashboard.html:371
+msgid "Nothing at Severe or High risk level right now."
+msgstr "Walang insidenteng nasa malubha o mataas na antas ng panganib ngayon."
+
+#: templates/pages/eoc_dashboard.html:383
+msgid "Live Incident Feed"
+msgstr "Live na Feed ng Insidente"
+
+#: templates/pages/eoc_dashboard.html:384
+msgid "LATEST"
+msgstr "PINAKABAGO"
+
+#: templates/pages/eoc_dashboard.html:395
+msgid "Level"
+msgstr "Antas"
+
+#: templates/pages/eoc_dashboard.html:396
+msgid "Alert"
+msgstr "Alerto"
+
+#: templates/pages/eoc_dashboard.html:397
+msgid "Logged"
+msgstr "Naitala"
+
+#: templates/pages/eoc_dashboard.html:409
+msgid "ACTIVE"
+msgstr "AKTIBO"
+
+#: templates/pages/eoc_dashboard.html:411
+msgid "INACTIVE"
+msgstr "HINDI AKTIBO"
+
+#: templates/pages/eoc_dashboard.html:421
+msgid "No Incidents Logged Yet"
+msgstr "Wala Pang Naitatalang Insidente"
+
+#: templates/pages/eoc_dashboard.html:421
+msgid "Incoming reports and sensor data will appear here in real time."
+msgstr "Lilitaw dito nang real time ang mga papasok na ulat at datos ng sensor."
+
+#: templates/pages/error_404.html:12
+msgid "The page you requested could not be found."
+msgstr "Hindi makita ang pahinang hiniling mo."
+
+#: templates/pages/error_404.html:13
+msgid ""
+"The link may be outdated or the page may have moved. You can return to "
+"the dashboard or try another route."
+msgstr ""
+"Maaaring luma na ang link o nailipat ang pahina. Bumalik sa dashboard o "
+"sumubok ng ibang pahina."
+
+#: templates/pages/error_404.html:15 templates/pages/error_500.html:15
+#: templates/pages/error_page.html:20
+msgid "Go to Dashboard"
+msgstr "Pumunta sa Dashboard"
+
+#: templates/pages/error_404.html:16 templates/pages/error_500.html:16
+#: templates/pages/error_page.html:24
+msgid "Back to Login"
+msgstr "Bumalik sa Pag-login"
+
+#: templates/pages/error_500.html:3 templates/pages/error_500.html:6
+msgid "Server Error"
+msgstr "Error sa Server"
+
+#: templates/pages/error_500.html:12
+msgid "Something went wrong on our side."
+msgstr "Nagkaroon ng problema sa system."
+
+#: templates/pages/error_page.html:28
+msgid "Go Back"
+msgstr "Bumalik"
+
+#: templates/pages/forgot_password.html:3
+#: templates/pages/forgot_password.html:6
+msgid "Forgot Password"
+msgstr "Nakalimutan ang Password"
+
+#: templates/pages/forgot_password.html:12
+msgid "Enter your email address to receive a reset link."
+msgstr ""
+"Ilagay ang iyong email address upang makatanggap ng link para magtakda "
+"muli ng password."
+
+#: templates/pages/forgot_password.html:17
+msgid "Email address"
+msgstr "Email address"
+
+#: templates/pages/forgot_password.html:20
+msgid "Send reset link"
+msgstr "Ipadala ang link para magtakda muli ng password"
+
+#: templates/pages/forgot_password.html:24
+#: templates/pages/reset_password.html:29
+msgid "Back to login"
+msgstr "Bumalik sa pag-login"
+
+#: templates/pages/hazard_map.html:3 templates/pages/hazard_map.html:148
+#: templates/partials/sidebar.html:82 templates/partials/sidebar.html:84
+#: templates/partials/sidebar.html:110 templates/partials/sidebar.html:112
+#: templates/partials/sidebar.html:139 templates/partials/sidebar.html:185
+#: templates/partials/sidebar.html:187
+msgid "Hazard Map"
+msgstr "Mapa ng Panganib"
+
+#: templates/pages/hazard_map.html:159
+msgid "Hazard Zones"
+msgstr "Mga Sonang Panganib"
+
+#: templates/pages/hazard_map.html:163
+msgid "Zones with recent alerts and risk classification."
+msgstr "Mga sonang may bagong alerto at klasipikasyon ng panganib."
+
+#: templates/pages/hazard_map.html:173
+msgid "Filtered Views"
+msgstr "Mga Na-filter na View"
+
+#: templates/pages/hazard_map.html:177
+msgid "Number of filters currently applied to the map."
+msgstr "Bilang ng mga filter na kasalukuyang inilapat sa mapa."
+
+#: templates/pages/hazard_map.html:191
+msgid "Critical locations needing immediate attention."
+msgstr "Mga kritikal na lokasyong nangangailangan ng agarang atensyon."
+
+#: templates/pages/hazard_map.html:201
+msgid "Hazard Map Viewer"
+msgstr "Viewer ng Mapa ng Panganib"
+
+#: templates/pages/hazard_map.html:202
+msgid "Visualize location markers with risk filters and zone details."
+msgstr ""
+"Tingnan ang mga marker ng lokasyon, filter ng panganib, at detalye ng "
+"sona."
+
+#: templates/pages/hazard_map.html:204
+msgid "Refresh Map"
+msgstr "I-refresh ang Mapa"
+
+#: templates/pages/hazard_map.html:210
+msgid "Search hazard areas..."
+msgstr "Maghanap ng mga lugar na may panganib..."
+
+#: templates/pages/hazard_map.html:210
+msgid "Search hazard areas"
+msgstr "Maghanap ng mga lugar na may panganib"
+
+#: templates/pages/hazard_map.html:211
+msgid "Clear search"
+msgstr "I-clear ang paghahanap"
+
+#: templates/pages/hazard_map.html:211
+msgid "Clear"
+msgstr "I-clear"
+
+#: templates/pages/hazard_map.html:218
+msgid "All Provinces"
+msgstr "Lahat ng Lalawigan"
+
+#: templates/pages/hazard_map.html:226
+msgid "All Municipalities"
+msgstr "Lahat ng Munisipalidad"
+
+#: templates/pages/hazard_map.html:231
+msgid "All Statuses"
+msgstr "Lahat ng Katayuan"
+
+#: templates/pages/hazard_map.html:232
+msgid "New"
+msgstr "Bago"
+
+#: templates/pages/hazard_map.html:233
+msgid "Verified"
+msgstr "Na-verify"
+
+#: templates/pages/hazard_map.html:234
+msgid "Resolved"
+msgstr "Nalutas"
+
+#: templates/pages/hazard_map.html:235
+msgid "Rejected"
+msgstr "Tinanggihan"
+
+#: templates/pages/hazard_map.html:240
+msgid "All Hazards"
+msgstr "Lahat ng Panganib"
+
+#: templates/pages/hazard_map.html:241
+msgid "Flood"
+msgstr "Baha"
+
+#: templates/pages/hazard_map.html:242
+msgid "Earthquake"
+msgstr "Lindol"
+
+#: templates/pages/hazard_map.html:243
+msgid "Volcanic"
+msgstr "Bulcaniko"
+
+#: templates/pages/hazard_map.html:244
+msgid "Fire"
+msgstr "Sunog"
+
+#: templates/pages/hazard_map.html:245
+msgid "Landslide"
+msgstr "Pagguho ng lupa"
+
+#: templates/pages/hazard_map.html:246
+msgid "Storm"
+msgstr "Bagyo"
+
+#: templates/pages/hazard_map.html:247 templates/partials/sidebar.html:245
+msgid "Emergency"
+msgstr "Emergency"
+
+#: templates/pages/hazard_map.html:248
+msgid "Other"
+msgstr "Iba pa"
+
+#: templates/pages/login.html:3 templates/pages/login.html:6
+msgid "Login"
+msgstr "Pag-login"
+
+#: templates/pages/login.html:19 templates/pages/register.html:25
+msgid "Username"
+msgstr "Username"
+
+#: templates/pages/login.html:20 templates/pages/register.html:26
+msgid "Enter username"
+msgstr "Ilagay ang username"
+
+#: templates/pages/login.html:22 templates/pages/register.html:31
+msgid "Password"
+msgstr "Password"
+
+#: templates/pages/login.html:23 templates/pages/register.html:32
+msgid "Enter password"
+msgstr "Ilagay ang password"
+
+msgid "Show password"
+msgstr "Ipakita ang password"
+
+msgid "Hide password"
+msgstr "Itago ang password"
+
+#: templates/pages/login.html:25
+msgid "Sign in"
+msgstr "Mag-sign in"
+
+#: templates/pages/login.html:33
 msgid "Emergency? Call for help"
 msgstr "Emergency? Tumawag para sa tulong"
 
-msgid "Review safety guidance, call the emergency hotline if you are in danger, and follow official instructions."
-msgstr "Basahin ang gabay sa kaligtasan, tumawag sa emergency hotline kung nasa panganib ka, at sundin ang opisyal na tagubilin."
+#: templates/pages/login.html:38
+msgid "Forgot password?"
+msgstr "Nakalimutan ang password?"
 
-msgid "Continue monitoring conditions. If you are in danger, call the emergency hotline."
-msgstr "Patuloy na subaybayan ang kalagayan. Kung nasa panganib ka, tumawag sa emergency hotline."
+#: templates/pages/login.html:39
+msgid "Register new account"
+msgstr "Magrehistro ng bagong account"
 
-msgid "The online incident report form is no longer used. Please call an emergency hotline instead."
-msgstr "Hindi na ginagamit ang online na form ng ulat ng insidente. Mangyaring tumawag na lang sa emergency hotline."
+#: templates/pages/register.html:3 templates/pages/register.html:6
+msgid "Register"
+msgstr "Magrehistro"
 
-msgid "Online SOS is no longer available. Please call an emergency hotline."
-msgstr "Hindi na available ang online SOS. Mangyaring tumawag sa emergency hotline."
+#: templates/pages/register.html:19
+msgid "Full name"
+msgstr "Buong pangalan"
+
+#: templates/pages/register.html:20
+msgid "Enter full name"
+msgstr "Ilagay ang buong pangalan"
+
+#: templates/pages/register.html:22
+msgid "Email"
+msgstr "Email"
+
+#: templates/pages/register.html:23
+msgid "Enter email address"
+msgstr "Ilagay ang email address"
+
+#: templates/pages/register.html:28
+msgid "Contact number"
+msgstr "Contact number"
+
+#: templates/pages/register.html:29
+msgid "Enter contact number"
+msgstr "Ilagay ang contact number"
+
+#: templates/pages/register.html:34
+msgid "Create account"
+msgstr "Gumawa ng account"
+
+#: templates/pages/register.html:39
+msgid "Already have an account? Login"
+msgstr "May account ka na? Mag-login"
+
+msgid "Verify your email"
+msgstr "I-verify ang iyong email"
+
+msgid "Enter the 6-digit code we sent to activate your account."
+msgstr "Ilagay ang 6-digit na code na ipinadala namin upang i-activate ang iyong account."
+
+msgid "Email address"
+msgstr "Email address"
+
+msgid "Verification code"
+msgstr "Verification code"
+
+msgid "Enter 6-digit code"
+msgstr "Ilagay ang 6-digit na code"
+
+msgid "Verify account"
+msgstr "I-verify ang account"
+
+msgid "Resend code"
+msgstr "Ipadala muli ang code"
+
+msgid "A verification code has been sent to your email."
+msgstr "Nagpadala kami ng verification code sa iyong email."
+
+msgid "We could not send a verification code. Please try resending it."
+msgstr "Hindi namin naipadala ang verification code. Subukang ipadala itong muli."
+
+msgid "Your account was created, but we could not deliver the verification email. Please contact support."
+msgstr "Nagawa ang iyong account ngunit hindi naihatid ang verification email. Makipag-ugnayan sa suporta."
+
+msgid "We could not deliver a verification email. Please contact support."
+msgstr "Hindi naihatid ang verification email. Makipag-ugnayan sa suporta."
+
+msgid "If an unverified account exists for that email, a new code has been sent."
+msgstr "Kung may hindi pa beripikadong account para sa email na iyon, nagpadala kami ng bagong code."
+
+msgid "Email verified. You can now sign in."
+msgstr "Na-verify na ang email. Maaari ka nang mag-sign in."
+
+msgid "That code is invalid or has expired. Request a new code and try again."
+msgstr "Hindi wasto o nag-expire na ang code. Humiling ng bagong code at subukang muli."
+
+msgid "That code is incorrect. Please try again."
+msgstr "Mali ang code. Subukang muli."
+
+msgid "That code has expired. Request a new code."
+msgstr "Nag-expire na ang code. Humiling ng bagong code."
+
+msgid "Too many incorrect codes. Request a new code."
+msgstr "Napakaraming maling code. Humiling ng bagong code."
+
+msgid "Unable to verify your email right now. Please try again."
+msgstr "Hindi ma-verify ang iyong email sa ngayon. Subukang muli."
+
+msgid "Please verify your email before signing in."
+msgstr "I-verify muna ang iyong email bago mag-sign in."
+
+msgid "Enter your verification code or resend it."
+msgstr "Ilagay ang verification code o ipadala itong muli."
+
+#: templates/pages/reset_password.html:3 templates/pages/reset_password.html:6
+msgid "Reset Password"
+msgstr "Magtakda Muli ng Password"
+
+#: templates/partials/auth_header.html:20
+msgid "Digital incident command"
+msgstr "Digital na pamamahala ng insidente"
+
+#: templates/partials/sidebar.html:6
+msgid "Open menu"
+msgstr "Buksan ang menu"
+
+#: templates/partials/sidebar.html:6 templates/partials/sidebar.html:32
+msgid "Close menu"
+msgstr "Isara ang menu"
+
+#: templates/partials/sidebar.html:25
+msgid "Crisis Response"
+msgstr "Pagtugon sa Krisis"
+
+#: templates/partials/sidebar.html:28 templates/partials/sidebar.html:29
+msgid "Collapse sidebar"
+msgstr "Paliitin ang sidebar"
+
+#: templates/partials/sidebar.html:28
+msgid "Expand sidebar"
+msgstr "Palawakin ang sidebar"
+
+#: templates/partials/sidebar.html:40
+msgid "Main"
+msgstr "Pangunahin"
+
+#: templates/partials/sidebar.html:43
+msgid "Primary navigation"
+msgstr "Pangunahing nabigasyon"
+
+#: templates/partials/sidebar.html:46 templates/partials/sidebar.html:48
+#: templates/partials/sidebar.html:64 templates/partials/sidebar.html:66
+#: templates/partials/sidebar.html:129 templates/partials/sidebar.html:170
+#: templates/partials/sidebar.html:172 templates/partials/sidebar.html:193
+#: templates/partials/sidebar.html:195
+msgid "Dashboard"
+msgstr "Dashboard"
+
+#: templates/partials/sidebar.html:51
+msgid "Administration"
+msgstr "Administrasyon"
+
+#: templates/partials/sidebar.html:52 templates/partials/sidebar.html:54
+msgid "Users"
+msgstr "Mga User"
+
+#: templates/partials/sidebar.html:56
+msgid "Preparing backup..."
+msgstr "Inihahanda ang backup..."
+
+#: templates/partials/sidebar.html:56 templates/partials/sidebar.html:58
+msgid "Backup"
+msgstr "Backup"
+
+#: templates/partials/sidebar.html:63 templates/partials/sidebar.html:95
+msgid "Operations"
+msgstr "Mga Operasyon"
+
+#: templates/partials/sidebar.html:68 templates/partials/sidebar.html:70
+#: templates/partials/sidebar.html:175 templates/partials/sidebar.html:177
+msgid "Tasks"
+msgstr "Mga Gawain"
+
+#: templates/partials/sidebar.html:77 templates/partials/sidebar.html:109
+#: templates/partials/sidebar.html:136
+msgid "Monitoring"
+msgstr "Pag-monitor"
+
+#: templates/partials/sidebar.html:78 templates/partials/sidebar.html:80
+#: templates/partials/sidebar.html:204 templates/partials/sidebar.html:206
+msgid "Reports"
+msgstr "Mga Ulat"
+
+#: templates/partials/sidebar.html:87 templates/partials/sidebar.html:118
+msgid "Communication"
+msgstr "Komunikasyon"
+
+#: templates/partials/sidebar.html:88 templates/partials/sidebar.html:90
+msgid "Communications"
+msgstr "Mga Komunikasyon"
+
+#: templates/partials/sidebar.html:96 templates/partials/sidebar.html:98
+msgid "Command Center"
+msgstr "Command Center"
+
+#: templates/partials/sidebar.html:100 templates/partials/sidebar.html:102
+#: templates/partials/sidebar.html:159 templates/partials/sidebar.html:161
+msgid "Resource Requests"
+msgstr "Mga Kahilingan sa Resource"
+
+#: templates/partials/sidebar.html:104 templates/partials/sidebar.html:106
+msgid "Incident History"
+msgstr "Kasaysayan ng Insidente"
+
+#: templates/partials/sidebar.html:114 templates/partials/sidebar.html:163
+msgid "Facility Directory"
+msgstr "Listahan ng mga Pasilidad"
+
+#: templates/partials/sidebar.html:116 templates/partials/sidebar.html:165
+msgid "Facilities"
+msgstr "Mga Pasilidad"
+
+#: templates/partials/sidebar.html:119 templates/partials/sidebar.html:121
+msgid "Public Advisories"
+msgstr "Mga Pampublikong Abiso"
+
+#: templates/partials/sidebar.html:126 templates/partials/sidebar.html:192
+msgid "Overview"
+msgstr "Pangkalahatang-ideya"
+
+#: templates/partials/sidebar.html:127
+msgid "Command Dashboard"
+msgstr "Dashboard ng Command"
+
+#: templates/partials/sidebar.html:131 templates/partials/sidebar.html:133
+msgid "Analytics"
+msgstr "Analytics"
+
+#: templates/partials/sidebar.html:137
+msgid "Heat Maps"
+msgstr "Mga Mapa ng Init"
+
+#: templates/partials/sidebar.html:141
+msgid "Incident Monitoring"
+msgstr "Pagsubaybay sa Insidente"
+
+#: templates/partials/sidebar.html:143
+msgid "Incidents"
+msgstr "Mga Insidente"
+
+#: templates/partials/sidebar.html:145
+msgid "Resource Monitoring"
+msgstr "Pagsubaybay sa Resource"
+
+#: templates/partials/sidebar.html:150
+msgid "Dispatch"
+msgstr "Dispatch"
+
+#: templates/partials/sidebar.html:151 templates/partials/sidebar.html:153
+msgid "Verification Queue"
+msgstr "Pila ng Beripikasyon"
+
+#: templates/partials/sidebar.html:155 templates/partials/sidebar.html:157
+msgid "Active Operations"
+msgstr "Mga Aktibong Operasyon"
+
+#: templates/partials/sidebar.html:180 templates/partials/sidebar.html:182
+#: templates/partials/sidebar.html:221 templates/partials/sidebar.html:223
+msgid "Report Incident"
+msgstr "Mag-ulat ng Insidente"
+
+#: templates/partials/sidebar.html:210
+msgid "Alerts & Updates"
+msgstr "Mga Alerto at Update"
+
+#: templates/partials/sidebar.html:213
+msgid "Alerts"
+msgstr "Mga Alerto"
+
+#: templates/partials/sidebar.html:227
+msgid "Support"
+msgstr "Suporta"
+
+#: templates/partials/sidebar.html:251 templates/partials/sidebar.html:254
+#: templates/partials/sidebar.html:280 templates/partials/sidebar.html:283
+msgid "Emergency SOS"
+msgstr "Emergency SOS"
+
+#: templates/partials/sidebar.html:268 templates/partials/sidebar.html:270
+msgid "Logout"
+msgstr "Mag-logout"
+
+#~ msgid "Calabarzon Police"
+#~ msgstr "Pulisya ng Calabarzon"
+
+#~ msgid "Fire Department"
+#~ msgstr "Kagawaran ng Bumbero"
+
+#~ msgid ""
+#~ "Review safety guidance, call the "
+#~ "emergency hotline if you are in "
+#~ "danger, and follow official instructions."
+#~ msgstr ""
+#~ "Basahin ang gabay sa kaligtasan, tumawag"
+#~ " sa emergency hotline kung nasa "
+#~ "panganib ka, at sundin ang opisyal "
+#~ "na tagubilin."
+
+#~ msgid ""
+#~ "Continue monitoring conditions. If you "
+#~ "are in danger, call the emergency "
+#~ "hotline."
+#~ msgstr ""
+#~ "Patuloy na subaybayan ang kalagayan. "
+#~ "Kung nasa panganib ka, tumawag sa "
+#~ "emergency hotline."
+
+#~ msgid "Welcome back, !"
+#~ msgstr ""
+

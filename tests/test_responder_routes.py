@@ -18,12 +18,12 @@ os.environ.setdefault('SECRET_KEY', os.environ.get('SECRET_KEY') or 'development
 # real instance/database.db file instead of an isolated database. Use a
 # file-backed test DB so the schema is stable and reproducible before import.
 TEST_DB_PATH = os.path.abspath(os.path.join('instance', 'test_responder_routes.db'))
-os.environ.setdefault('DATABASE_URL', f'sqlite:///{TEST_DB_PATH}')
+os.environ['DATABASE_URL'] = f'sqlite:///{TEST_DB_PATH}'
 
 from flask import abort, render_template_string
 
 import app as app_module
-from app import app, db, create_default_admin
+from app import app, db
 from models import AIRecommendation, AuditEvent, User, CitizenReport, Incident, IncidentResponse, PostIncidentReport, Task, Resource, IncidentMessage, Province, Municipality, Barangay
 from seed.demo_data import seed_geography_data
 import scheduler
@@ -79,6 +79,30 @@ class ResponderRoutesTestCase(unittest.TestCase):
     def tearDown(self):
         with self.app.app_context():
             db.session.remove()
+
+    def _create_active_response_for_report(self):
+        with self.app.app_context():
+            user = User.query.filter_by(username='responder1').one()
+            incident = Incident(
+                hazard_type='Flood', location='Test field location', message='Test incident',
+                level='High', status='ACTIVE', alert=True,
+            )
+            db.session.add(incident)
+            db.session.flush()
+            response = IncidentResponse(
+                incident_id=incident.id, commander_id=user.id, status='ACTIVE',
+            )
+            db.session.add(response)
+            db.session.commit()
+            return response.id
+
+    def _set_persisted_role(self, role, username='responder1', agency=None):
+        with self.app.app_context():
+            user = User.query.filter_by(username=username).one()
+            user.role = role
+            if agency is not None:
+                user.agency = agency
+            db.session.commit()
 
     def test_predict_hazard_fallback_contract_uses_insufficient_data(self):
         from ai import decision_support
@@ -153,6 +177,22 @@ class ResponderRoutesTestCase(unittest.TestCase):
             self.assertIsNone(user.reset_token)
             self.assertIsNone(user.reset_token_expires_at)
 
+    def test_forgot_password_finds_legacy_mixed_case_email(self):
+        with self.app.app_context():
+            db.session.execute(
+                User.__table__.update()
+                .where(User.username == 'responder1')
+                .values(email='Responder@Example.com')
+            )
+            db.session.commit()
+
+        response = self.client.post('/forgot-password', data={'email': 'RESPONDER@EXAMPLE.COM'})
+
+        self.assertEqual(response.status_code, 302)
+        with self.app.app_context():
+            user = User.query.filter_by(username='responder1').one()
+            self.assertIsNotNone(user.reset_token)
+
     def test_forgot_password_sends_reset_email_with_link(self):
         self.app.config.update(TESTING=False, RESEND_API_KEY='test-resend-key')
 
@@ -173,6 +213,80 @@ class ResponderRoutesTestCase(unittest.TestCase):
             user = User.query.filter_by(email='responder@example.com').first()
             self.assertIsNotNone(user.reset_token)
             self.assertIn(f'/reset-password/{user.reset_token}', request_kwargs['json']['text'])
+
+    def test_registration_verification_email_uses_configured_resend_sender(self):
+        user = SimpleNamespace(email='new-citizen@example.com')
+        with patch.dict(self.app.config, {
+            'OTP_EMAIL_BACKEND': 'resend',
+            'RESEND_API_KEY': 'test-resend-key',
+            'RESEND_FROM_EMAIL': 'verify@example.com',
+            'RESEND_SUPPRESS_SEND': False,
+        }), patch('app.requests.post') as resend_post:
+            resend_post.return_value.ok = True
+            sent = app_module.send_registration_otp_email(user, '042681')
+
+        self.assertTrue(sent)
+        resend_post.assert_called_once()
+        request_kwargs = resend_post.call_args.kwargs
+        self.assertEqual(request_kwargs['headers']['Authorization'], 'Bearer test-resend-key')
+        self.assertEqual(request_kwargs['json']['from'], 'verify@example.com')
+        self.assertEqual(request_kwargs['json']['to'], ['new-citizen@example.com'])
+        self.assertIn('042681', request_kwargs['json']['text'])
+        self.assertIn('expires in 10 minutes', request_kwargs['json']['text'])
+
+    def test_registration_verification_email_uses_gmail_smtp(self):
+        user = SimpleNamespace(email='new-citizen@example.com')
+        with patch.dict(self.app.config, {
+            'OTP_EMAIL_BACKEND': 'smtp',
+            'RESEND_SUPPRESS_SEND': False,
+            'SMTP_HOST': 'smtp.gmail.com',
+            'SMTP_PORT': 587,
+            'SMTP_USERNAME': 'sender@gmail.com',
+            'SMTP_PASSWORD': 'abcd efgh ijkl mnop',
+            'SMTP_FROM_EMAIL': 'sender@gmail.com',
+            'SMTP_FROM_NAME': 'DICS AI',
+        }), patch('app.smtplib.SMTP') as smtp_class:
+            smtp = smtp_class.return_value.__enter__.return_value
+            sent = app_module.send_registration_otp_email(user, '042681')
+
+        self.assertTrue(sent)
+        smtp_class.assert_called_once_with('smtp.gmail.com', 587, timeout=15)
+        smtp.starttls.assert_called_once()
+        smtp.login.assert_called_once_with('sender@gmail.com', 'abcdefghijklmnop')
+        message = smtp.send_message.call_args.args[0]
+        self.assertEqual(message['To'], 'new-citizen@example.com')
+        self.assertEqual(message['From'], 'DICS AI <sender@gmail.com>')
+        self.assertIn('042681', message.get_content())
+
+    def test_verification_resend_reports_delivery_failure(self):
+        with patch.object(app_module, 'send_registration_otp_email', return_value=False):
+            response = self.client.post('/register', data={
+                'username': 'otp_delivery_failure',
+                'email': 'otp-delivery-failure@example.com',
+                'password': 'strongpass123',
+                'full_name': 'OTP Delivery Failure',
+                'contact_number': '09170000000',
+            })
+
+        self.assertEqual(response.status_code, 302)
+        verify_page = self.client.get('/verify-email', follow_redirects=True)
+        self.assertIn(b'Your account was created, but we could not deliver the verification email.', verify_page.data)
+
+        with patch.object(app_module, 'send_registration_otp_email', return_value=False):
+            resend_page = self.client.post('/verify-email', data={
+                'email': 'otp-delivery-failure@example.com',
+                'action': 'resend',
+            }, follow_redirects=True)
+        self.assertIn(b'We could not deliver a verification email. Please contact support.', resend_page.data)
+        self.assertNotIn(b'a new code has been sent', resend_page.data)
+
+    def test_plaintext_stored_password_is_rejected(self):
+        user = SimpleNamespace(username='legacy_plaintext', password='known-test-password')
+
+        with self.app.app_context():
+            self.assertFalse(app_module.verify_password(user, 'known-test-password'))
+
+        self.assertEqual(user.password, 'known-test-password')
 
     def test_shared_layout_exposes_accessibility_landmarks(self):
         response = self.client.get('/')
@@ -425,22 +539,85 @@ class ResponderRoutesTestCase(unittest.TestCase):
         self.assertIn(b'Close Response', response.data)
 
     def test_create_default_admin_requires_password_env(self):
-        with self.app.app_context():
-            os.environ.pop('ADMIN_PASSWORD', None)
-            with self.assertRaises(RuntimeError):
-                app_module.create_default_admin()
+        with patch.dict(os.environ, {'ADMIN_PASSWORD': ''}):
+            with self.app.app_context():
+                with self.assertRaises(RuntimeError):
+                    app_module.create_default_admin()
 
-    def test_create_default_admin_uses_default_credentials(self):
+    def test_create_default_admin_uses_env_password_only_when_bootstrapping(self):
+        with patch.dict(os.environ, {'ADMIN_PASSWORD': 'test-admin-password'}):
+            with self.app.app_context():
+                app_module.create_default_admin()
+                admin = User.query.filter_by(username='admin').one()
+                self.assertEqual(admin.role, 'admin')
+                self.assertTrue(check_password_hash(admin.password, 'test-admin-password'))
+                self.assertTrue(admin.must_change_password)
+
+    def test_create_default_admin_does_not_reset_existing_password_on_restart(self):
+        original_password = 'InAppPassword456'
         with self.app.app_context():
-            existing = User(username='admin', email='admin@dics-ai.local', password='legacy', role='user')
-            db.session.add(existing)
+            db.session.add(User(
+                username='admin',
+                email='admin@dics-ai.local',
+                password=app_module.generate_password_hash(original_password),
+                role='admin',
+                email_verified=True,
+                must_change_password=False,
+            ))
             db.session.commit()
 
-            os.environ['ADMIN_PASSWORD'] = 'test-admin-password'
-            app_module.create_default_admin()
-            admin = User.query.filter_by(username='admin').first()
-            self.assertEqual(admin.role, 'admin')
-            self.assertTrue(app_module.check_password_hash(admin.password, 'test-admin-password'))
+        with patch.dict(os.environ, {'ADMIN_PASSWORD': 'stale-env-password'}):
+            with self.app.app_context():
+                app_module.create_default_admin()
+                os.environ['ADMIN_PASSWORD'] = 'rotated-env-password'
+                app_module.create_default_admin()
+
+        with self.app.app_context():
+            admin = User.query.filter_by(username='admin').one()
+            self.assertTrue(check_password_hash(admin.password, original_password))
+            self.assertFalse(admin.must_change_password)
+
+    def test_existing_default_admin_does_not_require_env_password(self):
+        with self.app.app_context():
+            db.session.add(User(
+                username='admin',
+                email='admin@dics-ai.local',
+                password=app_module.generate_password_hash('InAppPassword456'),
+                role='admin',
+                email_verified=True,
+                must_change_password=False,
+            ))
+            db.session.commit()
+
+        with patch.dict(os.environ, {'ADMIN_PASSWORD': ''}):
+            with self.app.app_context():
+                app_module.create_default_admin()
+
+        with self.app.app_context():
+            admin = User.query.filter_by(username='admin').one()
+            self.assertTrue(check_password_hash(admin.password, 'InAppPassword456'))
+            self.assertFalse(admin.must_change_password)
+
+    def test_create_default_admin_does_not_touch_password_of_differently_named_admin(self):
+        with self.app.app_context():
+            real_admin = User(
+                username='juan_delacruz', email='juan@lgu.example', password='TheirOwnChosenPassword1',
+                role='admin', email_verified=True, must_change_password=False,
+            )
+            db.session.add(real_admin)
+            db.session.commit()
+
+        with patch.dict(os.environ, {'ADMIN_PASSWORD': 'bootstrap-password'}):
+            with self.app.app_context():
+                app_module.create_default_admin()
+
+        with self.app.app_context():
+            refreshed = User.query.filter_by(username='juan_delacruz').first()
+            self.assertEqual(refreshed.password, 'TheirOwnChosenPassword1')
+            self.assertFalse(refreshed.must_change_password)
+            bootstrap_admin = User.query.filter_by(username='admin').first()
+            self.assertIsNotNone(bootstrap_admin)
+            self.assertNotEqual(bootstrap_admin.id, refreshed.id)
 
     def test_register_requires_minimum_password_length(self):
         response = self.client.post('/register', data={
@@ -454,20 +631,140 @@ class ResponderRoutesTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'Password must be at least 8 characters.', response.data)
 
-    def test_public_registration_assigns_citizen_role(self):
-        response = self.client.post('/register', data={
-            'username': 'citizenuser',
-            'email': 'citizen@example.com',
-            'password': 'strongpass123',
-            'full_name': 'Citizen User',
-            'contact_number': '09170000000',
-        }, follow_redirects=True)
+    def test_email_verification_page_uses_public_auth_layout(self):
+        response = self.client.get('/verify-email?email=otp@example.com')
 
         self.assertEqual(response.status_code, 200)
+        self.assertIn(b'Verification code', response.data)
+        self.assertNotIn(b'id="sidebarContainer"', response.data)
+
+    def test_public_registration_assigns_citizen_role(self):
+        with patch.object(app_module, 'send_registration_otp_email', return_value=True):
+            response = self.client.post('/register', data={
+                'username': 'citizenuser',
+                'email': 'Citizen@Example.com',
+                'password': 'strongpass123',
+                'full_name': 'Citizen User',
+                'contact_number': '09170000000',
+            }, follow_redirects=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'Verify your email', response.data)
         with self.app.app_context():
             user = User.query.filter_by(username='citizenuser').first()
             self.assertIsNotNone(user)
             self.assertEqual(user.role, 'citizen')
+            self.assertEqual(user.email, 'citizen@example.com')
+            self.assertFalse(user.email_verified)
+            self.assertIsNotNone(user.verification_token)
+
+    def test_registration_otp_blocks_login_until_verified(self):
+        with patch.object(app_module, 'send_registration_otp_email', return_value=True) as send_otp:
+            response = self.client.post('/register', data={
+                'username': 'otp_citizen',
+                'email': 'otp-citizen@example.com',
+                'password': 'strongpass123',
+                'full_name': 'OTP Citizen',
+                'contact_number': '09170000000',
+            })
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.headers['Location'].endswith('/verify-email'))
+        verification_code = send_otp.call_args.args[1]
+        self.assertRegex(verification_code, r'^\d{6}$')
+
+        blocked_login = self.client.post('/login', data={
+            'username': 'otp_citizen',
+            'password': 'strongpass123',
+        })
+        self.assertEqual(blocked_login.status_code, 200)
+        self.assertIn(b'Please verify your email before signing in.', blocked_login.data)
+        with self.client.session_transaction() as session:
+            self.assertNotIn('username', session)
+
+        verified = self.client.post('/verify-email', data={
+            'email': 'OTP-CITIZEN@example.com',
+            'code': verification_code,
+            'action': 'verify',
+        }, follow_redirects=True)
+        self.assertEqual(verified.status_code, 200)
+        self.assertIn(b'Email verified. You can now sign in.', verified.data)
+        with self.app.app_context():
+            user = User.query.filter_by(username='otp_citizen').one()
+            self.assertTrue(user.email_verified)
+            self.assertIsNone(user.verification_token)
+
+        login_response = self.client.post('/login', data={
+            'username': 'otp_citizen',
+            'password': 'strongpass123',
+        })
+        self.assertEqual(login_response.status_code, 302)
+        self.assertTrue(login_response.headers['Location'].endswith('/citizen-dashboard'))
+
+    def test_registration_otp_expires_after_ten_minutes(self):
+        with self.app.app_context():
+            user = SimpleNamespace(id=42, email='expired@example.com', verification_token=None)
+            issued_at = int((datetime.now(timezone.utc) - timedelta(minutes=11)).timestamp())
+            code = '123456'
+            digest = app_module._email_otp_digest(user, issued_at, code)
+            user.verification_token = f'{issued_at}:0:{digest}'
+
+            self.assertEqual(app_module._check_email_verification_code(user, code), 'expired')
+
+    def test_registration_otp_resend_rotates_code_and_limits_attempts(self):
+        with patch.object(app_module, 'send_registration_otp_email', return_value=True) as send_otp:
+            self.client.post('/register', data={
+                'username': 'otp_resend',
+                'email': 'otp-resend@example.com',
+                'password': 'strongpass123',
+                'full_name': 'OTP Resend',
+                'contact_number': '09170000000',
+            })
+            original_code = send_otp.call_args.args[1]
+
+            for _ in range(app_module._EMAIL_OTP_MAX_ATTEMPTS):
+                response = self.client.post('/verify-email', data={
+                    'email': 'otp-resend@example.com',
+                    'code': '000000' if original_code != '000000' else '000001',
+                    'action': 'verify',
+                })
+                self.assertEqual(response.status_code, 200)
+
+            locked = self.client.post('/verify-email', data={
+                'email': 'otp-resend@example.com',
+                'code': original_code,
+                'action': 'verify',
+            })
+            self.assertIn(b'Too many incorrect codes. Request a new code.', locked.data)
+
+            resent = self.client.post('/verify-email', data={
+                'email': 'otp-resend@example.com',
+                'action': 'resend',
+            })
+            self.assertEqual(resent.status_code, 302)
+            replacement_code = send_otp.call_args.args[1]
+            self.assertNotEqual(replacement_code, original_code)
+
+            verified = self.client.post('/verify-email', data={
+                'email': 'otp-resend@example.com',
+                'code': replacement_code,
+                'action': 'verify',
+            })
+            self.assertEqual(verified.status_code, 302)
+
+    def test_public_registration_rejects_case_only_email_duplicate(self):
+        response = self.client.post('/register', data={
+            'username': 'responder_email_duplicate',
+            'email': 'RESPONDER@EXAMPLE.COM',
+            'password': 'strongpass123',
+            'full_name': 'Duplicate Email',
+            'contact_number': '09170000000',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'Email already registered.', response.data)
+        with self.app.app_context():
+            self.assertIsNone(User.query.filter_by(username='responder_email_duplicate').first())
 
     def test_field_responder_dashboard_renders_for_role(self):
         with self.client.session_transaction() as session:
@@ -505,6 +802,7 @@ class ResponderRoutesTestCase(unittest.TestCase):
         self.assertFalse(permissions.can_manage_users(citizen))
 
     def test_secret_key_uses_environment_and_initializes_db_on_request(self):
+        global app
         original_secret = os.environ.get('SECRET_KEY')
         os.environ['SECRET_KEY'] = 'env-secret-test'
 
@@ -522,13 +820,15 @@ class ResponderRoutesTestCase(unittest.TestCase):
                 os.environ.pop('SECRET_KEY', None)
             else:
                 os.environ['SECRET_KEY'] = original_secret
+            app = app_module.app
 
     def test_secret_key_generates_random_value_when_unset(self):
+        global app
         # SECRET_KEY must never fall back to a fixed, known string checked into
         # source control (session forgery risk). When unset, the app should
         # generate a random per-process key instead.
         original_secret = os.environ.get('SECRET_KEY')
-        os.environ.pop('SECRET_KEY', None)
+        os.environ['SECRET_KEY'] = ''
 
         try:
             import app as app_module
@@ -544,6 +844,7 @@ class ResponderRoutesTestCase(unittest.TestCase):
             else:
                 os.environ['SECRET_KEY'] = original_secret
             importlib.reload(app_module)
+            app = app_module.app
 
     def test_language_toggle_renders_tagalog_login(self):
         response = self.client.get('/language/tl?next=/login')
@@ -553,13 +854,69 @@ class ResponderRoutesTestCase(unittest.TestCase):
 
         response = self.client.get('/login')
         html = response.get_data(as_text=True)
-        self.assertIn('lang="fil_PH"', html)
+        self.assertIn('lang="fil-PH"', html)
         self.assertIn('Pag-login', html)
         self.assertIn('Ilagay ang username', html)
+        self.assertIn('aria-label="Ipakita ang password"', html)
+        self.assertIn('data-hide-label="Itago ang password"', html)
+        self.assertIn('aria-label="Lumipat sa English"', html)
+
+        with self.client.session_transaction() as session:
+            session['_flashes'] = [('success', 'Registration successful! You can now log in.')]
+        response = self.client.get('/login')
+        self.assertIn('Matagumpay ang pagpaparehistro! Maaari ka nang mag-log in.', response.get_data(as_text=True))
 
         self.client.get('/language/en?next=/login')
         response = self.client.get('/login')
-        self.assertIn('Sign in', response.get_data(as_text=True))
+        english_html = response.get_data(as_text=True)
+        self.assertIn('Sign in', english_html)
+        self.assertIn('aria-label="Show password"', english_html)
+
+    def test_login_password_visibility_toggle_preserves_password_field(self):
+        html = self.client.get('/login').get_data(as_text=True)
+
+        self.assertIn('type="password" class="form-control" id="password" name="password"', html)
+        self.assertIn('id="passwordVisibilityToggle"', html)
+        self.assertIn('type="button" class="auth-password-toggle"', html)
+        self.assertIn('aria-controls="password" aria-pressed="false"', html)
+        self.assertIn("passwordInput.type = isVisible ? 'password' : 'text';", html)
+
+    def test_register_password_visibility_toggle(self):
+        html = self.client.get('/register').get_data(as_text=True)
+
+        self.assertIn('type="password" class="form-control" id="password" name="password"', html)
+        self.assertIn('id="passwordVisibilityToggle"', html)
+        self.assertIn('type="button" class="auth-password-toggle"', html)
+        self.assertIn('aria-controls="password" aria-pressed="false"', html)
+        self.assertIn("passwordInput.type = isVisible ? 'password' : 'text';", html)
+
+    def test_auth_and_error_pages_render_in_filipino(self):
+        self.client.get('/language/fil_PH?next=/register')
+
+        register_html = self.client.get('/register').get_data(as_text=True)
+        self.assertIn('Buong pangalan', register_html)
+        self.assertIn('Gumawa ng account', register_html)
+
+        forgot_html = self.client.get('/forgot-password').get_data(as_text=True)
+        self.assertIn('Ilagay ang iyong email address upang makatanggap', forgot_html)
+
+        with self.app.app_context():
+            user = User.query.filter_by(username='responder1').one()
+            user.reset_token = 'test-reset-token'
+            user.reset_token_expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=1)
+            db.session.commit()
+        reset_html = self.client.get('/reset-password/test-reset-token').get_data(as_text=True)
+        self.assertIn('Bagong password', reset_html)
+
+        with self.client.session_transaction() as session:
+            session['username'] = 'responder1'
+            session['role'] = 'field_responder'
+        change_html = self.client.get('/change-password').get_data(as_text=True)
+        self.assertIn('Kasalukuyang password', change_html)
+
+        error_response = self.client.get('/force-403')
+        self.assertEqual(error_response.status_code, 403)
+        self.assertIn('Wala kang pahintulot na tingnan ang pahinang ito', error_response.get_data(as_text=True))
 
     def test_citizen_report_requires_coordinates_before_submission(self):
         with self.client.session_transaction() as session:
@@ -1450,16 +1807,169 @@ class ResponderRoutesTestCase(unittest.TestCase):
             self.assertNotIn('username', session)
             self.assertNotIn('role', session)
 
+    def test_responder_report_location_capture_uses_place_name(self):
+        with self.client.session_transaction() as session:
+            session['username'] = 'responder1'
+            session['role'] = 'field_responder'
+
+        response = self.client.get('/responder-report')
+        html = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Current Location', html)
+        self.assertIn('nominatim.openstreetmap.org/reverse?format=jsonv2', html)
+        self.assertIn('name="gps_lat" id="gps-lat-input"', html)
+        self.assertIn('name="gps_lng" id="gps-lng-input"', html)
+        self.assertIn('if (!areaInput.value.trim()) areaInput.value = placeName;', html)
+        self.assertNotIn('areaInput.placeholder = capturedLat', html)
+
+    def test_unverified_user_session_is_cleared(self):
+        with self.app.app_context():
+            user = User.query.filter_by(username='responder1').one()
+            user.email_verified = False
+            db.session.commit()
+        with self.client.session_transaction() as session:
+            session['username'] = 'responder1'
+            session['role'] = 'field_responder'
+
+        response = self.client.get('/responder-dashboard', follow_redirects=False)
+
+        self.assertEqual(response.status_code, 302)
+        with self.client.session_transaction() as session:
+            self.assertNotIn('username', session)
+            self.assertNotIn('role', session)
+
+    def test_responder_report_survives_attachment_storage_failure(self):
+        response_id = self._create_active_response_for_report()
+        self.app.config['MAX_UPLOAD_SIZE_BYTES'] = 16 * 1024 * 1024
+        with self.client.session_transaction() as session:
+            session['username'] = 'responder1'
+            session['role'] = 'field_responder'
+
+        image = BytesIO()
+        Image.new('RGB', (2, 2), color='red').save(image, format='PNG')
+        image.seek(0)
+        with patch.object(
+            self.app.extensions['file_storage'], 'save', side_effect=OSError('storage unavailable')
+        ):
+            response = self.client.post('/responder-report', data={
+                'incident_response_id': str(response_id),
+                'title': 'Saved field report',
+                'content': 'Report body',
+                'casualties': '0',
+                'evacuated': '0',
+                'media': (image, 'field.png'),
+            }, follow_redirects=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'Your field report was saved', response.data)
+        self.assertIn(b'Do not resubmit the report.', response.data)
+        with self.app.app_context():
+            reports = IncidentMessage.query.filter_by(title='Saved field report').all()
+            self.assertEqual(len(reports), 1)
+
+    def test_responder_report_rejects_negative_counts(self):
+        response_id = self._create_active_response_for_report()
+        with self.client.session_transaction() as session:
+            session['username'] = 'responder1'
+            session['role'] = 'field_responder'
+
+        for field, value in (('casualties', '-40'), ('evacuated', '-1')):
+            with self.subTest(field=field):
+                response = self.client.post('/responder-report', data={
+                    'incident_response_id': str(response_id),
+                    'title': f'Invalid {field} report',
+                    'content': 'Report body',
+                    'casualties': '-40' if field == 'casualties' else '0',
+                    'evacuated': '-1' if field == 'evacuated' else '0',
+                }, follow_redirects=True)
+
+                self.assertEqual(response.status_code, 200)
+                self.assertIn(b'counts cannot be negative', response.data)
+
+        with self.app.app_context():
+            self.assertEqual(IncidentMessage.query.filter(IncidentMessage.title.like('Invalid % report')).count(), 0)
+
+    def test_legacy_user_role_routes_to_citizen_dashboard(self):
+        with self.app.app_context():
+            user = User.query.filter_by(username='responder1').one()
+            user.role = 'user'
+            db.session.commit()
+
+        with self.client.session_transaction() as session:
+            session['username'] = 'responder1'
+            session['role'] = 'user'
+
+        response = self.client.get('/dashboard', follow_redirects=False)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.headers['Location'].endswith('/citizen-dashboard'))
+
+    def test_disabled_eoc_user_loses_existing_session_access(self):
+        with self.app.app_context():
+            user = User.query.filter_by(username='responder1').one()
+            user.role = 'eoc_staff'
+            user.is_disabled = True
+            db.session.commit()
+
+        with self.client.session_transaction() as session:
+            session['username'] = 'responder1'
+            session['role'] = 'eoc_staff'
+
+        response = self.client.get('/eoc-dashboard', follow_redirects=False)
+
+        self.assertEqual(response.status_code, 302)
+        with self.client.session_transaction() as session:
+            self.assertNotIn('username', session)
+            self.assertNotIn('role', session)
+
+    def test_demoted_eoc_user_loses_existing_session_access(self):
+        with self.app.app_context():
+            user = User.query.filter_by(username='responder1').one()
+            user.role = 'citizen'
+            db.session.commit()
+
+        with self.client.session_transaction() as session:
+            session['username'] = 'responder1'
+            session['role'] = 'eoc_staff'
+
+        response = self.client.get('/eoc-dashboard', follow_redirects=False)
+
+        self.assertEqual(response.status_code, 302)
+        with self.client.session_transaction() as session:
+            self.assertEqual(session['role'], 'citizen')
+
     def test_register_rate_limited_after_five_requests_per_hour(self):
         statuses = []
-        for i in range(7):
-            response = self.client.post('/register', data={
-                'username': f'ratelimit_user_{i}', 'email': f'ratelimit{i}@example.com',
-                'password': 'SomePass123', 'full_name': 'Test User', 'contact_number': '09171234567',
-            })
-            statuses.append(response.status_code)
+        rate_limited_response = None
+        with patch.object(app_module, 'send_registration_otp_email', return_value=True):
+            for i in range(7):
+                response = self.client.post('/register', data={
+                    'username': f'ratelimit_user_{i}', 'email': f'ratelimit{i}@example.com',
+                    'password': 'SomePass123', 'full_name': 'Test User', 'contact_number': '09171234567',
+                })
+                statuses.append(response.status_code)
+                if response.status_code == 429:
+                    rate_limited_response = response
         self.assertIn(429, statuses)
         self.assertEqual(statuses.count(429), 2, "5-per-hour limit should allow exactly 5 through before limiting the remaining 2")
+        self.assertIn(b'Too Many Requests', rate_limited_response.data)
+        self.assertIn(b'class="card card-custom"', rate_limited_response.data)
+
+    def test_rate_limits_use_forwarded_client_ip(self):
+        from app import limiter
+
+        limiter.reset()
+        statuses = [
+            self.client.get('/login', headers={'X-Forwarded-For': '198.51.100.10'}).status_code
+            for _ in range(51)
+        ]
+
+        self.assertEqual(statuses[-1], 429)
+        other_client_response = self.client.get(
+            '/login', headers={'X-Forwarded-For': '198.51.100.11'}
+        )
+        self.assertEqual(other_client_response.status_code, 200)
 
     def test_emergency_sos_rate_limited_after_five_requests_per_minute(self):
         """Regression test for the fix itself: emergency_sos() lives in
@@ -1528,6 +2038,16 @@ class ResponderRoutesTestCase(unittest.TestCase):
         response = self.client.get('/eoc/sos-incidents/pending')
         self.assertEqual(response.status_code, 401)
 
+    def test_pending_sos_poll_exceeds_default_hourly_limit(self):
+        self._set_persisted_role('eoc_staff')
+        with self.client.session_transaction() as session:
+            session['username'] = 'responder1'
+            session['role'] = 'eoc_staff'
+
+        responses = [self.client.get('/eoc/sos-incidents/pending') for _ in range(55)]
+
+        self.assertTrue(all(response.status_code == 200 for response in responses))
+
     def test_pending_sos_incidents_returns_unverified_emergency_incidents(self):
         with self.app.app_context():
             citizen = User(username='sos_test_citizen', email='stc@example.com', password='secret', role='citizen', email_verified=True)
@@ -1549,6 +2069,7 @@ class ResponderRoutesTestCase(unittest.TestCase):
             db.session.commit()
             sos_incident_id = sos_incident.id
 
+        self._set_persisted_role('eoc_staff')
         with self.client.session_transaction() as session:
             session['username'] = 'responder1'
             session['role'] = 'eoc_staff'
@@ -1578,6 +2099,7 @@ class ResponderRoutesTestCase(unittest.TestCase):
             db.session.commit()
             sos_incident_id = sos_incident.id
 
+        self._set_persisted_role('eoc_staff')
         with self.client.session_transaction() as session:
             session['username'] = 'responder1'
             session['role'] = 'eoc_staff'
@@ -1591,6 +2113,7 @@ class ResponderRoutesTestCase(unittest.TestCase):
         self.assertEqual(after['incidents'], [])
 
     def test_eoc_dashboard_includes_sos_alert_banner_and_polling(self):
+        self._set_persisted_role('eoc_staff')
         with self.client.session_transaction() as session:
             session['username'] = 'responder1'
             session['role'] = 'eoc_staff'
@@ -1599,6 +2122,8 @@ class ResponderRoutesTestCase(unittest.TestCase):
         html = response.get_data(as_text=True)
         self.assertIn('sosAlertBanner', html)
         self.assertIn('/eoc/sos-incidents/pending', html)
+        self.assertIn('SOS alert feed is temporarily unavailable. Retrying...', html)
+        self.assertIn("if (!response.ok)", html)
 
     def test_eoc_dashboard_uses_map_first_layout_with_latest_incents(self):
         with self.app.app_context():
@@ -1609,6 +2134,7 @@ class ResponderRoutesTestCase(unittest.TestCase):
             db.session.add(incident)
             db.session.commit()
 
+        self._set_persisted_role('eoc_staff')
         with self.client.session_transaction() as session:
             session['username'] = 'responder1'
             session['role'] = 'eoc_staff'
@@ -1620,43 +2146,11 @@ class ResponderRoutesTestCase(unittest.TestCase):
         self.assertIn('Latest incidents', html)
         self.assertIn('Barangay Luma', html)
 
-    def test_create_default_admin_does_not_touch_password_of_differently_named_admin(self):
-        """Regression test for a real bug found while testing the
-        forced-password-change flow: create_default_admin() used to fall
-        back to `User.query.filter_by(role='admin').first()` when no user
-        was named 'admin' or emailed 'admin@dics-ai.local'. That's
-        dangerously broad -- it matches ANY admin-role account, including
-        one who legitimately changed their password through this exact
-        change-password flow. If ADMIN_PASSWORD in the ops .env file was
-        never updated to match, the next server restart would silently
-        revert that admin's password back to the stale env value and force
-        them to change it again. create_default_admin() must now only ever
-        touch an account it can identify by the stable 'admin' username or
-        'admin@dics-ai.local' email -- never by role alone."""
-        with self.app.app_context():
-            real_admin = User(
-                username='juan_delacruz', email='juan@lgu.example', password='TheirOwnChosenPassword1',
-                role='admin', email_verified=True, must_change_password=False,
-            )
-            db.session.add(real_admin)
-            db.session.commit()
-
-            create_default_admin()
-
-            refreshed = User.query.filter_by(username='juan_delacruz').first()
-            self.assertEqual(refreshed.password, 'TheirOwnChosenPassword1', "an admin identified only by role must never have their password touched")
-            self.assertFalse(refreshed.must_change_password)
-
-            # A separate, standard bootstrap admin should have been created
-            # instead of hijacking the existing one.
-            bootstrap_admin = User.query.filter_by(username='admin').first()
-            self.assertIsNotNone(bootstrap_admin)
-            self.assertNotEqual(bootstrap_admin.id, refreshed.id)
 
     def test_new_user_with_must_change_password_is_redirected_on_login(self):
         with self.app.app_context():
             forced_user = User(
-                username='forced_admin', email='fa@example.com', password='OldPass123',
+                username='forced_admin', email='fa@example.com', password=app_module.generate_password_hash('OldPass123'),
                 role='admin', email_verified=True, must_change_password=True,
             )
             db.session.add(forced_user)
@@ -1682,7 +2176,7 @@ class ResponderRoutesTestCase(unittest.TestCase):
     def test_change_password_success_clears_flag_and_allows_navigation(self):
         with self.app.app_context():
             forced_user = User(
-                username='forced_admin2', email='fa2@example.com', password='OldPass123',
+                username='forced_admin2', email='fa2@example.com', password=app_module.generate_password_hash('OldPass123'),
                 role='admin', email_verified=True, must_change_password=True,
             )
             db.session.add(forced_user)
@@ -1710,7 +2204,7 @@ class ResponderRoutesTestCase(unittest.TestCase):
     def test_change_password_rejects_wrong_current_password(self):
         with self.app.app_context():
             forced_user = User(
-                username='forced_admin3', email='fa3@example.com', password='OldPass123',
+                username='forced_admin3', email='fa3@example.com', password=app_module.generate_password_hash('OldPass123'),
                 role='admin', email_verified=True, must_change_password=True,
             )
             db.session.add(forced_user)
@@ -1734,7 +2228,7 @@ class ResponderRoutesTestCase(unittest.TestCase):
     def test_change_password_rejects_short_new_password(self):
         with self.app.app_context():
             forced_user = User(
-                username='forced_admin4', email='fa4@example.com', password='OldPass123',
+                username='forced_admin4', email='fa4@example.com', password=app_module.generate_password_hash('OldPass123'),
                 role='admin', email_verified=True, must_change_password=True,
             )
             db.session.add(forced_user)
@@ -1753,7 +2247,7 @@ class ResponderRoutesTestCase(unittest.TestCase):
     def test_change_password_rejects_mismatched_confirmation(self):
         with self.app.app_context():
             forced_user = User(
-                username='forced_admin5', email='fa5@example.com', password='OldPass123',
+                username='forced_admin5', email='fa5@example.com', password=app_module.generate_password_hash('OldPass123'),
                 role='admin', email_verified=True, must_change_password=True,
             )
             db.session.add(forced_user)
@@ -1899,6 +2393,7 @@ class ResponderRoutesTestCase(unittest.TestCase):
         self.assertEqual(result.status_code, 200)
 
     def test_coordinator_dashboard_uses_unambiguous_operational_status_labels(self):
+        self._set_persisted_role('agency_coordinator', agency='BFP')
         with self.client.session_transaction() as session:
             session['username'] = 'responder1'
             session['role'] = 'agency_coordinator'

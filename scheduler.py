@@ -6,7 +6,6 @@ from sqlalchemy import text
 from services.realtime_data import (
     CALABARZON_CITY_COORDINATES,
     get_all_weather_data,
-    get_weather_data,
     get_earthquake_data,
     get_flood_events,
     get_volcano_events,

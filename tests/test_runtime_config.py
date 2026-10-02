@@ -20,9 +20,11 @@ def test_load_dotenv_file_sets_environment(monkeypatch, tmp_path):
 
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv('FLASK_DEBUG', raising=False)
-    monkeypatch.delenv('SECRET_KEY', raising=False)
+    monkeypatch.setenv('SECRET_KEY', 'test-secret-key')
 
     module = _load_app_module()
+
+    monkeypatch.delenv('SECRET_KEY', raising=False)
 
     assert hasattr(module, '_load_dotenv_file')
     module._load_dotenv_file(env_file)

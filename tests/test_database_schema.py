@@ -1,7 +1,16 @@
+import importlib.util
 import json
 import os
 import unittest
+from pathlib import Path
 from unittest.mock import patch
+from alembic.migration import MigrationContext
+from alembic.operations import Operations
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy import create_engine, text
+from werkzeug.security import check_password_hash, generate_password_hash
+
+os.environ['DATABASE_URL'] = 'sqlite://'
 
 import models
 from app import app, db, limiter
@@ -70,6 +79,42 @@ class DatabaseSchemaTestCase(unittest.TestCase):
         self.assertTrue(ResourceRequest.__tablename__)
         self.assertTrue(AIRecommendation.__tablename__)
         self.assertTrue(AuditEvent.__tablename__)
+
+    def test_user_email_has_case_insensitive_unique_index(self):
+        db.session.add(User(username='email_case_one', email='Case@Example.com', password='secret'))
+        db.session.commit()
+
+        with self.assertRaises(IntegrityError):
+            db.session.execute(User.__table__.insert().values(
+                username='email_case_two',
+                email='CASE@example.com',
+                password='secret',
+            ))
+            db.session.commit()
+        db.session.rollback()
+
+    def test_legacy_password_migration_hashes_plaintext_and_preserves_hashes(self):
+        migration_path = Path(__file__).resolve().parents[1] / 'migrations' / 'versions' / 'b3c8d4e2f190_hash_legacy_plaintext_passwords.py'
+        spec = importlib.util.spec_from_file_location('legacy_password_migration', migration_path)
+        migration = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(migration)
+
+        existing_hash = generate_password_hash('already-hashed-password')
+        engine = create_engine('sqlite://')
+        with engine.begin() as connection:
+            connection.exec_driver_sql('CREATE TABLE "user" (id INTEGER PRIMARY KEY, password TEXT NOT NULL)')
+            connection.execute(text('INSERT INTO "user" (id, password) VALUES (1, :password), (2, :password_hash)'), {
+                'password': 'legacy-test-password',
+                'password_hash': existing_hash,
+            })
+            with Operations.context(MigrationContext.configure(connection)):
+                migration.upgrade()
+
+            rows = dict(connection.execute(text('SELECT id, password FROM "user"')).all())
+            self.assertTrue(check_password_hash(rows[1], 'legacy-test-password'))
+            self.assertNotEqual(rows[1], 'legacy-test-password')
+            self.assertEqual(rows[2], existing_hash)
+        engine.dispose()
 
     @patch('services.realtime_data.get_earthquake_data', return_value=[])
     @patch('blueprints.ai.predict_hazard')
@@ -204,7 +249,10 @@ class DatabaseSchemaTestCase(unittest.TestCase):
     def test_ai_prompt_identifies_unavailable_river_gauge_data(self):
         prompt = _build_user_prompt('flood', 20, None, 85, 1200)
 
-        self.assertIn('River level: unavailable (no river gauge data)', prompt)
+        self.assertIn(
+            'River level: unavailable (routine gap: no river gauge data; continue assessment using available readings)',
+            prompt,
+        )
         self.assertNotIn('River level: None m', prompt)
 
 

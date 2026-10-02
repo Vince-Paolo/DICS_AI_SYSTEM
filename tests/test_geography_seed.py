@@ -1,4 +1,7 @@
+import os
 import unittest
+
+os.environ['DATABASE_URL'] = 'sqlite://'
 
 from app import app, db
 from models import Barangay, Municipality, Province

@@ -48,6 +48,22 @@ that state as safe.
 
 ---
 
+## Registration Email Verification
+
+Public citizen registration requires a six-digit email verification code
+before sign-in is allowed. Codes expire after 10 minutes and are limited to
+five attempts; users can request a replacement code from the verification page.
+When `OTP_EMAIL_BACKEND=resend`, configure `RESEND_API_KEY`, `RESEND_API_URL`,
+and a verified `RESEND_FROM_EMAIL` in `.env`. Resend's `onboarding@resend.dev`
+test sender can only deliver to the Resend account's own email. Alternatively,
+set `OTP_EMAIL_BACKEND=smtp` and configure Gmail SMTP with `SMTP_HOST=smtp.gmail.com`,
+`SMTP_PORT=587`, `SMTP_USERNAME`, `SMTP_PASSWORD`, and `SMTP_FROM_EMAIL`. Enable
+Google 2-Step Verification and create an App Password; never use your regular
+Gmail password. Keep `RESEND_SUPPRESS_SEND=false` outside tests, or OTP messages
+will be suppressed.
+
+---
+
 ## AI Provider Setup
 
 The AI prediction entry point is [ai/decision_support.py](ai/decision_support.py).
@@ -59,6 +75,7 @@ Supported provider names:
 - `anthropic`
 - `openai`
 - `gemini`
+- `ollama`
 
 Required runtime environment variables for the provider layer:
 
@@ -71,6 +88,15 @@ Required runtime environment variables for the provider layer:
 | `OPENAI_MODEL` | OpenAI adapter | Optional override |
 | `GEMINI_API_KEY` | Gemini adapter | Must be present when `AI_PROVIDER=gemini` |
 | `GEMINI_MODEL` | Gemini adapter | Optional override |
+| `OLLAMA_BASE_URL` | Ollama adapter | Optional; defaults to `http://localhost:11434` |
+| `OLLAMA_MODEL` | Ollama adapter | Optional; defaults to `llama3.2:latest`; model must be pulled locally |
+| `OLLAMA_TIMEOUT_SECONDS` | Ollama adapter | Optional; defaults to `120` for local model startup/inference |
+
+Ollama runs locally and does not require an API key. Install Ollama, start its
+service, pull the configured model (for example, `ollama pull llama3.2`), then
+set `AI_PROVIDER=ollama`. Local Ollama availability is required wherever the
+application server runs; a developer's local Ollama instance is not available
+to a separately hosted deployment.
 
 The application also supports a local environment file (`.env`) at the project
 root. The AI module loads values from that file before it looks at the process
@@ -79,8 +105,8 @@ environment.
 ## Citizen Emergency Assistance (hotline page)
 
 Citizens no longer type and submit incident reports. `/emergency-assistance`
-is a public "call first" page: pick the kind of help (medical, police, fire and
-rescue, disaster response) and tap **Call now**, which opens the phone's call
+is a public "call first" page with the national emergency button and verified
+San Pablo City office contacts. Tap **Call now** to open the phone's call
 screen through a `tel:` link. There is no account, form or upload, and the
 service worker keeps a copy so the page still opens without internet (the
 phone call itself uses the cellular network).
@@ -91,8 +117,8 @@ hard-coded:
 | Variable | Used for | Notes |
 |---|---|---|
 | `HOTLINE_GENERAL` | Main "Call Emergency" button | Defaults to `911` |
-| `HOTLINE_MEDICAL`, `HOTLINE_POLICE`, `HOTLINE_FIRE` | Service cards | Fall back to `HOTLINE_GENERAL` |
 | `HOTLINE_CDRRMO` | Disaster Response / CDRRMO card | No fallback; unset shows "not set up yet" and admin/EOC users see a notice |
+| `HOTLINE_CITY_HEALTH`, `HOTLINE_CTMO`, `HOTLINE_SAN_PABLO_PNP`, `HOTLINE_SAN_PABLO_FIRE`, `HOTLINE_BARANGAY_RADIO_CONTROL`, `HOTLINE_MERALCO` | San Pablo City office cards | Use verified local office numbers; multiple numbers can be separated with `|` |
 
 Values that are not plausible phone numbers are ignored. Incidents now enter
 the system through the automated monitoring feeds and staff/responder tools.
@@ -149,9 +175,11 @@ live `SECRET_KEY` is not configured, the app emits a runtime warning and
 creates a process-local random value. That is acceptable for a dev shell, but
 not for production.
 
-The admin account is created only when the environment is configured with an
-`ADMIN_PASSWORD`. During a local dev run you can still bootstrap the admin
-record by setting the value before launching the app.
+`ADMIN_PASSWORD` is required only until the initial bootstrap admin account is
+created. It sets the initial password and forces an in-app change on first
+login. Once the account exists, restarts never overwrite its password from the
+environment; remove the variable after bootstrap. Use the account's password
+reset/change flow to rotate an existing admin password.
 
 ---
 
@@ -180,7 +208,8 @@ source .venv/bin/activate
 ### Configure environment
 
 Use a `.env` file or export values before startup. At minimum, the common
-production-safety variables should be present:
+production-safety variables should be present. `ADMIN_PASSWORD` is needed for
+the first startup only, until the bootstrap admin is created:
 
 ```bash
 export SECRET_KEY=development-secret

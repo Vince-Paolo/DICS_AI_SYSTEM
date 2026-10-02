@@ -1,6 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import CheckConstraint, event
 from sqlalchemy.engine import Engine
+from sqlalchemy.orm import validates
 from datetime import datetime, timezone
 
 db = SQLAlchemy()
@@ -71,6 +72,13 @@ class User(db.Model):
     @property
     def password_hash(self):
         return self.password
+
+    @validates('email')
+    def normalize_email(self, key, value):
+        return value.strip().lower() if isinstance(value, str) else value
+
+
+db.Index('uq_user_email_lower', db.func.lower(User.email), unique=True)
 
 
 class Agency(db.Model):

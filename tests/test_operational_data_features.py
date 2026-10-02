@@ -4,7 +4,7 @@ import unittest
 os.environ.setdefault('SECRET_KEY', os.environ.get('SECRET_KEY') or 'development-secret')
 # See tests/test_responder_routes.py for why this must be set before `app` is imported.
 TEST_DB_PATH = os.path.abspath(os.path.join('instance', 'test_operational_data_features.db'))
-os.environ.setdefault('DATABASE_URL', f'sqlite:///{TEST_DB_PATH}')
+os.environ['DATABASE_URL'] = f'sqlite:///{TEST_DB_PATH}'
 
 from app import app, db
 from models import (
