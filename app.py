@@ -134,6 +134,18 @@ def _normalize_database_url():
     if configured_url.startswith('postgres://'):
         configured_url = 'postgresql://' + configured_url[len('postgres://'):]
 
+    # requirements.txt installs psycopg2-binary only. A URL that names the
+    # psycopg v3 driver ('postgresql+psycopg://') makes SQLAlchemy import
+    # 'psycopg', which isn't installed, and the app crashes on import
+    # (Railway then shows "Application failed to respond"). Normalize any
+    # psycopg-flavoured Postgres URL to plain 'postgresql://', which uses the
+    # installed psycopg2 driver. It also keeps the startswith('postgresql:')
+    # checks elsewhere in this file working.
+    for _driver_prefix in ('postgresql+psycopg://', 'postgresql+psycopg2://'):
+        if configured_url.startswith(_driver_prefix):
+            configured_url = 'postgresql://' + configured_url[len(_driver_prefix):]
+            break
+
     # Flask-SQLAlchemy/SQLAlchemy can misinterpret relative sqlite paths like
     # 'sqlite:///instance/database.db' when the runtime CWD differs from the
     # project root. Resolve them against the project base directory instead.
