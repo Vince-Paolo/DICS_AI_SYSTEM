@@ -129,14 +129,18 @@ the hotline page and `/emergency-sos` returns `410 Gone`.
 ## Database Migrations
 
 Production schema changes are managed with Flask-Migrate/Alembic. The
-deployment command runs `flask --app app db upgrade` before Gunicorn starts,
-using the configured `DATABASE_URL` (including PostgreSQL).
+deployment command runs `python -m flask --app app db upgrade` before
+Gunicorn starts, using the configured `DATABASE_URL` (including PostgreSQL).
+
+Run migration commands in the app service's console, not in the Postgres
+console. The Postgres service does not have the app's Python environment or
+`flask` executable installed.
 
 For a model change, generate and review a revision locally:
 
 ```bash
-flask --app app db migrate -m "describe the schema change"
-flask --app app db upgrade
+python -m flask --app app db migrate -m "describe the schema change"
+python -m flask --app app db upgrade
 ```
 
 Commit the generated file under `migrations/versions/` with the code change.

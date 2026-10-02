@@ -129,20 +129,34 @@ def _normalize_database_url():
     if not configured_url:
         configured_url = f"sqlite:///{os.path.join(instance_dir, 'database.db').replace('\\', '/')}"
 
-    # Railway (and Heroku-style) Postgres plugins hand out URLs starting with
-    # 'postgres://', but SQLAlchemy 1.4+/2.x only accepts 'postgresql://'.
-    if configured_url.startswith('postgres://'):
-        configured_url = 'postgresql://' + configured_url[len('postgres://'):]
+    configured_url = configured_url.strip()
+    url_lower = configured_url.lower()
 
-    # requirements.txt installs psycopg2-binary only. A URL that names the
-    # psycopg v3 driver ('postgresql+psycopg://') makes SQLAlchemy import
-    # 'psycopg', which isn't installed, and the app crashes on import
-    # (Railway then shows "Application failed to respond"). Normalize any
-    # psycopg-flavoured Postgres URL to plain 'postgresql://', which uses the
-    # installed psycopg2 driver. It also keeps the startswith('postgresql:')
-    # checks elsewhere in this file working.
-    for _driver_prefix in ('postgresql+psycopg://', 'postgresql+psycopg2://'):
-        if configured_url.startswith(_driver_prefix):
+    # Railway (and Heroku-style) Postgres plugins hand out URLs starting with
+    # 'postgres://' or a driver-specific dialect such as 'postgresql+psycopg://' .
+    # SQLAlchemy 1.4+/2.x only accepts a plain 'postgresql://' URL with an
+    # installed driver, and this project intentionally ships psycopg2-binary.
+    for _driver_prefix in (
+        'postgres://',
+        'postgresql+psycopg://',
+        'postgresql+psycopg2://',
+        'postgresql+psycopg3://',
+        'postgresql+asyncpg://',
+    ):
+        if url_lower.startswith(_driver_prefix):
+            configured_url = 'postgresql://' + configured_url[len(_driver_prefix):]
+            break
+
+    # Normalize remaining driver-scoped PostgreSQL URLs even when the scheme is
+    # upper-case or mixed-case, since Railway sometimes injects those values.
+    for _driver_prefix in (
+        'POSTGRES://',
+        'POSTGRESQL+PSYCOPG://',
+        'POSTGRESQL+PSYCOPG2://',
+        'POSTGRESQL+PSYCOPG3://',
+        'POSTGRESQL+ASYNCPG://',
+    ):
+        if configured_url.upper().startswith(_driver_prefix):
             configured_url = 'postgresql://' + configured_url[len(_driver_prefix):]
             break
 

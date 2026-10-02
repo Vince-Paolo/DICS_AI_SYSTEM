@@ -92,8 +92,9 @@ For local development, `FILE_STORAGE_BACKEND=local` stores files under
 
 - Keep Railway and database credentials in Railway variables or a local secret
   manager. Never put them in source control or shell history.
-- Run `flask --app app db upgrade` after deploying revisions that add
-  migrations.
+- Run `python -m flask --app app db upgrade` from the app service console
+  after deploying revisions that add migrations. Do not run it from the
+  Postgres console, which does not include the app environment.
 - Verify the application health endpoint and log in after each production
   deployment.
 - Keep at least one verified backup outside Railway.
