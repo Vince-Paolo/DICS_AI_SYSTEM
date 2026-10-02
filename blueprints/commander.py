@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from flask import Blueprint, abort, current_app, flash, jsonify, redirect, render_template, request, session, url_for
+from flask_babel import gettext as _
 from sqlalchemy.orm.exc import StaleDataError
 
 from models import AIRecommendation, AuditEvent, db, User, Incident, IncidentResponse, Task, Resource, IncidentMessage, PostIncidentReport, Agency, EvacuationCenter, EvacuationRecord, utcnow
@@ -140,13 +141,13 @@ def activate_incident_response(incident_id):
             ),
         ))
         db.session.commit()
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         current_app.logger.exception('Failed to create incident response')
         flash('Unable to create the incident response. Please try again.', 'error')
         return redirect(url_for('commander.incident_commander_dashboard'))
 
-    flash(f'Incident response activated for incident {incident_id}', 'success')
+    flash(_('Incident response activated for incident %(incident_id)s.') % {'incident_id': incident_id}, 'success')
     return redirect(url_for('commander.incident_commander_dashboard'))
 
 
@@ -308,7 +309,7 @@ def post_incident_evaluation(response_id):
 
     try:
         db.session.commit()
-    except Exception as exc:
+    except Exception:
         db.session.rollback()
         current_app.logger.exception('Failed to save post-incident evaluation')
         flash('Unable to save the evaluation. Please try again.', 'error')
@@ -510,7 +511,7 @@ def incident_response_close_page(response_id):
         db.session.add(closure_report)
         try:
             db.session.commit()
-        except Exception as e:
+        except Exception:
             db.session.rollback()
             current_app.logger.exception('Failed to close incident response')
             flash('Unable to close the incident response. Please try again.', 'error')
@@ -554,13 +555,13 @@ def reopen_incident_response(response_id):
 
     try:
         db.session.commit()
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         current_app.logger.exception('Failed to reopen incident response')
         flash('Unable to reopen the incident response. Please try again.', 'error')
         return redirect(url_for('commander.incident_response_detail', response_id=response.id))
 
-    flash(f'Incident response #{response.incident_id} reopened.', 'success')
+    flash(_('Incident response #%(incident_id)s reopened.') % {'incident_id': response.incident_id}, 'success')
     return redirect(url_for('commander.incident_response_detail', response_id=response.id))
 
 
@@ -587,7 +588,7 @@ def assign_task(response_id):
         # Validate agency exists in the Agency table
         valid_agency_names = [a.name for a in agencies]
         if agency not in valid_agency_names:
-            flash(f'Invalid agency "{agency}". Please select from the list.', 'error')
+            flash(_('Invalid agency "%(agency)s". Please select from the list.') % {'agency': agency}, 'error')
             return redirect(url_for('commander.incident_response_tasks', response_id=response_id))
 
         task = Task(
@@ -604,13 +605,13 @@ def assign_task(response_id):
         db.session.add(task)
         try:
             db.session.commit()
-        except Exception as e:
+        except Exception:
             db.session.rollback()
             current_app.logger.exception('Commander operation failed')
             flash('Unable to complete the commander operation. Please try again.', 'error')
             return redirect(url_for('commander.incident_response_tasks', response_id=response_id))
 
-        flash(f'Task "{title}" assigned to {agency}', 'success')
+        flash(_('Task "%(title)s" assigned to %(agency)s.') % {'title': title, 'agency': agency}, 'success')
         return redirect(url_for('commander.incident_response_tasks', response_id=response_id))
 
     return render_template('pages/assign_task.html', response=response, agencies=agencies, active_tab='tasks')
@@ -651,13 +652,17 @@ def allocate_resource(response_id):
         db.session.add(resource)
         try:
             db.session.commit()
-        except Exception as e:
+        except Exception:
             db.session.rollback()
             current_app.logger.exception('Commander operation failed')
             flash('Unable to complete the commander operation. Please try again.', 'error')
             return redirect(url_for('commander.incident_response_resources', response_id=response_id))
 
-        flash(f'Resource allocated: {quantity} x {resource_type} from {agency}', 'success')
+        flash(_('Resource allocated: %(quantity)s x %(resource_type)s from %(agency)s.') % {
+            'quantity': quantity,
+            'resource_type': resource_type,
+            'agency': agency,
+        }, 'success')
 
     return redirect(url_for('commander.incident_response_resources', response_id=response_id))
 
@@ -691,11 +696,12 @@ def record_evacuation(response_id):
     current_occupancy = center.occupancy or 0
     if center.capacity is not None and current_occupancy + people_count > center.capacity:
         remaining = max(center.capacity - current_occupancy, 0)
-        flash(
-            f'{center.facility.name if center.facility else "That center"} only has room for '
-            f'{remaining} more people (capacity {center.capacity}). Choose another center or reduce the count.',
-            'error',
-        )
+        flash(_('"%(center)s" only has room for %(remaining)s more people (capacity %(capacity)s). '
+                'Choose another center or reduce the count.') % {
+            'center': center.facility.name if center.facility else _('That center'),
+            'remaining': remaining,
+            'capacity': center.capacity,
+        }, 'error')
         return redirect(url_for('commander.incident_response_detail', response_id=response_id))
 
     center.occupancy = current_occupancy + people_count
@@ -734,7 +740,10 @@ def record_evacuation(response_id):
         flash('Unable to record the evacuation. Please try again.', 'error')
         return redirect(url_for('commander.incident_response_detail', response_id=response_id))
 
-    flash(f'Recorded {people_count} people evacuated to {center.facility.name if center.facility else "the center"}.', 'success')
+    flash(_('Recorded %(people_count)s people evacuated to %(center)s.') % {
+        'people_count': people_count,
+        'center': center.facility.name if center.facility else _('the center'),
+    }, 'success')
     return redirect(url_for('commander.incident_response_detail', response_id=response_id))
 
 
@@ -783,13 +792,13 @@ def create_situation_report(response_id):
         response.situation_summary = f"Latest Report: {title}"
         try:
             db.session.commit()
-        except Exception as e:
+        except Exception:
             db.session.rollback()
             current_app.logger.exception('Commander operation failed')
             flash('Unable to complete the commander operation. Please try again.', 'error')
             return redirect(url_for('commander.incident_response_reports', response_id=response_id))
 
-        flash(f'Situation report "{title}" created successfully', 'success')
+        flash(_('Situation report "%(title)s" created successfully.') % {'title': title}, 'success')
 
     return redirect(url_for('commander.incident_response_reports', response_id=response_id))
 
@@ -818,13 +827,13 @@ def update_task(response_id, task_id):
         db.session.rollback()
         flash('This resource was updated by another user. Reload and try again.', 'warning')
         return redirect(url_for('commander.incident_response_resources', response_id=response_id))
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         current_app.logger.exception('Commander operation failed')
         flash('Unable to complete the commander operation. Please try again.', 'error')
         return redirect(url_for('commander.incident_response_tasks', response_id=response_id))
 
-    flash(f'Task status updated to {status}', 'success')
+    flash(_('Task status updated to %(status)s.') % {'status': status}, 'success')
     return redirect(url_for('commander.incident_response_tasks', response_id=response_id))
 
 
@@ -855,13 +864,13 @@ def update_resource(response_id, resource_id):
         db.session.rollback()
         flash('This task was updated by another user. Reload and try again.', 'warning')
         return redirect(url_for('commander.incident_response_tasks', response_id=response_id))
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         current_app.logger.exception('Commander operation failed')
         flash('Unable to complete the commander operation. Please try again.', 'error')
         return redirect(url_for('commander.incident_response_resources', response_id=response_id))
 
-    flash(f'Resource status updated to {status}', 'success')
+    flash(_('Resource status updated to %(status)s.') % {'status': status}, 'success')
     return redirect(url_for('commander.incident_response_resources', response_id=response_id))
 
 

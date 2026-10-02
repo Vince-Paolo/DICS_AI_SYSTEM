@@ -4,7 +4,7 @@ import json
 from datetime import timedelta
 from io import BytesIO
 
-from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, session, url_for
+from flask import Blueprint, current_app, flash, jsonify, make_response, redirect, render_template, request, session, url_for
 from flask_babel import gettext as _
 from PIL import Image, UnidentifiedImageError
 from werkzeug.utils import secure_filename
@@ -128,14 +128,19 @@ def emergency_assistance():
     emergency should not need an account or an internet round-trip beyond
     loading this page (the service worker keeps a copy for offline use).
     """
-    return render_template(
+    response = make_response(render_template(
         'pages/citizen_emergency_assistance.html',
         general=get_general_hotline(),
         services=build_hotline_services(),
         show_config_warning=(
             session.get('role') in {'admin', 'eoc_staff'} and not cdrrmo_hotline_configured()
         ),
-    )
+    ))
+    if session.get('username'):
+        response.headers['Cache-Control'] = 'private, no-store'
+    else:
+        response.headers['Cache-Control'] = 'public, max-age=300'
+    return response
 
 
 @citizen_bp.route('/citizen-report', methods=['GET', 'POST'])
@@ -258,7 +263,7 @@ def citizen_report():
             if duplicate_incident:
                 try:
                     db.session.commit()
-                except Exception as e:
+                except Exception:
                     db.session.rollback()
                     current_app.logger.exception('Failed to save duplicate citizen report')
                     flash('Unable to save your report. Please try again.', 'error')
@@ -313,14 +318,14 @@ def citizen_report():
             ))
             try:
                 db.session.commit()
-            except Exception as e:
+            except Exception:
                 db.session.rollback()
                 current_app.logger.exception('Failed to save citizen incident')
                 flash('Unable to save your report. Please try again.', 'error')
                 return redirect(url_for('citizen.citizen_report'))
             flash('Incident report submitted successfully. Authorities have been notified.', 'success')
             return redirect(url_for('citizen.citizen_status'))
-        except Exception as e:
+        except Exception:
             current_app.logger.exception('Failed to submit citizen report')
             flash('Unable to submit your report. Please try again.', 'error')
 
@@ -353,16 +358,6 @@ def citizen_dashboard():
     # all active alerts system-wide.
     alert_count = Incident.query.filter_by(alert=True).count()
 
-    current_risk_level = 'Low'
-    current_risk_detail = 'No active alerts in your area right now.'
-    if alert_count > 0:
-        if alert_count >= 3:
-            current_risk_level = 'High'
-            current_risk_detail = 'Several active hazards are being tracked nearby.'
-        else:
-            current_risk_level = 'Moderate'
-            current_risk_detail = 'Some local conditions are elevated and may need attention.'
-
     return render_template(
         'pages/citizen_dashboard.html',
         username=user.username,
@@ -370,8 +365,6 @@ def citizen_dashboard():
         pending_count=pending_count,
         alert_count=alert_count,
         incidents=incidents[:5],
-        current_risk_level=current_risk_level,
-        current_risk_detail=current_risk_detail,
         general=get_general_hotline(),
     )
 

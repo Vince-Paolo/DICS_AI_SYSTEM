@@ -1,6 +1,6 @@
-from datetime import datetime
 
 from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for
+from flask_babel import gettext as _
 from sqlalchemy.orm.exc import StaleDataError
 
 from models import (
@@ -142,13 +142,13 @@ def add_facility():
         _log_audit(user, 'Facility', facility.id, 'CREATED',
                    f'Facility "{name}" ({facility_type}) added by {user.username}.')
         db.session.commit()
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         current_app.logger.exception('Facility operation failed')
         flash('Unable to complete the facility operation. Please try again.', 'error')
         return redirect(url_for('facilities.list_facilities'))
 
-    flash(f'Facility "{name}" added.', 'success')
+    flash(_('Facility "%(name)s" added.') % {'name': name}, 'success')
     return redirect(url_for('facilities.list_facilities'))
 
 
@@ -182,7 +182,7 @@ def update_evacuation_center(center_id):
         db.session.rollback()
         flash('This evacuation center was updated by another user. Reload and try again.', 'warning')
         return redirect(url_for('facilities.list_facilities'))
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         current_app.logger.exception('Evacuation center operation failed')
         flash('Unable to complete the evacuation center operation. Please try again.', 'error')

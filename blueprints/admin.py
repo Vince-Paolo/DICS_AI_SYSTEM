@@ -7,9 +7,10 @@ from datetime import datetime
 from urllib.parse import urlparse
 
 from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for, send_file
+from flask_babel import gettext as _
 from werkzeug.security import generate_password_hash
 
-from models import AuditEvent, db, User, Incident, IncidentResponse, Task, Resource, Agency, utcnow
+from models import AuditEvent, db, User, Incident, IncidentResponse, Agency, utcnow
 from blueprints.common import is_admin, is_eoc_staff
 from services import permissions as permission_service
 from services.passwords import verify_and_migrate
@@ -122,7 +123,7 @@ def add_user():
 
     try:
         username = request.form.get('username', '').strip()
-        email = request.form.get('email', '').strip()
+        email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '').strip()
         full_name = request.form.get('full_name', '').strip()
         contact_number = request.form.get('contact_number', '').strip()
@@ -141,7 +142,7 @@ def add_user():
             flash('Username already exists.', 'error')
             return redirect(url_for('admin.manage_users'))
 
-        if User.query.filter_by(email=email).first():
+        if User.query.filter(db.func.lower(User.email) == email).first():
             flash('Email already registered.', 'error')
             return redirect(url_for('admin.manage_users'))
 
@@ -151,7 +152,7 @@ def add_user():
             flash('An agency must be selected for this role, or tasks/resources assigned to it will never reach this user.', 'error')
             return redirect(url_for('admin.manage_users'))
         if agency and agency not in valid_agency_names:
-            flash(f'Invalid agency "{agency}". Please select from the list.', 'error')
+            flash(_('Invalid agency "%(agency)s". Please select from the list.') % {'agency': agency}, 'error')
             return redirect(url_for('admin.manage_users'))
 
         new_user = User(
@@ -167,13 +168,13 @@ def add_user():
         db.session.add(new_user)
         try:
             db.session.commit()
-        except Exception as e:
+        except Exception:
             db.session.rollback()
             current_app.logger.exception('Failed to create user')
             flash('Unable to create user. Please try again.', 'error')
             return redirect(url_for('admin.manage_users'))
-        flash(f'User "{username}" created successfully.', 'success')
-    except Exception as e:
+        flash(_('User "%(username)s" created successfully.') % {'username': username}, 'success')
+    except Exception:
         current_app.logger.exception('Failed to create user')
         flash('Unable to create user. Please try again.', 'error')
 
@@ -205,7 +206,7 @@ def update_user(user_id):
             flash('An agency must be selected for this role, or tasks/resources assigned to it will never reach this user.', 'error')
             return redirect(url_for('admin.manage_users'))
         if new_agency and new_agency not in valid_agency_names:
-            flash(f'Invalid agency "{new_agency}". Please select from the list.', 'error')
+            flash(_('Invalid agency "%(agency)s". Please select from the list.') % {'agency': new_agency}, 'error')
             return redirect(url_for('admin.manage_users'))
 
         user.full_name = request.form.get('full_name', user.full_name).strip()
@@ -215,13 +216,13 @@ def update_user(user_id):
 
         try:
             db.session.commit()
-        except Exception as e:
+        except Exception:
             db.session.rollback()
             current_app.logger.exception('Failed to update user')
             flash('Unable to update user. Please try again.', 'error')
             return redirect(url_for('admin.manage_users'))
-        flash(f'User "{user.username}" updated successfully.', 'success')
-    except Exception as e:
+        flash(_('User "%(username)s" updated successfully.') % {'username': user.username}, 'success')
+    except Exception:
         current_app.logger.exception('Failed to update user')
         flash('Unable to update user. Please try again.', 'error')
 
@@ -247,14 +248,14 @@ def toggle_user_status(user_id):
         user.is_disabled = not user.is_disabled
         try:
             db.session.commit()
-        except Exception as e:
+        except Exception:
             db.session.rollback()
             current_app.logger.exception('Failed to toggle user status')
             flash('Unable to update user status. Please try again.', 'error')
             return redirect(url_for('admin.manage_users'))
         status = 'disabled' if user.is_disabled else 'enabled'
-        flash(f'User "{user.username}" {status} successfully.', 'success')
-    except Exception as e:
+        flash(_('Status updated for user "%(username)s".') % {'username': user.username}, 'success')
+    except Exception:
         current_app.logger.exception('Failed to toggle user status')
         flash('Unable to update user status. Please try again.', 'error')
 
@@ -367,7 +368,7 @@ def export_backup():
             download_name=backup_filename,
             mimetype='application/octet-stream'
         )
-    except Exception as e:
+    except Exception:
         current_app.logger.exception('Failed to create backup')
         flash('Backup could not be created. Please try again.', 'error')
         return redirect(url_for('admin.manage_users'))

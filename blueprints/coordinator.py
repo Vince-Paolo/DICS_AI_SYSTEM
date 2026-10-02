@@ -1,4 +1,5 @@
 from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for
+from flask_babel import gettext as _
 from sqlalchemy.orm.exc import StaleDataError
 
 from models import db, User, Incident, IncidentResponse, Task, Resource, IncidentMessage, ResourceRequest, AuditEvent, utcnow
@@ -121,12 +122,12 @@ def coordinator_update_task(task_id):
             db.session.rollback()
             flash('This task was updated by another user. Reload and try again.', 'warning')
             return redirect(referrer or url_for('coordinator.coordinator_tasks'))
-        except Exception as e:
+        except Exception:
             db.session.rollback()
             current_app.logger.exception('Coordinator operation failed')
             flash('Unable to complete the coordinator operation. Please try again.', 'error')
             return redirect(referrer or url_for('coordinator.coordinator_tasks'))
-        flash(f'Task "{task.title}" updated to {new_status}.', 'success')
+        flash(_('Task "%(title)s" updated to %(status)s.') % {'title': task.title, 'status': new_status}, 'success')
 
     referrer = request.referrer
     if referrer:
@@ -245,12 +246,17 @@ def coordinator_allocate_resource():
     db.session.add(resource)
     try:
         db.session.commit()
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         current_app.logger.exception('Failed to allocate resource')
         flash('Unable to allocate the resource. Please try again.', 'error')
         return redirect(url_for('coordinator.coordinator_resources'))
-    flash(f'{quantity}x {resource_type} ({agency}) allocated to Response #{response.incident_id}.', 'success')
+    flash(_('%(quantity)s x %(resource_type)s (%(agency)s) allocated to Response #%(incident_id)s.') % {
+        'quantity': quantity,
+        'resource_type': resource_type,
+        'agency': agency,
+        'incident_id': response.incident_id,
+    }, 'success')
     return redirect(url_for('coordinator.coordinator_resources'))
 
 
@@ -279,12 +285,12 @@ def coordinator_update_resource(resource_id):
             db.session.rollback()
             flash('This resource was updated by another user. Reload and try again.', 'warning')
             return redirect(referrer or url_for('coordinator.coordinator_resources'))
-        except Exception as e:
+        except Exception:
             db.session.rollback()
             current_app.logger.exception('Coordinator operation failed')
             flash('Unable to complete the coordinator operation. Please try again.', 'error')
             return redirect(referrer or url_for('coordinator.coordinator_resources'))
-        flash(f'Resource status updated to {new_status}.', 'success')
+        flash(_('Resource status updated to %(status)s.') % {'status': new_status}, 'success')
 
     referrer = request.referrer
     if referrer:
@@ -364,12 +370,12 @@ def coordinator_submit_report():
     db.session.add(message)
     try:
         db.session.commit()
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         current_app.logger.exception('Coordinator operation failed')
         flash('Unable to complete the coordinator operation. Please try again.', 'error')
         return redirect(referrer or url_for('coordinator.coordinator_reports'))
-    flash(f'Broadcast message "{title}" submitted successfully.', 'success')
+    flash(_('Broadcast message "%(title)s" submitted successfully.') % {'title': title}, 'success')
 
     referrer = request.referrer
     if referrer:
@@ -406,7 +412,6 @@ def coordinator_response_detail(response_id):
         return redirect(url_for('login'))
 
     response = db.get_or_404(IncidentResponse, response_id)
-    user = current_user()
     if not can_view_response(response):
         flash('Access denied.', 'error')
         return redirect(url_for('coordinator.coordinator_dashboard'))
@@ -493,11 +498,14 @@ def coordinator_submit_resource_request():
             details=f'{agency} requested {quantity}x {resource_type} for incident #{incident.id}.',
         ))
         db.session.commit()
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         current_app.logger.exception('Coordinator operation failed')
         flash('Unable to complete the coordinator operation. Please try again.', 'error')
         return redirect(url_for('coordinator.coordinator_resource_requests'))
 
-    flash(f'Resource request for {quantity}x {resource_type} submitted.', 'success')
+    flash(_('Resource request for %(quantity)s x %(resource_type)s submitted.') % {
+        'quantity': quantity,
+        'resource_type': resource_type,
+    }, 'success')
     return redirect(url_for('coordinator.coordinator_resource_requests'))

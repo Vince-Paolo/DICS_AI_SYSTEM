@@ -83,6 +83,10 @@ PROVIDER_DEFAULTS = {
         'model_env': 'GEMINI_MODEL',
         'default_model': 'gemini-3.1-flash-lite',
     },
+    'ollama': {
+        'model_env': 'OLLAMA_MODEL',
+        'default_model': 'llama3.2:latest',
+    },
 }
 
 AI_PROVIDER = os.getenv('AI_PROVIDER', 'gemini').strip().lower() or 'gemini'
@@ -110,7 +114,8 @@ SYSTEM_PROMPT = (
     '  "recommended_resources": ["<resource, with a rough quantity if useful>", ...]\n'
     "}\n\n"
     "Level bands: 0-24 Low, 25-49 Moderate, 50-74 High, 75-100 Severe. "
-    "Use \"Insufficient Data\" when the hazard model cannot be assessed because a required input is unavailable. "
+    "A missing river gauge reading is routine and is not a blocking gap: assess flood and landslide risk from the available rainfall and humidity readings, and mention the missing gauge as a limitation. "
+    "Use \"Insufficient Data\" when both rainfall and humidity readings are unavailable, or when the available inputs genuinely cannot support an assessment. "
     "Only include agencies/resources genuinely warranted by the inputs given -- "
     "an empty list is correct when nothing is warranted. You provide a "
     "recommendation for a human to review, not a dispatch order; do not imply "
@@ -123,7 +128,7 @@ def _build_user_prompt(hazard_type, rainfall_mm, river_level_m, humidity_pct,
     river_level = (
         f'{river_level_m} m'
         if river_level_m is not None
-        else 'unavailable (no river gauge data)'
+        else 'unavailable (routine gap: no river gauge data; continue assessment using available readings)'
     )
     lines = [
         f"Hazard type: {hazard_type}",
@@ -216,10 +221,34 @@ def _call_gemini(system_prompt, user_prompt, api_key, model):
     return payload['candidates'][0]['content']['parts'][0]['text']
 
 
+def _call_ollama(system_prompt, user_prompt, api_key, model):
+    base_url = os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434').rstrip('/')
+    body = json.dumps({
+        'model': model,
+        'messages': [
+            {'role': 'system', 'content': system_prompt},
+            {'role': 'user', 'content': user_prompt},
+        ],
+        'format': 'json',
+        'stream': False,
+    }).encode('utf-8')
+    req = urllib.request.Request(
+        f'{base_url}/api/chat',
+        data=body,
+        headers={'Content-Type': 'application/json'},
+        method='POST',
+    )
+    timeout = int(os.getenv('OLLAMA_TIMEOUT_SECONDS', '120'))
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        payload = json.loads(resp.read().decode('utf-8'))
+    return payload['message']['content']
+
+
 _ADAPTERS = {
     'anthropic': _call_anthropic,
     'openai': _call_openai,
     'gemini': _call_gemini,
+    'ollama': _call_ollama,
 }
 
 
@@ -313,7 +342,13 @@ def _normalize_recommended_agencies(recommended_agencies):
     return list(dict.fromkeys(normalized))
 
 
-def _parse_ai_response(raw_text, hazard_type):
+def _rainfall_humidity_score(rainfall_mm, humidity_pct):
+    rainfall_score = min(50.0, max(0.0, float(rainfall_mm)) * 0.5)
+    humidity_score = min(10.0, max(0.0, float(humidity_pct) - 80.0) * 0.5)
+    return round(min(60.0, rainfall_score + humidity_score), 1)
+
+
+def _parse_ai_response(raw_text, hazard_type, rainfall_mm=None, humidity_pct=None):
     data = json.loads(_strip_code_fences(raw_text))
 
     score = float(data.get('score', 0))
@@ -324,10 +359,20 @@ def _parse_ai_response(raw_text, hazard_type):
         level = _level_from_score(score)
 
     raw_level = str(level or '').strip()
-    if raw_level.upper() in UNKNOWN_RISK_LEVELS:
-        level = 'INSUFFICIENT_DATA'
-
     message = str(data.get('message') or '').strip()
+    if raw_level.upper() in UNKNOWN_RISK_LEVELS:
+        if rainfall_mm is not None and humidity_pct is not None:
+            score = max(score, _rainfall_humidity_score(rainfall_mm, humidity_pct))
+            level = _level_from_score(score)
+            message = (message + ' ' if message else '') + (
+                'The model returned insufficient data despite available rainfall and humidity readings; '
+                'the displayed score includes a conservative rainfall/humidity heuristic.'
+            )
+        else:
+            level = 'INSUFFICIENT_DATA'
+    else:
+        level = _level_from_score(score)
+
     if not message:
         message = f'{level} {hazard_type} risk assessed (score {score}).'
 
@@ -395,9 +440,10 @@ def assess_hazard(hazard_type, rainfall_mm, river_level_m, humidity_pct,
     if deterministic_result is not None:
         return deterministic_result
 
-    api_key = os.getenv(cfg['api_key_env'])
-    if not api_key:
-        return _fallback_response(hazard_type, f"{cfg['api_key_env']} is not configured")
+    api_key_env = cfg.get('api_key_env')
+    api_key = os.getenv(api_key_env) if api_key_env else None
+    if api_key_env and not api_key:
+        return _fallback_response(hazard_type, f"{api_key_env} is not configured")
 
     model = os.getenv(cfg['model_env'], cfg['default_model'])
     user_prompt = _build_user_prompt(
@@ -407,9 +453,11 @@ def assess_hazard(hazard_type, rainfall_mm, river_level_m, humidity_pct,
 
     try:
         raw = _ADAPTERS[AI_PROVIDER](SYSTEM_PROMPT, user_prompt, api_key, model)
-        result = _parse_ai_response(raw, hazard_type)
+        result = _parse_ai_response(
+            raw, hazard_type, rainfall_mm=rainfall_mm, humidity_pct=humidity_pct
+        )
     except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError,
-            ValueError, KeyError, json.JSONDecodeError) as exc:
+            ValueError, KeyError, json.JSONDecodeError):
         logger.exception('AI hazard assessment failed')
         return _fallback_response(hazard_type, None)
 

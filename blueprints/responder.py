@@ -1,7 +1,9 @@
+import os
 import secrets
 from io import BytesIO
 
 from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for
+from flask_babel import gettext as _
 from PIL import Image, UnidentifiedImageError
 from sqlalchemy.orm.exc import StaleDataError
 from werkzeug.utils import secure_filename
@@ -145,7 +147,9 @@ def responder_checklist():
             flash('Pre-deployment checklist complete. You are cleared for deployment.', 'success')
         else:
             missing = [label for key, label in checklist_items if not completed.get(key)]
-            flash(f'{len(missing)} item(s) not confirmed. Complete all items before deployment.', 'warning')
+            flash(_('%(count)s item(s) not confirmed. Complete all items before deployment.') % {
+                'count': len(missing),
+            }, 'warning')
 
     active_responses = IncidentResponse.query.filter_by(status='ACTIVE').order_by(IncidentResponse.started_at.desc()).all()
     return render_template('pages/field_responder_checklist.html',
@@ -177,6 +181,9 @@ def responder_report():
         if not incident_response_id or not title or not content:
             flash('Please complete the required fields before submitting your report.', 'danger')
             return redirect(url_for('responder.responder_report'))
+        if casualties < 0 or evacuated < 0:
+            flash('Casualty and evacuation counts cannot be negative.', 'danger')
+            return redirect(url_for('responder.responder_report'))
 
         gps_lat_value = None
         gps_lng_value = None
@@ -203,7 +210,7 @@ def responder_report():
         db.session.add(report)
         try:
             db.session.commit()
-        except Exception as e:
+        except Exception:
             db.session.rollback()
             current_app.logger.exception('Responder operation failed')
             flash('Unable to complete the responder operation. Please try again.', 'error')
@@ -211,30 +218,40 @@ def responder_report():
 
         uploaded_files = request.files.getlist('media')
         saved_files = []
+        attachment_failed = False
         for media_file in uploaded_files:
             validated_media = _validate_media_upload(media_file)
             if not validated_media:
                 if media_file and media_file.filename:
                     safe_filename = secure_filename(media_file.filename) or 'invalid filename'
-                    flash(f'Attachment rejected: {safe_filename}.', 'warning')
+                    flash(_('Attachment rejected: %(filename)s.') % {'filename': safe_filename}, 'warning')
                 continue
 
             media_bytes, filename = validated_media
             saved_name = f"{user.id}_{secrets.token_hex(6)}_{filename}"
-            current_app.extensions['file_storage'].save(saved_name, media_bytes)
-            saved_files.append(saved_name)
+            try:
+                current_app.extensions['file_storage'].save(saved_name, media_bytes)
+                saved_files.append(saved_name)
+            except Exception:
+                current_app.logger.exception('Responder report attachment upload failed')
+                attachment_failed = True
 
         if saved_files:
             report.content = f"{report.content}\nAttachments: {', '.join(saved_files)}"
             try:
                 db.session.commit()
-            except Exception as e:
+            except Exception:
                 db.session.rollback()
-                current_app.logger.exception('Responder operation failed')
-                flash('Unable to complete the responder operation. Please try again.', 'error')
-                return redirect(url_for('responder.responder_report'))
+                current_app.logger.exception('Unable to record responder report attachments')
+                attachment_failed = True
 
-        flash('Field report submitted successfully.', 'success')
+        if attachment_failed:
+            flash(
+                'Your field report was saved, but one or more attachments could not be saved or linked. Do not resubmit the report.',
+                'warning',
+            )
+        else:
+            flash('Field report submitted successfully.', 'success')
         return redirect(url_for('responder.responder_dashboard'))
 
     return render_template('pages/field_responder_report.html', active_responses=active_responses)
@@ -264,7 +281,7 @@ def responder_update_task(task_id):
             db.session.rollback()
             flash('This task was updated by another user. Reload and try again.', 'warning')
             return redirect(url_for('responder.responder_tasks'))
-        except Exception as e:
+        except Exception:
             db.session.rollback()
             current_app.logger.exception('Responder operation failed')
             flash('Unable to complete the responder operation. Please try again.', 'error')

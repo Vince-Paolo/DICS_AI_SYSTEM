@@ -1,4 +1,5 @@
 from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, session, url_for
+from flask_babel import gettext as _
 from sqlalchemy import and_
 from sqlalchemy.orm import aliased
 
@@ -215,7 +216,7 @@ def toggle_alert(incident_id):
         )
         db.session.add(audit_event)
         db.session.commit()
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         current_app.logger.exception('EOC operation failed')
         flash('Unable to complete the EOC operation. Please try again.', 'error')
@@ -249,7 +250,7 @@ def verify_incident(incident_id):
         )
         db.session.add(audit_event)
         db.session.commit()
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         current_app.logger.exception('EOC operation failed')
         flash('Unable to complete the EOC operation. Please try again.', 'error')
@@ -355,13 +356,16 @@ def assign_commander(incident_id):
         )
         db.session.add(audit_event)
         db.session.commit()
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         current_app.logger.exception('Failed to assign commander')
         flash('Unable to assign the commander. Please try again.', 'error')
         return redirect(url_for('admin.eoc_verifications'))
 
-    flash(f'Commander "{commander.full_name or commander.username}" assigned to incident #{incident_id}.', 'success')
+    flash(_('Commander "%(name)s" assigned to incident #%(incident_id)s.') % {
+        'name': commander.full_name or commander.username,
+        'incident_id': incident_id,
+    }, 'success')
     return redirect(url_for('admin.eoc_verifications'))
 
 
@@ -400,13 +404,17 @@ def transfer_commander(response_id):
         )
         db.session.add(audit_event)
         db.session.commit()
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         current_app.logger.exception('Failed to transfer commander')
         flash('Unable to transfer the commander. Please try again.', 'error')
         return redirect(url_for('admin.eoc_operations'))
 
-    flash(f'Response #{response_id} transferred from {old_commander_name} to {new_commander.username}.', 'success')
+    flash(_('Response #%(response_id)s transferred from %(old_commander)s to %(new_commander)s.') % {
+        'response_id': response_id,
+        'old_commander': old_commander_name,
+        'new_commander': new_commander.username,
+    }, 'success')
     return redirect(url_for('admin.eoc_operations'))
 
 
@@ -505,21 +513,25 @@ def eoc_decide_resource_request(request_id):
             details=audit_details,
         ))
         db.session.commit()
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         current_app.logger.exception('EOC operation failed')
         flash('Unable to complete the EOC operation. Please try again.', 'error')
         return redirect(url_for('eoc.eoc_resource_requests'))
 
     if created_resource:
-        flash(
-            f'Request #{resource_request.id} marked Fulfilled — '
-            f'{resource_request.quantity}x {resource_request.resource_type} '
-            f'allocated to response #{response.id}.',
-            'success',
-        )
+        flash(_('Request #%(request_id)s marked fulfilled — %(quantity)s x %(resource_type)s '
+                'allocated to response #%(incident_id)s.') % {
+            'request_id': resource_request.id,
+            'quantity': resource_request.quantity,
+            'resource_type': resource_request.resource_type,
+            'incident_id': response.id,
+        }, 'success')
     else:
-        flash(f'Request #{resource_request.id} marked {decision.title()}.', 'success')
+        flash(_('Request #%(request_id)s marked %(decision)s.') % {
+            'request_id': resource_request.id,
+            'decision': decision.title(),
+        }, 'success')
     return redirect(url_for('eoc.eoc_resource_requests'))
 
 
@@ -591,13 +603,13 @@ def issue_alert():
             details=f'Alert "{title}" ({severity}) issued by {user.username}.',
         ))
         db.session.commit()
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         current_app.logger.exception('EOC operation failed')
         flash('Unable to complete the EOC operation. Please try again.', 'error')
         return redirect(url_for('eoc.official_alerts'))
 
-    flash(f'Alert "{title}" published.', 'success')
+    flash(_('Alert "%(title)s" published.') % {'title': title}, 'success')
     return redirect(url_for('eoc.official_alerts'))
 
 
@@ -620,7 +632,7 @@ def resolve_alert(alert_id):
             details=f'Alert #{alert.id} ("{alert.title}") resolved by {user.username}.',
         ))
         db.session.commit()
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         current_app.logger.exception('EOC operation failed')
         flash('Unable to complete the EOC operation. Please try again.', 'error')
@@ -687,11 +699,11 @@ def log_incident_report(incident_id):
             details=f'Report "{title}" ({report_type}) logged for incident #{incident.id} by {user.username}.',
         ))
         db.session.commit()
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         current_app.logger.exception('EOC operation failed')
         flash('Unable to complete the EOC operation. Please try again.', 'error')
         return redirect(url_for('eoc.eoc_incident_detail', incident_id=incident_id))
 
-    flash(f'Report "{title}" logged.', 'success')
+    flash(_('Report "%(title)s" logged.') % {'title': title}, 'success')
     return redirect(url_for('eoc.eoc_incident_detail', incident_id=incident_id))

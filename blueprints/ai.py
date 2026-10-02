@@ -109,7 +109,7 @@ def ai_prediction():
                     )
                     db.session.add(audit_event)
                 db.session.commit()
-            except Exception as e:
+            except Exception:
                 db.session.rollback()
                 current_app.logger.exception('Failed to save AI prediction')
                 flash('Unable to save the AI prediction. Please try again.', 'error')
