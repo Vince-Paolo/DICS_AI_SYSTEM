@@ -197,7 +197,7 @@
                                     <td data-label="Due" class="table-hide-tablet">
                                         <span class="text-muted" style="font-size:0.78rem;">
                                             {% if task.estimated_completion %}
-                                                {{ task.estimated_completion.strftime('%b %d %H:%M') }}
+                                                {{ task.estimated_completion|manila_time('%b %d %H:%M') }}
                                             {% else %}N/A{% endif %}
                                         </span>
                                     </td>

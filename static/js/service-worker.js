@@ -1,17 +1,43 @@
-const APP_CACHE = 'dics-app-shell-v3';
-const MAP_CACHE = 'dics-map-cache-v1';
+const APP_CACHE = 'dics-app-shell-v8';
 const APP_SHELL = [
   '/static/css/style.css',
+  '/static/css/sidebar.css',
   '/static/js/app.js',
   '/static/manifest.webmanifest',
   '/static/offline.html',
-  '/emergency-assistance'
+  '/static/icon-192.svg',
+  '/static/icon-512.svg',
+  '/static/vendor/bootstrap/css/bootstrap.min.css',
+  '/static/vendor/bootstrap/js/bootstrap.bundle.min.js',
+  '/static/vendor/bootstrap-icons/font/bootstrap-icons.css',
+  '/static/vendor/bootstrap-icons/font/fonts/bootstrap-icons.woff2'
 ];
+
+async function cachePublicHotline() {
+  const url = new URL('/emergency-assistance', self.location.origin);
+  const request = new Request(url.href, { credentials: 'omit' });
+  try {
+    const response = await fetch(request);
+    const cacheControl = response.headers.get('Cache-Control') || '';
+    if (response.ok && /(?:^|,)\s*public(?:,|$)/i.test(cacheControl)) {
+      const cache = await caches.open(APP_CACHE);
+      await cache.put(request, response.clone());
+    }
+  } catch (error) {
+    // The offline shell still installs when the public hotline cannot be fetched.
+  }
+}
+
+async function clearPrivateCaches() {
+  const keys = await caches.keys();
+  await Promise.all(keys.filter(key => key.startsWith('dics-map-cache-')).map(key => caches.delete(key)));
+}
 
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(APP_CACHE)
       .then(cache => cache.addAll(APP_SHELL))
+      .then(cachePublicHotline)
       .then(() => self.skipWaiting())
   );
 });
@@ -19,7 +45,7 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys => Promise.all(
-      keys.filter(key => key !== APP_CACHE && key !== MAP_CACHE).map(key => caches.delete(key))
+      keys.filter(key => key !== APP_CACHE).map(key => caches.delete(key))
     )).then(() => self.clients.claim())
   );
 });
@@ -31,78 +57,58 @@ self.addEventListener('fetch', event => {
   const url = new URL(request.url);
   const isSameOrigin = url.origin === self.location.origin;
 
-  if (!isSameOrigin) return;
-
-  // Auth pages contain session-bound CSRF tokens and must never come from a
-  // cache created during an earlier browser session.
-  if (url.pathname === '/' || url.pathname === '/login' || url.pathname === '/register' || url.pathname === '/forgot-password' || url.pathname.startsWith('/reset-password')) {
-    event.respondWith(fetch(request));
+  if (!isSameOrigin) {
     return;
   }
 
-  // Emergency hotline page: network first so the numbers and language are
-  // always current, with the last copy kept for when there is no connection.
-  // (Calling still works offline because tel: links use the phone network.)
+  if (url.pathname === '/logout' || url.pathname === '/login') {
+    event.respondWith(
+      clearPrivateCaches().then(() => fetch(request, { cache: 'no-store' }))
+    );
+    return;
+  }
+
   if (url.pathname === '/emergency-assistance') {
     event.respondWith(
-      fetch(request).then(response => {
-        if (response && response.status === 200) {
-          const copy = response.clone();
-          caches.open(APP_CACHE).then(cache => cache.put('/emergency-assistance', copy));
+      fetch(request, { cache: 'no-store' }).then(async response => {
+        const cacheControl = response.headers.get('Cache-Control') || '';
+        if (response.ok && /(?:^|,)\s*public(?:,|$)/i.test(cacheControl)) {
+          const cache = await caches.open(APP_CACHE);
+          await cache.put(request, response.clone());
         }
         return response;
-      }).catch(() => caches.match('/emergency-assistance')
-        .then(cached => cached || caches.match('/static/offline.html'))
-        .then(fallback => fallback || Response.error()))
+      }).catch(async () => {
+        const cached = await caches.match('/emergency-assistance');
+        return cached || await caches.match('/static/offline.html') || Response.error();
+      })
     );
     return;
   }
 
-  if (url.pathname.startsWith('/api/map-pins')) {
+  if (request.mode === 'navigate') {
     event.respondWith(
-      caches.open(MAP_CACHE).then(async cache => {
+      fetch(request, { cache: 'no-store' }).catch(async () => {
+        return await caches.match('/static/offline.html') || Response.error();
+      })
+    );
+    return;
+  }
+
+  if (url.pathname.startsWith('/static/')) {
+    event.respondWith(
+      caches.open(APP_CACHE).then(async cache => {
+        const cached = await cache.match(request, { ignoreSearch: true });
         try {
-          const response = await fetch(request);
-          if (response && response.status === 200) {
-            cache.put(request.url, response.clone());
-          }
+          const response = await fetch(request, { cache: 'no-cache' });
+          if (response.ok) await cache.put(request, response.clone());
           return response;
         } catch (error) {
-          const cached = await cache.match(request.url);
-          if (cached) return cached;
-          return caches.match('/static/offline.html') || Response.error();
+          return cached || Response.error();
         }
       })
     );
     return;
   }
 
-  if (url.pathname.endsWith('.html') || url.pathname === '/' || url.pathname.startsWith('/dashboard') || url.pathname.startsWith('/hazard-map') || url.pathname.startsWith('/analytics')) {
-    event.respondWith(
-      caches.match(request, { ignoreSearch: true }).then(cached => {
-        if (cached) return cached;
-        return fetch(request).then(response => {
-          if (response && response.status === 200) {
-            const copy = response.clone();
-            caches.open(APP_CACHE).then(cache => cache.put(request, copy));
-          }
-          return response;
-        }).catch(() => caches.match('/static/offline.html') || Response.error());
-      })
-    );
-    return;
-  }
-
-  event.respondWith(
-    caches.match(request).then(cached => {
-      if (cached) return cached;
-      return fetch(request).then(response => {
-        if (response && response.status === 200) {
-          const copy = response.clone();
-          caches.open(APP_CACHE).then(cache => cache.put(request, copy));
-        }
-        return response;
-      }).catch(() => caches.match('/static/offline.html') || Response.error());
-    })
-  );
+  event.respondWith(fetch(request, { cache: 'no-store' }));
 });

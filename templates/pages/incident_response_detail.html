@@ -94,7 +94,7 @@
                         <div style="padding:1rem;background:rgba(16,185,129,0.07);border-radius:8px;border-left:3px solid #10B981;">
                             <span class="text-muted d-block small mb-1" style="text-transform:uppercase;letter-spacing:0.05em;">Response Status</span>
                             <h3 class="fw-bold mb-0 text-white">{{ response.status }}</h3>
-                            <span class="text-muted small mt-2 d-block">Initiated {{ response.started_at.strftime('%b %d, %Y %H:%M') }}</span>
+                            <span class="text-muted small mt-2 d-block">Initiated {{ response.started_at|manila_time('%b %d, %Y %H:%M') }}</span>
                         </div>
                     </div>
                 </div>

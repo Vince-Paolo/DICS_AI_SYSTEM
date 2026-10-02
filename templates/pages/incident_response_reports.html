@@ -34,7 +34,7 @@
                                     <p class="text-muted small mb-0">
                                         <i class="bi bi-person-fill me-1"></i>{{ report.reporter.username }}
                                         <span class="mx-2 opacity-50">|</span>
-                                        <i class="bi bi-clock me-1"></i>{{ report.created_at.strftime('%b %d, %Y %H:%M') }}
+                                        <i class="bi bi-clock me-1"></i>{{ report.created_at|manila_time('%b %d, %Y %H:%M') }}
                                     </p>
                                 </div>
                                 <span style="flex-shrink:0;padding:0.35em 0.75em;border-radius:5px;font-size:0.72em;font-weight:700;text-transform:uppercase;

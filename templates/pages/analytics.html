@@ -1,10 +1,19 @@
 {% extends 'pages/base.html' %}
 {% import 'partials/empty_state.html' as es %}
 
-{% block title %}AI Prediction Insights | DICS AI{% endblock %}
+{% block title %}AI Decision Support | DICS AI{% endblock %}
+
+{% block extra_head %}
+<style>
+    .resource-utilization-chart {
+        height: 240px;
+        position: relative;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<h1 class="visually-hidden">AI Prediction Insights</h1>
+<h1 class="visually-hidden">AI Decision Support</h1>
 
 <!-- Header -->
 <div class="row mb-4">
@@ -23,7 +32,7 @@
                         </span>
                     </span>
                 </div>
-                <p class="text-muted mb-0 mt-2" style="padding-left:2.75rem;">Real-time disaster forecasting and predictive analytics for floods, earthquakes, and volcanic activity.</p>
+                <p class="text-muted mb-0 mt-2" style="padding-left:2.75rem;">AI-assisted hazard assessments, response recommendations, and operational analytics for the region.</p>
                 <p class="text-muted mb-0 mt-1" style="padding-left:2.75rem;font-size:0.8rem;">Last refresh: <strong id="refreshTime" class="text-white">--:--:--</strong></p>
             </div>
         </div>
@@ -37,10 +46,10 @@
             <div class="icon-badge icon-badge-primary">
                 <i class="bi bi-cpu-fill"></i>
             </div>
-            <h5 class="mb-0">About the AI-Based Multi-Hazard Prediction Engine</h5>
+            <h5 class="mb-0">How AI Decision Support Works</h5>
         </div>
-        <p class="text-muted">Traditional disaster prediction systems rely heavily on historical data analysis and manual interpretation by experts. While these methods have been effective to some extent, they often lack real-time processing capabilities and may not be sufficient for rapidly changing environmental conditions. Recent advancements in Artificial Intelligence (AI) and Machine Learning (ML) have demonstrated strong potential in improving predictive accuracy by analyzing large-scale environmental datasets and identifying complex patterns that are not easily detected through conventional methods (UNDRR, 2023).</p>
-        <p class="text-muted mb-0">This platform integrates an AI-Based Multi-Hazard Prediction Engine with the Digital Incident Command System (DICS) to provide near real-time forecasts, automated alert generation, and actionable insights for response teams. The engine ingests sensor streams, seismic and weather feeds, and historical records to deliver continuously updated risk scores and confidence metrics.</p>
+        <p class="text-muted">For a selected site and hazard, the configured AI provider reviews available rainfall, river-level, humidity, population-density, and nearby seismic context. It returns a risk level and score, a confidence estimate, and the factors supporting its assessment.</p>
+        <p class="text-muted mb-0">When warranted by the available inputs, it also suggests response agencies and resources for a duty officer to consider. These recommendations are advisory, not dispatch orders; staff remain responsible for validating the assessment and deciding what action to take.</p>
         <div class="alert alert-warning border-warning mt-3 mb-0" role="alert">
             <div class="d-flex align-items-center gap-2 mb-1">
                 <i class="bi bi-exclamation-triangle-fill text-warning"></i>
@@ -201,7 +210,9 @@
                     <h5 class="mb-0">Resource Utilization</h5>
                 </div>
                 <p class="text-muted small mb-3">Resource allocation status across all active responses.</p>
-                <canvas id="resourceUtilizationChart" height="200"></canvas>
+                <div class="resource-utilization-chart">
+                    <canvas id="resourceUtilizationChart"></canvas>
+                </div>
             </div>
         </div>
     </div>
@@ -351,7 +362,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script>
 const refreshTime = document.getElementById('refreshTime');
 const hazardCtx = document.getElementById('hazardChart');
@@ -366,7 +377,7 @@ const geoSummaryBody = document.getElementById('geoSummaryBody');
 Chart.defaults.color = 'rgba(255,255,255,0.6)';
 Chart.defaults.borderColor = 'rgba(255,255,255,0.08)';
 
-const currentYear = new Date().getFullYear();
+const currentYear = {{ analytics_current_year }};
 for (let year = currentYear - 3; year <= currentYear + 2; year += 1) {
     const option = document.createElement('option');
     option.value = String(year);
@@ -452,6 +463,7 @@ const resourceUtilizationChart = new Chart(resourceUtilCtx, {
     data: resourceUtilData,
     options: {
         responsive: true,
+        maintainAspectRatio: false,
         plugins: {
             legend: {
                 position: 'bottom',

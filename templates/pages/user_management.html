@@ -235,7 +235,7 @@
                                         </span>
                                     {% endif %}
                                 </td>
-                                <td data-label="Joined"><small class="text-muted">{{ user.created_at.strftime('%b %d, %Y') if user.created_at else '—' }}</small></td>
+                                <td data-label="Joined"><small class="text-muted">{{ user.created_at|manila_time('%b %d, %Y') if user.created_at else '—' }}</small></td>
                                 <td data-label="Actions" class="text-center">
                                     <div class="d-flex gap-1 justify-content-center">
                                         <!-- Edit Button -->
@@ -410,7 +410,7 @@
                     </div>
                     <div class="info-tile info-tile-success">
                         <div class="d-flex align-items-center justify-content-between">
-                            <h6 class="mb-0" style="color: #86EFAC;"><i class="bi bi-cpu-fill me-2"></i>AI Prediction Engine</h6>
+                            <h6 class="mb-0" style="color: #86EFAC;"><i class="bi bi-cpu-fill me-2"></i>AI Decision Support</h6>
                             <span style="display:inline-flex; align-items:center; gap:0.35em; white-space:nowrap; padding: 0.35em 0.65em; background: rgba(16,185,129,0.2); color: #86EFAC; border: 1px solid rgba(16,185,129,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">Running</span>
                         </div>
                     </div>
@@ -446,7 +446,7 @@
                                 <span class="small fw-bold text-white">{{ user.username }}</span>
                                 <span class="small text-muted ms-2">account registered</span>
                             </div>
-                            <small class="text-muted">{{ user.created_at.strftime('%b %d, %Y') if user.created_at else '—' }}</small>
+                            <small class="text-muted">{{ user.created_at|manila_time('%b %d, %Y') if user.created_at else '—' }}</small>
                         </div>
                     </div>
                     {% endfor %}

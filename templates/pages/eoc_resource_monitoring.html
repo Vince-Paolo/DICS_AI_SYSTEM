@@ -166,7 +166,7 @@
                                     </td>
                                     <td><span class="text-muted small">{{ res.location or '—' }}</span></td>
                                     <td><span class="text-muted small">#{{ res.incident_response.incident_id }} — {{ res.incident_response.incident.hazard_type|upper }}</span></td>
-                                    <td><span class="text-muted small">{{ res.allocated_at.strftime('%b %d, %H:%M') }}</span></td>
+                                    <td><span class="text-muted small">{{ res.allocated_at|manila_time('%b %d, %H:%M') }}</span></td>
                                 </tr>
                                 {% endfor %}
                             </tbody>

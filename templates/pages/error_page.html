@@ -17,15 +17,15 @@
                 <div class="d-flex justify-content-center gap-2 flex-wrap">
                     {% if session.username %}
                     <a href="{{ url_for('dashboard') }}" class="btn btn-primary-modern btn-modern">
-                        <i class="bi bi-house-door-fill me-2"></i>Go to Dashboard
+                        <i class="bi bi-house-door-fill me-2"></i>{{ _('Go to Dashboard') }}
                     </a>
                     {% else %}
                     <a href="{{ url_for('login') }}" class="btn btn-primary-modern btn-modern">
-                        <i class="bi bi-box-arrow-in-right me-2"></i>Back to Login
+                        <i class="bi bi-box-arrow-in-right me-2"></i>{{ _('Back to Login') }}
                     </a>
                     {% endif %}
                     <a href="#" onclick="history.back(); return false;" class="btn btn-outline-light btn-sm">
-                        <i class="bi bi-arrow-left me-1"></i>Go Back
+                        <i class="bi bi-arrow-left me-1"></i>{{ _('Go Back') }}
                     </a>
                 </div>
             </div>

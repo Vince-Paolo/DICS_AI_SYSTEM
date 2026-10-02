@@ -55,7 +55,7 @@
                                 <span class="ms-1" style="font-size:0.68rem;padding:0.2em 0.6em;border-radius:5px;background:rgba(16,185,129,0.12);color:#86EFAC;">RESOLVED</span>
                                 {% endif %}
                             </div>
-                            <span class="text-muted" style="font-size:0.72rem;">{{ a.created_at.strftime('%b %d, %I:%M %p') }}</span>
+                            <span class="text-muted" style="font-size:0.72rem;">{{ a.created_at|manila_time('%b %d, %I:%M %p') }}</span>
                         </div>
                         <p class="text-muted mb-2 mt-2" style="font-size:0.85rem;">{{ a.message }}</p>
                         {% if a.incident_id %}

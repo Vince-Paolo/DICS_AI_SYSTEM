@@ -21,9 +21,9 @@
                 </div>
                 <p class="text-muted mb-0 mt-2" style="padding-left:2.75rem;">
                     {{ incident.location or 'Location unspecified' }} &middot;
-                    {{ incident.display_time.strftime('%b %d, %Y %I:%M %p') }}
+                    {{ incident.display_time|manila_time('%b %d, %Y %I:%M %p') }}
                     {%- if incident.event_time and incident.created_at and (incident.created_at - incident.event_time).total_seconds()|abs > 3600 %}
-                        <span style="font-size:.78em;opacity:.75;">(logged {{ incident.created_at.strftime('%b %d, %I:%M %p') }})</span>
+                        <span style="font-size:.78em;opacity:.75;">(logged {{ incident.created_at|manila_time('%b %d, %I:%M %p') }})</span>
                     {%- endif %} &middot;
                     Level: <strong>{{ incident.level or 'Unknown' }}</strong>
                 </p>
@@ -49,7 +49,7 @@
                     <div style="padding:0.9rem;border-radius:8px;background:rgba(255,255,255,0.03);border-left:3px solid #7DD3FC;">
                         <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
                             <strong class="text-white" style="font-size:0.88rem;">{{ r.title }}</strong>
-                            <span class="text-muted" style="font-size:0.7rem;">{{ r.created_at.strftime('%b %d, %I:%M %p') }}</span>
+                            <span class="text-muted" style="font-size:0.7rem;">{{ r.created_at|manila_time('%b %d, %I:%M %p') }}</span>
                         </div>
                         <span style="font-size:0.66rem;font-weight:700;padding:0.15em 0.5em;border-radius:4px;background:rgba(125,211,252,0.12);color:#7DD3FC;">{{ r.report_type }}</span>
                         <p class="text-muted mb-0 mt-2" style="font-size:0.82rem;">{{ r.content }}</p>

@@ -172,7 +172,7 @@
                             <td data-label="Priority" class="priority-status-cell">
                                 {{ hz.priority_badge(response.priority_level, label=response.priority_level if response.priority_level not in ['CRITICAL','HIGH'] else none) }}
                             </td>
-                            <td data-label="Started" class="table-hide-tablet"><span class="text-muted small">{{ response.started_at.strftime('%b %d, %Y %H:%M') }}</span></td>
+                            <td data-label="Started" class="table-hide-tablet"><span class="text-muted small">{{ response.started_at|manila_time('%b %d, %Y %H:%M') }}</span></td>
                             <td data-label="Action" class="text-center">
                                 <div class="d-flex gap-1 justify-content-center flex-wrap">
                                     <a href="{{ url_for('commander.incident_response_detail', response_id=response.id) }}" class="btn btn-sm btn-primary-modern btn-modern">

@@ -5,20 +5,32 @@
 {% block title %}{{ _('EOC Command Dashboard') }} | DICS AI{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';" />
 <style>
     .eoc-map-wrap {
-        height: 100%;
-        min-height: 430px;
+        height: clamp(280px, 42vh, 380px);
         position: relative;
     }
     #eocIncidentMap {
         width: 100%;
-        height: 430px;
+        height: 100%;
         border-radius: 1rem;
         border: 1px solid rgba(148, 163, 184, 0.25);
         overflow: hidden;
         background: #0f172a;
+    }
+    .eoc-map-fallback {
+        display: none;
+        position: absolute;
+        inset: 0;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        border-radius: 1rem;
+        background: #0f172a;
+        color: #cbd5e1;
+        text-align: center;
     }
     .eoc-mini-stat {
         display: flex;
@@ -121,9 +133,9 @@
     </div>
 </div>
 
-<div class="row g-4 mb-4 align-items-stretch">
-    <div class="col-xl-8">
-        <div class="card card-custom shadow-lg h-100">
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="card card-custom shadow-lg">
             <div class="card-body p-3 p-md-4">
                 <div class="d-flex align-items-center gap-2 mb-3">
                     <div class="icon-badge icon-tile-danger">
@@ -139,78 +151,83 @@
                 </div>
                 <div class="eoc-map-wrap">
                     <div id="eocIncidentMap" aria-label="Live EOC incident map"></div>
+                    <div id="eocMapFallback" class="eoc-map-fallback" role="status">
+                        {{ _('Map preview is unavailable. Open the full map to try again.') }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4 align-items-stretch">
+    <div class="col-xl-4">
+        <div class="card card-custom shadow-lg h-100">
+            <div class="card-body p-3">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <div class="icon-badge icon-badge-primary">
+                        <i class="bi bi-graph-up-arrow"></i>
+                    </div>
+                    <h5 class="mb-0">{{ _('Counts') }}</h5>
+                </div>
+                <div class="d-grid gap-2">
+                    <div class="eoc-mini-stat danger">
+                        <div>
+                            <span class="label">{{ _('Active') }}</span>
+                            <span class="value">{{ total_active }}</span>
+                        </div>
+                        <span class="icon"><i class="bi bi-fire"></i></span>
+                    </div>
+                    <div class="eoc-mini-stat warning">
+                        <div>
+                            <span class="label">{{ _('Severe / High') }}</span>
+                            <span class="value">{{ total_critical }}</span>
+                        </div>
+                        <span class="icon"><i class="bi bi-exclamation-triangle-fill"></i></span>
+                    </div>
+                    <div class="eoc-mini-stat success">
+                        <div>
+                            <span class="label">{{ _('Open tasks') }}</span>
+                            <span class="value">{{ total_tasks }}</span>
+                        </div>
+                        <span class="icon"><i class="bi bi-list-task"></i></span>
+                    </div>
+                    <div class="eoc-mini-stat purple">
+                        <div>
+                            <span class="label">{{ _('Resources') }}</span>
+                            <span class="value">{{ total_resources }}</span>
+                        </div>
+                        <span class="icon"><i class="bi bi-truck"></i></span>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="col-xl-4">
-        <div class="d-grid gap-3 h-100">
-            <div class="card card-custom shadow-lg h-100">
-                <div class="card-body p-3">
-                    <div class="d-flex align-items-center gap-2 mb-3">
-                        <div class="icon-badge icon-badge-primary">
-                            <i class="bi bi-graph-up-arrow"></i>
-                        </div>
-                        <h5 class="mb-0">{{ _('Counts') }}</h5>
+    <div class="col-xl-8">
+        <div class="card card-custom shadow-lg h-100">
+            <div class="card-body p-3">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <div class="icon-badge icon-tile-info">
+                        <i class="bi bi-clock-history"></i>
                     </div>
-                    <div class="d-grid gap-2">
-                        <div class="eoc-mini-stat danger">
-                            <div>
-                                <span class="label">{{ _('Active') }}</span>
-                                <span class="value">{{ total_active }}</span>
-                            </div>
-                            <span class="icon"><i class="bi bi-fire"></i></span>
-                        </div>
-                        <div class="eoc-mini-stat warning">
-                            <div>
-                                <span class="label">{{ _('Severe / High') }}</span>
-                                <span class="value">{{ total_critical }}</span>
-                            </div>
-                            <span class="icon"><i class="bi bi-exclamation-triangle-fill"></i></span>
-                        </div>
-                        <div class="eoc-mini-stat success">
-                            <div>
-                                <span class="label">{{ _('Open tasks') }}</span>
-                                <span class="value">{{ total_tasks }}</span>
-                            </div>
-                            <span class="icon"><i class="bi bi-list-task"></i></span>
-                        </div>
-                        <div class="eoc-mini-stat purple">
-                            <div>
-                                <span class="label">{{ _('Resources') }}</span>
-                                <span class="value">{{ total_resources }}</span>
-                            </div>
-                            <span class="icon"><i class="bi bi-truck"></i></span>
-                        </div>
-                    </div>
+                    <h5 class="mb-0">{{ _('Latest incidents') }}</h5>
                 </div>
-            </div>
-
-            <div class="card card-custom shadow-lg h-100">
-                <div class="card-body p-3">
-                    <div class="d-flex align-items-center gap-2 mb-3">
-                        <div class="icon-badge icon-tile-info">
-                            <i class="bi bi-clock-history"></i>
-                        </div>
-                        <h5 class="mb-0">{{ _('Latest incidents') }}</h5>
-                    </div>
-                    {% if recent_incidents %}
-                        <ul class="eoc-latest-list">
-                            {% for incident in recent_incidents[:5] %}
-                            <li class="eoc-latest-item">
-                                <div>
-                                    <strong>#{{ incident.id }} · {{ incident.hazard_type }}</strong>
-                                    <small>{{ incident.location or 'Unknown location' }}</small>
-                                </div>
-                                <span class="badge-status-active status-compact">{{ incident.level }}</span>
-                            </li>
-                            {% endfor %}
-                        </ul>
-                    {% else %}
-                        <div class="text-muted small">No incidents logged yet.</div>
-                    {% endif %}
-                </div>
+                {% if recent_incidents %}
+                    <ul class="eoc-latest-list">
+                        {% for incident in recent_incidents[:5] %}
+                        <li class="eoc-latest-item">
+                            <div>
+                                <strong>#{{ incident.id }} · {{ incident.hazard_type }}</strong>
+                                <small>{{ incident.location or 'Unknown location' }}</small>
+                            </div>
+                            <span class="badge-status-active status-compact">{{ incident.level }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="text-muted small">No incidents logged yet.</div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -256,7 +273,7 @@
                             <td data-label="Priority" class="priority-status-cell">
                                 {{ hz.priority_badge(response.priority_level, label=response.priority_level if response.priority_level not in ['CRITICAL','HIGH'] else none) }}
                             </td>
-                            <td data-label="Started" class="table-hide-tablet"><span class="text-muted small">{{ response.started_at.strftime('%b %d, %H:%M') }}</span></td>
+                            <td data-label="Started" class="table-hide-tablet"><span class="text-muted small">{{ response.started_at|manila_time('%b %d, %H:%M') }}</span></td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -409,15 +426,19 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';this.onerror=function(){document.getElementById('eocMapFallback').style.display='flex';};"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const mapEl = document.getElementById('eocIncidentMap');
+    const fallbackEl = document.getElementById('eocMapFallback');
     if (mapEl && typeof L !== 'undefined') {
         const map = L.map('eocIncidentMap', {
             zoomControl: true,
             scrollWheelZoom: true,
         }).setView([13.2, 121.5], 6.5);
+        requestAnimationFrame(function () {
+            map.invalidateSize();
+        });
 
         L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors'
@@ -480,6 +501,8 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(function () {
                 map.setView([13.2, 121.5], 6.5);
             });
+    } else if (fallbackEl) {
+        fallbackEl.style.display = 'flex';
     }
 
     // ── Emergency SOS real-time alert ────────────────────────
@@ -502,6 +525,13 @@ document.addEventListener('DOMContentLoaded', function () {
     banner.style.cssText = 'display:none; position:sticky; top:0; z-index:1050; background:#dc2626; color:#fff; padding:0.85rem 1.25rem; margin-bottom:1rem; border-radius:0.5rem; box-shadow:0 4px 14px rgba(220,38,38,0.4); display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap;';
     const mainContent = document.querySelector('.container-fluid') || document.body;
     mainContent.insertBefore(banner, mainContent.firstChild);
+    const pollStatus = document.createElement('div');
+    pollStatus.className = 'alert alert-warning py-2 mb-3';
+    pollStatus.setAttribute('role', 'status');
+    pollStatus.setAttribute('aria-live', 'polite');
+    pollStatus.style.display = 'none';
+    pollStatus.textContent = 'SOS alert feed is temporarily unavailable. Retrying...';
+    banner.insertAdjacentElement('afterend', pollStatus);
 
     function playAlertTone() {
         try {
@@ -554,8 +584,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function checkForSos() {
         fetch('/eoc/sos-incidents/pending')
-            .then(function (response) { return response.ok ? response.json() : { incidents: [] }; })
+            .then(function (response) {
+                if (!response.ok) throw new Error('SOS poll failed with HTTP ' + response.status);
+                return response.json();
+            })
             .then(function (data) {
+                if (!Array.isArray(data.incidents)) throw new Error('Invalid SOS poll response');
+                pollStatus.style.display = 'none';
                 const incidents = data.incidents || [];
                 renderBanner(incidents);
 
@@ -575,7 +610,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 }
             })
-            .catch(function () { /* a failed poll shouldn't stop future polling */ });
+            .catch(function () {
+                pollStatus.style.display = 'block';
+            });
     }
 
     checkForSos();

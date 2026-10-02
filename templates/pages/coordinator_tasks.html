@@ -121,7 +121,7 @@
                             <td data-label="Est. Due" class="table-hide-tablet">
                                 <span class="text-muted small">
                                     {% if task.estimated_completion %}
-                                        {{ task.estimated_completion.strftime('%b %d, %H:%M') }}
+                                        {{ task.estimated_completion|manila_time('%b %d, %H:%M') }}
                                     {% else %}N/A{% endif %}
                                 </span>
                             </td>
@@ -147,7 +147,7 @@
                                     <span class="text-muted" style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;">Instructions: </span>
                                     {{ task.description }}
                                     {% if task.completed_at %}
-                                        <span class="text-muted ms-2" style="font-size:0.75rem;">· Completed {{ task.completed_at.strftime('%b %d, %Y %H:%M') }}</span>
+                                        <span class="text-muted ms-2" style="font-size:0.75rem;">· Completed {{ task.completed_at|manila_time('%b %d, %Y %H:%M') }}</span>
                                     {% endif %}
                                 </div>
                             </td>

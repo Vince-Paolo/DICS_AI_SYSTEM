@@ -64,7 +64,7 @@
                                         {% else %}background:rgba(139,92,246,0.2);color:#C4B5FD;{% endif %}">
                                         {{ entry.report_type }}
                                     </span>
-                                    <span class="text-muted ms-auto" style="font-size:0.72rem;white-space:nowrap;">{{ entry.created_at.strftime('%b %d, %H:%M') }}</span>
+                                    <span class="text-muted ms-auto" style="font-size:0.72rem;white-space:nowrap;">{{ entry.created_at|manila_time('%b %d, %H:%M') }}</span>
                                 </div>
                                 <p class="text-muted mb-1" style="font-size:0.82rem;line-height:1.5;">{{ entry.content }}</p>
                                 <div class="d-flex gap-3 flex-wrap" style="font-size:0.72rem;color:#94A3B8;">

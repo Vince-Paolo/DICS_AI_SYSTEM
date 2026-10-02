@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Offline - DICS AI</title>
+  <title data-en="Offline - DICS AI" data-fil-ph="Offline - DICS AI">Offline - DICS AI</title>
   <style>
     body {
       margin: 0;
@@ -29,11 +29,21 @@
 </head>
 <body>
   <main class="card">
-    <p class="status">Offline mode</p>
-    <h1>Last known dashboard snapshot</h1>
-    <p>The app is offline. The shell and the last cached incident view are available, but live external feeds and map tiles are unavailable until connectivity returns.</p>
-    <p><strong>Tip:</strong> reconnect to the network to refresh the live map and analytics data.</p>
-    <p><strong>In an emergency:</strong> <a href="/emergency-assistance" style="color:#fca5a5;">open the hotline page</a>. Phone calls do not need internet.</p>
+    <p class="status" data-en="Offline mode" data-fil-ph="Walang koneksyon">Offline mode</p>
+    <h1 data-en="Last known dashboard snapshot" data-fil-ph="Huling naka-cache na snapshot ng dashboard">Last known dashboard snapshot</h1>
+    <p data-en="The app is offline. The shell and the last cached incident view are available, but live external feeds and map tiles are unavailable until connectivity returns." data-fil-ph="Walang koneksyon ang app. Available ang pangunahing interface at huling naka-cache na view ng insidente, ngunit hindi maa-access ang mga live na external feed at tile ng mapa hangga't hindi naibabalik ang koneksyon.">The app is offline. The shell and the last cached incident view are available, but live external feeds and map tiles are unavailable until connectivity returns.</p>
+    <p><strong data-en="Tip:" data-fil-ph="Paalala:">Tip:</strong> <span data-en="reconnect to the network to refresh the live map and analytics data." data-fil-ph="Kumonekta muli sa network upang i-refresh ang live na mapa at datos ng analytics.">reconnect to the network to refresh the live map and analytics data.</span></p>
+    <p><strong data-en="In an emergency:" data-fil-ph="Kapag may emerhensiya:">In an emergency:</strong> <a href="/emergency-assistance" style="color:#fca5a5;" data-en="open the hotline page" data-fil-ph="buksan ang pahina ng mga hotline">open the hotline page</a>. <span data-en="Phone calls do not need internet." data-fil-ph="Hindi kailangan ng internet para tumawag.">Phone calls do not need internet.</span></p>
   </main>
+  <script>
+    try {
+      const isFilipino = localStorage.getItem('dicsLocale') === 'fil_PH';
+      const localeKey = isFilipino ? 'filPh' : 'en';
+      document.documentElement.lang = isFilipino ? 'fil-PH' : 'en';
+      document.querySelectorAll('[data-en][data-fil-ph]').forEach(element => {
+        element.textContent = element.dataset[localeKey];
+      });
+    } catch (_) {}
+  </script>
 </body>
 </html>

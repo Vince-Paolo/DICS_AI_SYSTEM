@@ -83,7 +83,7 @@
                 <h2 class="h5 mb-1 text-white text-uppercase font-monospace"><i class="bi bi-cpu-fill text-primary me-2"></i>Sensor Stream Feed Ingestion</h2>
                 <p class="text-muted small mb-4 font-monospace">Inject telemetry values to prompt predictive system analytics.</p>
                 
-                <form action="/ai-prediction" method="post">
+                <form action="/ai-prediction" method="post" data-required-legend="true">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="row g-3 font-monospace text-muted small">
                         <div class="col-md-6">

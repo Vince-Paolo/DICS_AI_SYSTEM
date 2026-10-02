@@ -89,12 +89,12 @@
                                 </div>
                                 {% if task.estimated_completion %}
                                 <div>
-                                    <i class="bi bi-clock me-1"></i>Due {{ task.estimated_completion.strftime('%b %d, %H:%M') }}
+                                    <i class="bi bi-clock me-1"></i>Due {{ task.estimated_completion|manila_time('%b %d, %H:%M') }}
                                 </div>
                                 {% endif %}
                                 {% if task.completed_at %}
                                 <div style="color:#6EE7B7;">
-                                    <i class="bi bi-check2-circle me-1"></i>Done {{ task.completed_at.strftime('%b %d, %H:%M') }}
+                                    <i class="bi bi-check2-circle me-1"></i>Done {{ task.completed_at|manila_time('%b %d, %H:%M') }}
                                 </div>
                                 {% endif %}
                             </div>

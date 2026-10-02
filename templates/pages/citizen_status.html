@@ -102,7 +102,7 @@
                                                     </span>
                                                 {% endif %}
                                             </td>
-                                            <td data-label="Submitted"><small class="text-muted">{{ incident.created_at.strftime('%b %d, %Y %I:%M %p') if incident.created_at else 'N/A' }}</small></td>
+                                            <td data-label="Submitted"><small class="text-muted">{{ incident.created_at|manila_time('%b %d, %Y %I:%M %p') if incident.created_at else 'N/A' }}</small></td>
                                             <td data-label="Risk">
                                                 {{ hz.risk_badge(incident.level) }}
                                             </td>

@@ -21,7 +21,7 @@
               <h4 class="mb-1 fw-bold text-info">
                 <i class="bi bi-file-earmark-text me-2"></i>Report #{{ incident.id }}
               </h4>
-              <span class="text-muted small">Submitted on {{ incident.created_at.strftime('%B %d, %Y at %I:%M %p') }}</span>
+              <span class="text-muted small">Submitted on {{ incident.created_at|manila_time('%B %d, %Y at %I:%M %p') }}</span>
             </div>
             <div>
               {% if incident.status == 'VERIFIED' %}
@@ -198,7 +198,7 @@
           <h6 class="text-info fw-bold mb-2"><i class="bi bi-shield-fill-check me-2"></i>Response Team Activated</h6>
           <p class="text-muted small mb-1">An Incident Commander has activated a response for your report.</p>
           <div class="d-flex gap-3 mt-2 flex-wrap">
-            <span class="text-muted small"><i class="bi bi-clock me-1"></i>Started: {{ incident.response.started_at.strftime('%b %d, %Y %I:%M %p') }}</span>
+            <span class="text-muted small"><i class="bi bi-clock me-1"></i>Started: {{ incident.response.started_at|manila_time('%b %d, %Y %I:%M %p') }}</span>
             <span class="small fw-bold {% if incident.response.status == 'CLOSED' %}text-secondary{% else %}text-success{% endif %}">
               Status: {{ incident.response.status }}
             </span>

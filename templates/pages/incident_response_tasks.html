@@ -69,7 +69,7 @@
                                     <td data-label="Est. Due" class="table-hide-tablet">
                                         <span class="text-muted small">
                                             {% if task.estimated_completion %}
-                                                {{ task.estimated_completion.strftime('%b %d, %H:%M') }}
+                                                {{ task.estimated_completion|manila_time('%b %d, %H:%M') }}
                                             {% else %}N/A{% endif %}
                                         </span>
                                     </td>
@@ -87,7 +87,7 @@
                                         <div class="text-muted small mt-2">
                                             Assigned by: <strong>{{ task.assigned_by.username }}</strong>
                                             {% if task.completed_at %}
-                                            · Completed: {{ task.completed_at.strftime('%b %d, %Y %H:%M') }}
+                                            · Completed: {{ task.completed_at|manila_time('%b %d, %Y %H:%M') }}
                                             {% endif %}
                                         </div>
                                     </td>

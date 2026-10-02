@@ -2,6 +2,12 @@
    DICS AI — app.js
    ============================================================ */
 
+try {
+    if (document.documentElement.lang) {
+        localStorage.setItem('dicsLocale', document.documentElement.lang);
+    }
+} catch (_) {}
+
 /* ── SOS trigger ─────────────────────────────────────────── */
 function escapeHtml(value) {
     return String(value)
@@ -85,21 +91,25 @@ function initAccessibleConfirmations() {
         if (element.dataset.confirmBound === 'true') return;
         element.dataset.confirmBound = 'true';
 
-        element.addEventListener('click', async event => {
+        let allowConfirmedSubmit = false;
+        element.addEventListener('submit', async event => {
+            if (allowConfirmedSubmit) {
+                allowConfirmedSubmit = false;
+                return;
+            }
             if (event.defaultPrevented) return;
+
+            event.preventDefault();
             const title = element.dataset.confirmTitle || 'Confirm action';
             const message = element.dataset.confirm || 'Are you sure you want to continue?';
             const confirmed = await requestConfirmation({ title, message });
-            if (!confirmed) {
-                event.preventDefault();
-                event.stopPropagation();
-                return;
-            }
+            if (!confirmed || !element.reportValidity()) return;
 
-            const form = element.closest('form');
-            if (form) {
-                event.preventDefault();
-                form.submit();
+            allowConfirmedSubmit = true;
+            if (event.submitter && event.submitter.form === element) {
+                element.requestSubmit(event.submitter);
+            } else {
+                element.requestSubmit();
             }
         });
     });
@@ -110,7 +120,7 @@ function initRequiredFieldIndicators() {
         const hasRequiredFields = Array.from(form.querySelectorAll('input, select, textarea')).some(field => field.hasAttribute('required'));
         if (!hasRequiredFields) return;
 
-        if (!form.querySelector('.required-legend')) {
+        if (form.dataset.requiredLegend === 'true' && !form.querySelector('.required-legend')) {
             const legend = document.createElement('div');
             legend.className = 'required-legend';
             legend.innerHTML = '<span class="required-indicator" aria-hidden="true">*</span> Required field';
@@ -344,6 +354,17 @@ function initPageTransitions() {
     });
 }
 
+function updateOfflineStatus() {
+    const statusNode = document.getElementById('pageStatus');
+    if (!statusNode) return;
+
+    const isOnline = navigator.onLine;
+    statusNode.classList.toggle('d-none', isOnline);
+    statusNode.classList.toggle('alert-warning', !isOnline);
+    statusNode.classList.toggle('alert-success', false);
+    statusNode.textContent = isOnline ? '' : statusNode.dataset.offlineMessage;
+}
+
 /* ── Boot ────────────────────────────────────────────────── */
 window.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.btn').forEach(attachRipple);
@@ -361,22 +382,13 @@ window.addEventListener('DOMContentLoaded', function () {
     initPageTransitions();
 
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/service-worker.js', { scope: '/' }).catch(error => {
-            console.warn('Service worker registration failed:', error);
+        navigator.serviceWorker.register('/service-worker.js', {
+            scope: '/',
+            updateViaCache: 'none'
+        }).then(registration => registration.update()).catch(error => {
+            console.warn('Service worker registration/update failed:', error);
         });
     }
-
-    const updateOfflineStatus = () => {
-        const statusNode = document.getElementById('pageStatus');
-        if (!statusNode) return;
-        const isOnline = navigator.onLine;
-        statusNode.textContent = isOnline
-            ? 'Online. Live updates are available.'
-            : 'Offline. Showing the last cached dashboard snapshot.';
-        statusNode.classList.toggle('d-none', false);
-        statusNode.classList.toggle('alert-success', isOnline);
-        statusNode.classList.toggle('alert-warning', !isOnline);
-    };
 
     updateOfflineStatus();
     window.addEventListener('online', updateOfflineStatus);

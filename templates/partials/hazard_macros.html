@@ -56,8 +56,8 @@
    "just now". fmt controls the primary line's strftime format; the
    secondary line always uses a compact one to save space. #}
 {% macro event_time_cell(incident, fmt='%b %d, %Y %H:%M') -%}
-<span class="text-muted small">{{ incident.display_time.strftime(fmt) }}</span>
+<span class="text-muted small">{{ incident.display_time|manila_time(fmt) }}</span>
 {%- if incident.event_time and incident.created_at and (incident.created_at - incident.event_time).total_seconds()|abs > 3600 -%}
-<br><span class="text-muted" style="font-size:.68rem;opacity:.7;">Logged {{ incident.created_at.strftime('%b %d, %H:%M') }}</span>
+<br><span class="text-muted" style="font-size:.68rem;opacity:.7;">Logged {{ incident.created_at|manila_time('%b %d, %H:%M') }}</span>
 {%- endif -%}
 {%- endmacro %}

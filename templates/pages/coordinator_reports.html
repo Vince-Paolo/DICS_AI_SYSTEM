@@ -58,7 +58,7 @@
                                         {{ report.report_type }}
                                     </span>
                                 </div>
-                                <span class="text-muted" style="font-size:0.72rem;white-space:nowrap;">{{ report.created_at.strftime('%b %d, %H:%M') }}</span>
+                                <span class="text-muted" style="font-size:0.72rem;white-space:nowrap;">{{ report.created_at|manila_time('%b %d, %H:%M') }}</span>
                             </div>
                             <p class="text-muted mb-2" style="font-size:0.83rem;line-height:1.5;">{{ report.content }}</p>
                             <div class="d-flex flex-wrap gap-3" style="font-size:0.75rem;color:#94A3B8;">

@@ -36,7 +36,7 @@
                                 <tr>
                                     <td>
                                         <strong class="text-white">{{ resource.resource_type }}</strong><br>
-                                        <span class="text-muted small">Allocated {{ resource.allocated_at.strftime('%b %d, %H:%M') }}</span>
+                                        <span class="text-muted small">Allocated {{ resource.allocated_at|manila_time('%b %d, %H:%M') }}</span>
                                     </td>
                                     <td><span style="color:var(--status-success);font-weight:600;">{{ resource.agency }}</span></td>
                                     <td><strong class="text-warning fs-5">{{ resource.quantity }}</strong></td>
@@ -85,7 +85,7 @@
                                         <div class="text-white" style="white-space:pre-line;font-size:0.9rem;">{{ resource.notes or 'No operational notes attached.' }}</div>
                                         <div class="text-muted small mt-2">
                                             {% if resource.deployed_at %}
-                                                Deployment: {{ resource.deployed_at.strftime('%b %d, %Y %H:%M') }}
+                                                Deployment: {{ resource.deployed_at|manila_time('%b %d, %Y %H:%M') }}
                                             {% else %}
                                                 Resource currently on standby.
                                             {% endif %}

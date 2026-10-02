@@ -29,19 +29,15 @@
                                 <div class="status-label">Current system status</div>
                                 <div class="status-title">
                                     {% if active_alerts > 0 %}
-                                        <span>There are {{ active_alerts }} active alerts near you.</span>
-                                        <span class="status-pill status-pill-warning"><i class="bi bi-exclamation-triangle-fill"></i> Active Alert</span>
+                                        <span>{% if active_alerts == 1 %}One active alert is recorded system-wide.{% else %}{{ active_alerts }} active alerts are recorded system-wide.{% endif %}</span>
+                                        <span class="status-pill status-pill-warning"><i class="bi bi-exclamation-triangle-fill"></i> Active Alerts</span>
                                     {% else %}
-                                        <span>No active alerts in your area.</span>
-                                        <span class="status-pill status-pill-success"><i class="bi bi-check-circle-fill"></i> All Clear</span>
+                                        <span>No active alerts are currently recorded system-wide.</span>
+                                        <span class="status-pill status-pill-success"><i class="bi bi-check-circle-fill"></i> No Active Alerts</span>
                                     {% endif %}
                                 </div>
                                 <div class="status-detail">
-                                    {% if active_alerts > 0 %}
-                                        {{ _('Review safety guidance, call the emergency hotline if you are in danger, and follow official instructions.') }}
-                                    {% else %}
-                                        {{ _('Continue monitoring conditions. If you are in danger, call the emergency hotline.') }}
-                                    {% endif %}
+                                    {{ _('This is a system-wide count, not a location-specific risk assessment. Review alert locations and follow official instructions.') }}
                                 </div>
                             </div>
                         </div>
@@ -94,9 +90,9 @@
         <div class="stat-card card-gradient-warning h-100">
             <div class="d-flex align-items-center justify-content-between">
                 <div>
-                    <div class="stat-label">Current Risk</div>
-                    <div class="stat-value" style="font-size: 1.6rem;">{{ current_risk_level }}</div>
-                    <div class="stat-description">{{ current_risk_detail }}</div>
+                    <div class="stat-label">Alert Scope</div>
+                    <div class="stat-value" style="font-size: 1.6rem;">System-wide</div>
+                    <div class="stat-description">Not a location-specific risk assessment</div>
                 </div>
                 <div class="icon-badge icon-badge-warning">
                     <i class="bi bi-shield-check"></i>

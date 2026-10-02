@@ -99,7 +99,7 @@
                     <tbody>
                         {% for incident in incidents %}
                             <tr>
-                                <td data-label="Date & Time" class="text-nowrap"><small class="text-muted">{{ incident.created_at.strftime('%b %d, %Y %I:%M %p') }}</small></td>
+                                <td data-label="Date & Time" class="text-nowrap"><small class="text-muted">{{ incident.created_at|manila_time('%b %d, %Y %I:%M %p') }}</small></td>
                                 <td data-label="Hazard">
                                     <div class="d-flex align-items-center gap-2">
                                         <span class="text-info">{{ hz.hazard_icon(incident.hazard_type) }}</span>

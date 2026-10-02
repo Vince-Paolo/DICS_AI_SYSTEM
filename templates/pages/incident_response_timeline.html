@@ -37,7 +37,7 @@
                                 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-1">
                                     <h6 class="text-white fw-bold mb-0">{{ event.title }}</h6>
                                     <span class="text-muted" style="font-size:0.75rem;font-family:monospace;">
-                                        <i class="bi bi-clock me-1"></i>{{ event.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}
+                                        <i class="bi bi-clock me-1"></i>{{ event.timestamp|manila_time('%Y-%m-%d %H:%M:%S') }}
                                     </span>
                                 </div>
                                 <p class="text-muted mb-0 small" style="white-space:pre-line;line-height:1.6;">{{ event.details }}</p>

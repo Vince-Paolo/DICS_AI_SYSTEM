@@ -74,7 +74,7 @@
                 <h4 class="text-white fw-bold mb-2">Operations Terminated</h4>
                 <p class="text-muted mb-4">
                     This incident response was closed on
-                    <strong class="text-white">{{ response.closed_at.strftime('%b %d, %Y at %H:%M') if response.closed_at else 'unknown date' }}</strong>.
+                    <strong class="text-white">{{ response.closed_at|manila_time('%b %d, %Y at %H:%M') if response.closed_at else 'unknown date' }}</strong>.
                 </p>
                 <form method="POST" action="{{ url_for('commander.reopen_incident_response', response_id=response.id) }}" data-confirm="Reopen this incident response and resume active operations?" data-confirm-title="Reopen incident response">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
