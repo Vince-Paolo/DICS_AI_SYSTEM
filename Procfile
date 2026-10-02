@@ -1,1 +1,1 @@
-web: flask --app app db upgrade && gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120
+web: flask --app app db upgrade heads && gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120
