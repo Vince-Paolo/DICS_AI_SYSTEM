@@ -452,7 +452,8 @@ class ExternalHazardMonitorTestCase(unittest.TestCase):
             'lat': 13.58, 'lon': 120.63,
         }
         forecast = {
-            'message': 'Elevated probability window: 12.3% chance of a M4.5+ aftershock within 24h.'
+            'message': 'Elevated probability window: 12.3% chance of a M4.5+ aftershock within 24h.',
+            'message_fil': 'May 12.3% na posibilidad ng kasunod na lindol na M4.5+ sa loob ng 24 oras.',
         }
         with self.app.app_context():
             with patch.object(scheduler, 'get_earthquake_data', return_value=[quake]), \
@@ -463,6 +464,7 @@ class ExternalHazardMonitorTestCase(unittest.TestCase):
             forecast_mock.assert_called_once()
             incident = Incident.query.filter_by(external_event_id='usgs:us7000forecast').first()
             self.assertIn(forecast['message'], incident.message)
+            self.assertIn(forecast['message_fil'], incident.message_fil)
             self.assertEqual(incident.latitude, 13.58)
             self.assertEqual(incident.longitude, 120.63)
             recommendation = AIRecommendation.query.filter_by(incident_id=incident.id).one()

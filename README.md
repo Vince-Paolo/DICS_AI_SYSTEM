@@ -41,10 +41,10 @@ The main runtime layers are:
 
 The current AI contract is not a hardwired ML ensemble. The prediction engine
 is a provider adapter interface that reads `AI_PROVIDER` and delegates to the
-active model adapter (`anthropic`, `openai`, or `gemini`). If the provider is
-not configured or a provider call fails, the API returns a degraded payload
-with an explicit `INSUFFICIENT_DATA` risk level rather than silently treating
-that state as safe.
+active model adapter (`anthropic`, `openai`, `gemini`, or `ollama`). Ollama is
+the default provider. If the provider is not configured or a provider call
+fails, the API returns a degraded payload with an explicit `INSUFFICIENT_DATA`
+risk level rather than silently treating that state as safe.
 
 ---
 
@@ -81,7 +81,7 @@ Required runtime environment variables for the provider layer:
 
 | Variable | Required for | Notes |
 |---|---|---|
-| `AI_PROVIDER` | All AI prediction requests | Defaults to `anthropic` |
+| `AI_PROVIDER` | All AI prediction requests | Defaults to `ollama` |
 | `ANTHROPIC_API_KEY` | Anthropic adapter | Must be present when `AI_PROVIDER=anthropic` |
 | `ANTHROPIC_MODEL` | Anthropic adapter | Optional override; defaults to a current model string |
 | `OPENAI_API_KEY` | OpenAI adapter | Must be present when `AI_PROVIDER=openai` |
@@ -96,7 +96,11 @@ Ollama runs locally and does not require an API key. Install Ollama, start its
 service, pull the configured model (for example, `ollama pull llama3.2`), then
 set `AI_PROVIDER=ollama`. Local Ollama availability is required wherever the
 application server runs; a developer's local Ollama instance is not available
-to a separately hosted deployment.
+to a separately hosted deployment. For Railway or another hosted deployment,
+set `AI_PROVIDER=ollama` in the app service variables and set
+`OLLAMA_BASE_URL` to an Ollama server reachable from that service; the default
+`localhost` URL only works when Ollama runs alongside the app in the same
+network namespace.
 
 The application also supports a local environment file (`.env`) at the project
 root. The AI module loads values from that file before it looks at the process

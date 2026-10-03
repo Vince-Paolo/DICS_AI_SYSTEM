@@ -151,6 +151,7 @@ class Incident(db.Model):
     score = db.Column(db.Float, nullable=True)
     level = db.Column(db.String(20), nullable=True)
     message = db.Column(db.String(255), nullable=False)
+    message_fil = db.Column(db.Text, nullable=True)
     alert = db.Column(db.Boolean, default=False)
     status = db.Column(db.String(20), default='NEW')
     verified_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)

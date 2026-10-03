@@ -631,6 +631,8 @@ def migrate_user_table():
                 cursor.execute("ALTER TABLE incident ADD COLUMN external_event_id VARCHAR(120)")
             if 'event_time' not in columns:
                 cursor.execute("ALTER TABLE incident ADD COLUMN event_time DATETIME")
+            if 'message_fil' not in columns:
+                cursor.execute("ALTER TABLE incident ADD COLUMN message_fil TEXT")
             conn.commit()
 
 
@@ -1292,6 +1294,32 @@ def send_password_reset_email(user, token):
         if app.config['RESEND_SUPPRESS_SEND']:
             app.logger.info('Password reset email suppressed for %s', user.email)
             return True
+
+        if app.config['OTP_EMAIL_BACKEND'] == 'smtp':
+            username = app.config['SMTP_USERNAME'].strip()
+            password = ''.join(app.config['SMTP_PASSWORD'].split())
+            from_email = (app.config['SMTP_FROM_EMAIL'] or username).strip()
+            if not username or not password or not from_email:
+                app.logger.error('Gmail SMTP password reset delivery is missing username, App Password, or sender address')
+                return False
+
+            message = EmailMessage()
+            message['Subject'] = subject
+            message['From'] = formataddr((app.config['SMTP_FROM_NAME'], from_email))
+            message['To'] = user.email
+            message.set_content(body)
+            with smtplib.SMTP(app.config['SMTP_HOST'], app.config['SMTP_PORT'], timeout=15) as smtp:
+                smtp.ehlo()
+                smtp.starttls(context=ssl.create_default_context())
+                smtp.ehlo()
+                smtp.login(username, password)
+                smtp.send_message(message)
+            app.logger.info('Password reset email sent to %s via SMTP', user.email)
+            return True
+
+        if app.config['OTP_EMAIL_BACKEND'] != 'resend':
+            app.logger.error('Unsupported password reset email backend: %s', app.config['OTP_EMAIL_BACKEND'])
+            return False
 
         response = requests.post(
             app.config['RESEND_API_URL'],

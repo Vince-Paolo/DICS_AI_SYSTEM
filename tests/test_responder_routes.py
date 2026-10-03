@@ -194,7 +194,11 @@ class ResponderRoutesTestCase(unittest.TestCase):
             self.assertIsNotNone(user.reset_token)
 
     def test_forgot_password_sends_reset_email_with_link(self):
-        self.app.config.update(TESTING=False, RESEND_API_KEY='test-resend-key')
+        self.app.config.update(
+            TESTING=False,
+            OTP_EMAIL_BACKEND='resend',
+            RESEND_API_KEY='test-resend-key',
+        )
 
         with self.app.app_context():
             with patch('app.requests.post') as resend_post:
@@ -213,6 +217,42 @@ class ResponderRoutesTestCase(unittest.TestCase):
             user = User.query.filter_by(email='responder@example.com').first()
             self.assertIsNotNone(user.reset_token)
             self.assertIn(f'/reset-password/{user.reset_token}', request_kwargs['json']['text'])
+
+    def test_forgot_password_sends_reset_email_with_configured_gmail_smtp(self):
+        self.app.config.update(TESTING=False)
+
+        with patch.dict(self.app.config, {
+            'OTP_EMAIL_BACKEND': 'smtp',
+            'RESEND_SUPPRESS_SEND': False,
+            'SMTP_HOST': 'smtp.gmail.com',
+            'SMTP_PORT': 587,
+            'SMTP_USERNAME': 'sender@gmail.com',
+            'SMTP_PASSWORD': 'abcd efgh ijkl mnop',
+            'SMTP_FROM_EMAIL': 'sender@gmail.com',
+            'SMTP_FROM_NAME': 'DICS AI',
+        }), patch('app.smtplib.SMTP') as smtp_class:
+            smtp = smtp_class.return_value.__enter__.return_value
+            with self.app.app_context():
+                response = self.client.post(
+                    '/forgot-password',
+                    data={'email': 'responder@example.com'},
+                    follow_redirects=True,
+                )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'If an account exists', response.data)
+        smtp_class.assert_called_once_with('smtp.gmail.com', 587, timeout=15)
+        smtp.starttls.assert_called_once()
+        smtp.login.assert_called_once_with('sender@gmail.com', 'abcdefghijklmnop')
+        message = smtp.send_message.call_args.args[0]
+        self.assertEqual(message['To'], 'responder@example.com')
+        self.assertEqual(message['From'], 'DICS AI <sender@gmail.com>')
+        self.assertIn('Reset your password', message['Subject'])
+
+        with self.app.app_context():
+            user = User.query.filter_by(email='responder@example.com').first()
+            self.assertIsNotNone(user.reset_token)
+            self.assertIn(f'/reset-password/{user.reset_token}', message.get_content())
 
     def test_registration_verification_email_uses_configured_resend_sender(self):
         user = SimpleNamespace(email='new-citizen@example.com')

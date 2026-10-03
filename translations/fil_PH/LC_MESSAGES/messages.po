@@ -1692,6 +1692,60 @@ msgstr "Buong pangalan"
 msgid "Enter full name"
 msgstr "Ilagay ang buong pangalan"
 
+msgid "Filipino translation"
+msgstr "Salin sa Filipino"
+
+msgid "Original text; Filipino translation unavailable."
+msgstr "Orihinal na teksto; walang makuhang salin sa Filipino."
+
+msgid "SEVERE"
+msgstr "MALUBHA"
+
+msgid "HIGH"
+msgstr "MATAAS"
+
+msgid "MOD"
+msgstr "KATAMTAMAN"
+
+msgid "UNKNOWN"
+msgstr "HINDI TIYAK"
+
+msgid "LOW"
+msgstr "MABABA"
+
+msgid "ALERT ACTIVE"
+msgstr "AKTIBO ANG ALERTO"
+
+msgid "VERIFIED"
+msgstr "NA-VERIFY"
+
+msgid "False-alarm reason"
+msgstr "Dahilan kung maling alarma"
+
+msgid "Reason for rejecting incident"
+msgstr "Dahilan ng pagtanggi sa insidente"
+
+msgid "Reject false alarm"
+msgstr "Tanggihan bilang maling alarma"
+
+msgid "Deactivate Alert"
+msgstr "I-deactivate ang Alerto"
+
+msgid "Activate Alert"
+msgstr "I-activate ang Alerto"
+
+msgid "Assign Commander:"
+msgstr "Magtalaga ng Incident Commander:"
+
+msgid "Assign & Activate"
+msgstr "Italaga at I-activate"
+
+msgid "Commander:"
+msgstr "Incident Commander:"
+
+msgid "Source:"
+msgstr "Pinagmulan:"
+
 #: templates/pages/register.html:22
 msgid "Email"
 msgstr "Email"
@@ -1981,4 +2035,3 @@ msgstr "Mag-logout"
 
 #~ msgid "Welcome back, !"
 #~ msgstr ""
-

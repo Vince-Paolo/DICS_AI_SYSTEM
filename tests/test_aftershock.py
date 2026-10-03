@@ -59,6 +59,8 @@ class AftershockTestCase(unittest.TestCase):
         )
         self.assertIn('probability', forecast)
         self.assertIn('message', forecast)
+        self.assertIn('message_fil', forecast)
+        self.assertIn('posibilidad', forecast['message_fil'])
 
     def test_gr_fit_filters_incomplete_magnitudes(self):
         result = fit_gr_params([1.5, 2.5, 3.5], mc=2.0)

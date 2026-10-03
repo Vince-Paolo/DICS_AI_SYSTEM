@@ -449,6 +449,23 @@ class ApiEndpointFunctionalTestCase(unittest.TestCase):
         self.assertIn('resource_request_id', columns)
         self.assertIn('updated_at', columns)
 
+    def test_legacy_sqlite_incident_table_adds_filipino_message_column(self):
+        from app import migrate_user_table
+
+        conn = sqlite3.connect(':memory:')
+        try:
+            conn.execute('CREATE TABLE incident (id INTEGER PRIMARY KEY)')
+            conn.commit()
+            with patch('app._resolve_sqlite_db_path', return_value=':memory:'), \
+                 patch('app.sqlite3.connect', return_value=conn):
+                migrate_user_table()
+
+            columns = [row[1] for row in conn.execute('PRAGMA table_info(incident)')]
+        finally:
+            conn.close()
+
+        self.assertIn('message_fil', columns)
+
     def test_map_operational_layer_endpoints_return_geolocated_centers_and_resources(self):
         self._login('api_coordinator', 'agency_coordinator')
         with self.app.app_context():
