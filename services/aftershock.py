@@ -422,6 +422,7 @@ def forecast_for_event(magnitude, event_time, target_magnitude=None, window_hour
         window_hours=window_hours,
     )
     forecast['message'] = build_forecast_message(forecast)
+    forecast['message_fil'] = build_forecast_message_fil(forecast)
     return forecast
 
 
@@ -527,4 +528,34 @@ def build_forecast_message(forecast):
         f"M{forecast['target_magnitude']}+ aftershock{radius_phrase} within {forecast['window_hours']}h "
         f"of the M{forecast['mainshock_magnitude']} mainshock{caveat}. "
         f"This is a probabilistic estimate, not a deterministic prediction."
+    )
+
+
+def build_forecast_message_fil(forecast):
+    """Return the same aftershock forecast in Filipino without changing its certainty."""
+    if forecast['is_default_params']:
+        caveat = ' (gumagamit ng pangkalahatang default na parameter na hindi pa naiaangkop sa rehiyong ito)'
+    elif forecast.get('is_proxy'):
+        caveat = (
+            ' (gumagamit ng parameter mula sa ibang fault na kahalintulad ang tektonikong katangian; '
+            'hindi ito direktang naiaangkop sa fault na ito)'
+        )
+    else:
+        caveat = ''
+
+    if forecast.get('radius_km') is not None and forecast.get('is_radius_modeled'):
+        radius_phrase = f" sa loob ng {forecast['radius_km']:.0f} km mula sa sentro ng lindol"
+    elif forecast.get('radius_km') is not None:
+        radius_phrase = (
+            f" (hindi namodelo ang hiniling na radius na {forecast['radius_km']:.0f} km para sa rehiyong ito; "
+            "tinatayang saklaw ang buong sona)"
+        )
+    else:
+        radius_phrase = ''
+
+    return (
+        f"Mas mataas ang posibilidad: {forecast['probability_pct']}% na posibilidad ng "
+        f"kasunod na lindol na may lakas na M{forecast['target_magnitude']}+{radius_phrase} "
+        f"sa loob ng {forecast['window_hours']} oras mula sa pangunahing lindol na M{forecast['mainshock_magnitude']}{caveat}. "
+        "Tantiyang probabilistiko ito, hindi tiyak na prediksyon."
     )
