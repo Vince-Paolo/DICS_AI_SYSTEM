@@ -1,0 +1,46 @@
+name: Aftershock module tests
+
+on:
+  push:
+    paths:
+      - 'services/aftershock.py'
+      - 'services/region_params.json'
+      - 'scripts/calibrate_aftershock_regions.py'
+      - 'tests/test_aftershock.py'
+      - 'scheduler.py'
+  pull_request:
+    paths:
+      - 'services/aftershock.py'
+      - 'services/region_params.json'
+      - 'scripts/calibrate_aftershock_regions.py'
+      - 'tests/test_aftershock.py'
+      - 'scheduler.py'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install numpy scipy
+
+      - name: Run aftershock test suite
+        run: python -m unittest discover -s tests -p "test_aftershock.py" -q
+
+      # A change to services/aftershock.py or region_params.json is exactly
+      # the kind of edit that could silently break the REGION_PARAMS merge
+      # logic (see services/aftershock.py's _load_calibrated_regions) --
+      # this second check specifically verifies the module still imports
+      # cleanly and every region loaded (whether from the JSON file or the
+      # hardcoded fallback) passes the same structural checks the test
+      # suite already runs, so a malformed region_params.json fails CI
+      # instead of failing silently at runtime in production.
+      - name: Verify REGION_PARAMS loads without warnings
+        run: |
+          python -W error::UserWarning -c "from services.aftershock import REGION_PARAMS; print(f'{len(REGION_PARAMS)} regions loaded OK')"

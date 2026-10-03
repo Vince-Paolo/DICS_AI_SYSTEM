@@ -1,0 +1,8 @@
+# Exclude runtime and sensitive local data from git archive / exported zip packages
+instance/ export-ignore
+*.db export-ignore
+*.log export-ignore
+.env export-ignore
+.venv/ export-ignore
+__pycache__/ export-ignore
+*.pyc export-ignore

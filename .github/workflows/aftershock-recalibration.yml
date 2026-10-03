@@ -1,0 +1,66 @@
+name: Aftershock region recalibration (monthly)
+
+# Runs the calibration pipeline against the tracked PHIVOLCS catalog and
+# opens a PR if the output changed. Deliberately does NOT auto-merge --
+# a changed region_params.json changes what the live system tells
+# stakeholders about earthquake risk, so a human should review the diff
+# (new region added, a region's numbers shifted, a region dropped because
+# it stopped passing the reliability check) before it goes live.
+#
+# NOTE: this workflow assumes the PHIVOLCS catalog CSV is committed to the
+# repo (or fetched by an earlier step you add) at data/phivolcs_catalog.csv.
+# It is not wired up to auto-fetch a fresh catalog from PHIVOLCS -- that
+# would need a scraper/API integration this project doesn't have yet (see
+# Phase 2 known-limitations list). Until then, someone still needs to
+# manually refresh data/phivolcs_catalog.csv periodically for this
+# scheduled run to have new data to calibrate against.
+
+on:
+  schedule:
+    - cron: '0 3 1 * *'  # 03:00 UTC on the 1st of each month
+  workflow_dispatch: {}  # allow manual trigger from the Actions tab
+
+jobs:
+  recalibrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install numpy scipy
+
+      - name: Check catalog file exists
+        id: check_catalog
+        run: |
+          if [ -f "data/phivolcs_catalog.csv" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::data/phivolcs_catalog.csv not found -- skipping recalibration. See workflow notes."
+          fi
+
+      - name: Run recalibration
+        if: steps.check_catalog.outputs.exists == 'true'
+        run: python scripts/calibrate_aftershock_regions.py data/phivolcs_catalog.csv
+
+      - name: Run test suite against the new calibration
+        if: steps.check_catalog.outputs.exists == 'true'
+        run: python -m unittest discover -s tests -p "test_aftershock.py" -q
+
+      - name: Open PR if region_params.json changed
+        if: steps.check_catalog.outputs.exists == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: 'chore: monthly aftershock region recalibration'
+          title: 'Monthly aftershock region recalibration'
+          body: |
+            Automated recalibration run against `data/phivolcs_catalog.csv`.
+            Review the diff carefully before merging -- this changes what the
+            live system reports as calibrated vs. default/proxy risk estimates.
+          branch: auto/aftershock-recalibration
+          add-paths: services/region_params.json

@@ -1,0 +1,9 @@
+instance/
+*.db
+*.log
+*.pyc
+.pytest_cache/
+.vscode/
+.venv/
+.env
+!.env.example
