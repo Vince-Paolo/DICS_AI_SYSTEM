@@ -1,0 +1,79 @@
+{% extends 'pages/base.html' %}
+
+{% block title %}{{ _('Login') }} | DICS AI{% endblock %}
+
+{% block content %}
+<h1 class="visually-hidden">{{ _('Login') }}</h1>
+<div class="auth-shell">
+    <div class="auth-card">
+        {% include 'partials/auth_header.html' %}
+
+        <div class="auth-body">
+            {% if error %}
+                <div class="alert alert-danger rounded-3">{{ error }}</div>
+            {% endif %}
+            {% if verification_email %}
+                <p class="small text-muted mt-n2 mb-3">
+                    <a href="{{ url_for('verify_email') }}">{{ _('Enter your verification code or resend it.') }}</a>
+                </p>
+            {% endif %}
+
+            <form method="post" action="/">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <label class="auth-label" for="username">{{ _('Username') }}</label>
+                <input type="text" class="form-control" id="username" name="username" placeholder="{{ _('Enter username') }}" required>
+
+                <label class="auth-label" for="password">{{ _('Password') }}</label>
+                <div class="auth-password-field">
+                    <input type="password" class="form-control" id="password" name="password" placeholder="{{ _('Enter password') }}" autocomplete="current-password" required>
+                    <button type="button" class="auth-password-toggle" id="passwordVisibilityToggle"
+                            aria-controls="password" aria-pressed="false"
+                            aria-label="{{ _('Show password') }}" title="{{ _('Show password') }}"
+                            data-show-label="{{ _('Show password') }}" data-hide-label="{{ _('Hide password') }}">
+                        <i class="bi bi-eye" aria-hidden="true"></i>
+                    </button>
+                </div>
+
+                <button class="btn btn-auth w-100 mt-1" type="submit">{{ _('Sign in') }}</button>
+            </form>
+
+            <div class="quality-badge quality-live mt-3 ms-0">
+                <i class="bi bi-cpu me-1" aria-hidden="true"></i>AI provider: {{ active_ai_provider_label }}
+            </div>
+
+            <a class="btn btn-outline-danger w-100 mt-3 fw-bold" href="{{ url_for('citizen.emergency_assistance') }}">
+                <i class="bi bi-telephone-fill me-2" aria-hidden="true"></i>{{ _('Emergency? Call for help') }}
+            </a>
+
+            <div class="auth-footer">
+                <span>v2.4 &middot; Region IV-A</span>
+                <a href="{{ url_for('forgot_password') }}">{{ _('Forgot password?') }}</a>
+                <a href="/register">{{ _('Register new account') }}</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const passwordInput = document.getElementById('password');
+    const visibilityButton = document.getElementById('passwordVisibilityToggle');
+    if (!passwordInput || !visibilityButton) return;
+
+    visibilityButton.addEventListener('click', function () {
+        const isVisible = passwordInput.type === 'text';
+        passwordInput.type = isVisible ? 'password' : 'text';
+        const label = isVisible ? visibilityButton.dataset.showLabel : visibilityButton.dataset.hideLabel;
+        visibilityButton.setAttribute('aria-label', label);
+        visibilityButton.title = label;
+        visibilityButton.setAttribute('aria-pressed', String(!isVisible));
+        const icon = visibilityButton.querySelector('i');
+        icon.classList.toggle('bi-eye', isVisible);
+        icon.classList.toggle('bi-eye-slash', !isVisible);
+    });
+});
+</script>
+{% endblock %}
