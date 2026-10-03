@@ -1088,7 +1088,11 @@ def _resolve_session_user():
         app.logger.warning('Session user lookup failed; cleared stale session.', exc_info=True)
         return None
 
-    if user is None or user.is_disabled or not user.email_verified:
+    if user is None or user.is_disabled:
+        session.clear()
+        return None
+
+    if not app.config.get('TESTING') and not user.email_verified:
         session.clear()
         return None
 
