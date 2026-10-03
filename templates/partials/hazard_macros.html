@@ -21,15 +21,27 @@
 {% macro risk_badge(level) -%}
     {%- set l = (level or '')|lower -%}
     {%- if l == 'severe' -%}
-    <span class="badge badge-severe"><i class="bi bi-exclamation-octagon-fill me-1"></i>SEVERE</span>
+    <span class="badge badge-severe"><i class="bi bi-exclamation-octagon-fill me-1"></i>{{ _('SEVERE') }}</span>
     {%- elif l == 'high' -%}
-    <span class="badge badge-high"><i class="bi bi-record-fill me-1"></i>HIGH</span>
+    <span class="badge badge-high"><i class="bi bi-record-fill me-1"></i>{{ _('HIGH') }}</span>
     {%- elif l == 'moderate' or l == 'mod' -%}
-    <span class="badge badge-mod"><i class="bi bi-record-fill me-1"></i>MOD</span>
+    <span class="badge badge-mod"><i class="bi bi-record-fill me-1"></i>{{ _('MOD') }}</span>
     {%- elif l in ['unknown', 'insufficient_data', 'insufficient-data', 'insufficient data'] -%}
-    <span class="badge badge-unknown"><i class="bi bi-question-circle-fill me-1"></i>UNKNOWN</span>
+    <span class="badge badge-unknown"><i class="bi bi-question-circle-fill me-1"></i>{{ _('UNKNOWN') }}</span>
     {%- else -%}
-    <span class="badge badge-low"><i class="bi bi-record-fill me-1"></i>LOW</span>
+    <span class="badge badge-low"><i class="bi bi-record-fill me-1"></i>{{ _('LOW') }}</span>
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro incident_message(message, message_fil, locale) -%}
+    {%- if locale == 'fil_PH' and message_fil -%}
+    <span class="badge bg-info-subtle text-info mb-1">{{ _('Filipino translation') }}</span>
+    <div>{{ message_fil }}</div>
+    {%- elif locale == 'fil_PH' -%}
+    <span class="badge bg-secondary-subtle text-secondary mb-1">{{ _('Original text; Filipino translation unavailable.') }}</span>
+    <div>{{ message }}</div>
+    {%- else -%}
+    <div>{{ message }}</div>
     {%- endif -%}
 {%- endmacro %}
 

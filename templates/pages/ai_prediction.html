@@ -1,4 +1,5 @@
 {% extends 'pages/base.html' %}
+{% import 'partials/hazard_macros.html' as hz %}
 
 {% block title %}Predictive Compute Matrix | DICS AI{% endblock %}
 
@@ -161,7 +162,7 @@
                 
                 <div class="p-3 bg-dark rounded text-white border border-secondary mb-3 small">
                     <span class="text-muted d-block mb-1">// COGNITIVE REPORT DIAGNOSTIC:</span>
-                    {{ prediction.message }}
+                    {{ hz.incident_message(prediction.message, prediction.message_fil, current_locale) }}
                 </div>
                 
                 <div class="p-2 bg-dark rounded d-inline-block border border-secondary text-muted small">

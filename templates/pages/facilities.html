@@ -45,7 +45,7 @@
 
                 {% if facilities %}
                 <div class="table-responsive">
-                    <table class="table table-enhanced table-mobile-stack align-middle mb-0">
+                    <table class="table table-enhanced table-mobile-stack facility-directory-table align-middle mb-0">
                         <thead>
                             <tr>
                                 <th>Name</th>
@@ -63,24 +63,26 @@
                                 <td>
                                     {% if f.evacuation_center %}
                                         {% set ec = f.evacuation_center %}
-                                        <div class="d-flex align-items-center gap-2">
+                                        <div class="d-flex align-items-center gap-2 facility-capacity-summary">
                                             {% if ec.status == 'OPEN' %}
-                                                <span class="badge-status-active" style="font-size:0.68rem;">OPEN</span>
+                                                <span class="badge-status-active facility-status-badge">OPEN</span>
                                             {% elif ec.status == 'FULL' %}
-                                                <span class="badge-status-pending" style="font-size:0.68rem;">FULL</span>
+                                                <span class="badge-status-pending facility-status-badge">FULL</span>
                                             {% else %}
-                                                <span style="padding:0.25em 0.55em;background:rgba(107,114,128,0.15);color:#9CA3AF;border:1px solid rgba(107,114,128,0.3);border-radius:5px;font-size:0.68rem;font-weight:700;">CLOSED</span>
+                                                <span class="facility-status-badge facility-status-closed">CLOSED</span>
                                             {% endif %}
                                             <span class="text-info small">{{ ec.occupancy or 0 }}/{{ ec.capacity or '—' }}</span>
                                             {% if can_manage %}
-                                            <form method="POST" action="{{ url_for('facilities.update_evacuation_center', center_id=ec.id) }}" class="d-flex align-items-center gap-1">
+                                            <form method="POST" action="{{ url_for('facilities.update_evacuation_center', center_id=ec.id) }}" class="d-flex align-items-center gap-2 facility-capacity-actions">
                                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                <select name="status" class="form-select form-select-sm" style="width:90px;font-size:0.72rem;">
+                                                <select name="status" class="form-select form-select-sm facility-status-select" aria-label="Update status for {{ f.name }}">
                                                     <option value="OPEN" {% if ec.status=='OPEN' %}selected{% endif %}>Open</option>
                                                     <option value="FULL" {% if ec.status=='FULL' %}selected{% endif %}>Full</option>
                                                     <option value="CLOSED" {% if ec.status=='CLOSED' %}selected{% endif %}>Closed</option>
                                                 </select>
-                                                <button type="submit" class="btn btn-sm btn-outline-info" style="font-size:0.68rem;padding:0.2em 0.5em;">Save</button>
+                                                <button type="submit" class="btn btn-sm btn-outline-info facility-status-save">
+                                                    <i class="bi bi-check2" aria-hidden="true"></i> Save
+                                                </button>
                                             </form>
                                             {% endif %}
                                         </div>
