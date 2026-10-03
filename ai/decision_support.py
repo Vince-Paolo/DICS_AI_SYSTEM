@@ -9,13 +9,13 @@ use an AI API rather than developing and training a proprietary model.
 
 Design notes
 ------------
-The provider is a config switch, not a hardcoded choice. Three adapters are
-implemented (Anthropic, OpenAI, Google Gemini) behind one interface, chosen
-at runtime via the AI_PROVIDER environment variable. This exists so the
-provider decision can be made empirically -- run the same inputs through
-each adapter, compare quality/latency/cost, then lock in the winner for the
-Chapter 3 write-up -- without touching call sites in app.py, scheduler.py,
-or blueprints/ai.py.
+The provider is a config switch, not a hardcoded choice. Adapters for Anthropic,
+OpenAI, Google Gemini, and Ollama are implemented behind one interface, chosen
+at runtime via the AI_PROVIDER environment variable. Ollama is the default.
+This exists so the provider decision can be made empirically -- run the same
+inputs through each adapter, compare quality/latency/cost, then lock in the
+winner for the Chapter 3 write-up -- without touching call sites in app.py,
+scheduler.py, or blueprints/ai.py.
 
 Model ID strings for all three providers change often (new releases,
 deprecations). The defaults below were current as of August 2026; verify
@@ -89,9 +89,9 @@ PROVIDER_DEFAULTS = {
     },
 }
 
-AI_PROVIDER = os.getenv('AI_PROVIDER', 'gemini').strip().lower() or 'gemini'
+AI_PROVIDER = os.getenv('AI_PROVIDER', 'ollama').strip().lower() or 'ollama'
 if AI_PROVIDER not in PROVIDER_DEFAULTS:
-    AI_PROVIDER = 'gemini'
+    AI_PROVIDER = 'ollama'
 
 REQUEST_TIMEOUT_SECONDS = 15
 VALID_LEVELS = {'Low', 'Moderate', 'High', 'Severe', 'Unknown', 'Insufficient Data', 'INSUFFICIENT_DATA'}
