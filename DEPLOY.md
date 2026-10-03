@@ -4,6 +4,13 @@ This project runs on Railway with Railway Postgres. Configure the service with
 the Railway Postgres `DATABASE_URL`, a strong `SECRET_KEY`, and the S3 storage
 variables documented below for durable uploaded photos.
 
+AI predictions default to Ollama. In the Railway app service's Variables, set
+`AI_PROVIDER=ollama` and set `OLLAMA_BASE_URL` to the Ollama server reachable
+from that service. Do not use `localhost` unless Ollama runs in the same
+network namespace as the application. A previously configured
+`AI_PROVIDER=gemini` variable overrides the code default and must be changed
+to `ollama`; redeploy the app after updating it.
+
 ## Railway Postgres backup and restore verification
 
 Two backup mechanisms exist for this project. Only the first has actually

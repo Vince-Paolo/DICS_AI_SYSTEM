@@ -1,8 +1,17 @@
+import importlib
 import json
 import os
 from unittest.mock import patch
 
 from ai import decision_support
+
+
+def test_provider_defaults_to_ollama(monkeypatch):
+    monkeypatch.setattr(decision_support.os, 'getenv', lambda key, default=None: default)
+
+    importlib.reload(decision_support)
+
+    assert decision_support.AI_PROVIDER == 'ollama'
 
 
 def test_ollama_adapter_sends_json_chat_request():

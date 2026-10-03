@@ -459,7 +459,7 @@ def inject_locale():
 
 @app.context_processor
 def inject_ai_provider():
-    provider_name = (AI_PROVIDER or 'gemini').strip().lower() or 'gemini'
+    provider_name = (AI_PROVIDER or 'ollama').strip().lower() or 'ollama'
     provider_label = {
         'anthropic': 'Anthropic',
         'openai': 'OpenAI',
