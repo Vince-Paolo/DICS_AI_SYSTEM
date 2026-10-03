@@ -7,7 +7,7 @@ from models import db, User, Incident, AIRecommendation, AuditEvent
 from services.realtime_data import get_earthquake_data
 from services.realtime_data import CALABARZON_CITY_COORDINATES
 from services.aftershock import forecast_for_event
-from ai.decision_support import predict_hazard, AI_PROVIDER
+from ai.decision_support import predict_hazard
 from services import permissions as permission_service
 
 ai_bp = Blueprint('ai', __name__)
@@ -75,6 +75,7 @@ def ai_prediction():
                 score=prediction.get('score'),
                 level=prediction.get('level'),
                 message=prediction.get('message', 'Manual incident report created.'),
+                message_fil=prediction.get('message_fil'),
                 alert=prediction.get('alert', False),
                 status='NEW',
                 reported_by='ai_prediction',
@@ -123,14 +124,10 @@ def ai_prediction():
     if earthquake_data and len(earthquake_data) > 0:
         latest_earthquake_magnitude = earthquake_data[0].get('magnitude', 0)
 
-    # Generate the provider label for display
-    active_ai_provider_label = AI_PROVIDER.upper()
-
     return render_template('pages/ai_prediction.html',
                          prediction=prediction,
                          total_active_alerts=total_active_alerts,
                          total_incidents=total_incidents,
                          latest_risk_score=latest_risk_score,
                          latest_earthquake_magnitude=latest_earthquake_magnitude,
-                         prediction_locations=CALABARZON_CITY_COORDINATES,
-                         active_ai_provider_label=active_ai_provider_label)
+                         prediction_locations=CALABARZON_CITY_COORDINATES)

@@ -292,6 +292,7 @@ def citizen_report():
                 score=prediction.get('score'),
                 level=prediction.get('level', 'INSUFFICIENT_DATA'),
                 message=prediction.get('message') or description,
+                message_fil=prediction.get('message_fil') if prediction.get('message') else None,
                 alert=bool(prediction.get('alert', False)),
                 status='NEW',
                 reported_by='citizen',
