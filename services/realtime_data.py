@@ -560,14 +560,7 @@ def get_thermal_hotspots():
 
 
 def get_rainfall_watch():
-    """Return a compact rainfall-watch layer for the CALABARZON region.
-
-    This is intentionally deterministic and lightweight: it provides a set of
-    rainfall intensity points that can be rendered on the hazard map even when a
-    live public API key is unavailable. It is meant to support situational
-    awareness and emergency response planning rather than replace official radar
-    feeds.
-    """
+    """Fetch current and recent rainfall for CALABARZON from Open-Meteo."""
     cache_key = 'rainfall_watch'
     cached = _cache.get(cache_key)
     if cached and cached['data'] is not None and cached['timestamp'] is not None:
@@ -580,14 +573,43 @@ def get_rainfall_watch():
             _cache[cache_key] = shared
             return shared['data']
 
-    rainfall_points = [
-        {'name': 'Lipa', 'lat': 13.9411, 'lon': 121.1631, 'rainfall_mm': 92, 'status': 'Heavy rain', 'source': 'Regional forecast blend'},
-        {'name': 'Batangas City', 'lat': 13.7565, 'lon': 121.0583, 'rainfall_mm': 64, 'status': 'Moderate rain', 'source': 'Regional forecast blend'},
-        {'name': 'Calamba', 'lat': 14.2117, 'lon': 121.1653, 'rainfall_mm': 118, 'status': 'Intense rain', 'source': 'Regional forecast blend'},
-        {'name': 'Lucena', 'lat': 13.9373, 'lon': 121.6172, 'rainfall_mm': 78, 'status': 'Heavy rain', 'source': 'Regional forecast blend'},
-        {'name': 'Tagaytay', 'lat': 14.1153, 'lon': 120.9621, 'rainfall_mm': 44, 'status': 'Light to moderate rain', 'source': 'Regional forecast blend'},
-        {'name': 'San Pablo', 'lat': 14.0683, 'lon': 121.3256, 'rainfall_mm': 86, 'status': 'Heavy rain', 'source': 'Regional forecast blend'},
-    ]
+    names = list(CALABARZON_CITY_COORDINATES)
+    latitudes = ','.join(str(CALABARZON_CITY_COORDINATES[name][0]) for name in names)
+    longitudes = ','.join(str(CALABARZON_CITY_COORDINATES[name][1]) for name in names)
+    params = {
+        'latitude': latitudes,
+        'longitude': longitudes,
+        'current': 'precipitation',
+        'hourly': 'precipitation',
+        'past_hours': 24,
+        'forecast_hours': 0,
+        'timezone': 'Asia/Manila',
+    }
+    url = (
+        'https://api.open-meteo.com/v1/forecast?'
+        f"{urllib.parse.urlencode(params, safe=',')}"
+    )
+    data = _fetch_json(url)
+    if not data:
+        return []
+
+    results = data if isinstance(data, list) else [data]
+    rainfall_points = []
+    for name, entry in zip(names, results):
+        current = (entry.get('current') or {}).get('precipitation') or 0
+        hourly = (entry.get('hourly') or {}).get('precipitation') or []
+        rainfall_mm = round(float(current), 1)
+        rainfall_24h_mm = round(sum(value for value in hourly if value is not None), 1)
+        lat, lon = CALABARZON_CITY_COORDINATES[name]
+        rainfall_points.append({
+            'name': name,
+            'lat': lat,
+            'lon': lon,
+            'rainfall_mm': rainfall_mm,
+            'rainfall_24h_mm': rainfall_24h_mm,
+            'status': _rainfall_status(rainfall_mm),
+            'source': 'Open-Meteo',
+        })
 
     now = utcnow()
     _cache[cache_key] = {'data': rainfall_points, 'timestamp': now}
@@ -595,13 +617,43 @@ def get_rainfall_watch():
     return rainfall_points
 
 
-def get_typhoon_tracks():
-    """Return a lightweight typhoon-track layer for the hazard map.
+def _rainfall_status(mm_per_hour):
+    if mm_per_hour >= 30:
+        return 'Torrential rain (Red)'
+    if mm_per_hour >= 15:
+        return 'Intense rain (Orange)'
+    if mm_per_hour >= 7.5:
+        return 'Heavy rain (Yellow)'
+    if mm_per_hour >= 2.5:
+        return 'Moderate rain'
+    if mm_per_hour > 0:
+        return 'Light rain'
+    return 'No rain'
 
-    A live storm feed can be plugged in here later; the default output is a
-    compact, deterministic set of advisory tracks within CALABARZON waters so the
-    map always has an active storm overlay during drills and demos.
-    """
+
+PAR_BBOX = {'minlat': 5.0, 'maxlat': 25.0, 'minlon': 115.0, 'maxlon': 135.0}
+
+
+def _extract_typhoon_track(geo):
+    """Extract GDACS tropical-cyclone track coordinates as [lat, lon] pairs."""
+    track = []
+    for feature in (geo or {}).get('features', []) or []:
+        geometry = feature.get('geometry') or {}
+        if geometry.get('type') == 'LineString':
+            track.extend(
+                [[coordinates[1], coordinates[0]]
+                 for coordinates in geometry.get('coordinates', [])
+                 if len(coordinates) >= 2]
+            )
+        elif geometry.get('type') == 'Point':
+            coordinates = geometry.get('coordinates') or []
+            if len(coordinates) >= 2:
+                track.append([coordinates[1], coordinates[0]])
+    return track
+
+
+def get_typhoon_tracks():
+    """Fetch active tropical cyclones from GDACS for the Philippine region."""
     cache_key = 'typhoon_tracks'
     cached = _cache.get(cache_key)
     if cached and cached['data'] is not None and cached['timestamp'] is not None:
@@ -614,28 +666,53 @@ def get_typhoon_tracks():
             _cache[cache_key] = shared
             return shared['data']
 
-    typhoon_tracks = [{
-        'name': 'Typhoon Dante',
-        'category': 'Signal No. 2',
-        'pressure_hpa': 980,
-        'wind_kph': 110,
-        'center_lat': 14.05,
-        'center_lon': 121.45,
-        'track': [
-            [13.25, 120.70],
-            [13.60, 120.92],
-            [13.90, 121.18],
-            [14.05, 121.45],
-            [14.30, 121.68],
-            [14.65, 121.90],
-        ],
-        'source': 'PAGASA advisory model',
-    }]
+    data = _fetch_json('https://www.gdacs.org/gdacsapi/api/events/geteventlist/EVENTS4APP')
+    if not data:
+        return []
+
+    storms = []
+    for feature in data.get('features', []) or []:
+        properties = feature.get('properties', {}) or {}
+        if (properties.get('eventtype') or '').strip().upper() != 'TC':
+            continue
+        if str(properties.get('iscurrent', '')).lower() != 'true':
+            continue
+
+        geometry = feature.get('geometry') or {}
+        coordinates = geometry.get('coordinates') or []
+        if geometry.get('type') != 'Point' or len(coordinates) < 2:
+            continue
+        lon, lat = coordinates[0], coordinates[1]
+        if not (PAR_BBOX['minlat'] <= lat <= PAR_BBOX['maxlat']
+                and PAR_BBOX['minlon'] <= lon <= PAR_BBOX['maxlon']):
+            continue
+
+        severity = properties.get('severitydata') or {}
+        event_id = properties.get('eventid')
+        episode_id = properties.get('episodeid')
+        track = []
+        if event_id is not None and episode_id is not None:
+            geometry_url = (
+                'https://www.gdacs.org/gdacsapi/api/polygons/getgeometry'
+                f'?eventtype=TC&eventid={urllib.parse.quote(str(event_id))}'
+                f'&episodeid={urllib.parse.quote(str(episode_id))}'
+            )
+            track = _extract_typhoon_track(_fetch_json(geometry_url))
+        storms.append({
+            'name': properties.get('eventname') or properties.get('name') or 'Tropical cyclone',
+            'category': severity.get('severitytext') or properties.get('alertlevel') or 'Tropical cyclone',
+            'pressure_hpa': None,
+            'wind_kph': severity.get('severity'),
+            'center_lat': lat,
+            'center_lon': lon,
+            'track': track or [[lat, lon]],
+            'source': 'GDACS (JTWC/NOAA-based)',
+        })
 
     now = utcnow()
-    _cache[cache_key] = {'data': typhoon_tracks, 'timestamp': now}
-    _write_shared_cache(cache_key, {'data': typhoon_tracks, 'timestamp': now.isoformat() + 'Z'})
-    return typhoon_tracks
+    _cache[cache_key] = {'data': storms, 'timestamp': now}
+    _write_shared_cache(cache_key, {'data': storms, 'timestamp': now.isoformat() + 'Z'})
+    return storms
 
 
 def get_flood_footprints():

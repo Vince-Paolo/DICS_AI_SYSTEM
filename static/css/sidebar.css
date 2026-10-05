@@ -653,3 +653,7 @@ html.sidebar-collapsed .sidebar-container .sidebar-nav-link { white-space: nowra
 /* Call-for-help button: icon stays put, wrapped text stays centred */
 .sidebar-container .sos-button { text-align: center; line-height: 1.25; }
 .sidebar-container .sos-button i { flex-shrink: 0; }
+
+/* Keep dialogs and their backdrop above the fixed sidebar and SOS button. */
+.modal-backdrop { z-index: 1080; }
+.modal { z-index: 1090; }
