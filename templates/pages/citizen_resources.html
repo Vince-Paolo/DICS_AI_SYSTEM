@@ -3,6 +3,21 @@
 
 {% block title %}{{ _('Resources and Emergency Info') }} | DICS AI Citizen Portal{% endblock %}
 
+{% block extra_head %}
+<style>
+    .citizen-hotline-cta {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 48px;
+        flex-shrink: 0;
+        white-space: normal;
+        overflow: visible !important;
+        text-overflow: clip !important;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <h1 class="visually-hidden">{{ _('Resources and Emergency Info') }} | DICS AI Citizen Portal</h1>
 <div class="container-fluid">
@@ -24,17 +39,17 @@
                                 <h5 class="mb-0">{{ _('Emergency Hotlines') }}</h5>
                             </div>
                             <div class="vstack gap-3 flex-grow-1">
-                                <div class="info-tile info-tile-danger h-100">
+                                <div class="info-tile info-tile-danger">
                                     <p class="small text-muted mb-1"><i class="bi bi-broadcast me-1"></i>{{ _('National Emergency') }}</p>
                                     <a href="tel:{{ general.dial }}" class="text-white fw-bold fs-5 mb-0 text-decoration-none">{{ general.display }}</a>
                                 </div>
                                 {% for service in services if service.dial and service.dial != general.dial %}
-                                <div class="info-tile info-tile-primary h-100">
+                                <div class="info-tile info-tile-primary">
                                     <p class="small text-muted mb-1"><span aria-hidden="true">{{ service.emoji }}</span> {{ service.label }}</p>
                                     <a href="tel:{{ service.dial }}" class="text-white fw-bold fs-5 mb-0 text-decoration-none">{{ service.display }}</a>
                                 </div>
                                 {% endfor %}
-                                <a href="/emergency-assistance" class="btn btn-danger fw-bold"><i class="bi bi-telephone-fill me-2" aria-hidden="true"></i>{{ _('Call for Help') }}</a>
+                                <a href="/emergency-assistance" class="btn btn-danger fw-bold citizen-hotline-cta"><i class="bi bi-telephone-fill me-2" aria-hidden="true"></i>{{ _('Call for Help') }}</a>
                             </div>
                         </div>
                     </div>

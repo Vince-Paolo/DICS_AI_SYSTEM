@@ -6,6 +6,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#0f172a">
+    <script>
+        try {
+            if (localStorage.getItem('dicsTheme') === 'light') {
+                document.documentElement.dataset.theme = 'light';
+            }
+        } catch (_) {}
+    </script>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="manifest" href="/static/manifest.webmanifest">
     <title>{% block title %}DICS ACCELERATED HAZARD FRAMEWORK{% endblock %}</title>
@@ -15,9 +22,10 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" />
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='2026-10-05-1') }}">
     {% if current_endpoint and not hide_app_chrome %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar.css', v='2026-10-06-1') }}">
     <script>try { if (localStorage.getItem('sidebarCollapsed') === 'true') document.documentElement.classList.add('sidebar-collapsed'); } catch (_) {}</script>
     {% endif %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css', v='2026-10-06-5') }}">
     {% block extra_head %}{% endblock %}
 </head>
 <body>
@@ -28,7 +36,12 @@
     {% include 'partials/sidebar.html' %}
 {% endif %}
 <main id="main-content" class="container{% if current_endpoint and not hide_app_chrome %} pt-4{% endif %} mb-4">
-    <div id="languageSwitcher" class="language-switcher d-flex justify-content-end mb-3">
+    <div id="languageSwitcher" class="language-switcher d-flex justify-content-end align-items-center gap-2 mb-3">
+        <button id="themeToggle" type="button" class="btn btn-sm btn-outline-secondary theme-toggle"
+                aria-label="{{ _('Switch to light mode') }}" aria-pressed="false">
+            <i class="bi bi-sun-fill" aria-hidden="true"></i>
+            <span class="theme-toggle-label">{{ _('Light mode') }}</span>
+        </button>
         {% if current_locale == 'fil_PH' %}
             <a class="btn btn-sm btn-outline-light" href="{{ url_for('set_language', locale='en', next=request.full_path) }}" lang="en" aria-label="{{ _('Switch to English') }}">EN</a>
         {% else %}
@@ -73,6 +86,11 @@
     </div>
 </div>
 
+<script>
+    document.querySelectorAll('main .modal').forEach(function (modal) {
+        document.body.appendChild(modal);
+    });
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
 <script>
     (function () {
@@ -108,6 +126,46 @@
     })();
 </script>
 <script src="{{ url_for('static', filename='js/app.js', v='2026-10-05-1') }}"></script>
+<script>
+    (function () {
+        const toggle = document.getElementById('themeToggle');
+        if (!toggle) return;
+
+        const label = toggle.querySelector('.theme-toggle-label');
+        const icon = toggle.querySelector('i');
+        const themeColor = document.querySelector('meta[name="theme-color"]');
+        const lightLabel = {{ _('Light mode')|tojson }};
+        const darkLabel = {{ _('Dark mode')|tojson }};
+        const lightAria = {{ _('Switch to light mode')|tojson }};
+        const darkAria = {{ _('Switch to dark mode')|tojson }};
+
+        function updateThemeControl() {
+            const isLight = document.documentElement.dataset.theme === 'light';
+            label.textContent = isLight ? darkLabel : lightLabel;
+            toggle.setAttribute('aria-label', isLight ? darkAria : lightAria);
+            toggle.setAttribute('aria-pressed', String(isLight));
+            icon.className = isLight ? 'bi bi-moon-stars-fill' : 'bi bi-sun-fill';
+            if (themeColor) themeColor.content = isLight ? '#f3f6fb' : '#0f172a';
+        }
+
+        toggle.addEventListener('click', function () {
+            const nextTheme = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+            if (nextTheme === 'light') {
+                document.documentElement.dataset.theme = 'light';
+            } else {
+                delete document.documentElement.dataset.theme;
+            }
+            try {
+                localStorage.setItem('dicsTheme', nextTheme);
+            } catch (error) {
+                console.warn('Unable to save the display theme preference.', error);
+            }
+            updateThemeControl();
+        });
+
+        updateThemeControl();
+    })();
+</script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

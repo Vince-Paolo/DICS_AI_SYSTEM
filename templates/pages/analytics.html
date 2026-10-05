@@ -9,6 +9,69 @@
         height: 240px;
         position: relative;
     }
+    .analytics-controls {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: end;
+        gap: 1.5rem;
+    }
+    .analytics-period {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(10rem, 13rem)) auto;
+        align-items: end;
+        gap: 0.75rem;
+    }
+    .analytics-period .form-select {
+        min-height: 2.5rem;
+    }
+    .analytics-export {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.6rem;
+        padding-left: 1.25rem;
+        border-left: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .analytics-export .btn {
+        min-height: 2.5rem;
+        white-space: nowrap;
+    }
+    @media (max-width: 767.98px) {
+        .analytics-controls {
+            grid-template-columns: 1fr;
+            gap: 1.25rem;
+        }
+        .analytics-period {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .analytics-period > div:nth-child(2) {
+            grid-column: 2;
+            grid-row: 1;
+        }
+        .analytics-period #applyAnalyticsFilters {
+            grid-column: 1 / -1;
+        }
+        .analytics-export {
+            justify-content: flex-start;
+            padding: 1rem 0 0;
+            border-left: 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    }
+    @media (max-width: 420px) {
+        .analytics-period {
+            grid-template-columns: 1fr;
+        }
+        .analytics-period > div:nth-child(2),
+        .analytics-period #applyAnalyticsFilters {
+            grid-column: 1;
+            grid-row: auto;
+        }
+        .analytics-export {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -50,7 +113,7 @@
         </div>
         <p class="text-muted">For a selected site and hazard, the configured AI provider reviews available rainfall, river-level, humidity, population-density, and nearby seismic context. It returns a risk level and score, a confidence estimate, and the factors supporting its assessment.</p>
         <p class="text-muted mb-0">When warranted by the available inputs, it also suggests response agencies and resources for a duty officer to consider. These recommendations are advisory, not dispatch orders; staff remain responsible for validating the assessment and deciding what action to take.</p>
-        <div class="alert alert-warning border-warning mt-3 mb-0" role="alert">
+        <div class="alert alert-warning border-warning aftershock-caveat mt-3 mb-0" role="alert">
             <div class="d-flex align-items-center gap-2 mb-1">
                 <i class="bi bi-exclamation-triangle-fill text-warning"></i>
                 <strong class="text-white">Aftershock module calibration caveat</strong>
@@ -66,35 +129,52 @@
 <!-- Analytics Controls -->
 <div class="card card-custom shadow-lg mb-4">
     <div class="card-body p-4">
-        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
-            <div class="d-flex align-items-center gap-3 flex-wrap">
-                <div>
-                    <label for="analyticsMonth" class="form-label text-muted small mb-1">Month</label>
-                    <select id="analyticsMonth" class="form-select form-select-sm" style="min-width: 140px;">
-                        <option value="">All months</option>
-                        <option value="1">January</option>
-                        <option value="2">February</option>
-                        <option value="3">March</option>
-                        <option value="4">April</option>
-                        <option value="5">May</option>
-                        <option value="6">June</option>
-                        <option value="7">July</option>
-                        <option value="8">August</option>
-                        <option value="9">September</option>
-                        <option value="10">October</option>
-                        <option value="11">November</option>
-                        <option value="12">December</option>
-                    </select>
+        <div class="analytics-controls">
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <div class="icon-badge icon-badge-primary">
+                        <i class="bi bi-calendar3" aria-hidden="true"></i>
+                    </div>
+                    <div>
+                        <h5 class="mb-0">Reporting period</h5>
+                        <div class="text-muted small">Filter the analytics by month and year.</div>
+                    </div>
                 </div>
-                <div>
-                    <label for="analyticsYear" class="form-label text-muted small mb-1">Year</label>
-                    <select id="analyticsYear" class="form-select form-select-sm" style="min-width: 120px;"></select>
+                <div class="analytics-period">
+                    <div>
+                        <label for="analyticsMonth" class="form-label text-muted small mb-1">Month</label>
+                        <select id="analyticsMonth" class="form-select">
+                            <option value="">All months</option>
+                            <option value="1">January</option>
+                            <option value="2">February</option>
+                            <option value="3">March</option>
+                            <option value="4">April</option>
+                            <option value="5">May</option>
+                            <option value="6">June</option>
+                            <option value="7">July</option>
+                            <option value="8">August</option>
+                            <option value="9">September</option>
+                            <option value="10">October</option>
+                            <option value="11">November</option>
+                            <option value="12">December</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="analyticsYear" class="form-label text-muted small mb-1">Year</label>
+                        <select id="analyticsYear" class="form-select" aria-label="Analytics year"></select>
+                    </div>
+                    <button id="applyAnalyticsFilters" class="btn btn-primary">
+                        <i class="bi bi-funnel me-1" aria-hidden="true"></i>Apply filters
+                    </button>
                 </div>
-                <button id="applyAnalyticsFilters" class="btn btn-primary btn-sm">Apply</button>
             </div>
-            <div class="d-flex align-items-center gap-2">
-                <button id="exportCsvBtn" class="btn btn-outline-light btn-sm"><i class="bi bi-file-earmark-spreadsheet me-1"></i>Export CSV</button>
-                <button id="exportPdfBtn" class="btn btn-outline-light btn-sm"><i class="bi bi-file-earmark-pdf me-1"></i>Export PDF</button>
+            <div class="analytics-export" role="group" aria-label="Export filtered statistics">
+                <button id="exportCsvBtn" class="btn btn-outline-success">
+                    <i class="bi bi-file-earmark-spreadsheet me-1" aria-hidden="true"></i>Export CSV
+                </button>
+                <button id="exportPdfBtn" class="btn btn-outline-danger">
+                    <i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>Export PDF
+                </button>
             </div>
         </div>
     </div>
@@ -312,50 +392,6 @@
         {% else %}
             {{ es.render('bi-journal-text', 'No Evaluations Yet', subtitle='Post-incident evaluations will appear here after responses are closed.', size='sm') }}
         {% endif %}
-    </div>
-</div>
-
-<!-- Data Summary + Live Feed -->
-<div class="row g-4">
-    <div class="col-xl-7">
-        <div class="card card-custom shadow-lg h-100">
-            <div class="card-body p-4">
-                <div class="d-flex align-items-center gap-2 mb-4">
-                    <div class="icon-badge icon-badge-primary">
-                        <i class="bi bi-database-fill"></i>
-                    </div>
-                    <h5 class="mb-0">Data Summary</h5>
-                    <span class="ms-auto text-muted small" style="font-style:italic;">Simulated</span>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-enhanced table-mobile-stack align-middle mb-0">
-                        <tbody>
-                            <tr>
-                                <th class="text-muted fw-normal">Flood sensor readings</th>
-                                <td class="text-white fw-bold text-end">18,472</td>
-                            </tr>
-                            <tr>
-                                <th class="text-muted fw-normal">Seismic events analyzed</th>
-                                <td class="text-white fw-bold text-end">9,144</td>
-                            </tr>
-                            <tr>
-                                <th class="text-muted fw-normal">Volcanic tremor samples</th>
-                                <td class="text-white fw-bold text-end">12,856</td>
-                            </tr>
-                            <tr>
-                                <th class="text-muted fw-normal">Weather station feeds</th>
-                                <td class="text-white fw-bold text-end">25,300</td>
-                            </tr>
-                            <tr>
-                                <th class="text-muted fw-normal">Model training window</th>
-                                <td class="text-white fw-bold text-end">Last 30 days</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
     </div>
 </div>
 

@@ -141,6 +141,92 @@
         line-height: 1.35;
         max-width: 280px;
     }
+    .hazard-map-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+    .hazard-map-toolbar .input-group {
+        min-width: 0;
+        flex: 1 1 24rem;
+    }
+    .hazard-map-controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin-bottom: 0.75rem;
+    }
+    .hazard-filter-panel,
+    .hazard-layer-panel {
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        border-radius: 0.75rem;
+        background: rgba(15, 23, 42, 0.45);
+    }
+    .hazard-filter-panel .form-label {
+        font-size: 0.75rem;
+        margin-bottom: 0.3rem;
+    }
+    .hazard-filter-grid {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 0.75rem;
+    }
+    .hazard-filter-field {
+        min-width: 0;
+    }
+    .hazard-date-range {
+        grid-column: span 2;
+    }
+    .hazard-date-inputs {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.5rem;
+    }
+    .hazard-date-inputs .form-control {
+        width: 100%;
+        min-width: 0;
+        padding-inline: 0.35rem;
+    }
+    .hazard-filter-actions {
+        grid-column: 1 / -1;
+    }
+    .hazard-layer-panel .btn {
+        white-space: normal;
+    }
+    @media (max-width: 991.98px) {
+        .hazard-filter-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+        .hazard-date-range {
+            grid-column: span 3;
+        }
+    }
+    @media (max-width: 575.98px) {
+        .hazard-filter-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .hazard-date-range {
+            grid-column: span 2;
+        }
+        .hazard-map-toolbar {
+            align-items: stretch;
+            flex-direction: column;
+        }
+        .hazard-map-toolbar > .btn {
+            width: 100%;
+        }
+        .hazard-map-controls {
+            align-items: stretch;
+        }
+        .hazard-map-controls > .btn {
+            flex: 1 1 auto;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -203,17 +289,25 @@
                         </div>
                         <button class="btn btn-outline-secondary btn-sm">{{ _('Refresh Map') }}</button>
                     </div>
-                    <div class="row g-3 align-items-center mb-3">
-                        <div class="col-md-5">
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="bi bi-search"></i></span>
-                                <input id="hazardSearchInput" type="text" class="form-control" placeholder="{{ _('Search hazard areas...') }}" aria-label="{{ _('Search hazard areas') }}">
-                                <button id="hazardSearchClear" type="button" class="btn btn-outline-secondary" aria-label="{{ _('Clear search') }}">{{ _('Clear') }}</button>
-                            </div>
+                    <div class="hazard-map-toolbar">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span>
+                            <input id="hazardSearchInput" type="text" class="form-control" placeholder="{{ _('Search hazard areas...') }}" aria-label="{{ _('Search hazard areas') }}">
+                            <button id="hazardSearchClear" type="button" class="btn btn-outline-secondary" aria-label="{{ _('Clear search') }}">{{ _('Clear') }}</button>
                         </div>
-                        <div class="col-md-7">
-                            <div class="row g-2 mb-2">
-                                <div class="col-sm-3">
+                        <button class="btn btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#hazardFilters" aria-expanded="false" aria-controls="hazardFilters">
+                            <i class="bi bi-sliders me-1" aria-hidden="true"></i>Filters
+                            <span id="activeFilterCount" class="badge rounded-pill bg-primary ms-1">0</span>
+                        </button>
+                        <button class="btn btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#mapLayerControls" aria-expanded="false" aria-controls="mapLayerControls">
+                            <i class="bi bi-layers me-1" aria-hidden="true"></i>Map layers
+                        </button>
+                    </div>
+                    <div class="collapse" id="hazardFilters">
+                        <div class="hazard-filter-panel">
+                            <div class="hazard-filter-grid">
+                                <div class="hazard-filter-field">
+                                    <label class="form-label" for="provinceFilter">Province</label>
                                     <select id="provinceFilter" class="form-select form-select-sm" aria-label="Filter by province">
                                         <option value="">{{ _('All Provinces') }}</option>
                                         {% for province in provinces %}
@@ -221,12 +315,14 @@
                                         {% endfor %}
                                     </select>
                                 </div>
-                                <div class="col-sm-3">
+                                <div class="hazard-filter-field">
+                                    <label class="form-label" for="municipalityFilter">Municipality</label>
                                     <select id="municipalityFilter" class="form-select form-select-sm" aria-label="Filter by municipality">
                                         <option value="">{{ _('All Municipalities') }}</option>
                                     </select>
                                 </div>
-                                <div class="col-sm-3">
+                                <div class="hazard-filter-field">
+                                    <label class="form-label" for="statusFilter">Status</label>
                                     <select id="statusFilter" class="form-select form-select-sm" aria-label="Filter by status">
                                         <option value="">{{ _('All Statuses') }}</option>
                                         <option value="NEW">{{ _('New') }}</option>
@@ -235,7 +331,8 @@
                                         <option value="REJECTED">{{ _('Rejected') }}</option>
                                     </select>
                                 </div>
-                                <div class="col-sm-3">
+                                <div class="hazard-filter-field">
+                                    <label class="form-label" for="hazardTypeFilter">Hazard</label>
                                     <select id="hazardTypeFilter" class="form-select form-select-sm" aria-label="Filter by hazard type">
                                         <option value="all">{{ _('All Hazards') }}</option>
                                         <option value="flood">{{ _('Flood') }}</option>
@@ -248,31 +345,36 @@
                                         <option value="other">{{ _('Other') }}</option>
                                     </select>
                                 </div>
+                                <div class="hazard-filter-field">
+                                    <label class="form-label" for="riskFilter">Risk level</label>
+                                    <select id="riskFilter" class="form-select form-select-sm" aria-label="Filter by risk level">
+                                        <option value="all">All Risk Levels</option>
+                                        <option value="severe">Severe Risk</option>
+                                        <option value="high">High Risk</option>
+                                        <option value="moderate">Moderate Risk</option>
+                                        <option value="low">Low Risk</option>
+                                    </select>
+                                </div>
+                                <div class="hazard-filter-field hazard-date-range">
+                                    <label class="form-label" for="incidentStartDate">Date range</label>
+                                    <div class="hazard-date-inputs">
+                                        <input id="incidentStartDate" type="date" class="form-control form-control-sm" aria-label="Incident start date" />
+                                        <input id="incidentEndDate" type="date" class="form-control form-control-sm" aria-label="Incident end date" />
+                                    </div>
+                                </div>
+                                <div class="hazard-filter-actions d-flex justify-content-end gap-2">
+                                    <button id="clearMapFilters" type="button" class="btn btn-sm btn-outline-secondary">Clear filters</button>
+                                    <button id="applyDateRange" type="button" class="btn btn-sm btn-primary">Apply date range</button>
+                                </div>
                             </div>
-                            <div class="row g-2 mb-2">
-                                <div class="col-md-4">
-                                    <label for="incidentStartDate" class="form-label small text-muted mb-1">From</label>
-                                    <input id="incidentStartDate" type="date" class="form-control form-control-sm" aria-label="Incident start date" />
-                                </div>
-                                <div class="col-md-4">
-                                    <label for="incidentEndDate" class="form-label small text-muted mb-1">To</label>
-                                    <input id="incidentEndDate" type="date" class="form-control form-control-sm" aria-label="Incident end date" />
-                                </div>
-                                <div class="col-md-4 d-flex align-items-end">
-                                    <button id="applyDateRange" type="button" class="btn btn-sm btn-outline-light w-100">Apply date range</button>
-                                </div>
-                            </div>
-                            <div class="d-flex flex-wrap gap-2 justify-content-md-end">
-                                <button id="allZones" class="btn btn-outline-primary btn-sm active">All Zones</button>
-                                <button id="severeRisk" class="btn btn-outline-danger btn-sm">Severe Risk</button>
-                                <button id="highRisk" class="btn btn-outline-danger btn-sm">High Risk</button>
-                                <button id="moderateRisk" class="btn btn-outline-warning btn-sm">Moderate Risk</button>
-                                <button id="lowRisk" class="btn btn-outline-success btn-sm">Low Risk</button>
-                                <span class="w-100 d-none d-md-block" style="height:0;"></span>
+                        </div>
+                    </div>
+                    <div class="collapse" id="mapLayerControls">
+                        <div class="hazard-layer-panel">
+                            <div class="d-flex flex-wrap gap-2">
                                 <button id="evacuationCentersToggle" class="btn btn-outline-info btn-sm active">Evacuation Centers</button>
                                 <button id="resourcesToggle" class="btn btn-outline-secondary btn-sm active">Resources</button>
                                 <button id="heatMapToggle" class="btn btn-outline-warning btn-sm active">Heat Map</button>
-                                <span class="w-100 d-none d-md-block" style="height:0;"></span>
                                 <button id="satelliteBasemapToggle" class="btn btn-outline-dark btn-sm" title="Switch between street map and satellite imagery">Satellite View</button>
                                 <button id="rainfallWatchToggle" class="btn btn-outline-cyan btn-sm active" title="Rainfall watch layer for CALABARZON weather intensity">Rainfall Watch</button>
                                 <button id="typhoonTrackToggle" class="btn btn-outline-info btn-sm active" title="Typhoon advisory and projected storm track">Typhoon Track</button>
@@ -554,10 +656,11 @@ function renderFloodFootprints() {
 }
 
 function getRainfallColor(rainfallMm) {
-    if (rainfallMm >= 100) return '#dc2626';
-    if (rainfallMm >= 75) return '#f97316';
-    if (rainfallMm >= 50) return '#facc15';
-    return '#38bdf8';
+    if (rainfallMm >= 30) return '#dc2626';
+    if (rainfallMm >= 15) return '#f97316';
+    if (rainfallMm >= 7.5) return '#facc15';
+    if (rainfallMm >= 2.5) return '#38bdf8';
+    return '#0ea5e9';
 }
 
 function renderRainfallWatch() {
@@ -577,7 +680,8 @@ function renderRainfallWatch() {
             `<strong>${station.name || 'Rainfall station'}</strong><br/>` +
             `${station.status || 'Rainfall watch'}<br/>` +
             `Rainfall: ${(station.rainfall_mm || 0)} mm/hr<br/>` +
-            `Source: ${station.source || 'Regional forecast blend'}`
+            `${station.rainfall_24h_mm == null ? '' : `Last 24 hours: ${station.rainfall_24h_mm} mm<br/>`}` +
+            `Source: ${station.source || 'Live weather feed'}`
         );
         rainfallLayer.addLayer(circle);
 
@@ -628,7 +732,7 @@ function renderTyphoonTracks() {
             `Status: ${track.category || 'Advisory'}<br/>` +
             `Wind: ${track.wind_kph || '—'} kph<br/>` +
             `Pressure: ${track.pressure_hpa || '—'} hPa<br/>` +
-            `Source: ${track.source || 'PAGASA advisory model'}`
+            `Source: ${track.source || 'Tropical cyclone feed'}`
         );
         typhoonLayer.addLayer(line);
 
@@ -755,9 +859,11 @@ function updateStats() {
     const zonesEl = document.getElementById('statHazardZones');
     const alertsEl = document.getElementById('statActiveAlerts');
     const filtersEl = document.getElementById('statFilteredViews');
+    const filterBadge = document.getElementById('activeFilterCount');
     if (zonesEl) zonesEl.textContent = total;
     if (alertsEl) alertsEl.textContent = activeAlerts;
     if (filtersEl) filtersEl.textContent = filtersApplied;
+    if (filterBadge) filterBadge.textContent = filtersApplied;
 }
 
 function resetSelectOptions(select, placeholder) {
@@ -777,6 +883,7 @@ function resetSelectOptions(select, placeholder) {
 const provinceFilterSelect = document.getElementById('provinceFilter');
 const municipalityFilterSelect = document.getElementById('municipalityFilter');
 const statusFilterSelect = document.getElementById('statusFilter');
+const hazardTypeFilter = document.getElementById('hazardTypeFilter');
 const hazardSearchInput = document.getElementById('hazardSearchInput');
 const hazardSearchClear = document.getElementById('hazardSearchClear');
 let searchDebounceTimer = null;
@@ -929,19 +1036,10 @@ fetch('/api/hazard-layers/typhoon-tracks')
     })
     .catch(() => { typhoonTrackData = []; });
 
-const buttons = document.querySelectorAll('#allZones, #severeRisk, #highRisk, #moderateRisk, #lowRisk');
-buttons.forEach(button => {
-    button.addEventListener('click', () => {
-        let filter = 'all';
-        if (button.id === 'severeRisk') filter = 'severe';
-        if (button.id === 'highRisk') filter = 'high';
-        if (button.id === 'moderateRisk') filter = 'moderate';
-        if (button.id === 'lowRisk') filter = 'low';
-        renderMarkers(filter);
-        updateStats();
-        buttons.forEach(btn => btn.classList.remove('active'));
-        button.classList.add('active');
-    });
+const riskFilterSelect = document.getElementById('riskFilter');
+riskFilterSelect.addEventListener('change', event => {
+    renderMarkers(event.target.value, activeHazardFilter);
+    updateStats();
 });
 
 document.getElementById('evacuationCentersToggle').addEventListener('click', event => {
@@ -963,6 +1061,27 @@ document.getElementById('heatMapToggle').addEventListener('click', event => {
 });
 
 document.getElementById('applyDateRange').addEventListener('click', () => {
+    loadMarkers();
+});
+
+document.getElementById('clearMapFilters').addEventListener('click', () => {
+    hazardSearchInput.value = '';
+    provinceFilterSelect.value = '';
+    resetSelectOptions(municipalityFilterSelect, 'All Municipalities');
+    statusFilterSelect.value = '';
+    hazardTypeFilter.value = 'all';
+    riskFilterSelect.value = 'all';
+    mapFilters.province = '';
+    mapFilters.municipality = '';
+    mapFilters.status = '';
+    mapFilters.search = '';
+    activeFilter = 'all';
+    activeHazardFilter = 'all';
+
+    const defaultStart = new Date();
+    defaultStart.setDate(defaultStart.getDate() - 30);
+    incidentStartDateInput.value = defaultStart.toISOString().slice(0, 10);
+    incidentEndDateInput.value = new Date().toISOString().slice(0, 10);
     loadMarkers();
 });
 
@@ -1002,7 +1121,6 @@ document.getElementById('satelliteBasemapToggle').addEventListener('click', even
     }
 });
 
-const hazardTypeFilter = document.getElementById('hazardTypeFilter');
 hazardTypeFilter.addEventListener('change', event => {
     renderMarkers(activeFilter, event.target.value);
     updateStats();

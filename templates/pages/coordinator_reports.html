@@ -41,6 +41,9 @@
                     </div>
                     <h5 class="mb-0">Submitted Reports</h5>
                     <span class="ms-2 text-muted small">({{ reports|length }} total)</span>
+                    <button type="button" class="btn btn-sm btn-modern ms-auto" style="background:rgba(139,92,246,0.15);color:#C4B5FD;border:1px solid rgba(139,92,246,0.3);" data-bs-toggle="modal" data-bs-target="#situationReportModal">
+                        <i class="bi bi-plus-circle me-1"></i>Submit Report
+                    </button>
                 </div>
 
                 {% if reports %}
@@ -84,65 +87,71 @@
         </div>
     </div>
 
-    <!-- Submit Report Form -->
-    <div class="col-12">
-        <div class="card card-custom shadow-lg h-100">
-            <div class="card-body p-4">
-                <div class="d-flex align-items-center gap-2 mb-4">
-                    <div class="icon-badge" style="background:rgba(139,92,246,0.15);color:#C4B5FD;border:1px solid rgba(139,92,246,0.3);">
-                        <i class="bi bi-plus-circle-fill"></i>
-                    </div>
-                    <h5 class="mb-0">Submit Situation Report</h5>
-                </div>
-
+    <div class="modal fade" id="situationReportModal" tabindex="-1" aria-labelledby="situationReportModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+            <div class="modal-content modal-surface">
                 <form method="POST" action="{{ url_for('coordinator.coordinator_submit_report') }}">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <div class="required-legend"><span class="required-indicator" aria-hidden="true">*</span> Required field</div>
-                    <div class="mb-3">
-                        <label class="form-label required" style="font-size:0.82rem;" for="response_id">Active Response <span class="required-indicator" aria-hidden="true">*</span></label>
-                        <select id="response_id" name="response_id" class="form-select form-select-sm" required>
-                            <option value="">— Select Active Response —</option>
-                            {% for resp in active_responses %}
-                                <option value="{{ resp.id }}">#{{ resp.incident_id }} – {{ resp.incident.hazard_type }} ({{ resp.incident.location or 'Unknown' }})</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label required" style="font-size:0.82rem;" for="title">Report Title <span class="required-indicator" aria-hidden="true">*</span></label>
-                        <input id="title" type="text" name="title" class="form-control form-control-sm" placeholder="e.g., Fire Suppression – 60% Containment" required>
-                    </div>
-                    <fieldset class="mb-3 form-group-fieldset">
-                        <legend>Report Type</legend>
-                        <div class="d-flex gap-2 flex-wrap">
-                            {% for rtype, label, color in [('UPDATE','Update','#C4B5FD'),('ALERT','Alert','#FCA5A5'),('MILESTONE','Milestone','#86EFAC')] %}
-                            <label class="d-flex align-items-center gap-1" style="cursor:pointer;font-size:0.82rem;">
-                                <input type="radio" name="report_type" value="{{ rtype }}" {% if loop.first %}checked{% endif %} style="accent-color:{{ color }};">
-                                <span style="color:{{ color }};">{{ label }}</span>
-                            </label>
-                            {% endfor %}
+                    <div class="modal-header border-0">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="icon-badge" style="background:rgba(139,92,246,0.15);color:#C4B5FD;border:1px solid rgba(139,92,246,0.3);">
+                                <i class="bi bi-plus-circle-fill"></i>
+                            </div>
+                            <h5 class="modal-title mb-0" id="situationReportModalTitle">Submit Situation Report</h5>
                         </div>
-                    </fieldset>
-                    <div class="mb-3">
-                        <label class="form-label required" style="font-size:0.82rem;" for="content">Situation Report <span class="required-indicator" aria-hidden="true">*</span></label>
-                        <textarea id="content" name="content" class="form-control form-control-sm" rows="5" placeholder="Describe current conditions, actions taken, challenges encountered, and immediate needs..." required></textarea>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label" style="font-size:0.82rem;" for="affected_areas">Affected Areas (CALABARZON)</label>
-                        <input id="affected_areas" type="text" name="affected_areas" class="form-control form-control-sm" placeholder="e.g., Calamba City, Sto. Tomas, Batangas">
-                    </div>
-                    <div class="row g-2 mb-4">
-                        <div class="col-6">
-                            <label class="form-label" style="font-size:0.82rem;" for="evacuated">Persons Evacuated</label>
-                            <input id="evacuated" type="number" name="evacuated" class="form-control form-control-sm" placeholder="0" min="0">
+                    <div class="modal-body px-4">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="required-legend"><span class="required-indicator" aria-hidden="true">*</span> Required field</div>
+                        <div class="mb-3">
+                            <label class="form-label required" style="font-size:0.82rem;" for="response_id">Active Response <span class="required-indicator" aria-hidden="true">*</span></label>
+                            <select id="response_id" name="response_id" class="form-select form-select-sm" required>
+                                <option value="">— Select Active Response —</option>
+                                {% for resp in active_responses %}
+                                    <option value="{{ resp.id }}">#{{ resp.incident_id }} – {{ resp.incident.hazard_type }} ({{ resp.incident.location or 'Unknown' }})</option>
+                                {% endfor %}
+                            </select>
                         </div>
-                        <div class="col-6">
-                            <label class="form-label" style="font-size:0.82rem;" for="casualties">Reported Casualties</label>
-                            <input id="casualties" type="number" name="casualties" class="form-control form-control-sm" placeholder="0" min="0">
+                        <div class="mb-3">
+                            <label class="form-label required" style="font-size:0.82rem;" for="title">Report Title <span class="required-indicator" aria-hidden="true">*</span></label>
+                            <input id="title" type="text" name="title" class="form-control form-control-sm" placeholder="e.g., Fire Suppression – 60% Containment" required>
+                        </div>
+                        <fieldset class="mb-3 form-group-fieldset">
+                            <legend>Report Type</legend>
+                            <div class="d-flex gap-2 flex-wrap">
+                                {% for rtype, label, color in [('UPDATE','Update','#C4B5FD'),('ALERT','Alert','#FCA5A5'),('MILESTONE','Milestone','#86EFAC')] %}
+                                <label class="d-flex align-items-center gap-1" style="cursor:pointer;font-size:0.82rem;">
+                                    <input type="radio" name="report_type" value="{{ rtype }}" {% if loop.first %}checked{% endif %} style="accent-color:{{ color }};">
+                                    <span style="color:{{ color }};">{{ label }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </fieldset>
+                        <div class="mb-3">
+                            <label class="form-label required" style="font-size:0.82rem;" for="content">Situation Report <span class="required-indicator" aria-hidden="true">*</span></label>
+                            <textarea id="content" name="content" class="form-control form-control-sm" rows="5" placeholder="Describe current conditions, actions taken, challenges encountered, and immediate needs..." required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" style="font-size:0.82rem;" for="affected_areas">Affected Areas (CALABARZON)</label>
+                            <input id="affected_areas" type="text" name="affected_areas" class="form-control form-control-sm" placeholder="e.g., Calamba City, Sto. Tomas, Batangas">
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label class="form-label" style="font-size:0.82rem;" for="evacuated">Persons Evacuated</label>
+                                <input id="evacuated" type="number" name="evacuated" class="form-control form-control-sm" placeholder="0" min="0">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label" style="font-size:0.82rem;" for="casualties">Reported Casualties</label>
+                                <input id="casualties" type="number" name="casualties" class="form-control form-control-sm" placeholder="0" min="0">
+                            </div>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-modern w-100 py-2" style="background:linear-gradient(135deg,#7C3AED,#8B5CF6);color:#fff;font-weight:700;border:none;">
-                        <i class="bi bi-send me-2"></i>Submit Report
-                    </button>
+                    <div class="modal-footer border-0 px-4 pt-0">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-modern px-4" style="background:linear-gradient(135deg,#7C3AED,#8B5CF6);color:#fff;font-weight:700;border:none;">
+                            <i class="bi bi-send me-2"></i>Submit Report
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>

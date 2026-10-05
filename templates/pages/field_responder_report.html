@@ -6,9 +6,16 @@
 
 <style>
 .upload-zone {
+    display: flex;
+    width: 100%;
+    min-height: 9.5rem;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     background: rgba(255, 255, 255, 0.02);
-    border: 2px dashed rgba(255, 255, 255, 0.1);
+    border: 1px dashed rgba(249, 115, 22, 0.35);
     cursor: pointer;
+    color: inherit;
     transition: border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease, transform 0.15s ease;
 }
 
@@ -35,9 +42,72 @@
 }
 
 .upload-zone-icon {
-    color: #6B7280;
+    color: #FB923C;
     display: inline-block;
     transition: color 0.25s ease, transform 0.25s ease;
+}
+
+.upload-zone:focus-visible {
+    outline: 2px solid #FDBA74;
+    outline-offset: 3px;
+}
+
+.upload-zone-copy {
+    color: #D1D5DB;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.upload-zone-hint {
+    color: #9CA3AF;
+    font-size: 0.75rem;
+}
+
+.media-preview-card {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: min(100%, 15rem);
+    max-width: 100%;
+    padding: 0.6rem 0.75rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.75rem;
+}
+
+.media-preview-thumb {
+    width: 2.75rem;
+    height: 2.75rem;
+    flex: 0 0 auto;
+    object-fit: cover;
+    border-radius: 0.5rem;
+    background: rgba(249, 115, 22, 0.12);
+}
+
+.media-preview-icon {
+    display: grid;
+    width: 2.75rem;
+    height: 2.75rem;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 0.5rem;
+    background: rgba(249, 115, 22, 0.12);
+    color: #FB923C;
+    font-size: 1.15rem;
+}
+
+.media-preview-name {
+    overflow: hidden;
+    color: #E5E7EB;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.media-preview-size {
+    color: #9CA3AF;
+    font-size: 0.7rem;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -161,20 +231,24 @@
 
                         <!-- Media Upload -->
                         <div class="col-12">
-                            <label class="form-label" style="font-size:0.8rem;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.05em;" for="media-input">Attach Media</label>
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                                <label class="form-label mb-0" style="font-size:0.8rem;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.05em;" for="media-input">Attach Media <span class="text-muted text-lowercase">(optional)</span></label>
+                                <span id="media-selection-count" class="small text-muted" aria-live="polite">No files selected</span>
+                            </div>
                             <button type="button" id="upload-zone" class="upload-zone p-4 rounded-3 text-center"
-                                aria-label="Attach photos or videos, JPG PNG or MP4, max 20MB each"
+                                aria-label="Attach photos or videos"
                                 aria-describedby="uploadZoneHint"
                                 ondragover="event.preventDefault();this.classList.add('is-dragover');"
                                 ondragleave="this.classList.remove('is-dragover');"
                                 ondrop="handleDrop(event);"
                                 onclick="document.getElementById('media-input').click()">
-                                <i class="bi bi-cloud-upload upload-zone-icon" style="font-size:1.8rem;"></i>
-                                <p class="mb-0 mt-2" style="font-size:0.82rem;color:#9CA3AF;">Drag photos or videos here, or click to browse</p>
-                                <p id="uploadZoneHint" class="mb-0 mt-1" style="font-size:0.72rem;color:#6B7280;">JPG, PNG, MP4 — max 20MB each</p>
+                                <i class="bi bi-cloud-arrow-up upload-zone-icon" style="font-size:2rem;" aria-hidden="true"></i>
+                                <span class="upload-zone-copy mt-2">Drop photos or videos here</span>
+                                <span class="upload-zone-hint mt-1">or click to browse · JPG, PNG, WebP, MP4</span>
+                                <span id="uploadZoneHint" class="visually-hidden">Upload limits are enforced when the report is submitted.</span>
                             </button>
-                            <input type="file" id="media-input" name="media" multiple accept="image/*,video/*" class="d-none" onchange="previewFiles(this.files)">
-                            <div id="file-preview" class="d-flex flex-wrap gap-2 mt-3"></div>
+                            <input type="file" id="media-input" name="media" multiple accept=".jpg,.jpeg,.png,.webp,.mp4,image/jpeg,image/png,image/webp,video/mp4" class="visually-hidden" onchange="previewFiles(this.files)">
+                            <div id="file-preview" class="d-flex flex-wrap gap-2 mt-3" aria-live="polite"></div>
                         </div>
 
                         <!-- Submit -->
@@ -288,15 +362,54 @@ function captureGPS() {
     }, { enableHighAccuracy: true, timeout: 10000 });
 }
 
+let mediaPreviewUrls = [];
+
 function previewFiles(files) {
     const container = document.getElementById('file-preview');
+    const selectionCount = document.getElementById('media-selection-count');
+    mediaPreviewUrls.forEach(url => URL.revokeObjectURL(url));
+    mediaPreviewUrls = [];
     container.innerHTML = '';
-    Array.from(files).forEach(file => {
-        const tag = document.createElement('div');
-        tag.style.cssText = 'background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:0.4rem 0.75rem;font-size:0.75rem;color:#9CA3AF;display:flex;align-items:center;gap:0.4rem;';
-        const icon = file.type.startsWith('video') ? 'bi-camera-video' : 'bi-image';
-        tag.innerHTML = '<i class="bi ' + icon + '" style="color:#F97316;"></i>' + file.name;
-        container.appendChild(tag);
+    const selectedFiles = Array.from(files);
+    selectionCount.textContent = selectedFiles.length
+        ? `${selectedFiles.length} file${selectedFiles.length === 1 ? '' : 's'} selected`
+        : 'No files selected';
+
+    selectedFiles.forEach(file => {
+        const card = document.createElement('div');
+        card.className = 'media-preview-card';
+        const isImage = file.type.startsWith('image/');
+
+        if (isImage) {
+            const thumbnail = document.createElement('img');
+            const objectUrl = URL.createObjectURL(file);
+            mediaPreviewUrls.push(objectUrl);
+            thumbnail.className = 'media-preview-thumb';
+            thumbnail.src = objectUrl;
+            thumbnail.alt = '';
+            card.appendChild(thumbnail);
+        } else {
+            const icon = document.createElement('span');
+            icon.className = 'media-preview-icon';
+            icon.setAttribute('aria-hidden', 'true');
+            const iconElement = document.createElement('i');
+            iconElement.className = 'bi bi-camera-video';
+            icon.appendChild(iconElement);
+            card.appendChild(icon);
+        }
+
+        const details = document.createElement('div');
+        details.className = 'min-w-0';
+        const name = document.createElement('div');
+        name.className = 'media-preview-name';
+        name.title = file.name;
+        name.textContent = file.name;
+        const size = document.createElement('div');
+        size.className = 'media-preview-size';
+        size.textContent = `${(file.size / (1024 * 1024)).toFixed(2)} MB`;
+        details.append(name, size);
+        card.appendChild(details);
+        container.appendChild(card);
     });
 }
 
@@ -462,7 +575,7 @@ async function submitFieldReport(event) {
             await saveQueuedReport(record);
             clearDraft();
             form.reset();
-            document.getElementById('file-preview').innerHTML = '';
+            previewFiles([]);
             reportStatus('No connection. Report saved on this device and queued for delivery.', 'warning');
             return;
         }

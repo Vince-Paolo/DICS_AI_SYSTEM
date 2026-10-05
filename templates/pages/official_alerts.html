@@ -24,11 +24,16 @@
 </div>
 
 <div class="card card-custom mb-3 p-3">
-    <div class="d-flex gap-2 flex-wrap">
+    <div class="d-flex gap-2 flex-wrap align-items-center">
         {% for s in ['ACTIVE', 'RESOLVED', 'ALL'] %}
         <a href="{{ url_for('eoc.official_alerts', status=s) }}"
            class="btn btn-sm {{ 'btn-danger' if status_filter == s else 'btn-outline-secondary' }}">{{ s.title() }}</a>
         {% endfor %}
+        {% if can_issue %}
+        <button type="button" class="btn btn-sm btn-danger ms-auto" data-bs-toggle="modal" data-bs-target="#issueAlertModal">
+            <i class="bi bi-megaphone-fill me-1"></i>Issue Alert
+        </button>
+        {% endif %}
     </div>
 </div>
 
@@ -78,47 +83,55 @@
     </div>
 
     {% if can_issue %}
-    <div class="col-12">
-        <div class="card card-custom shadow-lg">
-            <div class="card-body p-4">
-                <div class="d-flex align-items-center gap-2 mb-4">
-                    <div class="icon-badge" style="background:rgba(252,165,165,0.15);color:#FCA5A5;border:1px solid rgba(252,165,165,0.3);">
-                        <i class="bi bi-plus-circle-fill"></i>
-                    </div>
-                    <h5 class="mb-0">Issue Alert</h5>
-                </div>
+    <div class="modal fade" id="issueAlertModal" tabindex="-1" aria-labelledby="issueAlertModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+            <div class="modal-content modal-surface">
                 <form method="POST" action="{{ url_for('eoc.issue_alert') }}">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <div class="required-legend"><span class="required-indicator" aria-hidden="true">*</span> Required field</div>
-                    <div class="mb-3">
-                        <label class="form-label required" style="font-size:0.82rem;" for="title">Title <span class="required-indicator" aria-hidden="true">*</span></label>
-                        <input id="title" type="text" name="title" class="form-control form-control-sm" placeholder="e.g. Flood Warning — Barangay X" required>
+                    <div class="modal-header border-0">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="icon-badge" style="background:rgba(252,165,165,0.15);color:#FCA5A5;border:1px solid rgba(252,165,165,0.3);">
+                                <i class="bi bi-plus-circle-fill"></i>
+                            </div>
+                            <h5 class="modal-title mb-0" id="issueAlertModalTitle">Issue Alert</h5>
+                        </div>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label required" style="font-size:0.82rem;" for="message">Message <span class="required-indicator" aria-hidden="true">*</span></label>
-                        <textarea id="message" name="message" rows="4" class="form-control form-control-sm" placeholder="What's happening, where, and what should residents do." required></textarea>
+                    <div class="modal-body px-4">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="required-legend"><span class="required-indicator" aria-hidden="true">*</span> Required field</div>
+                        <div class="mb-3">
+                            <label class="form-label required" style="font-size:0.82rem;" for="title">Title <span class="required-indicator" aria-hidden="true">*</span></label>
+                            <input id="title" type="text" name="title" class="form-control form-control-sm" placeholder="e.g. Flood Warning — Barangay X" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label required" style="font-size:0.82rem;" for="message">Message <span class="required-indicator" aria-hidden="true">*</span></label>
+                            <textarea id="message" name="message" rows="4" class="form-control form-control-sm" placeholder="What's happening, where, and what should residents do." required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" style="font-size:0.82rem;" for="severity">Severity</label>
+                            <select id="severity" name="severity" class="form-select form-select-sm">
+                                <option value="LOW">Low</option>
+                                <option value="MEDIUM" selected>Medium</option>
+                                <option value="HIGH">High</option>
+                                <option value="CRITICAL">Critical</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label" style="font-size:0.82rem;" for="incident_id">Linked Incident (optional)</label>
+                            <select id="incident_id" name="incident_id" class="form-select form-select-sm">
+                                <option value="">— None —</option>
+                                {% for inc in recent_incidents %}
+                                <option value="{{ inc.id }}">#{{ inc.id }} – {{ inc.hazard_type }} ({{ inc.location or 'unspecified' }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label" style="font-size:0.82rem;" for="severity">Severity</label>
-                        <select id="severity" name="severity" class="form-select form-select-sm">
-                            <option value="LOW">Low</option>
-                            <option value="MEDIUM" selected>Medium</option>
-                            <option value="HIGH">High</option>
-                            <option value="CRITICAL">Critical</option>
-                        </select>
+                    <div class="modal-footer border-0 px-4 pt-0">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-modern px-4" style="background:linear-gradient(135deg,#DC2626,#F87171);color:#1a0505;font-weight:700;border:none;">
+                            <i class="bi bi-megaphone-fill me-2"></i>Publish Alert
+                        </button>
                     </div>
-                    <div class="mb-4">
-                        <label class="form-label" style="font-size:0.82rem;" for="incident_id">Linked Incident (optional)</label>
-                        <select id="incident_id" name="incident_id" class="form-select form-select-sm">
-                            <option value="">— None —</option>
-                            {% for inc in recent_incidents %}
-                            <option value="{{ inc.id }}">#{{ inc.id }} – {{ inc.hazard_type }} ({{ inc.location or 'unspecified' }})</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <button type="submit" class="btn btn-modern w-100 py-2" style="background:linear-gradient(135deg,#DC2626,#F87171);color:#1a0505;font-weight:700;border:none;">
-                        <i class="bi bi-megaphone-fill me-2"></i>Publish Alert
-                    </button>
                 </form>
             </div>
         </div>

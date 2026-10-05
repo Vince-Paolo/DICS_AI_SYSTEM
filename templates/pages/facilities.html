@@ -33,6 +33,11 @@
                     </div>
                     <h5 class="mb-0">Facilities</h5>
                     <span class="text-muted small">({{ facilities|length }})</span>
+                    {% if can_manage %}
+                    <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#addFacilityModal">
+                        <i class="bi bi-plus-circle me-1"></i>Add Facility
+                    </button>
+                    {% endif %}
                     <form method="get" class="ms-auto">
                         <select name="type" class="form-select form-select-sm" style="max-width:180px;" onchange="this.form.submit()">
                             <option value="">All types</option>
@@ -101,73 +106,81 @@
     </div>
 
     {% if can_manage %}
-    <div class="col-12">
-        <div class="card card-custom shadow-lg">
-            <div class="card-body p-4">
-                <div class="d-flex align-items-center gap-2 mb-4">
-                    <div class="icon-badge" style="background:rgba(125,211,252,0.15);color:#7DD3FC;border:1px solid rgba(125,211,252,0.3);">
-                        <i class="bi bi-plus-circle-fill"></i>
-                    </div>
-                    <h5 class="mb-0">Add Facility</h5>
-                </div>
+    <div class="modal fade" id="addFacilityModal" tabindex="-1" aria-labelledby="addFacilityModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+            <div class="modal-content modal-surface">
                 <form method="POST" action="{{ url_for('facilities.add_facility') }}">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <div class="required-legend"><span class="required-indicator" aria-hidden="true">*</span> Required field</div>
-                    <div class="mb-3">
-                        <label class="form-label required" style="font-size:0.82rem;" for="name">Name <span class="required-indicator" aria-hidden="true">*</span></label>
-                        <input id="name" type="text" name="name" class="form-control form-control-sm" required>
+                    <div class="modal-header border-0">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="icon-badge" style="background:rgba(125,211,252,0.15);color:#7DD3FC;border:1px solid rgba(125,211,252,0.3);">
+                                <i class="bi bi-plus-circle-fill"></i>
+                            </div>
+                            <h5 class="modal-title mb-0" id="addFacilityModalTitle">Add Facility</h5>
+                        </div>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label required" style="font-size:0.82rem;" for="facility_type">Type <span class="required-indicator" aria-hidden="true">*</span></label>
-                        <select id="facility_type" name="facility_type" class="form-select form-select-sm" required onchange="document.getElementById('capacityField').style.display = this.value === 'Evacuation Center' ? 'block' : 'none';">
-                            <option value="">— Select Type —</option>
-                            {% for t in facility_types %}
-                            <option value="{{ t }}">{{ t }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="mb-3" id="capacityField" style="display:none;">
-                        <label class="form-label" style="font-size:0.82rem;" for="capacity">Evacuation Capacity</label>
-                        <input id="capacity" type="number" name="capacity" min="0" class="form-control form-control-sm" placeholder="e.g. 250">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label" style="font-size:0.82rem;" for="address">Address</label>
-                        <input id="address" type="text" name="address" class="form-control form-control-sm">
-                    </div>
-                    <div class="row g-2 mb-3">
-                        <div class="col-4">
-                            <label class="form-label" style="font-size:0.82rem;" for="province_id">Province</label>
-                            <select id="facility_province_id" name="province_id" class="form-select form-select-sm">
-                                <option value="">—</option>
-                                {% for p in provinces %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}
+                    <div class="modal-body px-4">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="required-legend"><span class="required-indicator" aria-hidden="true">*</span> Required field</div>
+                        <div class="mb-3">
+                            <label class="form-label required" style="font-size:0.82rem;" for="name">Name <span class="required-indicator" aria-hidden="true">*</span></label>
+                            <input id="name" type="text" name="name" class="form-control form-control-sm" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label required" style="font-size:0.82rem;" for="facility_type">Type <span class="required-indicator" aria-hidden="true">*</span></label>
+                            <select id="facility_type" name="facility_type" class="form-select form-select-sm" required onchange="document.getElementById('capacityField').style.display = this.value === 'Evacuation Center' ? 'block' : 'none';">
+                                <option value="">— Select Type —</option>
+                                {% for t in facility_types %}
+                                <option value="{{ t }}">{{ t }}</option>
+                                {% endfor %}
                             </select>
                         </div>
-                        <div class="col-4">
-                            <label class="form-label" style="font-size:0.82rem;" for="municipality_id">Municipality</label>
-                            <select id="facility_municipality_id" name="municipality_id" class="form-select form-select-sm" disabled>
-                                <option value="">Select province first</option>
-                            </select>
+                        <div class="mb-3" id="capacityField" style="display:none;">
+                            <label class="form-label" style="font-size:0.82rem;" for="capacity">Evacuation Capacity</label>
+                            <input id="capacity" type="number" name="capacity" min="0" class="form-control form-control-sm" placeholder="e.g. 250">
                         </div>
-                        <div class="col-4">
-                            <label class="form-label" style="font-size:0.82rem;" for="barangay_id">Barangay</label>
-                            <select id="facility_barangay_id" name="barangay_id" class="form-select form-select-sm" disabled>
-                                <option value="">Select municipality first</option>
-                            </select>
+                        <div class="mb-3">
+                            <label class="form-label" style="font-size:0.82rem;" for="address">Address</label>
+                            <input id="address" type="text" name="address" class="form-control form-control-sm">
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-4">
+                                <label class="form-label" style="font-size:0.82rem;" for="facility_province_id">Province</label>
+                                <select id="facility_province_id" name="province_id" class="form-select form-select-sm">
+                                    <option value="">—</option>
+                                    {% for p in provinces %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-4">
+                                <label class="form-label" style="font-size:0.82rem;" for="facility_municipality_id">Municipality</label>
+                                <select id="facility_municipality_id" name="municipality_id" class="form-select form-select-sm" disabled>
+                                    <option value="">Select province first</option>
+                                </select>
+                            </div>
+                            <div class="col-4">
+                                <label class="form-label" style="font-size:0.82rem;" for="facility_barangay_id">Barangay</label>
+                                <select id="facility_barangay_id" name="barangay_id" class="form-select form-select-sm" disabled>
+                                    <option value="">Select municipality first</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label class="form-label" style="font-size:0.82rem;" for="latitude">Latitude</label>
+                                <input id="latitude" type="number" step="any" name="latitude" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label" style="font-size:0.82rem;" for="longitude">Longitude</label>
+                                <input id="longitude" type="number" step="any" name="longitude" class="form-control form-control-sm">
+                            </div>
                         </div>
                     </div>
-                    <div class="row g-2 mb-4">
-                        <div class="col-6">
-                            <label class="form-label" style="font-size:0.82rem;" for="latitude">Latitude</label>
-                            <input id="latitude" type="number" step="any" name="latitude" class="form-control form-control-sm">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label" style="font-size:0.82rem;" for="longitude">Longitude</label>
-                            <input id="longitude" type="number" step="any" name="longitude" class="form-control form-control-sm">
-                        </div>
+                    <div class="modal-footer border-0 px-4 pt-0">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-info px-4">
+                            <i class="bi bi-plus-circle me-1"></i>Add Facility
+                        </button>
                     </div>
-                    <button type="submit" class="btn btn-modern w-100 py-2" style="background:linear-gradient(135deg,#0284C7,#38BDF8);color:#04121f;font-weight:700;border:none;">
-                        <i class="bi bi-plus-circle me-2"></i>Add Facility
-                    </button>
                 </form>
             </div>
         </div>
