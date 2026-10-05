@@ -131,7 +131,10 @@ def emergency_assistance():
     response = make_response(render_template(
         'pages/citizen_emergency_assistance.html',
         general=get_general_hotline(),
-        services=build_hotline_services(),
+        services=[
+            service for service in build_hotline_services()
+            if service['key'] not in {'medical', 'police', 'fire'}
+        ],
         show_config_warning=(
             session.get('role') in {'admin', 'eoc_staff'} and not cdrrmo_hotline_configured()
         ),

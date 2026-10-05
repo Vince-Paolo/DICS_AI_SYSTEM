@@ -114,6 +114,17 @@ def manage_users():
     return render_template('pages/user_management.html', users=users, roles=roles, agencies=agencies)
 
 
+@admin_bp.route('/admin/users/new')
+def new_user():
+    """Dedicated account creation page for admins."""
+    if not is_admin():
+        flash('Admin access required.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    agencies = Agency.query.order_by(Agency.name).all()
+    return render_template('pages/user_create.html', agencies=agencies)
+
+
 @admin_bp.route('/admin/users/add', methods=['POST'])
 def add_user():
     """Add a new user - admin only"""
@@ -132,28 +143,28 @@ def add_user():
 
         if not username or not password or not email:
             flash('Username, email, and password are required.', 'error')
-            return redirect(url_for('admin.manage_users'))
+            return redirect(url_for('admin.new_user'))
 
         if len(password) < 8:
             flash('Password must be at least 8 characters.', 'error')
-            return redirect(url_for('admin.manage_users'))
+            return redirect(url_for('admin.new_user'))
 
         if User.query.filter_by(username=username).first():
             flash('Username already exists.', 'error')
-            return redirect(url_for('admin.manage_users'))
+            return redirect(url_for('admin.new_user'))
 
         if User.query.filter(db.func.lower(User.email) == email).first():
             flash('Email already registered.', 'error')
-            return redirect(url_for('admin.manage_users'))
+            return redirect(url_for('admin.new_user'))
 
         agency_linked_roles = {'agency_coordinator', 'field_responder'}
         valid_agency_names = [a.name for a in Agency.query.all()]
         if role in agency_linked_roles and not agency:
             flash('An agency must be selected for this role, or tasks/resources assigned to it will never reach this user.', 'error')
-            return redirect(url_for('admin.manage_users'))
+            return redirect(url_for('admin.new_user'))
         if agency and agency not in valid_agency_names:
             flash(_('Invalid agency "%(agency)s". Please select from the list.') % {'agency': agency}, 'error')
-            return redirect(url_for('admin.manage_users'))
+            return redirect(url_for('admin.new_user'))
 
         new_user = User(
             username=username,
@@ -172,11 +183,12 @@ def add_user():
             db.session.rollback()
             current_app.logger.exception('Failed to create user')
             flash('Unable to create user. Please try again.', 'error')
-            return redirect(url_for('admin.manage_users'))
+            return redirect(url_for('admin.new_user'))
         flash(_('User "%(username)s" created successfully.') % {'username': username}, 'success')
     except Exception:
         current_app.logger.exception('Failed to create user')
         flash('Unable to create user. Please try again.', 'error')
+        return redirect(url_for('admin.new_user'))
 
     return redirect(url_for('admin.manage_users'))
 
