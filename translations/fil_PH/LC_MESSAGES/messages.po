@@ -1151,10 +1151,9 @@ msgstr "Tawagan ang %(service)s sa %(number)s"
 msgid "Call now"
 msgstr "Tumawag na"
 
-#: templates/pages/citizen_emergency_assistance.html:96
-#, python-format
-msgid "This office line is not set up yet. Call %(number)s instead."
-msgstr "Wala pang nakalagay na numero ng opisina. Tumawag na lang sa %(number)s."
+#: templates/pages/citizen_emergency_assistance.html
+msgid "This hotline is not configured. For life-threatening emergencies, use the Emergency Assistance call above."
+msgstr "Hindi naka-configure ang hotline na ito. Para sa emergency na nagbabanta sa buhay, gamitin ang tawag na Pang-emergency sa itaas."
 
 #: templates/pages/citizen_emergency_assistance.html:109
 msgid "What to tell the operator"
@@ -1282,6 +1281,10 @@ msgstr ""
 #: templates/pages/eoc_dashboard.html:149
 msgid "Open full map"
 msgstr "Buksan ang buong mapa"
+
+#: templates/pages/eoc_dashboard.html
+msgid "Loading regional map..."
+msgstr "Naglo-load ang mapa ng rehiyon..."
 
 #: templates/pages/eoc_dashboard.html:155
 msgid "Map preview is unavailable. Open the full map to try again."
@@ -1658,6 +1661,12 @@ msgstr "Password"
 msgid "Enter password"
 msgstr "Ilagay ang password"
 
+msgid "Show password"
+msgstr "Ipakita ang password"
+
+msgid "Hide password"
+msgstr "Itago ang password"
+
 #: templates/pages/login.html:25
 msgid "Sign in"
 msgstr "Mag-sign in"
@@ -1915,4 +1924,3 @@ msgstr "Mag-logout"
 
 #~ msgid "Welcome back, !"
 #~ msgstr ""
-

@@ -68,6 +68,7 @@ class EmailOtpTestCase(unittest.TestCase):
         resp = self.client.get('/verify-email')
         self.assertEqual(resp.status_code, 200)
         self.assertIn(b'juan@example.com', resp.data)
+        self.assertIn(b"authPages = ['login', 'register', 'verify_email',", resp.data)
 
     def test_login_blocked_until_verified_then_allowed(self):
         self.register()

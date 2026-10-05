@@ -101,7 +101,7 @@ For local development, `FILE_STORAGE_BACKEND=local` stores files under
 
 ## Email (SMTP)
 
-Password-reset emails use SMTP when `SMTP_HOST` is set, otherwise the Resend API.
+Email verification codes and password-reset emails use SMTP when `SMTP_HOST` is set, otherwise the Resend API.
 SMTP requires Railway Pro or higher.
 
 Set these in Railway -> your service -> Variables, then redeploy:

@@ -425,8 +425,8 @@ msgstr "Pagtugon sa Sakuna"
 msgid "CDRRMO / Emergency Operations Center"
 msgstr "CDRRMO / Emergency Operations Center"
 
-msgid "This office line is not set up yet. Call %(number)s instead."
-msgstr "Wala pang nakalagay na numero ng opisina. Tumawag na lang sa %(number)s."
+msgid "This hotline is not configured. For life-threatening emergencies, use the Emergency Assistance call above."
+msgstr "Hindi naka-configure ang hotline na ito. Para sa emergency na nagbabanta sa buhay, gamitin ang tawag na Pang-emergency sa itaas."
 
 msgid "Call %(service)s at %(number)s"
 msgstr "Tawagan ang %(service)s sa %(number)s"

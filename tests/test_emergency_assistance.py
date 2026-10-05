@@ -82,6 +82,24 @@ class EmergencyAssistancePageTestCase(unittest.TestCase):
         self.assertIn('Need immediate help?', html)
         self.assertNotIn('<form', html)
         self.assertNotIn('type="file"', html)
+        self.assertIn('ea-card-contact-list', html)
+        self.assertIn('ea-card-heading', html)
+
+    def test_login_and_register_forms_include_accessible_password_visibility_controls(self):
+        for path in ('/login', '/register'):
+            with self.subTest(path=path):
+                html = self.client.get(path).get_data(as_text=True)
+                self.assertIn('data-password-toggle', html)
+                self.assertIn('aria-pressed="false"', html)
+                self.assertIn('data-show-label="Show password"', html)
+                self.assertIn('data-hide-label="Hide password"', html)
+                self.assertIn('css/style.css?v=2026-10-05-1', html)
+                self.assertIn('js/app.js?v=2026-10-05-1', html)
+
+        self.client.get('/language/tl')
+        translated_html = self.client.get('/login').get_data(as_text=True)
+        self.assertIn('data-show-label="Ipakita ang password"', translated_html)
+        self.assertIn('data-hide-label="Itago ang password"', translated_html)
 
     def test_signed_in_hotline_response_is_not_cacheable(self):
         self._login('ea_citizen', 'citizen')
@@ -123,40 +141,42 @@ class EmergencyAssistancePageTestCase(unittest.TestCase):
         translated_html = self.client.get('/login').get_data(as_text=True)
         self.assertIn('data-offline-message="Walang koneksyon. Ipinapakita ang huling naka-cache na pahina."', translated_html)
 
-    def test_defaults_to_national_number_and_never_invents_office_number(self):
+    def test_unconfigured_cards_do_not_repeat_primary_emergency_services(self):
         html = self.client.get('/emergency-assistance').get_data(as_text=True)
         links = tel_links(html)
-        # The hero and each unconfigured contact card use the national fallback.
-        self.assertEqual(links, ['911'] * 11)
-        self.assertIn('This office line is not set up yet', html)
+        self.assertEqual(links, ['911'])
+        self.assertEqual(html.count('This hotline is not configured.'), 7)
+        self.assertNotIn('href="tel:911"', html[html.index('What kind of help do you need?'):])
+        for label in ('Medical Emergency', 'Police / Security', 'Fire and Rescue'):
+            self.assertNotIn(label, html)
 
-    def test_configured_numbers_are_used_per_service(self):
+    def test_only_configured_local_services_are_shown_on_emergency_assistance(self):
         env = {
             'HOTLINE_GENERAL': '911',
             'HOTLINE_MEDICAL': '(049) 111-2222',
             'HOTLINE_POLICE': '117',
             'HOTLINE_FIRE': '160',
             'HOTLINE_CDRRMO': '+63 49 502 0000',
+            'HOTLINE_CITY_HEALTH': '(049) 562-7874',
         }
         with patch.dict(os.environ, env):
             html = self.client.get('/emergency-assistance').get_data(as_text=True)
-        self.assertEqual(tel_links(html), ['911', '0491112222', '117', '160', '+63495020000'] + ['911'] * 6)
-        self.assertIn('(049) 111-2222', html)
+        self.assertEqual(tel_links(html), ['911', '+63495020000', '0495627874'])
+        self.assertNotIn('(049) 111-2222', html)
+        self.assertNotIn('117', html)
+        self.assertNotIn('160', html)
         self.assertIn('+63 49 502 0000', html)
-        self.assertNotIn('This office line is not set up yet', html)
+        self.assertEqual(html.count('This hotline is not configured.'), 5)
 
     def test_multiple_cdrrmo_numbers_render_as_separate_dial_links(self):
         numbers = '0998-540-7171|(049) 800-0405|(049) 549-0500'
         with patch.dict(os.environ, {'HOTLINE_CDRRMO': numbers}):
             html = self.client.get('/emergency-assistance').get_data(as_text=True)
 
-        self.assertEqual(tel_links(html), [
-            '911', '911', '911', '911',
-            '09985407171', '0498000405', '0495490500',
-        ] + ['911'] * 6)
+        self.assertEqual(tel_links(html), ['911', '09985407171', '0498000405', '0495490500'])
         for number in ('0998-540-7171', '(049) 800-0405', '(049) 549-0500'):
             self.assertIn(number, html)
-        self.assertNotIn('This office line is not set up yet', html)
+        self.assertEqual(html.count('This hotline is not configured.'), 6)
 
     def test_san_pablo_hotlines_render_every_supplied_contact(self):
         env = {
@@ -171,8 +191,7 @@ class EmergencyAssistancePageTestCase(unittest.TestCase):
             html = self.client.get('/emergency-assistance').get_data(as_text=True)
 
         self.assertEqual(tel_links(html), [
-            '911', '911', '911', '911', '911',
-            '0495627874', '0495032200',
+            '911', '0495627874', '0495032200',
             '09081930819', '09278377454', '0495626474',
             '09995784943', '0495627654', '0495723868',
             '0495623086',
@@ -188,12 +207,14 @@ class EmergencyAssistancePageTestCase(unittest.TestCase):
         ):
             self.assertIn(label, html)
 
-    def test_invalid_configured_number_falls_back_instead_of_rendering_it(self):
+    def test_invalid_numbers_are_omitted_and_primary_services_stay_hidden(self):
         with patch.dict(os.environ, {'HOTLINE_MEDICAL': 'ask at the office', 'HOTLINE_CDRRMO': '0917-XXX-XXXX'}):
             html = self.client.get('/emergency-assistance').get_data(as_text=True)
         self.assertNotIn('ask at the office', html)
         self.assertNotIn('XXX', html)
-        self.assertEqual(tel_links(html), ['911'] * 11)
+        self.assertEqual(tel_links(html), ['911'])
+        for label in ('Medical Emergency', 'Police / Security', 'Fire and Rescue'):
+            self.assertNotIn(label, html)
 
     def test_signed_out_visitor_gets_plain_layout_and_not_the_login_redirect(self):
         html = self.client.get('/emergency-assistance').get_data(as_text=True)
@@ -211,7 +232,7 @@ class EmergencyAssistancePageTestCase(unittest.TestCase):
         self.client.get('/language/tl')
         html = self.client.get('/emergency-assistance').get_data(as_text=True)
         self.assertIn('Kailangan ng agarang tulong?', html)
-        self.assertIn('Tumawag na', html)
+        self.assertIn('Tumawag sa Emergency', html)
         for label in (
             'Tanggapan ng Kalusugan ng Lungsod',
             'Tanggapan ng Pamamahala ng Trapiko ng Lungsod',

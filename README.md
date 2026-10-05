@@ -101,8 +101,8 @@ hard-coded:
 | Variable | Used for | Notes |
 |---|---|---|
 | `HOTLINE_GENERAL` | Main "Call Emergency" button | Defaults to `911` |
-| `HOTLINE_MEDICAL`, `HOTLINE_POLICE`, `HOTLINE_FIRE` | Service cards | Fall back to `HOTLINE_GENERAL` |
-| `HOTLINE_CDRRMO` | Disaster Response / CDRRMO card | No fallback; unset shows "not set up yet" and admin/EOC users see a notice |
+| `HOTLINE_MEDICAL`, `HOTLINE_POLICE`, `HOTLINE_FIRE` | Citizen Resources quick contacts | Optional; not repeated on Emergency Assistance, which uses the main emergency button |
+| `HOTLINE_CDRRMO` | Disaster Response / CDRRMO contact | Shown on Emergency Assistance only when configured; admin/EOC users see a notice if unset |
 
 Values that are not plausible phone numbers are ignored. Incidents now enter
 the system through the automated monitoring feeds and staff/responder tools.

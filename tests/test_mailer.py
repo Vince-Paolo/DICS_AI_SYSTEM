@@ -35,6 +35,15 @@ class MailerTestCase(unittest.TestCase):
             self.assertEqual(msg['To'], 'to@example.com')
             self.assertEqual(msg['From'], 'u@example.com')
 
+    def test_gmail_app_password_display_spaces_are_removed(self):
+        app = make_app(SMTP_HOST='smtp.gmail.com', SMTP_PORT=587, SMTP_USERNAME='u@gmail.com',
+                       SMTP_PASSWORD='abcd efgh ijkl mnop', SMTP_FROM_EMAIL='u@gmail.com')
+        with app.app_context(), patch('services.mailer.smtplib.SMTP') as smtp:
+            server = smtp.return_value
+            server.__enter__.return_value = server
+            self.assertTrue(mailer.send_email('to@example.com', 'Hi', 'Body'))
+            server.login.assert_called_once_with('u@gmail.com', 'abcdefghijklmnop')
+
     def test_ssl_on_465(self):
         app = make_app(SMTP_HOST='smtp.example.com', SMTP_PORT=465, SMTP_USERNAME='u', SMTP_PASSWORD='p',
                        SMTP_FROM_EMAIL='u@example.com')

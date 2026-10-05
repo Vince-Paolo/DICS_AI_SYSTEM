@@ -1917,8 +1917,22 @@ class ResponderRoutesTestCase(unittest.TestCase):
         html = response.get_data(as_text=True)
         self.assertIn('eocIncidentMap', html)
         self.assertIn('Regional Incident Map', html)
+        self.assertIn('Loading regional map...', html)
+        self.assertIn('data-map-unavailable', html)
+        self.assertIn('loadLeaflet()', html)
+        self.assertIn('https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js', html)
+        self.assertIn('World_Street_Map/MapServer/tile/', html)
+        self.assertIn('window.setTimeout(failLayer, 10000)', html)
+        self.assertIn("showAlert ? ('\\uD83D\\uDEA8 (' + count + ') NEW SOS') : originalTitle", html)
         self.assertIn('Latest incidents', html)
         self.assertIn('Barangay Luma', html)
+
+        pins_response = self.client.get('/api/map-pins')
+        self.assertEqual(pins_response.status_code, 200)
+        self.assertTrue(any(
+            pin['lat'] == 14.1187 and pin['lng'] == 121.3542
+            for pin in pins_response.get_json()
+        ))
 
 
     def test_new_user_with_must_change_password_is_redirected_on_login(self):
