@@ -256,7 +256,7 @@ html.sidebar-collapsed .sidebar-container .menu-subgroup-label {
 
 .sidebar-nav-link {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 0.7rem;
     padding: 0.68rem 0.9rem;
     border-radius: 0.5rem;
@@ -265,9 +265,8 @@ html.sidebar-collapsed .sidebar-container .menu-subgroup-label {
     transition: all var(--sidebar-transition);
     border-left: 3px solid transparent;
     position: relative;
-    white-space: normal;
+    white-space: normal;          /* was nowrap: clipped long Filipino labels */
     width: 100%;
-    min-width: 0;
     box-sizing: border-box;
 }
 
@@ -298,32 +297,13 @@ html.sidebar-collapsed .sidebar-container .menu-subgroup-label {
     min-width: 1.5rem;
     text-align: center;
     flex-shrink: 0;
-    margin-top: 0.08rem;
 }
 
 .sidebar-nav-link .nav-text {
     flex: 1 1 auto;
-    min-width: 0;
-    max-width: 100%;
-    line-height: 1.35;
-    overflow-wrap: normal;
-    word-break: normal;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    overflow: hidden;
-}
-
-html[lang="fil-PH"] .sidebar-nav-link {
-    padding-block: 0.72rem;
-}
-
-html[lang="fil-PH"] .sidebar-nav-link .nav-text,
-html[lang="fil-PH"] .menu-section-label,
-html[lang="fil-PH"] .section-header h4,
-html[lang="fil-PH"] .card-title {
-    line-height: 1.45;
+    min-width: 0;                 /* let the flex item shrink so long labels wrap */
+    overflow-wrap: anywhere;
+    line-height: 1.25;
 }
 
 html.sidebar-collapsed .sidebar-container .sidebar-nav-link {
@@ -348,10 +328,7 @@ html.sidebar-collapsed .sidebar-container .sidebar-nav-link::before {
     padding: 0.5rem 0.75rem;
     border-radius: 0.4rem;
     font-size: 0.75rem;
-    white-space: normal;
-    max-width: min(16rem, 44vw);
-    overflow-wrap: anywhere;
-    line-height: 1.35;
+    white-space: nowrap;
     pointer-events: none;
     opacity: 0;
     transition: opacity var(--sidebar-transition);

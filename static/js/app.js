@@ -382,11 +382,8 @@ window.addEventListener('DOMContentLoaded', function () {
     initPageTransitions();
 
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/service-worker.js', {
-            scope: '/',
-            updateViaCache: 'none'
-        }).then(registration => registration.update()).catch(error => {
-            console.warn('Service worker registration/update failed:', error);
+        navigator.serviceWorker.register('/service-worker.js', { scope: '/' }).catch(error => {
+            console.warn('Service worker registration failed:', error);
         });
     }
 

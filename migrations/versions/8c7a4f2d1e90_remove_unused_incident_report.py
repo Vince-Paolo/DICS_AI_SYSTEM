@@ -16,8 +16,7 @@ depends_on = None
 
 
 def upgrade():
-    if sa.inspect(op.get_bind()).has_table('incident_report'):
-        op.drop_table('incident_report')
+    op.drop_table('incident_report')
 
 
 def downgrade():

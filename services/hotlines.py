@@ -6,6 +6,9 @@ deployment fills in with the verified official number from the LGU / CDRRMO /
 EOC:
 
     HOTLINE_GENERAL   national emergency number (defaults to 911)
+    HOTLINE_MEDICAL   medical / ambulance      (falls back to HOTLINE_GENERAL)
+    HOTLINE_POLICE    police / security        (falls back to HOTLINE_GENERAL)
+    HOTLINE_FIRE      fire and rescue          (falls back to HOTLINE_GENERAL)
     HOTLINE_CDRRMO    CDRRMO / EOC office line(s), separated by | (NO fallback:
                       these numbers are specific to the deployment, so an
                       unset value shows "not available" instead of a wrong one)
@@ -94,6 +97,12 @@ def build_hotline_services():
         return []
 
     definitions = (
+        ('medical', '\U0001F691', _('Medical Emergency'),
+         _('Ambulance and medical assistance'), 'HOTLINE_MEDICAL', True),
+        ('police', '\U0001F693', _('Police / Security'),
+         _('Police emergency assistance'), 'HOTLINE_POLICE', True),
+        ('fire', '\U0001F525', _('Fire and Rescue'),
+         _('Fire and rescue assistance'), 'HOTLINE_FIRE', True),
         ('disaster', '\U0001F30A', _('Disaster Response'),
          _('CDRRMO / Emergency Operations Center'), 'HOTLINE_CDRRMO', False),
         ('city_health', '\U0001F3E5', _('City Health Office (SPC - CHO)'),

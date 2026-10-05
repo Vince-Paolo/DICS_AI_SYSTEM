@@ -52,7 +52,7 @@ CLUSTER_RADIUS_KM = 60.0  # events within this radius of each other are treated 
 
 # Auto-discovery generates region keys from province names (e.g. "batangas_auto").
 # For regions that already have an established, referenced key elsewhere in the
-# codebase (scheduler.py's fallback string-match, tests/test_aftershock.py assertions),
+# codebase (scheduler.py's fallback string-match, test_aftershock.py assertions),
 # map the auto-generated key to the stable existing one so a rerun doesn't
 # silently orphan those references. Add an entry here whenever a region_key is
 # hardcoded anywhere outside this pipeline.
