@@ -75,7 +75,6 @@ def ai_prediction():
                 score=prediction.get('score'),
                 level=prediction.get('level'),
                 message=prediction.get('message', 'Manual incident report created.'),
-                message_fil=prediction.get('message_fil'),
                 alert=prediction.get('alert', False),
                 status='NEW',
                 reported_by='ai_prediction',

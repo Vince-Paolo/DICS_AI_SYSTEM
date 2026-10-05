@@ -9,13 +9,13 @@ use an AI API rather than developing and training a proprietary model.
 
 Design notes
 ------------
-The provider is a config switch, not a hardcoded choice. Adapters for Anthropic,
-OpenAI, Google Gemini, and Ollama are implemented behind one interface, chosen
-at runtime via the AI_PROVIDER environment variable. Ollama is the default.
-This exists so the provider decision can be made empirically -- run the same
-inputs through each adapter, compare quality/latency/cost, then lock in the
-winner for the Chapter 3 write-up -- without touching call sites in app.py,
-scheduler.py, or blueprints/ai.py.
+The provider is a config switch, not a hardcoded choice. Three adapters are
+implemented (Anthropic, OpenAI, Google Gemini) behind one interface, chosen
+at runtime via the AI_PROVIDER environment variable. This exists so the
+provider decision can be made empirically -- run the same inputs through
+each adapter, compare quality/latency/cost, then lock in the winner for the
+Chapter 3 write-up -- without touching call sites in app.py, scheduler.py,
+or blueprints/ai.py.
 
 Model ID strings for all three providers change often (new releases,
 deprecations). The defaults below were current as of August 2026; verify
@@ -89,9 +89,9 @@ PROVIDER_DEFAULTS = {
     },
 }
 
-AI_PROVIDER = os.getenv('AI_PROVIDER', 'ollama').strip().lower() or 'ollama'
+AI_PROVIDER = os.getenv('AI_PROVIDER', 'gemini').strip().lower() or 'gemini'
 if AI_PROVIDER not in PROVIDER_DEFAULTS:
-    AI_PROVIDER = 'ollama'
+    AI_PROVIDER = 'gemini'
 
 REQUEST_TIMEOUT_SECONDS = 15
 VALID_LEVELS = {'Low', 'Moderate', 'High', 'Severe', 'Unknown', 'Insufficient Data', 'INSUFFICIENT_DATA'}
@@ -109,7 +109,6 @@ SYSTEM_PROMPT = (
     '  "confidence": <number 0-100>,\n'
     '  "level": "Low" | "Moderate" | "High" | "Severe" | "Insufficient Data",\n'
     '  "message": "<one short paragraph, plain language, for a duty officer>",\n'
-    '  "message_fil": "<faithful Filipino translation of message; preserve all measurements, locations, sources, and uncertainty>",\n'
     '  "primary_factors": ["<factor>", ...],\n'
     '  "recommended_agencies": ["<agency>", ...],\n'
     '  "recommended_resources": ["<resource, with a rough quantity if useful>", ...]\n'
@@ -120,11 +119,7 @@ SYSTEM_PROMPT = (
     "Only include agencies/resources genuinely warranted by the inputs given -- "
     "an empty list is correct when nothing is warranted. You provide a "
     "recommendation for a human to review, not a dispatch order; do not imply "
-    "the recommendation has already been actioned. Write message in clear "
-    "English, and message_fil as a clear Filipino (Tagalog) translation for "
-    "residents of the Philippines. Keep the translation faithful: preserve "
-    "all numbers, locations, sources, and uncertainty; do not add advice or "
-    "claims that are absent from message."
+    "the recommendation has already been actioned."
 )
 
 
@@ -308,7 +303,6 @@ def _deterministic_low_risk_exit(hazard_type, rainfall_mm, river_level_m,
             'score': 10.0,
             'level': 'Low',
             'message': 'Deterministic input thresholds indicate low hazard risk; AI inference is not required.',
-            'message_fil': 'Ipinapakita ng mga itinakdang mababang threshold na mababa ang panganib; hindi na kailangan ang pagtatasa ng AI.',
             'alert': False,
             'recommended_agencies': [],
             'recommended_resources': [],
@@ -366,23 +360,14 @@ def _parse_ai_response(raw_text, hazard_type, rainfall_mm=None, humidity_pct=Non
 
     raw_level = str(level or '').strip()
     message = str(data.get('message') or '').strip()
-    message_fil = str(data.get('message_fil') or '').strip()
     if raw_level.upper() in UNKNOWN_RISK_LEVELS:
         if rainfall_mm is not None and humidity_pct is not None:
             score = max(score, _rainfall_humidity_score(rainfall_mm, humidity_pct))
             level = _level_from_score(score)
-            heuristic_note = (
+            message = (message + ' ' if message else '') + (
                 'The model returned insufficient data despite available rainfall and humidity readings; '
                 'the displayed score includes a conservative rainfall/humidity heuristic.'
             )
-            message = (message + ' ' if message else '') + heuristic_note
-            if message_fil:
-                message_fil += (
-                    ' ' if message_fil else ''
-                ) + (
-                    'Nagbalik ng hindi sapat na datos ang modelo kahit may datos ng ulan at halumigmig; '
-                    'kasama sa ipinakitang iskor ang konserbatibong pagtatantiya batay sa ulan at halumigmig.'
-                )
         else:
             level = 'INSUFFICIENT_DATA'
     else:
@@ -390,8 +375,6 @@ def _parse_ai_response(raw_text, hazard_type, rainfall_mm=None, humidity_pct=Non
 
     if not message:
         message = f'{level} {hazard_type} risk assessed (score {score}).'
-        if not message_fil:
-            message_fil = f'Natasa ang panganib ng {hazard_type} bilang {level} (iskor na {score}).'
 
     confidence = data.get('confidence')
     try:
@@ -416,7 +399,6 @@ def _parse_ai_response(raw_text, hazard_type, rainfall_mm=None, humidity_pct=Non
         'score': score,
         'level': level,
         'message': message,
-        'message_fil': message_fil,
         'alert': score >= 50,
         'confidence': confidence,
         'primary_factors': primary_factors,
@@ -432,7 +414,6 @@ def _fallback_response(hazard_type, reason):
         'score': 0.0,
         'level': 'INSUFFICIENT_DATA',
         'message': 'AI hazard assessment is temporarily unavailable. Please use manual review and retry shortly.',
-        'message_fil': 'Pansamantalang hindi magagamit ang pagtatasa ng panganib ng AI. Mangyaring magsagawa ng manu-manong pagsusuri at subukang muli pagkalipas ng ilang sandali.',
         'alert': False,
         'recommended_agencies': [],
         'recommended_resources': [],
