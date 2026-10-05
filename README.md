@@ -30,8 +30,11 @@ The main runtime layers are:
 - [scheduler.py](scheduler.py): hazard monitoring / ingestion loop that reads
   real-time weather and earthquake inputs and pushes a new incident record
   when a risk threshold is exceeded.
-- [services/realtime_data.py](services/realtime_data.py): the live weather and
-  earthquake adapter layer.
+- [services/realtime_data.py](services/realtime_data.py): adapters for
+  OpenWeather city observations, Open-Meteo rainfall, USGS earthquakes, GDACS
+  floods and tropical cyclones, NASA EONET volcano events, and NASA FIRMS
+  thermal hotspots. Rainfall and typhoon map layers return no events/data when
+  their live feeds are unavailable; they do not substitute demo readings.
 - [services/aftershock.py](services/aftershock.py): Omori-Utsu / Gutenberg-
   Richter aftershock probability logic and a calibrated proxy-region model.
 - [ai/decision_support.py](ai/decision_support.py): provider adapter layer

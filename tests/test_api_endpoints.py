@@ -128,6 +128,31 @@ class ApiEndpointFunctionalTestCase(unittest.TestCase):
         self.assertIn('id="hazardSearchInput"', html)
         self.assertIn('Search hazard areas...', html)
 
+    def test_shared_layout_uses_local_bootstrap_assets(self):
+        response = self.client.get('/login')
+
+        self.assertEqual(response.status_code, 200)
+        html = response.get_data(as_text=True)
+        self.assertIn('/static/vendor/bootstrap/css/bootstrap.min.css', html)
+        self.assertIn('/static/vendor/bootstrap-icons/font/bootstrap-icons.css', html)
+        self.assertIn('/static/vendor/bootstrap/js/bootstrap.bundle.min.js', html)
+        self.assertNotIn('cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap', html)
+        self.assertNotIn('cdn.jsdelivr.net/npm/bootstrap-icons', html)
+
+        for asset in (
+            'vendor/bootstrap/css/bootstrap.min.css',
+            'vendor/bootstrap/js/bootstrap.bundle.min.js',
+            'vendor/bootstrap-icons/font/bootstrap-icons.css',
+            'vendor/bootstrap-icons/font/fonts/bootstrap-icons.woff2',
+        ):
+            with self.subTest(asset=asset):
+                asset_response = self.client.get(f'/static/{asset}')
+                self.assertEqual(asset_response.status_code, 200)
+
+        worker = self.client.get('/service-worker.js').get_data(as_text=True)
+        self.assertIn('/static/vendor/bootstrap/css/bootstrap.min.css', worker)
+        self.assertIn('/static/css/sidebar.css', worker)
+
     def test_heat_map_and_navigation_are_available_without_tutorial(self):
         self._login('api_commander', 'incident_commander')
 
@@ -156,7 +181,11 @@ class ApiEndpointFunctionalTestCase(unittest.TestCase):
         centers_html = self.client.get('/citizen-evacuation-centers').get_data(as_text=True)
         self.assertIn('Mga Sentro ng Paglikas', centers_html)
 
-    def test_hazard_map_rainfall_and_typhoon_tracking_apis_return_data(self):
+    @patch('app.get_typhoon_tracks', return_value=[{'track': [[14.0, 121.0]]}])
+    @patch('app.get_rainfall_watch', return_value=[{'lat': 14.0, 'lon': 121.0}])
+    def test_hazard_map_rainfall_and_typhoon_tracking_apis_return_data(
+        self, mock_rainfall, mock_typhoon,
+    ):
         self._login('api_citizen', 'citizen')
 
         rainfall_response = self.client.get('/api/hazard-layers/rainfall')
@@ -170,12 +199,11 @@ class ApiEndpointFunctionalTestCase(unittest.TestCase):
 
         self.assertIsInstance(rainfall, list)
         self.assertIsInstance(typhoon, list)
-        self.assertGreater(len(rainfall), 0)
-        self.assertGreater(len(typhoon), 0)
-
         self.assertIn('lat', rainfall[0])
         self.assertIn('lon', rainfall[0])
         self.assertIn('track', typhoon[0])
+        mock_rainfall.assert_called_once_with()
+        mock_typhoon.assert_called_once_with()
 
     def test_barangays_api_returns_sorted_records_for_a_municipality(self):
         self._login('api_citizen', 'citizen')

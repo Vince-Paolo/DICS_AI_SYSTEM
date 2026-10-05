@@ -68,6 +68,20 @@ class OperationalDataFeaturesTestCase(unittest.TestCase):
             sess['username'] = username
             sess['role'] = role
 
+    def test_verification_queue_search_and_compact_actions_render(self):
+        self._login('eoc1', 'eoc_staff')
+        response = self.client.get('/admin/alerts')
+        html = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('id="verificationSearch"', html)
+        self.assertIn('data-search="flood test barangay test incident', html)
+        self.assertIn('data-bs-target="#rejectIncidentModal1"', html)
+        self.assertIn('id="rejectIncidentModal1"', html)
+        self.assertIn('id="rejectReason1"', html)
+        self.assertIn('id="commander_id_1"', html)
+        self.assertIn('Confirm rejection', html)
+
     # -- Facility / EvacuationCenter -----------------------------------
 
     def test_admin_cannot_add_facility(self):
@@ -105,6 +119,8 @@ class OperationalDataFeaturesTestCase(unittest.TestCase):
         self.assertIn('id="facility_province_id"', html)
         self.assertIn('id="facility_municipality_id"', html)
         self.assertIn('id="facility_barangay_id"', html)
+        self.assertIn("document.querySelectorAll('main .modal')", html)
+        self.assertIn('document.body.appendChild(modal)', html)
         self.assertIn("/api/municipalities/", html)
         self.assertIn("/api/barangays/", html)
         self.assertNotIn('name="municipality_id" class="form-select form-select-sm" disabled>\n                                <option value="">—</option>', html)

@@ -683,6 +683,9 @@ class ResponderRoutesTestCase(unittest.TestCase):
 
         response = self.client.get('/login')
         html = response.get_data(as_text=True)
+        self.assertIn('id="themeToggle"', html)
+        self.assertIn('dicsTheme', html)
+        self.assertIn('css/theme.css', html)
         self.assertIn('lang="fil-PH"', html)
         self.assertIn('Pag-login', html)
         self.assertIn('Ilagay ang username', html)
@@ -1613,6 +1616,22 @@ class ResponderRoutesTestCase(unittest.TestCase):
         with self.client.session_transaction() as session:
             self.assertNotIn('username', session)
             self.assertNotIn('role', session)
+
+    def test_responder_report_media_upload_has_full_width_dropzone_and_previews(self):
+        with self.client.session_transaction() as session:
+            session['username'] = 'responder1'
+            session['role'] = 'field_responder'
+
+        response = self.client.get('/responder-report')
+        html = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('class="upload-zone p-4 rounded-3 text-center"', html)
+        self.assertIn('width: 100%;', html)
+        self.assertIn('id="media-selection-count"', html)
+        self.assertIn('id="file-preview"', html)
+        self.assertIn('.webp', html)
+        self.assertIn('media-preview-thumb', html)
 
     def test_responder_report_survives_attachment_storage_failure(self):
         response_id = self._create_active_response_for_report()

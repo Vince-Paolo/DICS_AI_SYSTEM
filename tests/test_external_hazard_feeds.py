@@ -131,6 +131,82 @@ class ExternalHazardFeedParsingTestCase(unittest.TestCase):
         realtime_data._cache['volcano_events'] = {'data': None, 'timestamp': None}
         realtime_data._cache['thermal_hotspots'] = {'data': None, 'timestamp': None}
         realtime_data._cache['flood_footprints'] = {'data': None, 'timestamp': None}
+        realtime_data._cache['rainfall_watch'] = {'data': None, 'timestamp': None}
+        realtime_data._cache['typhoon_tracks'] = {'data': None, 'timestamp': None}
+
+    def test_get_rainfall_watch_parses_live_open_meteo_data(self):
+        open_meteo_data = [
+            {
+                'current': {'precipitation': 8.25},
+                'hourly': {'precipitation': [None, 1.2, 2.3]},
+            }
+            for _ in realtime_data.CALABARZON_CITY_COORDINATES
+        ]
+        with patch.object(realtime_data, '_fetch_json', return_value=open_meteo_data) as fetch:
+            rainfall = realtime_data.get_rainfall_watch()
+
+        self.assertEqual(len(rainfall), len(realtime_data.CALABARZON_CITY_COORDINATES))
+        self.assertEqual(rainfall[0]['name'], 'Lipa')
+        self.assertEqual(rainfall[0]['rainfall_mm'], 8.2)
+        self.assertEqual(rainfall[0]['rainfall_24h_mm'], 3.5)
+        self.assertEqual(rainfall[0]['status'], 'Heavy rain (Yellow)')
+        self.assertEqual(rainfall[0]['source'], 'Open-Meteo')
+        self.assertIn('latitude=', fetch.call_args.args[0])
+        self.assertIn('longitude=', fetch.call_args.args[0])
+
+    def test_get_rainfall_watch_returns_empty_list_on_fetch_failure(self):
+        with patch.object(realtime_data, '_fetch_json', return_value=None):
+            rainfall = realtime_data.get_rainfall_watch()
+        self.assertEqual(rainfall, [])
+
+    def test_get_typhoon_tracks_filters_active_par_events_and_parses_tracks(self):
+        gdacs_events = {
+            'features': [
+                {
+                    'geometry': {'type': 'Point', 'coordinates': [125.0, 15.0]},
+                    'properties': {
+                        'eventid': 123, 'episodeid': 456, 'eventtype': 'TC',
+                        'iscurrent': True, 'eventname': 'Tropical Storm Test',
+                        'alertlevel': 'Orange',
+                        'severitydata': {'severity': 85, 'severitytext': 'Tropical storm'},
+                    },
+                },
+                {
+                    'geometry': {'type': 'Point', 'coordinates': [125.0, 15.0]},
+                    'properties': {'eventtype': 'TC', 'iscurrent': False},
+                },
+                {
+                    'geometry': {'type': 'Point', 'coordinates': [140.0, 15.0]},
+                    'properties': {'eventtype': 'TC', 'iscurrent': True},
+                },
+            ],
+        }
+        track_geojson = {
+            'features': [{
+                'geometry': {
+                    'type': 'LineString',
+                    'coordinates': [[124.0, 14.0], [125.0, 15.0]],
+                },
+            }],
+        }
+
+        def fetch_json(url):
+            return track_geojson if 'polygons/getgeometry' in url else gdacs_events
+
+        with patch.object(realtime_data, '_fetch_json', side_effect=fetch_json):
+            storms = realtime_data.get_typhoon_tracks()
+
+        self.assertEqual(len(storms), 1)
+        self.assertEqual(storms[0]['name'], 'Tropical Storm Test')
+        self.assertEqual(storms[0]['wind_kph'], 85)
+        self.assertIsNone(storms[0]['pressure_hpa'])
+        self.assertEqual(storms[0]['track'], [[14.0, 124.0], [15.0, 125.0]])
+        self.assertEqual(storms[0]['source'], 'GDACS (JTWC/NOAA-based)')
+
+    def test_get_typhoon_tracks_returns_empty_list_on_fetch_failure(self):
+        with patch.object(realtime_data, '_fetch_json', return_value=None):
+            storms = realtime_data.get_typhoon_tracks()
+        self.assertEqual(storms, [])
 
     def test_get_flood_events_filters_to_philippine_floods_only(self):
         with patch.object(realtime_data, '_fetch_json', return_value=GDACS_SAMPLE_RESPONSE):
