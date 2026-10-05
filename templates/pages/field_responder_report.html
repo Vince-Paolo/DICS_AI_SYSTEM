@@ -84,8 +84,8 @@
                     <div class="d-flex align-items-center gap-3">
                         <i class="bi bi-geo-alt-fill" style="color:#F97316;font-size:1.1rem;"></i>
                         <div class="flex-grow-1">
-                            <div style="font-size:0.78rem;color:#9CA3AF;" class="mb-1">Current Location</div>
-                            <div id="gps-display" role="status" aria-live="polite" style="font-size:0.82rem;line-height:1.5;color:#FDBA74;overflow-wrap:anywhere;">Not captured — click Capture to attach location</div>
+                            <div style="font-size:0.78rem;color:#9CA3AF;" class="mb-1">Current GPS Coordinates</div>
+                            <div id="gps-display" class="font-monospace" style="font-size:0.82rem;color:#FDBA74;">Not captured — click Capture to attach location</div>
                         </div>
                         <button type="button" onclick="captureGPS()" class="btn btn-sm" style="background:rgba(249,115,22,0.15);color:#F97316;border:1px solid rgba(249,115,22,0.3);font-size:0.78rem;white-space:nowrap;">
                             <i class="bi bi-crosshair me-1"></i>Capture
@@ -262,31 +262,8 @@
 {% block scripts %}
 <script>
 let capturedLat = null, capturedLng = null;
-let locationLookupId = 0;
-
-function reverseGeocode(lat, lng) {
-    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
-    return fetch(url)
-        .then(response => response.ok ? response.json() : null)
-        .then(result => {
-            if (!result) return null;
-            const address = result.address || {};
-            const street = result.name || [address.house_number, address.road].filter(Boolean).join(' ');
-            const locality = address.neighbourhood || address.suburb || address.village
-                || address.town || address.city_district || address.quarter;
-            const municipality = address.city || address.municipality || address.county;
-            const region = address.state_district || address.state;
-            const parts = [street, locality, municipality, region].filter(Boolean);
-            const uniqueParts = parts.filter((part, index) =>
-                parts.findIndex(candidate => candidate.toLowerCase() === part.toLowerCase()) === index
-            );
-            return uniqueParts.join(', ') || result.display_name || null;
-        })
-        .catch(() => null);
-}
 
 function captureGPS() {
-    const lookupId = ++locationLookupId;
     const display = document.getElementById('gps-display');
     display.textContent = 'Acquiring GPS…';
     if (!navigator.geolocation) {
@@ -294,27 +271,18 @@ function captureGPS() {
         return;
     }
     navigator.geolocation.getCurrentPosition(function(pos) {
-        if (lookupId !== locationLookupId) return;
         capturedLat = pos.coords.latitude.toFixed(6);
         capturedLng = pos.coords.longitude.toFixed(6);
-        const accuracy = Math.round(pos.coords.accuracy);
-        display.textContent = 'Looking up place name… (±' + accuracy + 'm)';
+        display.textContent = capturedLat + ', ' + capturedLng + ' (±' + Math.round(pos.coords.accuracy) + 'm)';
         display.style.color = '#6EE7B7';
         document.getElementById('gps-lat-input').value = capturedLat;
         document.getElementById('gps-lng-input').value = capturedLng;
-        reverseGeocode(capturedLat, capturedLng).then(function(placeName) {
-            if (lookupId !== locationLookupId) return;
-            const areaInput = document.getElementById('affected-areas-input');
-            if (placeName) {
-                display.textContent = placeName + ' (±' + accuracy + 'm)';
-                if (!areaInput.value.trim()) areaInput.value = placeName;
-            } else {
-                display.textContent = 'Place name unavailable — GPS captured at '
-                    + capturedLat + ', ' + capturedLng + ' (±' + accuracy + 'm)';
-            }
-        });
+        // Also pre-fill affected area if empty
+        const areaInput = document.getElementById('affected-areas-input');
+        if (!areaInput.value) {
+            areaInput.placeholder = capturedLat + ', ' + capturedLng;
+        }
     }, function(err) {
-        if (lookupId !== locationLookupId) return;
         display.textContent = 'GPS error: ' + err.message;
         display.style.color = '#FCA5A5';
     }, { enableHighAccuracy: true, timeout: 10000 });

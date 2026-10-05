@@ -29,15 +29,7 @@
                 <input type="tel" class="form-control" id="contact_number" name="contact_number" placeholder="{{ _('Enter contact number') }}" required>
 
                 <label class="auth-label" for="password">{{ _('Password') }}</label>
-                <div class="auth-password-field">
-                    <input type="password" class="form-control" id="password" name="password" placeholder="{{ _('Enter password') }}" autocomplete="new-password" required>
-                    <button type="button" class="auth-password-toggle" id="passwordVisibilityToggle"
-                            aria-controls="password" aria-pressed="false"
-                            aria-label="{{ _('Show password') }}" title="{{ _('Show password') }}"
-                            data-show-label="{{ _('Show password') }}" data-hide-label="{{ _('Hide password') }}">
-                        <i class="bi bi-eye" aria-hidden="true"></i>
-                    </button>
-                </div>
+                <input type="password" class="form-control" id="password" name="password" placeholder="{{ _('Enter password') }}" required>
 
                 <button class="btn btn-auth w-100 mt-1" type="submit">{{ _('Create account') }}</button>
             </form>
@@ -49,26 +41,4 @@
         </div>
     </div>
 </div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const passwordInput = document.getElementById('password');
-    const visibilityButton = document.getElementById('passwordVisibilityToggle');
-    if (!passwordInput || !visibilityButton) return;
-
-    visibilityButton.addEventListener('click', function () {
-        const isVisible = passwordInput.type === 'text';
-        passwordInput.type = isVisible ? 'password' : 'text';
-        const label = isVisible ? visibilityButton.dataset.showLabel : visibilityButton.dataset.hideLabel;
-        visibilityButton.setAttribute('aria-label', label);
-        visibilityButton.title = label;
-        visibilityButton.setAttribute('aria-pressed', String(!isVisible));
-        const icon = visibilityButton.querySelector('i');
-        icon.classList.toggle('bi-eye', isVisible);
-        icon.classList.toggle('bi-eye-slash', !isVisible);
-    });
-});
-</script>
 {% endblock %}

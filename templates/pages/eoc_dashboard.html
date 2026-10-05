@@ -553,7 +553,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (titleFlashTimer) return;
         let showAlert = true;
         titleFlashTimer = setInterval(function () {
-            document.title = showAlert ? ('\uD83D\uDEA8 (' + count + ') NEW SOS') : originalTitle;
+            document.title = showAlert ? ('\uD83D\uDEA8 (' + count + ') NEW SOS' : originalTitle);
             showAlert = !showAlert;
         }, 1000);
     }

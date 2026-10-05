@@ -123,20 +123,12 @@
                                         <div class="flex-grow-1">
                                             <div class="d-flex align-items-center gap-2 mb-2">
                                                 {{ hz.risk_badge(alert.level) }}
-                                                <strong>{{ hz.hazard_icon(alert.hazard_type) }}
-                                                    {% if alert.hazard_type|lower == 'flood' %}{{ _('Flood')|upper }}
-                                                    {% elif alert.hazard_type|lower == 'landslide' %}{{ _('Landslide')|upper }}
-                                                    {% elif alert.hazard_type|lower == 'earthquake' %}{{ _('Earthquake')|upper }}
-                                                    {% elif alert.hazard_type|lower == 'volcanic' %}{{ _('Volcanic')|upper }}
-                                                    {% elif alert.hazard_type|lower == 'storm' %}{{ _('Storm')|upper }}
-                                                    {% elif alert.hazard_type|lower == 'fire' %}{{ _('Fire')|upper }}
-                                                    {% else %}{{ alert.hazard_type|upper }}{% endif %}
-                                                </strong>
+                                                <strong>{{ hz.hazard_icon(alert.hazard_type) }} {{ alert.hazard_type|upper }}</strong>
                                             </div>
                                             <div class="small text-muted mb-2">
                                                 <i class="bi bi-geo-alt-fill me-1"></i>{{ alert.location or _('Location not available') }}
                                             </div>
-                                            <div class="small mb-2">{{ hz.incident_message(alert.message, alert.message_fil, current_locale) }}</div>
+                                            <p class="mb-2 small">{{ alert.message }}</p>
                                             <div class="d-flex gap-3 align-items-center flex-wrap">
                                                 <small class="text-muted"><i class="bi bi-clock me-1"></i>{{ alert.created_at|manila_time('%b %d, %Y %I:%M %p') if alert.created_at else 'N/A' }}</small>
                                                 <small class="text-muted"><i class="bi bi-speedometer2 me-1"></i>{{ _('Risk Score') }}: <strong class="text-info">{{ "%.0f"|format(alert.score|float(0)) }}%</strong></small>

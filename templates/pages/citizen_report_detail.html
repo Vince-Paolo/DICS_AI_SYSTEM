@@ -1,5 +1,4 @@
 {% extends 'pages/base.html' %}
-{% import 'partials/hazard_macros.html' as hz %}
 {% block title %}Report #{{ incident.id }} Details | DICS AI{% endblock %}
 {% block content %}
 <h1 class="visually-hidden">Report #{{ incident.id }} Details</h1>
@@ -114,7 +113,7 @@
             <div class="col-12">
               <div class="p-3 rounded" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);">
                 <div class="text-muted small mb-1">Description</div>
-                <div>{{ hz.incident_message(incident.message or _('No description provided.'), incident.message_fil, current_locale) }}</div>
+                <div>{{ incident.message or 'No description provided.' }}</div>
               </div>
             </div>
             {% if citizen_rep %}
