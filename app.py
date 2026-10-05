@@ -128,6 +128,12 @@ def _normalize_database_url():
     if configured_url.startswith('postgres://'):
         configured_url = 'postgresql://' + configured_url[len('postgres://'):]
 
+    # requirements.txt ships the psycopg2 driver. A URL such as
+    # 'postgresql+psycopg://' (psycopg v3) or '+asyncpg' would make SQLAlchemy
+    # import a driver that is not installed and crash the app at startup.
+    if configured_url.startswith('postgresql+'):
+        configured_url = 'postgresql://' + configured_url.split('://', 1)[1]
+
     # Flask-SQLAlchemy/SQLAlchemy can misinterpret relative sqlite paths like
     # 'sqlite:///instance/database.db' when the runtime CWD differs from the
     # project root. Resolve them against the project base directory instead.
