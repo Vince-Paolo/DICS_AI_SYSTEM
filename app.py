@@ -4,6 +4,8 @@ import io
 import os
 import sqlite3
 import threading
+import hmac
+import hashlib
 import secrets
 from html import escape as html_escape
 from datetime import datetime, timedelta, timezone
@@ -350,7 +352,7 @@ def add_security_headers(response):
     )
     response.headers.setdefault('X-Frame-Options', 'DENY')
     response.headers.setdefault('X-Content-Type-Options', 'nosniff')
-    if request.endpoint in {'login', 'register', 'forgot_password', 'reset_password', 'logout'} or session.get('username'):
+    if request.endpoint in {'login', 'register', 'verify_email', 'forgot_password', 'reset_password', 'logout'} or session.get('username'):
         response.headers.setdefault('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
         response.headers.setdefault('Pragma', 'no-cache')
         response.headers.setdefault('Expires', '0')
@@ -591,6 +593,14 @@ def migrate_user_table():
                 cursor.execute("ALTER TABLE user ADD COLUMN reset_token VARCHAR(500)")
             if 'reset_token_expires_at' not in columns:
                 cursor.execute("ALTER TABLE user ADD COLUMN reset_token_expires_at DATETIME")
+            if 'verification_token' not in columns:
+                cursor.execute("ALTER TABLE user ADD COLUMN verification_token VARCHAR(500)")
+            if 'verification_expires_at' not in columns:
+                cursor.execute("ALTER TABLE user ADD COLUMN verification_expires_at DATETIME")
+            if 'verification_attempts' not in columns:
+                cursor.execute("ALTER TABLE user ADD COLUMN verification_attempts INTEGER DEFAULT 0")
+            if 'verification_sent_at' not in columns:
+                cursor.execute("ALTER TABLE user ADD COLUMN verification_sent_at DATETIME")
             conn.commit()
 
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='incident'")
@@ -991,6 +1001,10 @@ def login():
             user = User.query.filter_by(username=username).first()
             if user and user.is_disabled:
                 error = 'This account has been disabled. Contact an administrator.'
+            elif user and verify_password(user, password) and _is_pending_verification(user):
+                session['pending_verification_email'] = user.email
+                flash(_('Please verify your email address before logging in.'), 'warning')
+                return redirect(url_for('verify_email'))
             elif user and verify_password(user, password):
                 session['username'] = user.username
                 session['role'] = user.role
@@ -1019,6 +1033,58 @@ def login():
     return render_template('pages/login.html', error=error)
 
 
+OTP_TTL_MINUTES = 10
+OTP_MAX_ATTEMPTS = 5
+OTP_RESEND_COOLDOWN_SECONDS = 60
+
+
+def _utcnow_naive():
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def _is_pending_verification(user):
+    """True for self-registered accounts that still owe an email OTP.
+
+    Legacy/admin-created accounts have no verification_token, so they are
+    never treated as pending and can keep logging in as before.
+    """
+    return bool(user and not user.email_verified and user.verification_token)
+
+
+def _hash_otp(user_id, code):
+    key = str(current_app.config['SECRET_KEY']).encode('utf-8')
+    return hmac.new(key, f'{user_id}:{code}'.encode('utf-8'), hashlib.sha256).hexdigest()
+
+
+def _set_verification_code(user):
+    """Generate a fresh 6-digit OTP on the user (not committed). Returns the code."""
+    code = f'{secrets.randbelow(1_000_000):06d}'
+    now = _utcnow_naive()
+    user.verification_token = _hash_otp(user.id or 0, code)
+    user.verification_expires_at = now + timedelta(minutes=OTP_TTL_MINUTES)
+    user.verification_attempts = 0
+    user.verification_sent_at = now
+    return code
+
+
+def send_verification_email(user, code):
+    subject = 'Your verification code | DICS AI'
+    body = (
+        f'Hello {user.full_name or user.username},\n\n'
+        f'Your DICS AI verification code is: {code}\n\n'
+        f'This code expires in {OTP_TTL_MINUTES} minutes. If you did not create '
+        'an account, you can safely ignore this email.'
+    )
+    return send_email(user.email, subject, body)
+
+
+def _issue_and_send_code(user):
+    """Rotate the OTP for `user`, commit, then email it. Returns True if sent."""
+    code = _set_verification_code(user)
+    db.session.commit()
+    return send_verification_email(user, code)
+
+
 @app.route('/register', methods=['GET', 'POST'])
 @limiter.limit("5 per hour", methods=['POST'])
 def register():
@@ -1032,34 +1098,124 @@ def register():
         password = request.form.get('password', '').strip()
         full_name = request.form.get('full_name', '').strip()
         contact_number = request.form.get('contact_number', '').strip()
+
+        same_username = User.query.filter_by(username=username).first() if username else None
+        same_email = User.query.filter(db.func.lower(User.email) == email).first() if email else None
+        # An abandoned, never-verified signup must not squat a username/email
+        # forever; whoever re-registers replaces it (they still need the OTP).
+        stale = [u for u in (same_username, same_email) if _is_pending_verification(u)]
+        if same_username in stale:
+            same_username = None
+        if same_email in stale:
+            same_email = None
+
         if not username or not password or not full_name or not contact_number or not email:
             error = 'All fields are required.'
         elif len(password) < 8:
             error = 'Password must be at least 8 characters.'
-        elif User.query.filter_by(username=username).first():
+        elif same_username:
             error = 'Username already exists.'
-        elif User.query.filter(db.func.lower(User.email) == email).first():
+        elif same_email:
             error = 'Email already registered.'
         else:
-            new_user = User(
-                username=username,
-                email=email,
-                password=generate_password_hash(password),
-                full_name=full_name,
-                contact_number=contact_number,
-                role='citizen',
-            )
-            db.session.add(new_user)
             try:
+                for old_user in {u.id: u for u in stale}.values():
+                    db.session.delete(old_user)
+                db.session.flush()  # DELETE must hit the DB before the new INSERT (unique indexes)
+                new_user = User(
+                    username=username,
+                    email=email,
+                    password=generate_password_hash(password),
+                    full_name=full_name,
+                    contact_number=contact_number,
+                    role='citizen',
+                    email_verified=False,
+                )
+                db.session.add(new_user)
+                db.session.flush()  # need new_user.id before hashing the OTP
+                code = _set_verification_code(new_user)
                 db.session.commit()
             except Exception:
                 db.session.rollback()
                 app.logger.exception('Failed to create account')
                 flash('Unable to create account. Please try again.', 'error')
                 return render_template('pages/register.html', error=None)
-            flash('Registration successful! You can now log in.', 'success')
-            return redirect(url_for('login'))
+
+            session['pending_verification_email'] = email
+            if send_verification_email(new_user, code):
+                flash(_('We sent a 6-digit verification code to your email.'), 'success')
+            else:
+                flash(_('Your account was created but we could not send the code. Use "Resend code" to try again.'), 'warning')
+            return redirect(url_for('verify_email'))
     return render_template('pages/register.html', error=error)
+
+
+@app.route('/verify-email', methods=['GET', 'POST'])
+@limiter.limit("10 per minute", methods=['POST'])
+def verify_email():
+    if 'username' in session:
+        return redirect(url_for('dashboard'))
+
+    email = (request.form.get('email') or request.args.get('email')
+             or session.get('pending_verification_email') or '').strip().lower()
+    error = None
+
+    if request.method == 'POST':
+        action = request.form.get('action', 'verify')
+        user = User.query.filter(db.func.lower(User.email) == email).first() if email else None
+        pending = _is_pending_verification(user)
+
+        if action == 'resend':
+            if pending:
+                sent_at = user.verification_sent_at
+                wait = 0
+                if sent_at:
+                    wait = OTP_RESEND_COOLDOWN_SECONDS - int((_utcnow_naive() - sent_at).total_seconds())
+                if wait > 0:
+                    error = _('Please wait %(seconds)s seconds before requesting a new code.') % {'seconds': wait}
+                elif _issue_and_send_code(user):
+                    flash(_('A new verification code has been sent.'), 'success')
+                    return redirect(url_for('verify_email'))
+                else:
+                    error = _('We could not send the email. Please try again shortly.')
+            else:
+                # Same answer whether or not the address has a pending signup.
+                flash(_('If a pending account exists for that email, a new code has been sent.'), 'info')
+                return redirect(url_for('verify_email'))
+        else:
+            code = ''.join(ch for ch in request.form.get('code', '') if ch.isdigit())
+            if not pending:
+                error = _('Invalid or expired code.')
+            elif (user.verification_attempts or 0) >= OTP_MAX_ATTEMPTS:
+                error = _('Too many incorrect attempts. Please request a new code.')
+            elif not user.verification_expires_at or user.verification_expires_at < _utcnow_naive():
+                error = _('This code has expired. Please request a new one.')
+            elif len(code) == 6 and hmac.compare_digest(user.verification_token, _hash_otp(user.id, code)):
+                user.email_verified = True
+                user.verification_token = None
+                user.verification_expires_at = None
+                user.verification_attempts = 0
+                user.verification_sent_at = None
+                try:
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
+                    app.logger.exception('Failed to verify email')
+                    error = _('Unable to verify your account. Please try again.')
+                else:
+                    session.pop('pending_verification_email', None)
+                    flash(_('Email verified! You can now log in.'), 'success')
+                    return redirect(url_for('login'))
+            else:
+                user.verification_attempts = (user.verification_attempts or 0) + 1
+                db.session.commit()
+                remaining = OTP_MAX_ATTEMPTS - user.verification_attempts
+                if remaining <= 0:
+                    error = _('Too many incorrect attempts. Please request a new code.')
+                else:
+                    error = _('Incorrect code. %(remaining)s attempt(s) left.') % {'remaining': remaining}
+
+    return render_template('pages/verify_email.html', email=email, error=error)
 
 
 def send_password_reset_email(user, token):
