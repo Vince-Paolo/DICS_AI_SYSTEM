@@ -24,7 +24,7 @@
 </div>
 
 <div class="row g-4 align-items-start">
-    <div class="col-lg-{{ '7' if can_manage else '12' }}">
+    <div class="col-12">
         <div class="card card-custom shadow-lg">
             <div class="card-body p-4">
                 <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
@@ -94,14 +94,14 @@
                     </table>
                 </div>
                 {% else %}
-                    {{ es.render('bi-building', 'No Facilities Yet', subtitle='Add hospitals, stations, and evacuation centers on the right.') }}
+                    {{ es.render('bi-building', 'No Facilities Yet', subtitle='Add hospitals, stations, and evacuation centers below.') }}
                 {% endif %}
             </div>
         </div>
     </div>
 
     {% if can_manage %}
-    <div class="col-lg-5">
+    <div class="col-12">
         <div class="card card-custom shadow-lg">
             <div class="card-body p-4">
                 <div class="d-flex align-items-center gap-2 mb-4">

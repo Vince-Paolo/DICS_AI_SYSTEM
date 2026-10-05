@@ -53,6 +53,10 @@
                     <i class="bi bi-people-fill"></i>
                     <span class="nav-text sidebar-text-show">{{ _('Users') }}</span>
                 </a>
+                <a href="{{ url_for('admin.new_user') }}" class="sidebar-nav-link {{ 'active' if sidebar_endpoint == 'admin.new_user' else '' }}" data-tooltip="{{ _('Add User') }}" aria-label="{{ _('Add User') }}">
+                    <i class="bi bi-person-plus-fill"></i>
+                    <span class="nav-text sidebar-text-show">{{ _('Add User') }}</span>
+                </a>
                 <a href="/admin/backup" id="sidebarBackupLink" data-preparing-label="{{ _('Preparing backup...') }}" class="sidebar-nav-link {{ 'active' if sidebar_endpoint == 'admin.export_backup' else '' }}" data-tooltip="{{ _('Backup') }}" aria-label="{{ _('Backup') }}">
                     <i class="bi bi-cloud-download-fill"></i>
                     <span class="nav-text sidebar-text-show">{{ _('Backup') }}</span>

@@ -29,7 +29,15 @@
                 <input type="tel" class="form-control" id="contact_number" name="contact_number" placeholder="{{ _('Enter contact number') }}" required>
 
                 <label class="auth-label" for="password">{{ _('Password') }}</label>
-                <input type="password" class="form-control" id="password" name="password" placeholder="{{ _('Enter password') }}" required>
+                <div class="auth-password-field">
+                    <input type="password" class="form-control auth-password-input" id="password" name="password" placeholder="{{ _('Enter password') }}" autocomplete="new-password" required>
+                    <button type="button" class="auth-password-toggle" data-password-toggle
+                            aria-controls="password" aria-pressed="false"
+                            aria-label="{{ _('Show password') }}" title="{{ _('Show password') }}"
+                            data-show-label="{{ _('Show password') }}" data-hide-label="{{ _('Hide password') }}">
+                        <i class="bi bi-eye" aria-hidden="true"></i>
+                    </button>
+                </div>
 
                 <button class="btn btn-auth w-100 mt-1" type="submit">{{ _('Create account') }}</button>
             </form>

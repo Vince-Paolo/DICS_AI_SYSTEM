@@ -150,11 +150,11 @@
     </div>
 </div>
 
-<!-- Main Content: User Table + Add User -->
+<!-- User Accounts -->
 <div class="row g-4 mb-4">
 
     <!-- User Table -->
-    <div class="col-lg-8">
+    <div class="col-12">
         <div class="card card-custom shadow-lg h-100">
             <div class="card-body p-4">
                 <div class="d-flex align-items-center gap-2 mb-4">
@@ -163,6 +163,9 @@
                     </div>
                     <h5 class="mb-0">User Accounts</h5>
                     <div class="ms-auto">
+                        <a href="{{ url_for('admin.new_user') }}" class="btn btn-primary-modern btn-sm me-2">
+                            <i class="bi bi-person-plus-fill me-1"></i>Add User
+                        </a>
                         <button class="btn btn-outline-primary btn-sm" onclick="location.reload()">
                             <i class="bi bi-arrow-repeat me-1"></i>Refresh
                         </button>
@@ -262,70 +265,6 @@
                 {% else %}
                 {{ es.render('bi-people-fill', 'No Users Found', subtitle='No accounts have been registered yet.') }}
                 {% endif %}
-            </div>
-        </div>
-    </div>
-
-    <!-- Add User Form -->
-    <div class="col-lg-4">
-        <div class="card card-custom shadow-lg h-100">
-            <div class="card-body p-4">
-                <div class="d-flex align-items-center gap-2 mb-4">
-                    <div class="icon-badge icon-badge-success">
-                        <i class="bi bi-person-plus-fill"></i>
-                    </div>
-                    <h5 class="mb-0">Add New User</h5>
-                </div>
-                <form method="POST" action="/admin/users/add">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <div class="required-legend"><span class="required-indicator" aria-hidden="true">*</span> Required field</div>
-                    <div class="mb-3">
-                        <label class="form-label required" for="username"><i class="bi bi-person me-1"></i>Username <span class="required-indicator" aria-hidden="true">*</span></label>
-                        <input id="username" type="text" class="form-control" name="username" placeholder="e.g. jdelacruz" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label required" for="email"><i class="bi bi-envelope me-1"></i>Email <span class="required-indicator" aria-hidden="true">*</span></label>
-                        <input id="email" type="email" class="form-control" name="email" placeholder="email@example.com" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label required" for="password"><i class="bi bi-lock me-1"></i>Password <span class="required-indicator" aria-hidden="true">*</span></label>
-                        <input id="password" type="password" class="form-control" name="password" placeholder="Minimum 8 characters" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label" for="full_name"><i class="bi bi-card-text me-1"></i>Full Name</label>
-                        <input id="full_name" type="text" class="form-control" name="full_name" placeholder="Juan Dela Cruz">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label" for="contact_number"><i class="bi bi-phone me-1"></i>Contact Number</label>
-                        <input id="contact_number" type="tel" class="form-control" name="contact_number" placeholder="09XXXXXXXXX"
-                               pattern="^(09\d{9}|\+639\d{9})$" inputmode="numeric"
-                               oninput="this.value = this.value.replace(/[^0-9+]/g, '')" maxlength="13">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label" for="agency"><i class="bi bi-building me-1"></i>Agency</label>
-                        <select id="agency" class="form-select" name="agency">
-                            <option value="">— Not Applicable —</option>
-                            {% for a in agencies %}
-                            <option value="{{ a.name }}">{{ a.name }}</option>
-                            {% endfor %}
-                        </select>
-                        <small class="text-muted">Required for Agency Coordinator and Field Responder — this is how tasks assigned by a commander reach them.</small>
-                    </div>
-                    <div class="mb-4">
-                        <label class="form-label required" for="role"><i class="bi bi-shield me-1"></i>Role <span class="required-indicator" aria-hidden="true">*</span></label>
-                        <select id="role" class="form-select" name="role" required>
-                            <option value="citizen">Citizen</option>
-                            <option value="field_responder">Field Responder</option>
-                            <option value="agency_coordinator">Agency Coordinator</option>
-                            <option value="eoc_staff">EOC Staff</option>
-                            <option value="incident_commander">Incident Commander</option>
-                            <option value="admin">Admin</option>
-                        </select>
-                    </div>
-                    <button type="submit" class="btn btn-primary-modern btn-modern w-100">
-                        <i class="bi bi-plus-circle me-2"></i>Create User
-                    </button>
-                </form>
             </div>
         </div>
     </div>

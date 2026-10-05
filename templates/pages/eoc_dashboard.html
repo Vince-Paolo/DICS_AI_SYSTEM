@@ -20,17 +20,19 @@
         background: #0f172a;
     }
     .eoc-map-fallback {
-        display: none;
+        display: flex;
         position: absolute;
         inset: 0;
         align-items: center;
         justify-content: center;
+        z-index: 500;
         padding: 1.5rem;
         border: 1px solid rgba(148, 163, 184, 0.25);
         border-radius: 1rem;
         background: #0f172a;
         color: #cbd5e1;
         text-align: center;
+        pointer-events: none;
     }
     .eoc-mini-stat {
         display: flex;
@@ -152,7 +154,8 @@
                 <div class="eoc-map-wrap">
                     <div id="eocIncidentMap" aria-label="Live EOC incident map"></div>
                     <div id="eocMapFallback" class="eoc-map-fallback" role="status">
-                        {{ _('Map preview is unavailable. Open the full map to try again.') }}
+                        <span data-map-loading>{{ _('Loading regional map...') }}</span>
+                        <span data-map-unavailable hidden>{{ _('Map preview is unavailable. Open the full map to try again.') }}</span>
                     </div>
                 </div>
             </div>
@@ -426,23 +429,131 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://unpkg.com/leaflet/dist/leaflet.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';this.onerror=function(){document.getElementById('eocMapFallback').style.display='flex';};"></script>
 <script>
+function loadLeaflet() {
+    if (window.L) return Promise.resolve();
+
+    const sources = [
+        'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js',
+        'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+    ];
+
+    return new Promise(function (resolve, reject) {
+        let sourceIndex = 0;
+
+        function tryNextSource() {
+            if (window.L) {
+                resolve();
+                return;
+            }
+            if (sourceIndex >= sources.length) {
+                reject(new Error('Leaflet failed to load from all configured sources'));
+                return;
+            }
+
+            const script = document.createElement('script');
+            const source = sources[sourceIndex++];
+            let settled = false;
+            const timeout = window.setTimeout(fail, 12000);
+
+            function fail() {
+                if (settled) return;
+                settled = true;
+                window.clearTimeout(timeout);
+                script.remove();
+                tryNextSource();
+            }
+
+            script.src = source;
+            script.async = true;
+            script.onload = function () {
+                if (window.L) {
+                    if (!settled) {
+                        settled = true;
+                        window.clearTimeout(timeout);
+                        resolve();
+                    }
+                    return;
+                }
+                fail();
+            };
+            script.onerror = fail;
+            document.head.appendChild(script);
+        }
+
+        tryNextSource();
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     const mapEl = document.getElementById('eocIncidentMap');
     const fallbackEl = document.getElementById('eocMapFallback');
-    if (mapEl && typeof L !== 'undefined') {
+    const loadingMessage = fallbackEl && fallbackEl.querySelector('[data-map-loading]');
+    const unavailableMessage = fallbackEl && fallbackEl.querySelector('[data-map-unavailable]');
+
+    function showMapUnavailable() {
+        if (loadingMessage) loadingMessage.hidden = true;
+        if (unavailableMessage) unavailableMessage.hidden = false;
+        if (fallbackEl) fallbackEl.style.display = 'flex';
+    }
+
+    function initializeIncidentMap() {
         const map = L.map('eocIncidentMap', {
             zoomControl: true,
             scrollWheelZoom: true,
-        }).setView([13.2, 121.5], 6.5);
+        }).setView([13.9411, 121.1622], 8);
         requestAnimationFrame(function () {
             map.invalidateSize();
         });
 
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        function hideMapStatus() {
+            if (fallbackEl) fallbackEl.style.display = 'none';
+        }
+
+        const alternateBasemap = L.tileLayer(
+            'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+            { maxZoom: 19, attribution: 'Tiles &copy; Esri' }
+        );
+        const primaryBasemap = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
             attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map);
+        });
+        let usingAlternateBasemap = false;
+
+        function addBasemapFallback() {
+            if (usingAlternateBasemap) return;
+            usingAlternateBasemap = true;
+            map.removeLayer(primaryBasemap);
+            alternateBasemap.addTo(map);
+        }
+
+        function watchTileLayer(layer, onFailure) {
+            let tileErrors = 0;
+            let hasLoadedTile = false;
+            let failed = false;
+            const timeout = window.setTimeout(failLayer, 10000);
+
+            function failLayer() {
+                if (failed || hasLoadedTile) return;
+                failed = true;
+                window.clearTimeout(timeout);
+                onFailure();
+            }
+
+            layer.on('tileload', function () {
+                hasLoadedTile = true;
+                window.clearTimeout(timeout);
+                hideMapStatus();
+            });
+            layer.on('tileerror', function () {
+                tileErrors += 1;
+                if (!hasLoadedTile && tileErrors >= 3) failLayer();
+            });
+        }
+
+        watchTileLayer(primaryBasemap, addBasemapFallback);
+        watchTileLayer(alternateBasemap, showMapUnavailable);
+        primaryBasemap.addTo(map);
 
         function markerColorForItem(item) {
             const level = (item.level || item.status || '').toString().toLowerCase();
@@ -467,7 +578,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 }) : [];
 
                 if (!items.length) {
-                    map.setView([13.2, 121.5], 6.5);
                     return;
                 }
 
@@ -498,11 +608,20 @@ document.addEventListener('DOMContentLoaded', function () {
                     map.invalidateSize();
                 }, 150);
             })
-            .catch(function () {
-                map.setView([13.2, 121.5], 6.5);
+            .catch(function (error) {
+                console.error('EOC incident map could not load incident pins:', error);
             });
-    } else if (fallbackEl) {
-        fallbackEl.style.display = 'flex';
+    }
+
+    if (mapEl) {
+        loadLeaflet()
+            .then(initializeIncidentMap)
+            .catch(function (error) {
+                console.error('EOC incident map could not initialize:', error);
+                showMapUnavailable();
+            });
+    } else {
+        showMapUnavailable();
     }
 
     // ── Emergency SOS real-time alert ────────────────────────
@@ -553,7 +672,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (titleFlashTimer) return;
         let showAlert = true;
         titleFlashTimer = setInterval(function () {
-            document.title = showAlert ? ('\uD83D\uDEA8 (' + count + ') NEW SOS' : originalTitle);
+            document.title = showAlert ? ('\uD83D\uDEA8 (' + count + ') NEW SOS') : originalTitle;
             showAlert = !showAlert;
         }, 1000);
     }
