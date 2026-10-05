@@ -183,12 +183,6 @@ def monitor_earthquakes(app):
                 f"Magnitude {magnitude:.1f} earthquake detected near {location}."
                 + (f" {aftershock_forecast['message']}" if aftershock_forecast else '')
             )[:255],
-            message_fil=(
-                f"Nakatukoy ng lindol na may lakas na M{magnitude:.1f} malapit sa {location}."
-                + (f" {aftershock_forecast['message_fil']}" if aftershock_forecast else '')
-                if not aftershock_forecast or aftershock_forecast.get('message_fil')
-                else None
-            ),
             alert=True,
             status='ACTIVE',
             reported_by='system',
@@ -275,12 +269,6 @@ def monitor_floods_gdacs(app):
                 f"{': ' + flood.get('name') if flood.get('name') else ''}. "
                 f"Source: GDACS (gdacs.org), event #{flood.get('event_id')}."
             ),
-            message_fil=(
-                f"{'PULA' if alert_level == 'RED' else 'KAHEL' if alert_level == 'ORANGE' else 'BERDE'} "
-                f"na babala ng baha mula sa GDACS para sa {flood.get('country')}"
-                f"{': ' + flood.get('name') if flood.get('name') else ''}. "
-                f"Pinagmulan: GDACS (gdacs.org), kaganapan #{flood.get('event_id')}."
-            ),
             alert=mapping['alert'],
             status=mapping['status'],
             reported_by='system',
@@ -358,11 +346,6 @@ def monitor_volcanoes_eonet(app):
                 f"NASA EONET reports an open volcanic event: {location} "
                 f"(observed {volcano.get('date')}). Source: eonet.gsfc.nasa.gov, "
                 f"event {volcano.get('event_id')}."
-            ),
-            message_fil=(
-                f"Nagtala ang NASA EONET ng aktibong kaganapang bulkaniko sa {location} "
-                f"(naobserbahan noong {volcano.get('date')}). Pinagmulan: eonet.gsfc.nasa.gov, "
-                f"kaganapan {volcano.get('event_id')}."
             ),
             alert=True,
             status='ACTIVE',
@@ -515,7 +498,6 @@ def _monitor_hazards_once(app):
                     score=float(prediction.get("score", 0) or 0),
                     level=prediction.get("level", "Moderate"),
                     message=prediction.get("message", "High hazard risk detected."),
-                    message_fil=prediction.get("message_fil"),
                     alert=bool(prediction.get("alert", False)),
                     status='NEW',
                     reported_by='system',

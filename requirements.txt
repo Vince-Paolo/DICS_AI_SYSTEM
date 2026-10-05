@@ -1,7 +1,6 @@
 Flask>=3.0,<4.0
 Flask-Babel>=4.0,<5.0
 Flask-SQLAlchemy>=3.1,<4.0
-SQLAlchemy>=2.0,<2.1
 Flask-Migrate>=4.0,<5.0
 Flask-WTF>=1.2,<2.0
 Flask-APScheduler>=1.4,<2.0

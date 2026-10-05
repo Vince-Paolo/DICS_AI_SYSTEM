@@ -68,44 +68,6 @@ class OperationalDataFeaturesTestCase(unittest.TestCase):
             sess['username'] = username
             sess['role'] = role
 
-    def test_tagalog_emergency_notifications_show_saved_filipino_details(self):
-        with self.app.app_context():
-            incident = db.session.get(Incident, self.incident_id)
-            incident.message = 'High flood risk near the river.'
-            incident.message_fil = 'Mataas ang panganib ng baha malapit sa ilog.'
-            db.session.commit()
-
-        self._login('cit1', 'citizen')
-        self.client.get('/language/fil_PH?next=/citizen-alerts')
-        citizen_response = self.client.get('/citizen-alerts')
-
-        self.assertEqual(citizen_response.status_code, 200)
-        self.assertIn('Mga Abiso sa Emergency', citizen_response.get_data(as_text=True))
-        self.assertIn('Mataas ang panganib ng baha malapit sa ilog.', citizen_response.get_data(as_text=True))
-
-        self._login('eoc1', 'eoc_staff')
-        self.client.get('/language/fil_PH?next=/admin/alerts')
-        verification_response = self.client.get('/admin/alerts')
-
-        self.assertEqual(verification_response.status_code, 200)
-        self.assertIn('Mataas ang panganib ng baha malapit sa ilog.', verification_response.get_data(as_text=True))
-
-    def test_tagalog_emergency_notifications_preserve_authored_text_without_translation(self):
-        with self.app.app_context():
-            incident = db.session.get(Incident, self.incident_id)
-            incident.message = 'Citizen-provided description remains in its original language.'
-            incident.message_fil = None
-            db.session.commit()
-
-        self._login('cit1', 'citizen')
-        self.client.get('/language/fil_PH?next=/citizen-alerts')
-        response = self.client.get('/citizen-alerts')
-        html = response.get_data(as_text=True)
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn('Citizen-provided description remains in its original language.', html)
-        self.assertIn('Orihinal na teksto; walang makuhang salin sa Filipino.', html)
-
     # -- Facility / EvacuationCenter -----------------------------------
 
     def test_admin_cannot_add_facility(self):

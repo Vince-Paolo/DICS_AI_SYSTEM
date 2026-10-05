@@ -41,26 +41,10 @@ The main runtime layers are:
 
 The current AI contract is not a hardwired ML ensemble. The prediction engine
 is a provider adapter interface that reads `AI_PROVIDER` and delegates to the
-active model adapter (`anthropic`, `openai`, `gemini`, or `ollama`). Ollama is
-the default provider. If the provider is not configured or a provider call
-fails, the API returns a degraded payload with an explicit `INSUFFICIENT_DATA`
-risk level rather than silently treating that state as safe.
-
----
-
-## Registration Email Verification
-
-Public citizen registration requires a six-digit email verification code
-before sign-in is allowed. Codes expire after 10 minutes and are limited to
-five attempts; users can request a replacement code from the verification page.
-When `OTP_EMAIL_BACKEND=resend`, configure `RESEND_API_KEY`, `RESEND_API_URL`,
-and a verified `RESEND_FROM_EMAIL` in `.env`. Resend's `onboarding@resend.dev`
-test sender can only deliver to the Resend account's own email. Alternatively,
-set `OTP_EMAIL_BACKEND=smtp` and configure Gmail SMTP with `SMTP_HOST=smtp.gmail.com`,
-`SMTP_PORT=587`, `SMTP_USERNAME`, `SMTP_PASSWORD`, and `SMTP_FROM_EMAIL`. Enable
-Google 2-Step Verification and create an App Password; never use your regular
-Gmail password. Keep `RESEND_SUPPRESS_SEND=false` outside tests, or OTP messages
-will be suppressed.
+active model adapter (`anthropic`, `openai`, or `gemini`). If the provider is
+not configured or a provider call fails, the API returns a degraded payload
+with an explicit `INSUFFICIENT_DATA` risk level rather than silently treating
+that state as safe.
 
 ---
 
@@ -81,7 +65,7 @@ Required runtime environment variables for the provider layer:
 
 | Variable | Required for | Notes |
 |---|---|---|
-| `AI_PROVIDER` | All AI prediction requests | Defaults to `ollama` |
+| `AI_PROVIDER` | All AI prediction requests | Defaults to `anthropic` |
 | `ANTHROPIC_API_KEY` | Anthropic adapter | Must be present when `AI_PROVIDER=anthropic` |
 | `ANTHROPIC_MODEL` | Anthropic adapter | Optional override; defaults to a current model string |
 | `OPENAI_API_KEY` | OpenAI adapter | Must be present when `AI_PROVIDER=openai` |
@@ -96,11 +80,7 @@ Ollama runs locally and does not require an API key. Install Ollama, start its
 service, pull the configured model (for example, `ollama pull llama3.2`), then
 set `AI_PROVIDER=ollama`. Local Ollama availability is required wherever the
 application server runs; a developer's local Ollama instance is not available
-to a separately hosted deployment. For Railway or another hosted deployment,
-set `AI_PROVIDER=ollama` in the app service variables and set
-`OLLAMA_BASE_URL` to an Ollama server reachable from that service; the default
-`localhost` URL only works when Ollama runs alongside the app in the same
-network namespace.
+to a separately hosted deployment.
 
 The application also supports a local environment file (`.env`) at the project
 root. The AI module loads values from that file before it looks at the process
@@ -109,8 +89,8 @@ environment.
 ## Citizen Emergency Assistance (hotline page)
 
 Citizens no longer type and submit incident reports. `/emergency-assistance`
-is a public "call first" page with the national emergency button and verified
-San Pablo City office contacts. Tap **Call now** to open the phone's call
+is a public "call first" page: pick the kind of help (medical, police, fire and
+rescue, disaster response) and tap **Call now**, which opens the phone's call
 screen through a `tel:` link. There is no account, form or upload, and the
 service worker keeps a copy so the page still opens without internet (the
 phone call itself uses the cellular network).
@@ -121,8 +101,8 @@ hard-coded:
 | Variable | Used for | Notes |
 |---|---|---|
 | `HOTLINE_GENERAL` | Main "Call Emergency" button | Defaults to `911` |
+| `HOTLINE_MEDICAL`, `HOTLINE_POLICE`, `HOTLINE_FIRE` | Service cards | Fall back to `HOTLINE_GENERAL` |
 | `HOTLINE_CDRRMO` | Disaster Response / CDRRMO card | No fallback; unset shows "not set up yet" and admin/EOC users see a notice |
-| `HOTLINE_CITY_HEALTH`, `HOTLINE_CTMO`, `HOTLINE_SAN_PABLO_PNP`, `HOTLINE_SAN_PABLO_FIRE`, `HOTLINE_BARANGAY_RADIO_CONTROL`, `HOTLINE_MERALCO` | San Pablo City office cards | Use verified local office numbers; multiple numbers can be separated with `|` |
 
 Values that are not plausible phone numbers are ignored. Incidents now enter
 the system through the automated monitoring feeds and staff/responder tools.
@@ -133,18 +113,14 @@ the hotline page and `/emergency-sos` returns `410 Gone`.
 ## Database Migrations
 
 Production schema changes are managed with Flask-Migrate/Alembic. The
-deployment command runs `python -m flask --app app db upgrade` before
-Gunicorn starts, using the configured `DATABASE_URL` (including PostgreSQL).
-
-Run migration commands in the app service's console, not in the Postgres
-console. The Postgres service does not have the app's Python environment or
-`flask` executable installed.
+deployment command runs `flask --app app db upgrade` before Gunicorn starts,
+using the configured `DATABASE_URL` (including PostgreSQL).
 
 For a model change, generate and review a revision locally:
 
 ```bash
-python -m flask --app app db migrate -m "describe the schema change"
-python -m flask --app app db upgrade
+flask --app app db migrate -m "describe the schema change"
+flask --app app db upgrade
 ```
 
 Commit the generated file under `migrations/versions/` with the code change.

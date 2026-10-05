@@ -1658,12 +1658,6 @@ msgstr "Password"
 msgid "Enter password"
 msgstr "Ilagay ang password"
 
-msgid "Show password"
-msgstr "Ipakita ang password"
-
-msgid "Hide password"
-msgstr "Itago ang password"
-
 #: templates/pages/login.html:25
 msgid "Sign in"
 msgstr "Mag-sign in"
@@ -1692,60 +1686,6 @@ msgstr "Buong pangalan"
 msgid "Enter full name"
 msgstr "Ilagay ang buong pangalan"
 
-msgid "Filipino translation"
-msgstr "Salin sa Filipino"
-
-msgid "Original text; Filipino translation unavailable."
-msgstr "Orihinal na teksto; walang makuhang salin sa Filipino."
-
-msgid "SEVERE"
-msgstr "MALUBHA"
-
-msgid "HIGH"
-msgstr "MATAAS"
-
-msgid "MOD"
-msgstr "KATAMTAMAN"
-
-msgid "UNKNOWN"
-msgstr "HINDI TIYAK"
-
-msgid "LOW"
-msgstr "MABABA"
-
-msgid "ALERT ACTIVE"
-msgstr "AKTIBO ANG ALERTO"
-
-msgid "VERIFIED"
-msgstr "NA-VERIFY"
-
-msgid "False-alarm reason"
-msgstr "Dahilan kung maling alarma"
-
-msgid "Reason for rejecting incident"
-msgstr "Dahilan ng pagtanggi sa insidente"
-
-msgid "Reject false alarm"
-msgstr "Tanggihan bilang maling alarma"
-
-msgid "Deactivate Alert"
-msgstr "I-deactivate ang Alerto"
-
-msgid "Activate Alert"
-msgstr "I-activate ang Alerto"
-
-msgid "Assign Commander:"
-msgstr "Magtalaga ng Incident Commander:"
-
-msgid "Assign & Activate"
-msgstr "Italaga at I-activate"
-
-msgid "Commander:"
-msgstr "Incident Commander:"
-
-msgid "Source:"
-msgstr "Pinagmulan:"
-
 #: templates/pages/register.html:22
 msgid "Email"
 msgstr "Email"
@@ -1769,66 +1709,6 @@ msgstr "Gumawa ng account"
 #: templates/pages/register.html:39
 msgid "Already have an account? Login"
 msgstr "May account ka na? Mag-login"
-
-msgid "Verify your email"
-msgstr "I-verify ang iyong email"
-
-msgid "Enter the 6-digit code we sent to activate your account."
-msgstr "Ilagay ang 6-digit na code na ipinadala namin upang i-activate ang iyong account."
-
-msgid "Email address"
-msgstr "Email address"
-
-msgid "Verification code"
-msgstr "Verification code"
-
-msgid "Enter 6-digit code"
-msgstr "Ilagay ang 6-digit na code"
-
-msgid "Verify account"
-msgstr "I-verify ang account"
-
-msgid "Resend code"
-msgstr "Ipadala muli ang code"
-
-msgid "A verification code has been sent to your email."
-msgstr "Nagpadala kami ng verification code sa iyong email."
-
-msgid "We could not send a verification code. Please try resending it."
-msgstr "Hindi namin naipadala ang verification code. Subukang ipadala itong muli."
-
-msgid "Your account was created, but we could not deliver the verification email. Please contact support."
-msgstr "Nagawa ang iyong account ngunit hindi naihatid ang verification email. Makipag-ugnayan sa suporta."
-
-msgid "We could not deliver a verification email. Please contact support."
-msgstr "Hindi naihatid ang verification email. Makipag-ugnayan sa suporta."
-
-msgid "If an unverified account exists for that email, a new code has been sent."
-msgstr "Kung may hindi pa beripikadong account para sa email na iyon, nagpadala kami ng bagong code."
-
-msgid "Email verified. You can now sign in."
-msgstr "Na-verify na ang email. Maaari ka nang mag-sign in."
-
-msgid "That code is invalid or has expired. Request a new code and try again."
-msgstr "Hindi wasto o nag-expire na ang code. Humiling ng bagong code at subukang muli."
-
-msgid "That code is incorrect. Please try again."
-msgstr "Mali ang code. Subukang muli."
-
-msgid "That code has expired. Request a new code."
-msgstr "Nag-expire na ang code. Humiling ng bagong code."
-
-msgid "Too many incorrect codes. Request a new code."
-msgstr "Napakaraming maling code. Humiling ng bagong code."
-
-msgid "Unable to verify your email right now. Please try again."
-msgstr "Hindi ma-verify ang iyong email sa ngayon. Subukang muli."
-
-msgid "Please verify your email before signing in."
-msgstr "I-verify muna ang iyong email bago mag-sign in."
-
-msgid "Enter your verification code or resend it."
-msgstr "Ilagay ang verification code o ipadala itong muli."
 
 #: templates/pages/reset_password.html:3 templates/pages/reset_password.html:6
 msgid "Reset Password"
@@ -2035,3 +1915,4 @@ msgstr "Mag-logout"
 
 #~ msgid "Welcome back, !"
 #~ msgstr ""
+

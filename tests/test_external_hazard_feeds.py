@@ -120,42 +120,6 @@ GDACS_FOOTPRINT_SAMPLE = {
     ],
 }
 
-GDACS_TROPICAL_CYCLONE_SAMPLE = {
-    'type': 'FeatureCollection',
-    'features': [{
-        'type': 'Feature',
-        'geometry': {'type': 'Point', 'coordinates': [121.1, 14.0]},
-        'properties': {
-            'eventtype': 'TC',
-            'eventid': 1001001,
-            'episodeid': 2,
-            'eventname': 'TEST-26',
-            'iscurrent': 'true',
-            'country': 'Philippines',
-            'alertlevel': 'Orange',
-            'source': 'JTWC',
-            'datemodified': '2026-10-02T08:00:00Z',
-            'severitydata': {'severity': 85.0, 'severitytext': 'Tropical storm'},
-        },
-    }],
-}
-
-GDACS_TROPICAL_CYCLONE_GEOMETRY_SAMPLE = {
-    'type': 'FeatureCollection',
-    'features': [
-        {
-            'type': 'Feature',
-            'geometry': {'type': 'LineString', 'coordinates': [[120.8, 13.8], [121.1, 14.0]]},
-            'properties': {'eventtype': 'TC', 'eventid': 1001001, 'forecast': False, 'source': 'JTWC'},
-        },
-        {
-            'type': 'Feature',
-            'geometry': {'type': 'LineString', 'coordinates': [[121.1, 14.0], [122.0, 15.0]]},
-            'properties': {'eventtype': 'TC', 'eventid': 1001001, 'forecast': True, 'source': 'JTWC'},
-        },
-    ],
-}
-
 
 class ExternalHazardFeedParsingTestCase(unittest.TestCase):
     """Unit tests for the fetch/filter/parse logic, independent of network access."""
@@ -167,73 +131,6 @@ class ExternalHazardFeedParsingTestCase(unittest.TestCase):
         realtime_data._cache['volcano_events'] = {'data': None, 'timestamp': None}
         realtime_data._cache['thermal_hotspots'] = {'data': None, 'timestamp': None}
         realtime_data._cache['flood_footprints'] = {'data': None, 'timestamp': None}
-        realtime_data._cache['typhoon_tracks_live'] = {'data': None, 'timestamp': None}
-
-    def test_typhoon_tracks_use_live_observed_and_forecast_geometry(self):
-        def fetch_json(url):
-            if 'geteventlist' in url:
-                return GDACS_TROPICAL_CYCLONE_SAMPLE
-            self.assertIn('eventtype=TC', url)
-            self.assertIn('eventid=1001001', url)
-            self.assertIn('episodeid=2', url)
-            return GDACS_TROPICAL_CYCLONE_GEOMETRY_SAMPLE
-
-        with patch.object(realtime_data, '_fetch_json', side_effect=fetch_json):
-            tracks = realtime_data.get_typhoon_tracks()
-
-        self.assertEqual(len(tracks), 1)
-        track = tracks[0]
-        self.assertEqual(track['name'], 'TEST-26')
-        self.assertEqual(track['center_lat'], 14.0)
-        self.assertEqual(track['center_lon'], 121.1)
-        self.assertEqual(track['wind_kph'], 85)
-        self.assertEqual(track['source'], 'JTWC')
-        self.assertEqual(len(track['segments']), 2)
-        self.assertFalse(track['segments'][0]['forecast'])
-        self.assertTrue(track['segments'][1]['forecast'])
-        self.assertEqual(track['segments'][0]['coordinates'], [[13.8, 120.8], [14.0, 121.1]])
-
-    def test_typhoon_tracks_return_empty_when_feed_has_no_current_cyclones(self):
-        inactive_cyclone = {
-            'type': 'FeatureCollection',
-            'features': [{
-                'type': 'Feature',
-                'geometry': {'type': 'Point', 'coordinates': [121.1, 14.0]},
-                'properties': {'eventtype': 'TC', 'iscurrent': 'false'},
-            }],
-        }
-        with patch.object(realtime_data, '_fetch_json', return_value=inactive_cyclone):
-            tracks = realtime_data.get_typhoon_tracks()
-
-        self.assertEqual(tracks, [])
-
-    def test_rainfall_watch_uses_live_weather_readings(self):
-        def weather_for_city(city_key):
-            if city_key != 'lipa':
-                return None
-            return {
-                'city': 'Lipa',
-                'lat': 13.9411,
-                'lon': 121.1631,
-                'rainfall': 12.4,
-                'fetched_at': '2026-10-02T00:00:00Z',
-            }
-
-        with patch.object(realtime_data, 'get_weather_data', side_effect=weather_for_city):
-            points = realtime_data.get_rainfall_watch()
-
-        self.assertEqual(len(points), 1)
-        self.assertEqual(points[0]['name'], 'Lipa')
-        self.assertEqual(points[0]['rainfall_mm'], 12.4)
-        self.assertEqual(points[0]['status'], 'Heavy rain')
-        self.assertEqual(points[0]['source'], 'OpenWeatherMap current weather')
-        self.assertEqual(points[0]['fetched_at'], '2026-10-02T00:00:00Z')
-
-    def test_rainfall_watch_returns_no_sample_data_when_weather_is_unavailable(self):
-        with patch.object(realtime_data, 'get_weather_data', return_value=None):
-            points = realtime_data.get_rainfall_watch()
-
-        self.assertEqual(points, [])
 
     def test_get_flood_events_filters_to_philippine_floods_only(self):
         with patch.object(realtime_data, '_fetch_json', return_value=GDACS_SAMPLE_RESPONSE):
@@ -452,8 +349,7 @@ class ExternalHazardMonitorTestCase(unittest.TestCase):
             'lat': 13.58, 'lon': 120.63,
         }
         forecast = {
-            'message': 'Elevated probability window: 12.3% chance of a M4.5+ aftershock within 24h.',
-            'message_fil': 'May 12.3% na posibilidad ng kasunod na lindol na M4.5+ sa loob ng 24 oras.',
+            'message': 'Elevated probability window: 12.3% chance of a M4.5+ aftershock within 24h.'
         }
         with self.app.app_context():
             with patch.object(scheduler, 'get_earthquake_data', return_value=[quake]), \
@@ -464,7 +360,6 @@ class ExternalHazardMonitorTestCase(unittest.TestCase):
             forecast_mock.assert_called_once()
             incident = Incident.query.filter_by(external_event_id='usgs:us7000forecast').first()
             self.assertIn(forecast['message'], incident.message)
-            self.assertIn(forecast['message_fil'], incident.message_fil)
             self.assertEqual(incident.latitude, 13.58)
             self.assertEqual(incident.longitude, 120.63)
             recommendation = AIRecommendation.query.filter_by(incident_id=incident.id).one()

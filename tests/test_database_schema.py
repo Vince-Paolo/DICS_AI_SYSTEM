@@ -116,26 +116,6 @@ class DatabaseSchemaTestCase(unittest.TestCase):
             self.assertEqual(rows[2], existing_hash)
         engine.dispose()
 
-    def test_incident_report_migration_handles_missing_or_existing_table(self):
-        migration_path = Path(__file__).resolve().parents[1] / 'migrations' / 'versions' / '8c7a4f2d1e90_remove_unused_incident_report.py'
-        spec = importlib.util.spec_from_file_location('remove_incident_report_migration', migration_path)
-        migration = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(migration)
-
-        for create_table in (False, True):
-            engine = create_engine('sqlite://')
-            with engine.begin() as connection:
-                if create_table:
-                    connection.exec_driver_sql('CREATE TABLE incident_report (id INTEGER PRIMARY KEY)')
-                with Operations.context(MigrationContext.configure(connection)):
-                    migration.upgrade()
-
-                self.assertEqual(
-                    connection.dialect.has_table(connection, 'incident_report'),
-                    False,
-                )
-            engine.dispose()
-
     @patch('services.realtime_data.get_earthquake_data', return_value=[])
     @patch('blueprints.ai.predict_hazard')
     def test_ai_prediction_creates_recommendation_and_audit(self, mock_predict, mock_earthquake_data):

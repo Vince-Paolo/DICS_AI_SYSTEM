@@ -13,7 +13,7 @@ from seed.demo_data import seed_geography_data
 from services.hotlines import normalize_number
 
 HOTLINE_ENV_VARS = (
-    'HOTLINE_GENERAL', 'HOTLINE_CDRRMO',
+    'HOTLINE_GENERAL', 'HOTLINE_MEDICAL', 'HOTLINE_POLICE', 'HOTLINE_FIRE', 'HOTLINE_CDRRMO',
     'HOTLINE_CITY_HEALTH', 'HOTLINE_CTMO', 'HOTLINE_SAN_PABLO_PNP', 'HOTLINE_SAN_PABLO_FIRE',
     'HOTLINE_BARANGAY_RADIO_CONTROL', 'HOTLINE_MERALCO',
 )
@@ -126,17 +126,22 @@ class EmergencyAssistancePageTestCase(unittest.TestCase):
     def test_defaults_to_national_number_and_never_invents_office_number(self):
         html = self.client.get('/emergency-assistance').get_data(as_text=True)
         links = tel_links(html)
-        self.assertEqual(links, ['911'] * 8)
+        # The hero and each unconfigured contact card use the national fallback.
+        self.assertEqual(links, ['911'] * 11)
         self.assertIn('This office line is not set up yet', html)
 
-    def test_configured_cdrrmo_number_is_used(self):
+    def test_configured_numbers_are_used_per_service(self):
         env = {
             'HOTLINE_GENERAL': '911',
+            'HOTLINE_MEDICAL': '(049) 111-2222',
+            'HOTLINE_POLICE': '117',
+            'HOTLINE_FIRE': '160',
             'HOTLINE_CDRRMO': '+63 49 502 0000',
         }
         with patch.dict(os.environ, env):
             html = self.client.get('/emergency-assistance').get_data(as_text=True)
-        self.assertEqual(tel_links(html), ['911', '+63495020000'] + ['911'] * 6)
+        self.assertEqual(tel_links(html), ['911', '0491112222', '117', '160', '+63495020000'] + ['911'] * 6)
+        self.assertIn('(049) 111-2222', html)
         self.assertIn('+63 49 502 0000', html)
         self.assertNotIn('This office line is not set up yet', html)
 
@@ -146,7 +151,7 @@ class EmergencyAssistancePageTestCase(unittest.TestCase):
             html = self.client.get('/emergency-assistance').get_data(as_text=True)
 
         self.assertEqual(tel_links(html), [
-            '911',
+            '911', '911', '911', '911',
             '09985407171', '0498000405', '0495490500',
         ] + ['911'] * 6)
         for number in ('0998-540-7171', '(049) 800-0405', '(049) 549-0500'):
@@ -166,7 +171,7 @@ class EmergencyAssistancePageTestCase(unittest.TestCase):
             html = self.client.get('/emergency-assistance').get_data(as_text=True)
 
         self.assertEqual(tel_links(html), [
-            '911', '911',
+            '911', '911', '911', '911', '911',
             '0495627874', '0495032200',
             '09081930819', '09278377454', '0495626474',
             '09995784943', '0495627654', '0495723868',
@@ -184,11 +189,11 @@ class EmergencyAssistancePageTestCase(unittest.TestCase):
             self.assertIn(label, html)
 
     def test_invalid_configured_number_falls_back_instead_of_rendering_it(self):
-        with patch.dict(os.environ, {'HOTLINE_CITY_HEALTH': 'ask at the office', 'HOTLINE_CDRRMO': '0917-XXX-XXXX'}):
+        with patch.dict(os.environ, {'HOTLINE_MEDICAL': 'ask at the office', 'HOTLINE_CDRRMO': '0917-XXX-XXXX'}):
             html = self.client.get('/emergency-assistance').get_data(as_text=True)
         self.assertNotIn('ask at the office', html)
         self.assertNotIn('XXX', html)
-        self.assertEqual(tel_links(html), ['911'] * 8)
+        self.assertEqual(tel_links(html), ['911'] * 11)
 
     def test_signed_out_visitor_gets_plain_layout_and_not_the_login_redirect(self):
         html = self.client.get('/emergency-assistance').get_data(as_text=True)
@@ -280,7 +285,7 @@ class EmergencyAssistancePageTestCase(unittest.TestCase):
 
     def test_resources_page_uses_configured_numbers_not_hardcoded_ones(self):
         self._login('ea_citizen', 'citizen')
-        with patch.dict(os.environ, {'HOTLINE_SAN_PABLO_FIRE': '160', 'HOTLINE_CDRRMO': '(049) 502-0000'}):
+        with patch.dict(os.environ, {'HOTLINE_FIRE': '160', 'HOTLINE_CDRRMO': '(049) 502-0000'}):
             html = self.client.get('/citizen-resources').get_data(as_text=True)
         self.assertIn('href="tel:160"', html)
         self.assertIn('href="tel:0495020000"', html)

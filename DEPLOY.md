@@ -4,13 +4,6 @@ This project runs on Railway with Railway Postgres. Configure the service with
 the Railway Postgres `DATABASE_URL`, a strong `SECRET_KEY`, and the S3 storage
 variables documented below for durable uploaded photos.
 
-AI predictions default to Ollama. In the Railway app service's Variables, set
-`AI_PROVIDER=ollama` and set `OLLAMA_BASE_URL` to the Ollama server reachable
-from that service. Do not use `localhost` unless Ollama runs in the same
-network namespace as the application. A previously configured
-`AI_PROVIDER=gemini` variable overrides the code default and must be changed
-to `ollama`; redeploy the app after updating it.
-
 ## Railway Postgres backup and restore verification
 
 Two backup mechanisms exist for this project. Only the first has actually
@@ -99,9 +92,27 @@ For local development, `FILE_STORAGE_BACKEND=local` stores files under
 
 - Keep Railway and database credentials in Railway variables or a local secret
   manager. Never put them in source control or shell history.
-- Run `python -m flask --app app db upgrade` from the app service console
-  after deploying revisions that add migrations. Do not run it from the
-  Postgres console, which does not include the app environment.
+- Run `flask --app app db upgrade` after deploying revisions that add
+  migrations.
 - Verify the application health endpoint and log in after each production
   deployment.
 - Keep at least one verified backup outside Railway.
+
+
+## Email (SMTP)
+
+Password-reset emails use SMTP when `SMTP_HOST` is set, otherwise the Resend API.
+SMTP requires Railway Pro or higher.
+
+Set these in Railway -> your service -> Variables, then redeploy:
+
+| Variable | Example |
+|---|---|
+| `SMTP_HOST` | `smtp.gmail.com` |
+| `SMTP_PORT` | `587` (STARTTLS; 465 = SSL) |
+| `SMTP_USERNAME` | `you@gmail.com` |
+| `SMTP_PASSWORD` | Gmail App Password (16 chars, no spaces) |
+| `SMTP_FROM_EMAIL` | `you@gmail.com` (must match the account for Gmail) |
+
+Test from the Railway shell: `flask --app app test-email you@example.com`
+(prints the active settings without the password and the real error on failure).

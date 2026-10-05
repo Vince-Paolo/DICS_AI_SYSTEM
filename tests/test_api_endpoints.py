@@ -128,31 +128,6 @@ class ApiEndpointFunctionalTestCase(unittest.TestCase):
         self.assertIn('id="hazardSearchInput"', html)
         self.assertIn('Search hazard areas...', html)
 
-    def test_shared_layout_uses_local_bootstrap_assets(self):
-        response = self.client.get('/login')
-
-        self.assertEqual(response.status_code, 200)
-        html = response.get_data(as_text=True)
-        self.assertIn('/static/vendor/bootstrap/css/bootstrap.min.css', html)
-        self.assertIn('/static/vendor/bootstrap-icons/font/bootstrap-icons.css', html)
-        self.assertIn('/static/vendor/bootstrap/js/bootstrap.bundle.min.js', html)
-        self.assertNotIn('cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap', html)
-        self.assertNotIn('cdn.jsdelivr.net/npm/bootstrap-icons', html)
-
-        for asset in (
-            'vendor/bootstrap/css/bootstrap.min.css',
-            'vendor/bootstrap/js/bootstrap.bundle.min.js',
-            'vendor/bootstrap-icons/font/bootstrap-icons.css',
-            'vendor/bootstrap-icons/font/fonts/bootstrap-icons.woff2',
-        ):
-            with self.subTest(asset=asset):
-                asset_response = self.client.get(f'/static/{asset}')
-                self.assertEqual(asset_response.status_code, 200)
-
-        worker = self.client.get('/service-worker.js').get_data(as_text=True)
-        self.assertIn('/static/vendor/bootstrap/css/bootstrap.min.css', worker)
-        self.assertIn('/static/css/sidebar.css', worker)
-
     def test_heat_map_and_navigation_are_available_without_tutorial(self):
         self._login('api_commander', 'incident_commander')
 
@@ -185,13 +160,7 @@ class ApiEndpointFunctionalTestCase(unittest.TestCase):
         self._login('api_citizen', 'citizen')
 
         rainfall_response = self.client.get('/api/hazard-layers/rainfall')
-        typhoon_sample = [{
-            'name': 'TEST-26',
-            'track': [[14.0, 121.1]],
-            'segments': [],
-        }]
-        with patch('app.get_typhoon_tracks', return_value=typhoon_sample):
-            typhoon_response = self.client.get('/api/hazard-layers/typhoon-tracks')
+        typhoon_response = self.client.get('/api/hazard-layers/typhoon-tracks')
 
         self.assertEqual(rainfall_response.status_code, 200)
         self.assertEqual(typhoon_response.status_code, 200)
@@ -202,7 +171,7 @@ class ApiEndpointFunctionalTestCase(unittest.TestCase):
         self.assertIsInstance(rainfall, list)
         self.assertIsInstance(typhoon, list)
         self.assertGreater(len(rainfall), 0)
-        self.assertEqual(len(typhoon), 1)
+        self.assertGreater(len(typhoon), 0)
 
         self.assertIn('lat', rainfall[0])
         self.assertIn('lon', rainfall[0])
@@ -448,23 +417,6 @@ class ApiEndpointFunctionalTestCase(unittest.TestCase):
             columns = [row[1] for row in conn.execute('PRAGMA table_info(resource)')]
         self.assertIn('resource_request_id', columns)
         self.assertIn('updated_at', columns)
-
-    def test_legacy_sqlite_incident_table_adds_filipino_message_column(self):
-        from app import migrate_user_table
-
-        conn = sqlite3.connect(':memory:')
-        try:
-            conn.execute('CREATE TABLE incident (id INTEGER PRIMARY KEY)')
-            conn.commit()
-            with patch('app._resolve_sqlite_db_path', return_value=':memory:'), \
-                 patch('app.sqlite3.connect', return_value=conn):
-                migrate_user_table()
-
-            columns = [row[1] for row in conn.execute('PRAGMA table_info(incident)')]
-        finally:
-            conn.close()
-
-        self.assertIn('message_fil', columns)
 
     def test_map_operational_layer_endpoints_return_geolocated_centers_and_resources(self):
         self._login('api_coordinator', 'agency_coordinator')

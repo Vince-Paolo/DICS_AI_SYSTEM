@@ -194,11 +194,7 @@ class ResponderRoutesTestCase(unittest.TestCase):
             self.assertIsNotNone(user.reset_token)
 
     def test_forgot_password_sends_reset_email_with_link(self):
-        self.app.config.update(
-            TESTING=False,
-            OTP_EMAIL_BACKEND='resend',
-            RESEND_API_KEY='test-resend-key',
-        )
+        self.app.config.update(TESTING=False, RESEND_API_KEY='test-resend-key')
 
         with self.app.app_context():
             with patch('app.requests.post') as resend_post:
@@ -217,108 +213,6 @@ class ResponderRoutesTestCase(unittest.TestCase):
             user = User.query.filter_by(email='responder@example.com').first()
             self.assertIsNotNone(user.reset_token)
             self.assertIn(f'/reset-password/{user.reset_token}', request_kwargs['json']['text'])
-
-    def test_forgot_password_sends_reset_email_with_configured_gmail_smtp(self):
-        self.app.config.update(TESTING=False)
-
-        with patch.dict(self.app.config, {
-            'OTP_EMAIL_BACKEND': 'smtp',
-            'RESEND_SUPPRESS_SEND': False,
-            'SMTP_HOST': 'smtp.gmail.com',
-            'SMTP_PORT': 587,
-            'SMTP_USERNAME': 'sender@gmail.com',
-            'SMTP_PASSWORD': 'abcd efgh ijkl mnop',
-            'SMTP_FROM_EMAIL': 'sender@gmail.com',
-            'SMTP_FROM_NAME': 'DICS AI',
-        }), patch('app.smtplib.SMTP') as smtp_class:
-            smtp = smtp_class.return_value.__enter__.return_value
-            with self.app.app_context():
-                response = self.client.post(
-                    '/forgot-password',
-                    data={'email': 'responder@example.com'},
-                    follow_redirects=True,
-                )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b'If an account exists', response.data)
-        smtp_class.assert_called_once_with('smtp.gmail.com', 587, timeout=15)
-        smtp.starttls.assert_called_once()
-        smtp.login.assert_called_once_with('sender@gmail.com', 'abcdefghijklmnop')
-        message = smtp.send_message.call_args.args[0]
-        self.assertEqual(message['To'], 'responder@example.com')
-        self.assertEqual(message['From'], 'DICS AI <sender@gmail.com>')
-        self.assertIn('Reset your password', message['Subject'])
-
-        with self.app.app_context():
-            user = User.query.filter_by(email='responder@example.com').first()
-            self.assertIsNotNone(user.reset_token)
-            self.assertIn(f'/reset-password/{user.reset_token}', message.get_content())
-
-    def test_registration_verification_email_uses_configured_resend_sender(self):
-        user = SimpleNamespace(email='new-citizen@example.com')
-        with patch.dict(self.app.config, {
-            'OTP_EMAIL_BACKEND': 'resend',
-            'RESEND_API_KEY': 'test-resend-key',
-            'RESEND_FROM_EMAIL': 'verify@example.com',
-            'RESEND_SUPPRESS_SEND': False,
-        }), patch('app.requests.post') as resend_post:
-            resend_post.return_value.ok = True
-            sent = app_module.send_registration_otp_email(user, '042681')
-
-        self.assertTrue(sent)
-        resend_post.assert_called_once()
-        request_kwargs = resend_post.call_args.kwargs
-        self.assertEqual(request_kwargs['headers']['Authorization'], 'Bearer test-resend-key')
-        self.assertEqual(request_kwargs['json']['from'], 'verify@example.com')
-        self.assertEqual(request_kwargs['json']['to'], ['new-citizen@example.com'])
-        self.assertIn('042681', request_kwargs['json']['text'])
-        self.assertIn('expires in 10 minutes', request_kwargs['json']['text'])
-
-    def test_registration_verification_email_uses_gmail_smtp(self):
-        user = SimpleNamespace(email='new-citizen@example.com')
-        with patch.dict(self.app.config, {
-            'OTP_EMAIL_BACKEND': 'smtp',
-            'RESEND_SUPPRESS_SEND': False,
-            'SMTP_HOST': 'smtp.gmail.com',
-            'SMTP_PORT': 587,
-            'SMTP_USERNAME': 'sender@gmail.com',
-            'SMTP_PASSWORD': 'abcd efgh ijkl mnop',
-            'SMTP_FROM_EMAIL': 'sender@gmail.com',
-            'SMTP_FROM_NAME': 'DICS AI',
-        }), patch('app.smtplib.SMTP') as smtp_class:
-            smtp = smtp_class.return_value.__enter__.return_value
-            sent = app_module.send_registration_otp_email(user, '042681')
-
-        self.assertTrue(sent)
-        smtp_class.assert_called_once_with('smtp.gmail.com', 587, timeout=15)
-        smtp.starttls.assert_called_once()
-        smtp.login.assert_called_once_with('sender@gmail.com', 'abcdefghijklmnop')
-        message = smtp.send_message.call_args.args[0]
-        self.assertEqual(message['To'], 'new-citizen@example.com')
-        self.assertEqual(message['From'], 'DICS AI <sender@gmail.com>')
-        self.assertIn('042681', message.get_content())
-
-    def test_verification_resend_reports_delivery_failure(self):
-        with patch.object(app_module, 'send_registration_otp_email', return_value=False):
-            response = self.client.post('/register', data={
-                'username': 'otp_delivery_failure',
-                'email': 'otp-delivery-failure@example.com',
-                'password': 'strongpass123',
-                'full_name': 'OTP Delivery Failure',
-                'contact_number': '09170000000',
-            })
-
-        self.assertEqual(response.status_code, 302)
-        verify_page = self.client.get('/verify-email', follow_redirects=True)
-        self.assertIn(b'Your account was created, but we could not deliver the verification email.', verify_page.data)
-
-        with patch.object(app_module, 'send_registration_otp_email', return_value=False):
-            resend_page = self.client.post('/verify-email', data={
-                'email': 'otp-delivery-failure@example.com',
-                'action': 'resend',
-            }, follow_redirects=True)
-        self.assertIn(b'We could not deliver a verification email. Please contact support.', resend_page.data)
-        self.assertNotIn(b'a new code has been sent', resend_page.data)
 
     def test_plaintext_stored_password_is_rejected(self):
         user = SimpleNamespace(username='legacy_plaintext', password='known-test-password')
@@ -671,126 +565,21 @@ class ResponderRoutesTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'Password must be at least 8 characters.', response.data)
 
-    def test_email_verification_page_uses_public_auth_layout(self):
-        response = self.client.get('/verify-email?email=otp@example.com')
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b'Verification code', response.data)
-        self.assertNotIn(b'id="sidebarContainer"', response.data)
-
     def test_public_registration_assigns_citizen_role(self):
-        with patch.object(app_module, 'send_registration_otp_email', return_value=True):
-            response = self.client.post('/register', data={
-                'username': 'citizenuser',
-                'email': 'Citizen@Example.com',
-                'password': 'strongpass123',
-                'full_name': 'Citizen User',
-                'contact_number': '09170000000',
-            }, follow_redirects=True)
+        response = self.client.post('/register', data={
+            'username': 'citizenuser',
+            'email': 'Citizen@Example.com',
+            'password': 'strongpass123',
+            'full_name': 'Citizen User',
+            'contact_number': '09170000000',
+        }, follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b'Verify your email', response.data)
         with self.app.app_context():
             user = User.query.filter_by(username='citizenuser').first()
             self.assertIsNotNone(user)
             self.assertEqual(user.role, 'citizen')
             self.assertEqual(user.email, 'citizen@example.com')
-            self.assertFalse(user.email_verified)
-            self.assertIsNotNone(user.verification_token)
-
-    def test_registration_otp_blocks_login_until_verified(self):
-        with patch.object(app_module, 'send_registration_otp_email', return_value=True) as send_otp:
-            response = self.client.post('/register', data={
-                'username': 'otp_citizen',
-                'email': 'otp-citizen@example.com',
-                'password': 'strongpass123',
-                'full_name': 'OTP Citizen',
-                'contact_number': '09170000000',
-            })
-
-        self.assertEqual(response.status_code, 302)
-        self.assertTrue(response.headers['Location'].endswith('/verify-email'))
-        verification_code = send_otp.call_args.args[1]
-        self.assertRegex(verification_code, r'^\d{6}$')
-
-        blocked_login = self.client.post('/login', data={
-            'username': 'otp_citizen',
-            'password': 'strongpass123',
-        })
-        self.assertEqual(blocked_login.status_code, 200)
-        self.assertIn(b'Please verify your email before signing in.', blocked_login.data)
-        with self.client.session_transaction() as session:
-            self.assertNotIn('username', session)
-
-        verified = self.client.post('/verify-email', data={
-            'email': 'OTP-CITIZEN@example.com',
-            'code': verification_code,
-            'action': 'verify',
-        }, follow_redirects=True)
-        self.assertEqual(verified.status_code, 200)
-        self.assertIn(b'Email verified. You can now sign in.', verified.data)
-        with self.app.app_context():
-            user = User.query.filter_by(username='otp_citizen').one()
-            self.assertTrue(user.email_verified)
-            self.assertIsNone(user.verification_token)
-
-        login_response = self.client.post('/login', data={
-            'username': 'otp_citizen',
-            'password': 'strongpass123',
-        })
-        self.assertEqual(login_response.status_code, 302)
-        self.assertTrue(login_response.headers['Location'].endswith('/citizen-dashboard'))
-
-    def test_registration_otp_expires_after_ten_minutes(self):
-        with self.app.app_context():
-            user = SimpleNamespace(id=42, email='expired@example.com', verification_token=None)
-            issued_at = int((datetime.now(timezone.utc) - timedelta(minutes=11)).timestamp())
-            code = '123456'
-            digest = app_module._email_otp_digest(user, issued_at, code)
-            user.verification_token = f'{issued_at}:0:{digest}'
-
-            self.assertEqual(app_module._check_email_verification_code(user, code), 'expired')
-
-    def test_registration_otp_resend_rotates_code_and_limits_attempts(self):
-        with patch.object(app_module, 'send_registration_otp_email', return_value=True) as send_otp:
-            self.client.post('/register', data={
-                'username': 'otp_resend',
-                'email': 'otp-resend@example.com',
-                'password': 'strongpass123',
-                'full_name': 'OTP Resend',
-                'contact_number': '09170000000',
-            })
-            original_code = send_otp.call_args.args[1]
-
-            for _ in range(app_module._EMAIL_OTP_MAX_ATTEMPTS):
-                response = self.client.post('/verify-email', data={
-                    'email': 'otp-resend@example.com',
-                    'code': '000000' if original_code != '000000' else '000001',
-                    'action': 'verify',
-                })
-                self.assertEqual(response.status_code, 200)
-
-            locked = self.client.post('/verify-email', data={
-                'email': 'otp-resend@example.com',
-                'code': original_code,
-                'action': 'verify',
-            })
-            self.assertIn(b'Too many incorrect codes. Request a new code.', locked.data)
-
-            resent = self.client.post('/verify-email', data={
-                'email': 'otp-resend@example.com',
-                'action': 'resend',
-            })
-            self.assertEqual(resent.status_code, 302)
-            replacement_code = send_otp.call_args.args[1]
-            self.assertNotEqual(replacement_code, original_code)
-
-            verified = self.client.post('/verify-email', data={
-                'email': 'otp-resend@example.com',
-                'code': replacement_code,
-                'action': 'verify',
-            })
-            self.assertEqual(verified.status_code, 302)
 
     def test_public_registration_rejects_case_only_email_duplicate(self):
         response = self.client.post('/register', data={
@@ -897,8 +686,6 @@ class ResponderRoutesTestCase(unittest.TestCase):
         self.assertIn('lang="fil-PH"', html)
         self.assertIn('Pag-login', html)
         self.assertIn('Ilagay ang username', html)
-        self.assertIn('aria-label="Ipakita ang password"', html)
-        self.assertIn('data-hide-label="Itago ang password"', html)
         self.assertIn('aria-label="Lumipat sa English"', html)
 
         with self.client.session_transaction() as session:
@@ -908,27 +695,7 @@ class ResponderRoutesTestCase(unittest.TestCase):
 
         self.client.get('/language/en?next=/login')
         response = self.client.get('/login')
-        english_html = response.get_data(as_text=True)
-        self.assertIn('Sign in', english_html)
-        self.assertIn('aria-label="Show password"', english_html)
-
-    def test_login_password_visibility_toggle_preserves_password_field(self):
-        html = self.client.get('/login').get_data(as_text=True)
-
-        self.assertIn('type="password" class="form-control" id="password" name="password"', html)
-        self.assertIn('id="passwordVisibilityToggle"', html)
-        self.assertIn('type="button" class="auth-password-toggle"', html)
-        self.assertIn('aria-controls="password" aria-pressed="false"', html)
-        self.assertIn("passwordInput.type = isVisible ? 'password' : 'text';", html)
-
-    def test_register_password_visibility_toggle(self):
-        html = self.client.get('/register').get_data(as_text=True)
-
-        self.assertIn('type="password" class="form-control" id="password" name="password"', html)
-        self.assertIn('id="passwordVisibilityToggle"', html)
-        self.assertIn('type="button" class="auth-password-toggle"', html)
-        self.assertIn('aria-controls="password" aria-pressed="false"', html)
-        self.assertIn("passwordInput.type = isVisible ? 'password' : 'text';", html)
+        self.assertIn('Sign in', response.get_data(as_text=True))
 
     def test_auth_and_error_pages_render_in_filipino(self):
         self.client.get('/language/fil_PH?next=/register')
@@ -1847,38 +1614,6 @@ class ResponderRoutesTestCase(unittest.TestCase):
             self.assertNotIn('username', session)
             self.assertNotIn('role', session)
 
-    def test_responder_report_location_capture_uses_place_name(self):
-        with self.client.session_transaction() as session:
-            session['username'] = 'responder1'
-            session['role'] = 'field_responder'
-
-        response = self.client.get('/responder-report')
-        html = response.get_data(as_text=True)
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn('Current Location', html)
-        self.assertIn('nominatim.openstreetmap.org/reverse?format=jsonv2', html)
-        self.assertIn('name="gps_lat" id="gps-lat-input"', html)
-        self.assertIn('name="gps_lng" id="gps-lng-input"', html)
-        self.assertIn('if (!areaInput.value.trim()) areaInput.value = placeName;', html)
-        self.assertNotIn('areaInput.placeholder = capturedLat', html)
-
-    def test_unverified_user_session_is_cleared(self):
-        with self.app.app_context():
-            user = User.query.filter_by(username='responder1').one()
-            user.email_verified = False
-            db.session.commit()
-        with self.client.session_transaction() as session:
-            session['username'] = 'responder1'
-            session['role'] = 'field_responder'
-
-        response = self.client.get('/responder-dashboard', follow_redirects=False)
-
-        self.assertEqual(response.status_code, 302)
-        with self.client.session_transaction() as session:
-            self.assertNotIn('username', session)
-            self.assertNotIn('role', session)
-
     def test_responder_report_survives_attachment_storage_failure(self):
         response_id = self._create_active_response_for_report()
         self.app.config['MAX_UPLOAD_SIZE_BYTES'] = 16 * 1024 * 1024
@@ -1982,15 +1717,14 @@ class ResponderRoutesTestCase(unittest.TestCase):
     def test_register_rate_limited_after_five_requests_per_hour(self):
         statuses = []
         rate_limited_response = None
-        with patch.object(app_module, 'send_registration_otp_email', return_value=True):
-            for i in range(7):
-                response = self.client.post('/register', data={
-                    'username': f'ratelimit_user_{i}', 'email': f'ratelimit{i}@example.com',
-                    'password': 'SomePass123', 'full_name': 'Test User', 'contact_number': '09171234567',
-                })
-                statuses.append(response.status_code)
-                if response.status_code == 429:
-                    rate_limited_response = response
+        for i in range(7):
+            response = self.client.post('/register', data={
+                'username': f'ratelimit_user_{i}', 'email': f'ratelimit{i}@example.com',
+                'password': 'SomePass123', 'full_name': 'Test User', 'contact_number': '09171234567',
+            })
+            statuses.append(response.status_code)
+            if response.status_code == 429:
+                rate_limited_response = response
         self.assertIn(429, statuses)
         self.assertEqual(statuses.count(429), 2, "5-per-hour limit should allow exactly 5 through before limiting the remaining 2")
         self.assertIn(b'Too Many Requests', rate_limited_response.data)

@@ -1,18 +1,12 @@
 import csv
 import glob
 import io
-import hashlib
-import hmac
 import os
 import sqlite3
 import threading
 import secrets
-import smtplib
-import ssl
 from html import escape as html_escape
 from datetime import datetime, timedelta, timezone
-from email.message import EmailMessage
-from email.utils import formataddr
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -28,7 +22,6 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_apscheduler import APScheduler
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from sqlalchemy.exc import SQLAlchemyError
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import landscape, letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
@@ -48,6 +41,7 @@ from services.realtime_data import (
 )
 from services import permissions as permission_service
 from services.passwords import verify_and_migrate
+from services.mailer import send_email, selected_backend
 from ai.decision_support import predict_hazard, AI_PROVIDER
 from seed.demo_data import seed_geography_data
 
@@ -62,7 +56,7 @@ from blueprints.facilities import facilities_bp
 from services.file_storage import FileStorage
 
 app = Flask(__name__)
-app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
 base_dir = os.path.abspath(os.path.dirname(__file__))
 instance_dir = os.path.join(base_dir, 'instance')
 os.makedirs(instance_dir, exist_ok=True)
@@ -129,36 +123,10 @@ def _normalize_database_url():
     if not configured_url:
         configured_url = f"sqlite:///{os.path.join(instance_dir, 'database.db').replace('\\', '/')}"
 
-    configured_url = configured_url.strip()
-    url_lower = configured_url.lower()
-
     # Railway (and Heroku-style) Postgres plugins hand out URLs starting with
-    # 'postgres://' or a driver-specific dialect such as 'postgresql+psycopg://' .
-    # SQLAlchemy 1.4+/2.x only accepts a plain 'postgresql://' URL with an
-    # installed driver, and this project intentionally ships psycopg2-binary.
-    for _driver_prefix in (
-        'postgres://',
-        'postgresql+psycopg://',
-        'postgresql+psycopg2://',
-        'postgresql+psycopg3://',
-        'postgresql+asyncpg://',
-    ):
-        if url_lower.startswith(_driver_prefix):
-            configured_url = 'postgresql://' + configured_url[len(_driver_prefix):]
-            break
-
-    # Normalize remaining driver-scoped PostgreSQL URLs even when the scheme is
-    # upper-case or mixed-case, since Railway sometimes injects those values.
-    for _driver_prefix in (
-        'POSTGRES://',
-        'POSTGRESQL+PSYCOPG://',
-        'POSTGRESQL+PSYCOPG2://',
-        'POSTGRESQL+PSYCOPG3://',
-        'POSTGRESQL+ASYNCPG://',
-    ):
-        if configured_url.upper().startswith(_driver_prefix):
-            configured_url = 'postgresql://' + configured_url[len(_driver_prefix):]
-            break
+    # 'postgres://', but SQLAlchemy 1.4+/2.x only accepts 'postgresql://'.
+    if configured_url.startswith('postgres://'):
+        configured_url = 'postgresql://' + configured_url[len('postgres://'):]
 
     # Flask-SQLAlchemy/SQLAlchemy can misinterpret relative sqlite paths like
     # 'sqlite:///instance/database.db' when the runtime CWD differs from the
@@ -277,20 +245,19 @@ app.config['RESEND_API_KEY'] = os.environ.get('RESEND_API_KEY', '')
 app.config['RESEND_API_URL'] = os.environ.get('RESEND_API_URL', 'https://api.resend.com/emails')
 app.config['RESEND_FROM_EMAIL'] = os.environ.get('RESEND_FROM_EMAIL', 'onboarding@resend.dev')
 app.config['RESEND_SUPPRESS_SEND'] = os.environ.get('RESEND_SUPPRESS_SEND', 'false').lower() == 'true'
-app.config['OTP_EMAIL_BACKEND'] = os.environ.get('OTP_EMAIL_BACKEND', 'resend').strip().lower()
-app.config['SMTP_HOST'] = os.environ.get('SMTP_HOST', 'smtp.gmail.com')
-app.config['SMTP_PORT'] = int(os.environ.get('SMTP_PORT', '587'))
+app.config['EMAIL_BACKEND'] = os.environ.get('EMAIL_BACKEND', 'auto')
+app.config['SMTP_HOST'] = os.environ.get('SMTP_HOST', '')
+app.config['SMTP_PORT'] = int(os.environ.get('SMTP_PORT', '587') or 587)
 app.config['SMTP_USERNAME'] = os.environ.get('SMTP_USERNAME', '')
 app.config['SMTP_PASSWORD'] = os.environ.get('SMTP_PASSWORD', '')
 app.config['SMTP_FROM_EMAIL'] = os.environ.get('SMTP_FROM_EMAIL', '')
-app.config['SMTP_FROM_NAME'] = os.environ.get('SMTP_FROM_NAME', 'DICS AI')
+app.config['SMTP_SECURITY'] = os.environ.get('SMTP_SECURITY', '')
+app.config['SMTP_TIMEOUT'] = int(os.environ.get('SMTP_TIMEOUT', '10') or 10)
 app.config['BABEL_DEFAULT_LOCALE'] = 'en'
 app.config['BABEL_SUPPORTED_LOCALES'] = ['en', 'fil_PH']
 app.config['BABEL_TRANSLATION_DIRECTORIES'] = os.path.join(base_dir, 'translations')
 
 _MANILA_TIMEZONE = ZoneInfo('Asia/Manila')
-_EMAIL_OTP_TTL_SECONDS = 10 * 60
-_EMAIL_OTP_MAX_ATTEMPTS = 5
 
 
 def _to_manila_datetime(value):
@@ -370,7 +337,8 @@ def add_security_headers(response):
         "font-src 'self' https://cdn.jsdelivr.net data:; "
         "img-src 'self' data: blob: https://tile.openstreetmap.org https://*.tile.openstreetmap.org "
         "https://server.arcgisonline.com; "
-        "connect-src 'self' https://nominatim.openstreetmap.org; "
+        "connect-src 'self' https://nominatim.openstreetmap.org "
+        "https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; "
         "media-src 'self' blob:; "
         "worker-src 'self' blob:"
     )
@@ -631,8 +599,6 @@ def migrate_user_table():
                 cursor.execute("ALTER TABLE incident ADD COLUMN external_event_id VARCHAR(120)")
             if 'event_time' not in columns:
                 cursor.execute("ALTER TABLE incident ADD COLUMN event_time DATETIME")
-            if 'message_fil' not in columns:
-                cursor.execute("ALTER TABLE incident ADD COLUMN message_fil TEXT")
             conn.commit()
 
 
@@ -967,110 +933,6 @@ def verify_password(user, password):
     )
 
 
-def _email_otp_digest(user, issued_at, code):
-    secret = str(app.config['SECRET_KEY']).encode('utf-8')
-    message = f'{user.id}:{user.email}:{issued_at}:{code}'.encode('utf-8')
-    return hmac.new(secret, message, hashlib.sha256).hexdigest()
-
-
-def _create_email_verification_code(user):
-    code = f'{secrets.randbelow(1_000_000):06d}'
-    issued_at = int(datetime.now(timezone.utc).timestamp())
-    digest = _email_otp_digest(user, issued_at, code)
-    user.verification_token = f'{issued_at}:0:{digest}'
-    return code
-
-
-def _check_email_verification_code(user, code):
-    try:
-        issued_at_raw, attempts_raw, saved_digest = (user.verification_token or '').split(':', 2)
-        issued_at = int(issued_at_raw)
-        attempts = int(attempts_raw)
-    except (TypeError, ValueError):
-        return 'expired'
-
-    now = int(datetime.now(timezone.utc).timestamp())
-    age = now - issued_at
-    if age < 0 or age > _EMAIL_OTP_TTL_SECONDS:
-        return 'expired'
-    if attempts >= _EMAIL_OTP_MAX_ATTEMPTS:
-        return 'locked'
-    if not (len(code) == 6 and code.isdigit()):
-        is_valid = False
-    else:
-        is_valid = hmac.compare_digest(saved_digest, _email_otp_digest(user, issued_at, code))
-    if is_valid:
-        return 'valid'
-
-    user.verification_token = f'{issued_at}:{attempts + 1}:{saved_digest}'
-    return 'invalid'
-
-
-def send_registration_otp_email(user, code):
-    subject = 'Verify your DICS AI account'
-    body = (
-        f'Your DICS AI email verification code is: {code}\n\n'
-        'This code expires in 10 minutes and can be used once. '
-        'If you did not request this account, you can ignore this email.'
-    )
-    try:
-        if app.config['RESEND_SUPPRESS_SEND']:
-            app.logger.info('Registration verification email suppressed for %s', user.email)
-            return True
-
-        if app.config['OTP_EMAIL_BACKEND'] == 'smtp':
-            username = app.config['SMTP_USERNAME'].strip()
-            password = ''.join(app.config['SMTP_PASSWORD'].split())
-            from_email = (app.config['SMTP_FROM_EMAIL'] or username).strip()
-            if not username or not password or not from_email:
-                app.logger.error('Gmail SMTP OTP delivery is missing username, App Password, or sender address')
-                return False
-
-            message = EmailMessage()
-            message['Subject'] = subject
-            message['From'] = formataddr((app.config['SMTP_FROM_NAME'], from_email))
-            message['To'] = user.email
-            message.set_content(body)
-            with smtplib.SMTP(app.config['SMTP_HOST'], app.config['SMTP_PORT'], timeout=15) as smtp:
-                smtp.ehlo()
-                smtp.starttls(context=ssl.create_default_context())
-                smtp.ehlo()
-                smtp.login(username, password)
-                smtp.send_message(message)
-            app.logger.info('Registration verification email sent to %s via SMTP', user.email)
-            return True
-
-        if app.config['OTP_EMAIL_BACKEND'] != 'resend':
-            app.logger.error('Unsupported OTP email backend: %s', app.config['OTP_EMAIL_BACKEND'])
-            return False
-
-        response = requests.post(
-            app.config['RESEND_API_URL'],
-            headers={
-                'Authorization': f"Bearer {app.config['RESEND_API_KEY']}",
-                'Content-Type': 'application/json',
-            },
-            json={
-                'from': app.config['RESEND_FROM_EMAIL'],
-                'to': [user.email],
-                'subject': subject,
-                'text': body,
-            },
-            timeout=10,
-        )
-        if not response.ok:
-            app.logger.error(
-                'Resend API rejected registration verification email to %s: HTTP %s - %s',
-                user.email, response.status_code, response.text,
-            )
-            return False
-        app.logger.info('Registration verification email sent to %s', user.email)
-        return True
-    except Exception:
-        app.logger.exception('Failed to send registration verification email to %s', user.email)
-        return False
-
-
 def _resolve_session_user():
     """Refresh the session role and reject deleted or disabled users.
     The redirect loop here happens when the browser still holds a session cookie
@@ -1082,19 +944,8 @@ def _resolve_session_user():
     if not username:
         return None
 
-    try:
-        user = User.query.filter_by(username=username).first()
-    except SQLAlchemyError:
-        db.session.rollback()
-        session.clear()
-        app.logger.warning('Session user lookup failed; cleared stale session.', exc_info=True)
-        return None
-
+    user = User.query.filter_by(username=username).first()
     if user is None or user.is_disabled:
-        session.clear()
-        return None
-
-    if not app.config.get('TESTING') and not user.email_verified:
         session.clear()
         return None
 
@@ -1127,7 +978,6 @@ def login():
             return redirect(url_for('dashboard'))
 
     error = None
-    verification_email = None
     if request.method == 'POST':
         try:
             username = request.form.get('username', '').strip()
@@ -1136,36 +986,31 @@ def login():
             if user and user.is_disabled:
                 error = 'This account has been disabled. Contact an administrator.'
             elif user and verify_password(user, password):
-                if not user.email_verified:
-                    verification_email = user.email
-                    session['pending_verification_email'] = user.email
-                    error = _('Please verify your email before signing in.')
+                session['username'] = user.username
+                session['role'] = user.role
+                session['agency'] = user.agency or 'FIELD UNIT'
+                session['must_change_password'] = bool(user.must_change_password)
+                flash(_('Welcome back, %(username)s!') % {'username': user.username}, 'success')
+                if user.must_change_password:
+                    return redirect(url_for('change_password'))
+                if user.role == 'incident_commander':
+                    return redirect(url_for('commander.incident_commander_dashboard'))
+                elif user.role == 'agency_coordinator':
+                    return redirect(url_for('coordinator.coordinator_dashboard'))
+                elif user.role == 'field_responder':
+                    return redirect(url_for('responder.responder_dashboard'))
+                elif user.role == 'eoc_staff':
+                    return redirect(url_for('eoc.eoc_dashboard'))
+                elif user.role == 'citizen':
+                    return redirect(url_for('citizen.citizen_dashboard'))
                 else:
-                    session['username'] = user.username
-                    session['role'] = user.role
-                    session['agency'] = user.agency or 'FIELD UNIT'
-                    session['must_change_password'] = bool(user.must_change_password)
-                    flash(_('Welcome back, %(username)s!') % {'username': user.username}, 'success')
-                    if user.must_change_password:
-                        return redirect(url_for('change_password'))
-                    if user.role == 'incident_commander':
-                        return redirect(url_for('commander.incident_commander_dashboard'))
-                    elif user.role == 'agency_coordinator':
-                        return redirect(url_for('coordinator.coordinator_dashboard'))
-                    elif user.role == 'field_responder':
-                        return redirect(url_for('responder.responder_dashboard'))
-                    elif user.role == 'eoc_staff':
-                        return redirect(url_for('eoc.eoc_dashboard'))
-                    elif user.role == 'citizen':
-                        return redirect(url_for('citizen.citizen_dashboard'))
-                    else:
-                        return redirect(url_for('dashboard'))
+                    return redirect(url_for('dashboard'))
             else:
                 error = 'Invalid username or password.'
         except Exception as e:
             app.logger.error(f'Login error for user {username}: {str(e)}', exc_info=True)
             error = 'An error occurred during login. Please try again.'
-    return render_template('pages/login.html', error=error, verification_email=verification_email)
+    return render_template('pages/login.html', error=error)
 
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -1197,88 +1042,18 @@ def register():
                 full_name=full_name,
                 contact_number=contact_number,
                 role='citizen',
-                email_verified=False,
             )
             db.session.add(new_user)
             try:
-                db.session.flush()
-                verification_code = _create_email_verification_code(new_user)
                 db.session.commit()
             except Exception:
                 db.session.rollback()
                 app.logger.exception('Failed to create account')
                 flash('Unable to create account. Please try again.', 'error')
                 return render_template('pages/register.html', error=None)
-            session['pending_verification_email'] = new_user.email
-            if send_registration_otp_email(new_user, verification_code):
-                flash(_('A verification code has been sent to your email.'), 'success')
-            else:
-                flash(_('Your account was created, but we could not deliver the verification email. Please contact support.'), 'warning')
-            return redirect(url_for('verify_email'))
+            flash('Registration successful! You can now log in.', 'success')
+            return redirect(url_for('login'))
     return render_template('pages/register.html', error=error)
-
-
-@app.route('/verify-email', methods=['GET', 'POST'])
-@limiter.limit('10 per minute', methods=['POST'])
-def verify_email():
-    email = (request.form.get('email') if request.method == 'POST' else None) or request.args.get('email') or session.get('pending_verification_email', '')
-    email = email.strip().lower()
-    error = None
-
-    if request.method == 'POST':
-        action = request.form.get('action', 'verify')
-        user = User.query.filter(db.func.lower(User.email) == email).first() if email else None
-
-        if action == 'resend':
-            email_sent = False
-            if user and not user.email_verified:
-                code = _create_email_verification_code(user)
-                try:
-                    db.session.commit()
-                    email_sent = send_registration_otp_email(user, code)
-                    if not email_sent:
-                        app.logger.warning('Could not resend registration verification email to %s', user.email)
-                except Exception:
-                    db.session.rollback()
-                    app.logger.exception('Failed to rotate registration verification code')
-            if email_sent:
-                flash(_('If an unverified account exists for that email, a new code has been sent.'), 'success')
-            else:
-                flash(_('We could not deliver a verification email. Please contact support.'), 'warning')
-            session['pending_verification_email'] = email
-            return redirect(url_for('verify_email'))
-
-        if not user or user.email_verified:
-            error = _('That code is invalid or has expired. Request a new code and try again.')
-        else:
-            result = _check_email_verification_code(user, request.form.get('code', '').strip())
-            if result == 'valid':
-                user.email_verified = True
-                user.verification_token = None
-                try:
-                    db.session.commit()
-                except Exception:
-                    db.session.rollback()
-                    app.logger.exception('Failed to verify registered email')
-                    error = _('Unable to verify your email right now. Please try again.')
-                else:
-                    session.pop('pending_verification_email', None)
-                    flash(_('Email verified. You can now sign in.'), 'success')
-                    return redirect(url_for('login'))
-            elif result == 'locked':
-                error = _('Too many incorrect codes. Request a new code.')
-            elif result == 'expired':
-                error = _('That code has expired. Request a new code.')
-            else:
-                error = _('That code is incorrect. Please try again.')
-                try:
-                    db.session.commit()
-                except Exception:
-                    db.session.rollback()
-                    app.logger.exception('Failed to record email verification attempt')
-                    error = _('Unable to verify your email right now. Please try again.')
-
-    return render_template('pages/verify_email.html', email=email, error=error)
 
 
 def send_password_reset_email(user, token):
@@ -1290,67 +1065,22 @@ def send_password_reset_email(user, token):
         'This link will expire in 1 hour. If you did not request this reset, '
         'you can safely ignore this email.'
     )
-    try:
-        if app.config['RESEND_SUPPRESS_SEND']:
-            app.logger.info('Password reset email suppressed for %s', user.email)
-            return True
+    return send_email(user.email, subject, body)
 
-        if app.config['OTP_EMAIL_BACKEND'] == 'smtp':
-            username = app.config['SMTP_USERNAME'].strip()
-            password = ''.join(app.config['SMTP_PASSWORD'].split())
-            from_email = (app.config['SMTP_FROM_EMAIL'] or username).strip()
-            if not username or not password or not from_email:
-                app.logger.error('Gmail SMTP password reset delivery is missing username, App Password, or sender address')
-                return False
 
-            message = EmailMessage()
-            message['Subject'] = subject
-            message['From'] = formataddr((app.config['SMTP_FROM_NAME'], from_email))
-            message['To'] = user.email
-            message.set_content(body)
-            with smtplib.SMTP(app.config['SMTP_HOST'], app.config['SMTP_PORT'], timeout=15) as smtp:
-                smtp.ehlo()
-                smtp.starttls(context=ssl.create_default_context())
-                smtp.ehlo()
-                smtp.login(username, password)
-                smtp.send_message(message)
-            app.logger.info('Password reset email sent to %s via SMTP', user.email)
-            return True
-
-        if app.config['OTP_EMAIL_BACKEND'] != 'resend':
-            app.logger.error('Unsupported password reset email backend: %s', app.config['OTP_EMAIL_BACKEND'])
-            return False
-
-        response = requests.post(
-            app.config['RESEND_API_URL'],
-            headers={
-                'Authorization': f"Bearer {app.config['RESEND_API_KEY']}",
-                'Content-Type': 'application/json',
-            },
-            json={
-                'from': app.config['RESEND_FROM_EMAIL'],
-                'to': [user.email],
-                'subject': subject,
-                'text': body,
-            },
-            timeout=10,
-        )
-        if not response.ok:
-            # Surface Resend's actual error body (e.g. "domain not
-            # verified", "can only send to your own address in test
-            # mode") instead of just the bare status code from
-            # raise_for_status() -- this is what actually tells us why
-            # a send failed, instead of just that it failed.
-            app.logger.error(
-                'Resend API rejected password reset email to %s: HTTP %s - %s',
-                user.email, response.status_code, response.text,
-            )
-            return False
-        app.logger.info('Password reset email sent to %s', user.email)
-        return True
-    except Exception:
-        app.logger.exception('Failed to send password reset email to %s', user.email)
-        return False
+@app.cli.command('test-email')
+@__import__('click').argument('to')
+def test_email_command(to):
+    """Send a test email and show the active email settings (no secrets)."""
+    cfg = app.config
+    backend = selected_backend()
+    print(f"backend={backend} suppress={cfg['RESEND_SUPPRESS_SEND']}")
+    if backend == 'smtp':
+        print(f"host={cfg['SMTP_HOST']} port={cfg['SMTP_PORT']} security={cfg['SMTP_SECURITY'] or 'auto'} "
+              f"user={cfg['SMTP_USERNAME']} from={cfg['SMTP_FROM_EMAIL'] or cfg['SMTP_USERNAME']} "
+              f"password_set={bool(cfg['SMTP_PASSWORD'])}")
+    ok = send_email(to, 'DICS AI test email', 'If you can read this, email delivery works.')
+    print('SENT' if ok else 'FAILED (see error above)')
 
 
 @app.route('/forgot-password', methods=['GET', 'POST'])
@@ -1575,19 +1305,9 @@ def get_map_pins():
 
     pins = []
     for incident in incidents:
-        report = None
-        incident_report_id = getattr(incident, 'citizen_report_id', None)
-        if incident_report_id is not None:
-            report = incident.citizen_report or report_map.get(incident_report_id)
-        elif getattr(incident, 'user_id', None) is not None:
-            report = next(
-                (
-                    candidate_report
-                    for candidate_report in report_map.values()
-                    if candidate_report.user_id == incident.user_id
-                ),
-                None,
-            )
+        report = incident.citizen_report if incident.citizen_report_id else None
+        if report is None and incident.user_id is not None:
+            report = report_map.get(incident.citizen_report_id)
 
         latitude = incident.latitude
         longitude = incident.longitude
