@@ -1,4 +1,4 @@
-const APP_CACHE = 'dics-app-shell-v7';
+const APP_CACHE = 'dics-app-shell-v9';
 const CDN_CACHE = 'dics-cdn-assets-v1';
 const APP_SHELL = [
   '/static/css/style.css',
@@ -138,10 +138,13 @@ self.addEventListener('fetch', event => {
     event.respondWith(
       caches.open(APP_CACHE).then(async cache => {
         const cached = await cache.match(request);
-        if (cached) return cached;
-        const response = await fetch(request);
-        if (response.ok) await cache.put(request, response.clone());
-        return response;
+        try {
+          const response = await fetch(request, { cache: 'no-cache' });
+          if (response.ok) await cache.put(request, response.clone());
+          return response;
+        } catch (error) {
+          return cached || Response.error();
+        }
       })
     );
     return;

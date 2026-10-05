@@ -6,12 +6,10 @@ deployment fills in with the verified official number from the LGU / CDRRMO /
 EOC:
 
     HOTLINE_GENERAL   national emergency number (defaults to 911)
-    HOTLINE_MEDICAL   medical / ambulance      (falls back to HOTLINE_GENERAL)
-    HOTLINE_POLICE    police / security        (falls back to HOTLINE_GENERAL)
-    HOTLINE_FIRE      fire and rescue          (falls back to HOTLINE_GENERAL)
-    HOTLINE_CDRRMO    CDRRMO / EOC office line(s), separated by | (NO fallback:
-                      these numbers are specific to the deployment, so an
-                      unset value shows "not available" instead of a wrong one)
+    HOTLINE_MEDICAL   medical / ambulance
+    HOTLINE_POLICE    police / security
+    HOTLINE_FIRE      fire and rescue
+    HOTLINE_CDRRMO    CDRRMO / EOC office line(s), separated by |
     HOTLINE_CITY_HEALTH, HOTLINE_CTMO, HOTLINE_SAN_PABLO_PNP,
     HOTLINE_SAN_PABLO_FIRE, HOTLINE_BARANGAY_RADIO_CONTROL, HOTLINE_MERALCO
                       additional San Pablo City contacts; multiple numbers
@@ -84,46 +82,39 @@ def build_hotline_services():
     Labels are translated for the current request locale, so this must be
     called inside a request. Each item has ``key``, ``emoji``, ``label``,
     ``description``, ``display`` and ``dial``; ``dial`` is ``None`` when the
-    service has no usable number (only possible for the CDRRMO card).
+    service has no usable number.
     """
-    general = get_general_hotline()
-
-    def resolve(env_name, fall_back_to_general):
-        numbers = _from_env_numbers(env_name)
-        if numbers:
-            return numbers
-        if fall_back_to_general:
-            return [(general['display'], general['dial'])]
-        return []
+    def resolve(env_name):
+        return _from_env_numbers(env_name)
 
     definitions = (
         ('medical', '\U0001F691', _('Medical Emergency'),
-         _('Ambulance and medical assistance'), 'HOTLINE_MEDICAL', True),
+         _('Ambulance and medical assistance'), 'HOTLINE_MEDICAL'),
         ('police', '\U0001F693', _('Police / Security'),
-         _('Police emergency assistance'), 'HOTLINE_POLICE', True),
+         _('Police emergency assistance'), 'HOTLINE_POLICE'),
         ('fire', '\U0001F525', _('Fire and Rescue'),
-         _('Fire and rescue assistance'), 'HOTLINE_FIRE', True),
+         _('Fire and rescue assistance'), 'HOTLINE_FIRE'),
         ('disaster', '\U0001F30A', _('Disaster Response'),
-         _('CDRRMO / Emergency Operations Center'), 'HOTLINE_CDRRMO', False),
+         _('CDRRMO / Emergency Operations Center'), 'HOTLINE_CDRRMO'),
         ('city_health', '\U0001F3E5', _('City Health Office (SPC - CHO)'),
-         _('City health and ambulance coordination'), 'HOTLINE_CITY_HEALTH', True),
+         _('City health and ambulance coordination'), 'HOTLINE_CITY_HEALTH'),
         ('city_traffic', '\U0001F6A6', _('City Traffic Management Office (CTMO)'),
-         _('Traffic management and assistance'), 'HOTLINE_CTMO', True),
+         _('Traffic management and assistance'), 'HOTLINE_CTMO'),
         ('san_pablo_pnp', '\U0001F6E1', _('San Pablo PNP'),
-         _('Police assistance in San Pablo City'), 'HOTLINE_SAN_PABLO_PNP', True),
+         _('Police assistance in San Pablo City'), 'HOTLINE_SAN_PABLO_PNP'),
         ('san_pablo_fire', '\U0001F692', _('San Pablo Fire Station (BFP)'),
-         _('Fire and rescue assistance in San Pablo City'), 'HOTLINE_SAN_PABLO_FIRE', True),
+         _('Fire and rescue assistance in San Pablo City'), 'HOTLINE_SAN_PABLO_FIRE'),
         ('barangay_radio', '\U0001F4E1', _('Barangay Radio Control'),
-         _('Barangay emergency radio coordination'), 'HOTLINE_BARANGAY_RADIO_CONTROL', True),
+         _('Barangay emergency radio coordination'), 'HOTLINE_BARANGAY_RADIO_CONTROL'),
         ('meralco', '\U000026A1', _('Meralco'),
-         _('Electric service emergencies and outage reports'), 'HOTLINE_MERALCO', True),
+         _('Electric service emergencies and outage reports'), 'HOTLINE_MERALCO'),
     )
 
     services = []
-    for key, emoji, label, description, env_name, fall_back in definitions:
+    for key, emoji, label, description, env_name in definitions:
         contacts = [
             {'display': display, 'dial': dial}
-            for display, dial in resolve(env_name, fall_back)
+            for display, dial in resolve(env_name)
         ]
         primary = contacts[0] if contacts else {'display': None, 'dial': None}
         services.append({

@@ -36,6 +36,8 @@ def _send_smtp(to, subject, body):
     port = int(_cfg('SMTP_PORT', 587) or 587)
     user = _cfg('SMTP_USERNAME')
     password = _cfg('SMTP_PASSWORD')
+    if host and host.strip().lower() in {'smtp.gmail.com', 'smtp.googlemail.com'} and password:
+        password = ''.join(password.split())
     sender = _cfg('SMTP_FROM_EMAIL') or user
     timeout = int(_cfg('SMTP_TIMEOUT', 10) or 10)
     security = _smtp_security(port)

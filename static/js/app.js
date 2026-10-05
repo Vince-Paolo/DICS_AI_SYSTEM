@@ -153,6 +153,27 @@ function initRequiredFieldIndicators() {
     });
 }
 
+function initPasswordVisibilityToggles() {
+    document.querySelectorAll('[data-password-toggle]').forEach(button => {
+        const inputId = button.getAttribute('aria-controls');
+        const input = inputId ? document.getElementById(inputId) : null;
+        const icon = button.querySelector('i');
+        if (!input || !icon || button.dataset.passwordToggleBound === 'true') return;
+
+        button.dataset.passwordToggleBound = 'true';
+        button.addEventListener('click', () => {
+            const isVisible = input.type === 'text';
+            const label = isVisible ? button.dataset.showLabel : button.dataset.hideLabel;
+            input.type = isVisible ? 'password' : 'text';
+            button.setAttribute('aria-pressed', String(!isVisible));
+            button.setAttribute('aria-label', label);
+            button.title = label;
+            icon.classList.toggle('bi-eye', isVisible);
+            icon.classList.toggle('bi-eye-slash', !isVisible);
+        });
+    });
+}
+
 async function triggerSOS() {
     const confirmed = await requestConfirmation({
         title: 'Send SOS alert',
@@ -378,11 +399,25 @@ window.addEventListener('DOMContentLoaded', function () {
     initNavbarScroll();
     initAutoFlash();
     initRequiredFieldIndicators();
+    initPasswordVisibilityToggles();
     initFormValidation();
     initPageTransitions();
 
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/service-worker.js', { scope: '/' }).catch(error => {
+        const hadServiceWorkerController = Boolean(navigator.serviceWorker.controller);
+        if (hadServiceWorkerController) {
+            let isRefreshingForWorkerUpdate = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (isRefreshingForWorkerUpdate) return;
+                isRefreshingForWorkerUpdate = true;
+                window.location.reload();
+            });
+        }
+
+        navigator.serviceWorker.register('/service-worker.js', {
+            scope: '/',
+            updateViaCache: 'none',
+        }).catch(error => {
             console.warn('Service worker registration failed:', error);
         });
     }
