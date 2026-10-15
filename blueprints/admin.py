@@ -4,7 +4,7 @@ import shutil
 import sqlite3
 import subprocess
 from datetime import datetime
-from urllib.parse import urlparse
+from urllib.parse import quote, unquote, urlparse
 
 from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for, send_file
 from flask_babel import gettext as _
@@ -31,26 +31,29 @@ def _build_pg_dump_command(database_uri, backup_path):
     if parsed.scheme not in {'postgresql', 'postgres'}:
         raise RuntimeError(f'Unsupported PostgreSQL URL scheme: {parsed.scheme}')
 
-    username = parsed.username or ''
+    username = unquote(parsed.username or '')
     host = parsed.hostname or 'localhost'
     port = parsed.port or 5432
-    database = parsed.path.lstrip('/') or ''
+    database = unquote(parsed.path.lstrip('/')) or ''
     if not database:
         raise RuntimeError('PostgreSQL database name is missing from the configured DATABASE_URL.')
 
-    netloc = host
-    if username:
-        netloc = f'{username}@{host}'
+    if ':' in host and not host.startswith('['):
+        host = f'[{host}]'
+    netloc = quote(username, safe='') + '@' if username else ''
+    netloc += host
     if port and port != 5432:
         netloc = f'{netloc}:{port}'
 
-    pg_uri = f'postgresql://{netloc}/{database}'
+    pg_uri = f'postgresql://{netloc}/{quote(database, safe="")}'
     if parsed.query:
         pg_uri = f'{pg_uri}?{parsed.query}'
 
     env = os.environ.copy()
     if parsed.password:
-        env['PGPASSWORD'] = parsed.password
+        env['PGPASSWORD'] = unquote(parsed.password)
+    else:
+        env.pop('PGPASSWORD', None)
 
     return ['pg_dump', '--format=custom', '--no-owner', '--no-privileges', f'--file={backup_path}', '--dbname', pg_uri], env
 
