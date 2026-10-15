@@ -411,6 +411,21 @@ class DatabaseSchemaTestCase(unittest.TestCase):
 
         mock_which.assert_called_once_with('pg_dump')
 
+    @patch('blueprints.admin.shutil.which', return_value='pg_dump')
+    def test_pg_dump_command_decodes_and_reencodes_url_credentials(self, mock_which):
+        command, environment = _build_pg_dump_command(
+            'postgresql://backup%40user:p%40ss%3Aword@db.example.com:5433/dics%20backup?sslmode=require',
+            '/tmp/dics_ai_backup.dump',
+        )
+
+        mock_which.assert_called_once_with('pg_dump')
+        self.assertEqual(
+            command[-1],
+            'postgresql://backup%40user@db.example.com:5433/dics%20backup?sslmode=require',
+        )
+        self.assertEqual(environment['PGPASSWORD'], 'p@ss:word')
+        self.assertNotIn('p@ss:word', ' '.join(command))
+
     def test_deterministic_low_risk_exit_bypasses_ai_when_inputs_are_conservatively_low(self):
         result = _deterministic_low_risk_exit(
             'flood',

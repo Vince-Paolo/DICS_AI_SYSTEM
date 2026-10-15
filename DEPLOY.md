@@ -4,6 +4,11 @@ This project runs on Railway with Railway Postgres. Configure the service with
 the Railway Postgres `DATABASE_URL`, a strong `SECRET_KEY`, and the S3 storage
 variables documented below for durable uploaded photos.
 
+The application backup page exports Railway Postgres using `pg_dump`. The
+included `nixpacks.toml` installs the PostgreSQL client in the app runtime.
+Keep the Railway service on the Nixpacks builder for this configuration to be
+applied; if using another builder, install a compatible `pg_dump` client there.
+
 ## Railway Postgres backup and restore verification
 
 Two backup mechanisms exist for this project. Only the first has actually
