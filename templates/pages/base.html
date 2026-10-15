@@ -1,5 +1,5 @@
 {% set current_endpoint = request.endpoint or '' %}
-{% set hide_app_chrome = current_endpoint in ['login', 'register', 'verify_email', 'forgot_password', 'reset_password'] or (current_endpoint == 'citizen.emergency_assistance' and not session.get('username')) %}
+{% set hide_app_chrome = current_endpoint in ['landing', 'login', 'register', 'verify_email', 'forgot_password', 'reset_password'] or (current_endpoint == 'citizen.emergency_assistance' and not session.get('username')) %}
 <!DOCTYPE html>
 <html lang="{{ current_locale|replace('_', '-') }}">
 <head>
@@ -16,27 +16,39 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="manifest" href="/static/manifest.webmanifest">
     <title>{% block title %}DICS ACCELERATED HAZARD FRAMEWORK{% endblock %}</title>
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
-    <link rel="preconnect" href="https://cdn.jsdelivr.net">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" />
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='2026-10-05-1') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/css/bootstrap.min.css', v=static_asset_version) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap-icons/font/bootstrap-icons.css', v=static_asset_version) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tokens.css', v=static_asset_version) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v=static_asset_version) }}">
     {% if current_endpoint and not hide_app_chrome %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar.css', v='2026-10-06-1') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar.css', v=static_asset_version) }}">
     <script>try { if (localStorage.getItem('sidebarCollapsed') === 'true') document.documentElement.classList.add('sidebar-collapsed'); } catch (_) {}</script>
     {% endif %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css', v='2026-10-06-5') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css', v=static_asset_version) }}">
     {% block extra_head %}{% endblock %}
 </head>
-<body>
-<a class="visually-hidden-focusable" href="#main-content">Skip to main content</a>
+<body{% if session.get('role') == 'field_responder' %} class="responder-page"{% endif %}>
+<a class="visually-hidden-focusable" href="#main-content">{{ _('Skip to main content') }}</a>
 {# Pages a signed-out visitor may open (the hotline page). They show the plain
    layout without the sidebar until the visitor is signed in. #}
 {% if current_endpoint and not hide_app_chrome %}
     {% include 'partials/sidebar.html' %}
 {% endif %}
 <main id="main-content" class="container{% if current_endpoint and not hide_app_chrome %} pt-4{% endif %} mb-4">
-    <div id="languageSwitcher" class="language-switcher d-flex justify-content-end align-items-center gap-2 mb-3">
+    <div id="languageSwitcher" class="language-switcher d-flex align-items-center justify-content-between flex-wrap gap-3 mb-3">
+        {% if current_endpoint != 'landing' and (session.get('role') == 'dispatcher' or session.get('role') in ['imt_staff', 'imt', 'eoc_staff', 'eoc', 'incident_commander', 'commander']) %}
+        <form class="control-number-search" method="GET" action="{{ url_for('eoc.emergency_search') }}" role="search">
+            <label class="visually-hidden" for="global-control-number">{{ _('Find an emergency by control number') }}</label>
+            <div class="input-group input-group-sm">
+                <span class="input-group-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                <input class="form-control" id="global-control-number" name="q" type="search" maxlength="20"
+                       pattern="[0-9]{4}-[0-9]{5}" placeholder="{{ _('Control number') }}"
+                       title="{{ _('Enter a control number such as YYYY-00001') }}" required>
+                <button class="btn btn-outline-primary" type="submit">{{ _('Find') }}</button>
+            </div>
+        </form>
+        {% endif %}
+        <div class="d-flex align-items-center justify-content-end gap-2 ms-auto">
         <button id="themeToggle" type="button" class="btn btn-sm btn-outline-secondary theme-toggle"
                 aria-label="{{ _('Switch to light mode') }}" aria-pressed="false">
             <i class="bi bi-sun-fill" aria-hidden="true"></i>
@@ -45,8 +57,9 @@
         {% if current_locale == 'fil_PH' %}
             <a class="btn btn-sm btn-outline-light" href="{{ url_for('set_language', locale='en', next=request.full_path) }}" lang="en" aria-label="{{ _('Switch to English') }}">EN</a>
         {% else %}
-        <a class="btn btn-sm btn-outline-light" href="{{ url_for('set_language', locale='fil_PH', next=request.full_path) }}" lang="fil_PH" aria-label="{{ _('Switch to Tagalog') }}">TL</a>
+        <a class="btn btn-sm btn-outline-light" href="{{ url_for('set_language', locale='fil_PH', next=request.full_path) }}" lang="fil-PH" aria-label="{{ _('Switch to Tagalog') }}">TL</a>
         {% endif %}
+        </div>
     </div>
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -64,6 +77,25 @@
     
     {% block content %}{% endblock %}
 </main>
+
+<div id="pageLoading" class="page-loading" role="status" aria-live="polite" hidden>
+    <span class="visually-hidden">{{ _('Loading page') }}</span>
+    <span class="page-loading-bar" aria-hidden="true"></span>
+</div>
+
+{% if session.get('role') == 'field_responder' %}
+<nav class="responder-bottom-nav" aria-label="{{ _('Responder navigation') }}">
+    <a href="{{ url_for('responder.responder_tasks') }}" class="{{ 'active' if request.endpoint in ['responder.responder_tasks', 'responder.responder_checklist'] else '' }}" {% if request.endpoint in ['responder.responder_tasks', 'responder.responder_checklist'] %}aria-current="page"{% endif %}>
+        <i class="bi bi-list-task" aria-hidden="true"></i><span>{{ _('Tasks') }}</span>
+    </a>
+    <a href="{{ url_for('responder.responder_report') }}" class="{{ 'active' if request.endpoint == 'responder.responder_report' else '' }}" {% if request.endpoint == 'responder.responder_report' %}aria-current="page"{% endif %}>
+        <i class="bi bi-send" aria-hidden="true"></i><span>{{ _('Report') }}</span>
+    </a>
+    <a href="{{ url_for('hazard_map') }}" class="{{ 'active' if request.endpoint == 'hazard_map' else '' }}" {% if request.endpoint == 'hazard_map' %}aria-current="page"{% endif %}>
+        <i class="bi bi-map" aria-hidden="true"></i><span>{{ _('Map') }}</span>
+    </a>
+</nav>
+{% endif %}
 
 <div id="pageStatus" class="alert alert-warning text-light border-warning mb-3 d-none" data-offline-message="{{ _('Offline. Showing the last cached dashboard snapshot.') }}" role="status" aria-live="polite" aria-atomic="true"></div>
 <div class="toast-container position-fixed bottom-0 end-0 p-3" id="appToastContainer" aria-live="polite" aria-atomic="true"></div>
@@ -91,15 +123,15 @@
         document.body.appendChild(modal);
     });
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+<script src="{{ url_for('static', filename='vendor/bootstrap/js/bootstrap.bundle.min.js', v=static_asset_version) }}"></script>
 <script>
     (function () {
         const authPages = ['login', 'register', 'verify_email', 'forgot_password', 'reset_password'];
         const endpoint = '{{ request.endpoint or "" }}';
         const normalizedEndpoint = endpoint === 'None' ? '' : endpoint;
         const isAuthPage = authPages.includes(normalizedEndpoint);
-        // Signed-out visitors may open the emergency hotline page without logging in.
-        const publicPages = ['citizen.emergency_assistance'];
+        // Signed-out visitors may open the landing and emergency assistance pages.
+        const publicPages = ['landing', 'citizen.emergency_assistance'];
         const isPublicPage = publicPages.includes(normalizedEndpoint);
         const isMissingEndpoint = !normalizedEndpoint;
         const isLoggedIn = {{ 'true' if 'username' in session else 'false' }};
@@ -125,7 +157,7 @@
         });
     })();
 </script>
-<script src="{{ url_for('static', filename='js/app.js', v='2026-10-05-1') }}"></script>
+<script src="{{ url_for('static', filename='js/app.js', v=static_asset_version) }}"></script>
 <script>
     (function () {
         const toggle = document.getElementById('themeToggle');
@@ -161,6 +193,7 @@
                 console.warn('Unable to save the display theme preference.', error);
             }
             updateThemeControl();
+            window.dispatchEvent(new CustomEvent('dics:themechange'));
         });
 
         updateThemeControl();

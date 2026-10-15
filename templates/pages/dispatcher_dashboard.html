@@ -1,0 +1,164 @@
+{% extends 'pages/base.html' %}
+
+{% block title %}Dispatcher Dashboard | DICS AI{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <h1 class="h3 mb-1">{{ _('Dispatcher Dashboard') }}</h1>
+        <p class="text-muted mb-0">{{ _('Open emergencies across all days') }} · {{ local_now|manila_time('%A, %B %d') }}</p>
+    </div>
+    <a class="btn btn-danger btn-lg px-4 py-3 fw-semibold"
+       href="{{ url_for('eoc.emergency_log', create=1) }}#manual-emergency-location">
+        <i class="bi bi-plus-circle-fill me-2" aria-hidden="true"></i>{{ _('Log emergency') }}
+    </a>
+</div>
+
+<section class="row row-cols-2 row-cols-xl-5 g-3 mb-4" aria-label="{{ _('Dispatcher overview') }}">
+    <div class="col">
+        <div class="card card-custom h-100">
+            <div class="card-body">
+                <div class="small text-muted">{{ _('Active emergencies') }}</div>
+                <div class="display-6 fw-bold" id="active-emergency-count">{{ incidents|length }}</div>
+                <div class="small text-muted">{{ _('all open incidents') }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card card-custom h-100">
+            <div class="card-body">
+                <div class="small text-muted">{{ _('Logged today') }}</div>
+                <div class="display-6 fw-bold" id="logged-today-count">{{ logged_today_count }}</div>
+                <div class="small text-muted">{{ _('new emergency records') }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card card-custom h-100">
+            <div class="card-body">
+                <div class="small text-muted">{{ _('Unassigned') }}</div>
+                <div class="display-6 fw-bold" id="unassigned-emergency-count">{{ unassigned_count }}</div>
+                <div class="small text-muted">{{ _('need a response task') }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <a class="card card-custom h-100 text-decoration-none" href="{{ url_for('dispatcher.regional_alerts') }}">
+            <div class="card-body">
+                <div class="small text-muted">{{ _('Nearby hazard alerts') }}</div>
+                <div class="display-6 fw-bold">{{ dispatcher_alert_count|default(0) }}</div>
+                <div class="small text-muted">{{ _('active alerts to review') }}</div>
+            </div>
+        </a>
+    </div>
+    <div class="col">
+        <div class="card card-custom h-100">
+            <div class="card-body">
+                <div class="small text-muted">{{ _('Free units') }}</div>
+                <div class="display-6 fw-bold" id="free-responder-count">{{ free_responder_count }}</div>
+                <div class="small text-muted">{{ _('CDRRMO responders without an active assignment') }}</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="card card-custom" aria-labelledby="open-emergencies-heading">
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <h2 class="h5 mb-0" id="open-emergencies-heading">{{ _('All open emergencies') }}</h2>
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('eoc.emergency_log') }}">
+            {{ _('View emergency log') }} <i class="bi bi-arrow-right ms-1" aria-hidden="true"></i>
+        </a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th scope="col">{{ _('Control number') }}</th>
+                    <th scope="col">{{ _('Severity') }}</th>
+                    <th scope="col">{{ _('Barangay') }}</th>
+                    <th scope="col">{{ _('Patients') }}</th>
+                    <th scope="col">{{ _('Status') }}</th>
+                    <th scope="col">{{ _('Reported') }}</th>
+                    <th scope="col"><span class="visually-hidden">{{ _('Actions') }}</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for incident in incidents %}
+                {% set severity = (incident.level or '')|trim|lower %}
+                {% set severity_label = {
+                    'low': _('Low'),
+                    'moderate': _('Moderate'),
+                    'high': _('High'),
+                    'severe': _('Severe')
+                }.get(severity, _('Not set')) %}
+                {% set status = (incident.status or 'NEW')|upper %}
+                {% set status_label = {
+                    'NEW': _('New'),
+                    'ACTIVE': _('Active'),
+                    'VERIFIED': _('Verified')
+                }.get(status, status|replace('_', ' ')|title) %}
+                <tr>
+                    <th scope="row">
+                        <a href="{{ url_for('eoc.emergency_log_detail', incident_id=incident.id) }}">
+                            {{ incident.control_number }}
+                        </a>
+                    </th>
+                    <td>
+                        <span class="badge
+                            {% if severity == 'severe' %}bg-danger
+                            {% elif severity == 'high' %}bg-warning text-dark
+                            {% elif severity == 'moderate' %}bg-info text-dark
+                            {% else %}bg-secondary{% endif %}">
+                            <i class="bi
+                                {% if severity == 'severe' %}bi-exclamation-octagon-fill
+                                {% elif severity == 'high' %}bi-exclamation-triangle-fill
+                                {% elif severity == 'moderate' %}bi-exclamation-circle-fill
+                                {% else %}bi-info-circle-fill{% endif %} me-1"
+                               aria-hidden="true"></i>{{ severity_label }}
+                        </span>
+                    </td>
+                    <td>{{ barangay_names.get(incident.barangay_id, incident.location or _('Location unavailable')) }}</td>
+                    <td>{{ incident.patient_count }}</td>
+                    <td>
+                        <span class="badge
+                            {% if status == 'ACTIVE' %}bg-warning text-dark
+                            {% elif status == 'VERIFIED' %}bg-info text-dark
+                            {% else %}bg-secondary{% endif %}">
+                            {{ status_label }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if incident.created_at %}
+                            {% set age_minutes = ((now_utc - incident.created_at).total_seconds() / 60)|int %}
+                            {% if age_minutes < 1 %}
+                                {{ _('Just now') }}
+                            {% elif age_minutes < 60 %}
+                                {{ _('%(minutes)s min ago', minutes=age_minutes) }}
+                            {% elif age_minutes < 1440 %}
+                                {{ _('%(hours)s hr ago', hours=(age_minutes // 60)) }}
+                            {% else %}
+                                {% set age_days = age_minutes // 1440 %}
+                                {{ ngettext('%(days)s day ago', '%(days)s days ago', age_days, days=age_days) }}
+                            {% endif %}
+                        {% else %}
+                            {{ _('Time unavailable') }}
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        <a class="btn btn-sm btn-outline-primary"
+                           href="{{ url_for('eoc.emergency_log_detail', incident_id=incident.id) }}">{{ _('Open') }}</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-5">
+                        <i class="bi bi-clipboard2-check d-block fs-2 mb-2" aria-hidden="true"></i>
+                        {{ _('No open emergencies.') }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

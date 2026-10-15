@@ -5,7 +5,7 @@
 {% block title %}{{ _('EOC Command Dashboard') }} | DICS AI{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';" />
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/leaflet/leaflet.css', v='2026-10-14-1') }}" />
 <style>
     .eoc-map-wrap {
         height: clamp(280px, 42vh, 380px);
@@ -257,7 +257,7 @@
                             <th>{{ _('Incident') }}</th>
                             <th>{{ _('Hazard') }}</th>
                             <th>{{ _('Location') }}</th>
-                            <th class="table-hide-tablet">{{ _('Commander') }}</th>
+                            <th class="table-hide-tablet">{{ _('IMT Lead') }}</th>
                             <th>{{ _('Priority') }}</th>
                             <th class="table-hide-tablet">{{ _('Started') }}</th>
                         </tr>
@@ -272,7 +272,7 @@
                                 </span>
                             </td>
                             <td data-label="Location"><span class="text-muted small">{{ response.incident.location or 'Unknown' }}</span></td>
-                            <td data-label="Commander" class="table-hide-tablet"><span class="text-muted small">{{ response.commander.full_name or response.commander.username }}</span></td>
+                            <td data-label="IMT Lead" class="table-hide-tablet"><span class="text-muted small">{{ response.commander.full_name or response.commander.username }}</span></td>
                             <td data-label="Priority" class="priority-status-cell">
                                 {{ hz.priority_badge(response.priority_level, label=response.priority_level if response.priority_level not in ['CRITICAL','HIGH'] else none) }}
                             </td>
@@ -361,7 +361,7 @@
                                 {% if incident.response %}
                                     <span class="badge-status-active status-compact">{{ _('RESPONSE ACTIVE') }}</span>
                                 {% else %}
-                                    <span class="badge-status-resolved status-compact">{{ _('AWAITING COMMANDER') }}</span>
+                                    <span class="badge-status-resolved status-compact">{{ _('AWAITING IMT LEAD') }}</span>
                                 {% endif %}
                             </td>
                             <td>{{ hz.event_time_cell(incident, fmt='%b %d, %H:%M') }}</td>
@@ -434,8 +434,7 @@ function loadLeaflet() {
     if (window.L) return Promise.resolve();
 
     const sources = [
-        'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js',
-        'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+        {{ url_for('static', filename='vendor/leaflet/leaflet.js', v='2026-10-14-1')|tojson }}
     ];
 
     return new Promise(function (resolve, reject) {

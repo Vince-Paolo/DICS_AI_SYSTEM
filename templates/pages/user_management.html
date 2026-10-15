@@ -82,9 +82,9 @@
         <div class="stat-card card-gradient-info h-100">
             <div class="d-flex align-items-center justify-content-between">
                 <div>
-                    <div class="stat-label">Commanders</div>
-                    <div class="stat-value">{{ users|selectattr('role', 'equalto', 'incident_commander')|list|length }}</div>
-                    <div class="stat-description">Incident Commander accounts</div>
+                    <div class="stat-label">Retired Accounts</div>
+                    <div class="stat-value">{{ users|selectattr('role', 'equalto', 'retired')|list|length }}</div>
+                    <div class="stat-description">Disabled historical accounts</div>
                 </div>
                 <div class="icon-badge icon-badge-primary">
                     <i class="bi bi-exclamation-octagon-fill"></i>
@@ -96,26 +96,12 @@
         <div class="stat-card card-gradient-purple h-100">
             <div class="d-flex align-items-center justify-content-between">
                 <div>
-                    <div class="stat-label">EOC Staff</div>
-                    <div class="stat-value">{{ users|selectattr('role', 'equalto', 'eoc_staff')|list|length }}</div>
-                    <div class="stat-description">Operations centre staff</div>
+                    <div class="stat-label">IMT Staff</div>
+                    <div class="stat-value">{{ users|selectattr('role', 'in', ['eoc_staff', 'eoc', 'imt_staff', 'imt'])|list|length }}</div>
+                    <div class="stat-description">Operations staff accounts</div>
                 </div>
                 <div class="icon-badge icon-badge-purple">
                     <i class="bi bi-display-fill"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-md-3">
-        <div class="stat-card card-gradient-primary h-100">
-            <div class="d-flex align-items-center justify-content-between">
-                <div>
-                    <div class="stat-label">Coordinators</div>
-                    <div class="stat-value">{{ users|selectattr('role', 'equalto', 'agency_coordinator')|list|length }}</div>
-                    <div class="stat-description">Agency Coordinator accounts</div>
-                </div>
-                <div class="icon-badge icon-badge-primary">
-                    <i class="bi bi-diagram-3-fill"></i>
                 </div>
             </div>
         </div>
@@ -179,7 +165,6 @@
                             <tr>
                                 <th>User</th>
                                 <th class="text-nowrap">Role</th>
-                                <th class="text-nowrap">Agency</th>
                                 <th class="text-nowrap">Status</th>
                                 <th class="text-nowrap">Joined</th>
                                 <th class="text-center text-nowrap">Actions</th>
@@ -204,29 +189,26 @@
                                         <span style="display:inline-flex; align-items:center; gap:0.35em; white-space:nowrap; padding: 0.35em 0.65em; background: rgba(245,158,11,0.2); color: #FCD34D; border: 1px solid rgba(245,158,11,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">
                                             <i class="bi bi-shield-fill me-1"></i>Admin
                                         </span>
-                                    {% elif user.role == 'incident_commander' %}
-                                        <span style="display:inline-flex; align-items:center; gap:0.35em; white-space:nowrap; padding: 0.35em 0.65em; background: rgba(239,68,68,0.2); color: #FCA5A5; border: 1px solid rgba(239,68,68,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">
-                                            <i class="bi bi-star-fill me-1"></i>Commander
+                                    {% elif user.role == 'dispatcher' %}
+                                        <span style="display:inline-flex; align-items:center; gap:0.35em; white-space:nowrap; padding: 0.35em 0.65em; background: rgba(245,158,11,0.2); color: #FCD34D; border: 1px solid rgba(245,158,11,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">
+                                            <i class="bi bi-broadcast-pin me-1"></i>Dispatcher
                                         </span>
-                                    {% elif user.role == 'eoc_staff' %}
+                                    {% elif user.role in ['eoc_staff', 'eoc', 'imt_staff', 'imt'] %}
                                         <span style="display:inline-flex; align-items:center; gap:0.35em; white-space:nowrap; padding: 0.35em 0.65em; background: rgba(139,92,246,0.2); color: #C4B5FD; border: 1px solid rgba(139,92,246,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">
-                                            <i class="bi bi-display-fill me-1"></i>EOC Staff
-                                        </span>
-                                    {% elif user.role == 'agency_coordinator' %}
-                                        <span style="display:inline-flex; align-items:center; gap:0.35em; white-space:nowrap; padding: 0.35em 0.65em; background: rgba(59,130,246,0.2); color: #93C5FD; border: 1px solid rgba(59,130,246,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">
-                                            <i class="bi bi-diagram-3-fill me-1"></i>Coordinator
+                                            <i class="bi bi-display-fill me-1"></i>IMT Staff
                                         </span>
                                     {% elif user.role == 'field_responder' %}
                                         <span style="display:inline-flex; align-items:center; gap:0.35em; white-space:nowrap; padding: 0.35em 0.65em; background: rgba(6,182,212,0.2); color: #67E8F9; border: 1px solid rgba(6,182,212,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">
                                             <i class="bi bi-person-badge-fill me-1"></i>Responder
                                         </span>
+                                    {% elif user.role == 'retired' %}
+                                        <span class="badge text-bg-secondary">Retired</span>
                                     {% else %}
                                         <span style="display:inline-flex; align-items:center; gap:0.35em; white-space:nowrap; padding: 0.35em 0.65em; background: rgba(16,185,129,0.2); color: #86EFAC; border: 1px solid rgba(16,185,129,0.5); border-radius: 6px; font-size: 0.75em; font-weight:700;">
                                             <i class="bi bi-person-fill me-1"></i>Citizen
                                         </span>
                                     {% endif %}
                                 </td>
-                                <td data-label="Agency"><small class="text-muted">{{ user.agency if user.agency else '—' }}</small></td>
                                 <td data-label="Status" class="text-nowrap">
                                     {% if user.is_disabled %}
                                         <span style="display:inline-flex; align-items:center; gap:0.35em; white-space:nowrap; padding: 0.35em 0.65em; background: rgba(107,114,128,0.2); color: #9CA3AF; border: 1px solid rgba(107,114,128,0.4); border-radius: 6px; font-size: 0.75em; font-weight:700;">
@@ -241,9 +223,12 @@
                                 <td data-label="Joined"><small class="text-muted">{{ user.created_at|manila_time('%b %d, %Y') if user.created_at else '—' }}</small></td>
                                 <td data-label="Actions" class="text-center">
                                     <div class="d-flex gap-1 justify-content-center">
+                                        {% if user.role == 'retired' %}
+                                        <span class="small text-muted">Historical record</span>
+                                        {% else %}
                                         <!-- Edit Button -->
                                         <button class="btn btn-sm btn-outline-primary" title="Edit User" aria-label="Edit user {{ user.username }}"
-                                            onclick="openEditModal({{ user.id }}, '{{ user.username }}', '{{ user.full_name or '' }}', '{{ user.contact_number or '' }}', '{{ user.agency or '' }}', '{{ user.role }}')">
+                                            onclick="openEditModal({{ user.id }}, '{{ user.username }}', '{{ user.full_name or '' }}', '{{ user.contact_number or '' }}', '{{ user.role }}')">
                                             <i class="bi bi-pencil-fill" aria-hidden="true"></i>
                                         </button>
                                         <!-- Toggle Status -->
@@ -255,6 +240,7 @@
                                                 <i class="bi {% if user.is_disabled %}bi-person-check-fill{% else %}bi-person-x-fill{% endif %}" aria-hidden="true"></i>
                                             </button>
                                         </form>
+                                        {% endif %}
                                     </div>
                                 </td>
                             </tr>
@@ -287,31 +273,19 @@
                     <!-- Admin -->
                     <div class="info-tile info-tile-warning">
                                         <h6 class="mb-1" style="color: var(--status-warning);"><i class="bi bi-shield-fill me-2"></i>Admin</h6>
-                        <p class="small text-muted mb-0">Manages all users, agencies, system config, audit logs, and platform health.</p>
+                        <p class="small text-muted mb-0">Manages user accounts, system configuration, audit logs, and platform health.</p>
                     </div>
 
-                    <!-- Incident Commander -->
-                    <div class="info-tile info-tile-danger">
-                        <h6 class="mb-1" style="color: var(--status-danger);"><i class="bi bi-star-fill me-2"></i>Incident Commander</h6>
-                        <p class="small text-muted mb-0">Leads incident response, assigns tasks to agencies, monitors progress, and makes strategic decisions.</p>
-                    </div>
-
-                    <!-- Agency Coordinator -->
-                    <div class="info-tile info-tile-primary">
-                        <h6 class="mb-1" style="color: var(--status-info);"><i class="bi bi-diagram-3-fill me-2"></i>Agency Coordinator</h6>
-                        <p class="small text-muted mb-0">Receives assignments, coordinates personnel, and reports status for agencies (e.g., Fire Dept, Police, MDRRMO).</p>
-                    </div>
-
-                    <!-- EOC Staff -->
+                    <!-- IMT Staff -->
                     <div class="info-tile info-tile-purple">
-                        <h6 class="mb-1" style="color: #C4B5FD;"><i class="bi bi-display-fill me-2"></i>EOC Staff</h6>
-                        <p class="small text-muted mb-0">Monitors all incidents, analyses incoming data, and produces reports across the entire command dashboard.</p>
+                        <h6 class="mb-1" style="color: #C4B5FD;"><i class="bi bi-display-fill me-2"></i>IMT Staff</h6>
+                        <p class="small text-muted mb-0">Oversees San Pablo City incidents and response operations.</p>
                     </div>
 
                     <!-- Field Responder -->
                     <div class="info-tile info-tile-cyan">
                         <h6 class="mb-1" style="color: #67E8F9;"><i class="bi bi-person-badge-fill me-2"></i>Field Responder</h6>
-                        <p class="small text-muted mb-0">Executes tasks, submits field reports, and uploads media (Rescue personnel, firefighters, medical teams).</p>
+                        <p class="small text-muted mb-0">Executes CDRRMO tasks, submits field reports, and uploads media.</p>
                     </div>
 
                     <!-- Citizen -->
@@ -469,23 +443,14 @@
                                oninput="this.value = this.value.replace(/[^0-9+]/g, '')" maxlength="13">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label" for="edit_agency"><i class="bi bi-building me-1"></i>Agency</label>
-                        <select class="form-select" id="edit_agency" name="agency">
-                            <option value="">— Not Applicable —</option>
-                            {% for a in agencies %}
-                            <option value="{{ a.name }}">{{ a.name }}</option>
-                            {% endfor %}
-                        </select>
-                        <small class="text-muted">Required for Agency Coordinator and Field Responder — this is how tasks assigned by a commander reach them.</small>
                     </div>
                     <div class="mb-4">
                         <label class="form-label" for="edit_role"><i class="bi bi-shield me-1"></i>Role</label>
                         <select class="form-select" id="edit_role" name="role">
                             <option value="citizen">Citizen</option>
                             <option value="field_responder">Field Responder</option>
-                            <option value="agency_coordinator">Agency Coordinator</option>
-                            <option value="eoc_staff">EOC Staff</option>
-                            <option value="incident_commander">Incident Commander</option>
+                            <option value="imt_staff">IMT Staff</option>
+                            <option value="dispatcher">Dispatcher</option>
                             <option value="admin">Admin</option>
                         </select>
                     </div>
@@ -507,13 +472,12 @@
 
 {% block scripts %}
 <script>
-function openEditModal(id, username, fullName, contact, agency, role) {
+function openEditModal(id, username, fullName, contact, role) {
     document.getElementById('edit_user_id').value = id;
     document.getElementById('edit_username').value = username;
     document.getElementById('edit_full_name').value = fullName;
     document.getElementById('edit_contact').value = contact;
-    document.getElementById('edit_agency').value = agency;
-    document.getElementById('edit_role').value = role;
+    document.getElementById('edit_role').value = ['eoc_staff', 'eoc', 'imt', 'incident_commander', 'commander'].includes(role) ? 'imt_staff' : role;
     document.getElementById('editUserForm').action = '/admin/users/' + id + '/update';
     new bootstrap.Modal(document.getElementById('editUserModal')).show();
 }

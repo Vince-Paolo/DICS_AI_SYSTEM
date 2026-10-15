@@ -1,0 +1,51 @@
+{% extends 'pages/base.html' %}
+{% block title %}Dispatcher Operations | DICS AI{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h1 class="h3 mb-1">Dispatcher Operations</h1>
+    <p class="text-muted mb-0">Read-only oversight of responses initiated by Dispatchers.</p>
+</div>
+
+<div class="vstack gap-3">
+    {% for response in responses %}
+    <section class="card card-custom">
+        <div class="card-body">
+            <div class="d-flex align-items-start justify-content-between flex-wrap gap-3 mb-3">
+                <div>
+                    <h2 class="h5 mb-1">{{ response.incident.control_number }} · {{ response.incident.location or 'Location unavailable' }}</h2>
+                    <div class="small text-muted">
+                        Dispatched by {{ response.dispatched_by.full_name or response.dispatched_by.username if response.dispatched_by else 'Unknown dispatcher' }}
+                        · {{ response.started_at|manila_time('%b %d, %Y %I:%M %p') }}
+                    </div>
+                </div>
+                <span class="badge text-bg-secondary">{{ response.status }}</span>
+            </div>
+            <p class="mb-3">{{ response.situation_summary or 'No situation summary.' }}</p>
+            {% if response.tasks %}
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead><tr><th>Task</th><th>Assigned to</th><th>Priority</th><th>Status</th><th>Remarks</th></tr></thead>
+                    <tbody>
+                        {% for task in response.tasks %}
+                        <tr>
+                            <td>{{ task.title }}</td>
+                            <td>{{ task.assignee_label }}</td>
+                            <td>{{ task.priority }}</td>
+                            <td>{{ task.status }}</td>
+                            <td>{{ task.remarks or '—' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="small text-muted mb-0">No tasks assigned.</p>
+            {% endif %}
+        </div>
+    </section>
+    {% else %}
+    <div class="card card-custom"><div class="card-body text-muted">No Dispatcher-owned responses are recorded.</div></div>
+    {% endfor %}
+</div>
+{% endblock %}

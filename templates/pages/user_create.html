@@ -17,7 +17,7 @@
                     </a>
                 </div>
                 <p class="text-muted mb-0 mt-2" style="padding-left:2.75rem;">
-                    Create an account and assign its operational role and agency.
+                    Create an account and assign its operational role.
                 </p>
             </div>
         </div>
@@ -61,23 +61,12 @@
                                    oninput="this.value = this.value.replace(/[^0-9+]/g, '')" maxlength="13" autocomplete="tel">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label" for="agency"><i class="bi bi-building me-1"></i>Agency</label>
-                            <select id="agency" class="form-select" name="agency">
-                                <option value="">— Not Applicable —</option>
-                                {% for a in agencies %}
-                                <option value="{{ a.name }}">{{ a.name }}</option>
-                                {% endfor %}
-                            </select>
-                            <small class="text-muted">Required for Agency Coordinator and Field Responder — this is how tasks assigned by a commander reach them.</small>
-                        </div>
-                        <div class="col-md-6">
                             <label class="form-label required" for="role"><i class="bi bi-shield me-1"></i>Role <span class="required-indicator" aria-hidden="true">*</span></label>
                             <select id="role" class="form-select" name="role" required>
                                 <option value="citizen">Citizen</option>
                                 <option value="field_responder">Field Responder</option>
-                                <option value="agency_coordinator">Agency Coordinator</option>
-                                <option value="eoc_staff">EOC Staff</option>
-                                <option value="incident_commander">Incident Commander</option>
+                                <option value="imt_staff">IMT Staff</option>
+                                <option value="dispatcher">Dispatcher</option>
                                 <option value="admin">Admin</option>
                             </select>
                         </div>

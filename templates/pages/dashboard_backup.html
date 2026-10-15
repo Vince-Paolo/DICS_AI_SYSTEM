@@ -101,7 +101,7 @@
         <div class="card card-custom p-3 border-start border-4 border-primary">
             <small class="text-muted text-uppercase fw-bold font-monospace">System Commands</small>
             <div class="mt-2 pt-1">
-                <a href="/ai-prediction" class="btn btn-brand w-100 mb-2 btn-sm"><i class="bi bi-calculator me-1"></i> Compute Risk Model</a>
+                <a href="{{ url_for('dispatcher.decision_support') }}" class="btn btn-brand w-100 mb-2 btn-sm"><i class="bi bi-clipboard2-pulse me-1"></i> Response Decision Support</a>
                 <a href="/hazard-map" class="btn btn-outline-secondary border-secondary text-white w-100 btn-sm font-monospace"><i class="bi bi-geo me-1"></i> Inspect Radar Grid</a>
             </div>
         </div>
@@ -156,7 +156,7 @@
             <div class="card-body">
                 <h5 class="card-title">Distribution Spread Matrix</h5>
                 <div class="pt-2">
-                    <canvas id="dashboardChart" height="220"></canvas>
+                    <canvas id="dashboardChart" height="220" role="img" aria-label="Incident volume by hazard category"></canvas>
                 </div>
             </div>
         </div>
@@ -165,7 +165,8 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='vendor/chartjs/chart.umd.js', v=static_asset_version) }}"></script>
+<script src="{{ url_for('static', filename='js/chart-theme.js', v=static_asset_version) }}"></script>
 <script>
 // Fetch realtime data asynchronously (non-blocking)
 fetch('/api/realtime-data')
@@ -201,7 +202,7 @@ new Chart(ctx, {
         datasets: [{
             label: 'Incident Volume',
             data: [12, 8, 6],
-            backgroundColor: ['#2563EB', '#F59E0B', '#EF4444'],
+            backgroundColor: window.dicsChartTheme.palette.slice(0, 3),
             borderRadius: 4,
             borderWidth: 0
         }]
@@ -210,8 +211,8 @@ new Chart(ctx, {
         responsive: true,
         plugins: { legend: { display: false } },
         scales: {
-            x: { grid: { display: false }, ticks: { color: '#9CA3AF', font: { family: 'monospace' } } },
-            y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9CA3AF', font: { family: 'monospace' } } }
+            x: { grid: { display: false }, ticks: { font: { family: 'monospace' } } },
+            y: { beginAtZero: true, ticks: { font: { family: 'monospace' } } }
         }
     }
 });

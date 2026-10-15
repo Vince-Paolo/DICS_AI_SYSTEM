@@ -24,7 +24,6 @@
                             <thead>
                                 <tr>
                                     <th>Resource Type</th>
-                                    <th>Agency</th>
                                     <th>Qty</th>
                                     <th>Status</th>
                                     <th>Location</th>
@@ -38,7 +37,6 @@
                                         <strong class="text-white">{{ resource.resource_type }}</strong><br>
                                         <span class="text-muted small">Allocated {{ resource.allocated_at|manila_time('%b %d, %H:%M') }}</span>
                                     </td>
-                                    <td><span style="color:var(--status-success);font-weight:600;">{{ resource.agency }}</span></td>
                                     <td><strong class="text-warning fs-5">{{ resource.quantity }}</strong></td>
                                     <td>
                                         {% if response.status != 'CLOSED' %}
@@ -80,7 +78,7 @@
                                     </td>
                                 </tr>
                                 <tr class="collapse" id="res-{{ resource.id }}">
-                                    <td colspan="6" style="background:rgba(16,185,129,0.04);border-left:3px solid rgba(16,185,129,0.3);padding:1rem 1.25rem;">
+                                    <td colspan="5" style="background:rgba(16,185,129,0.04);border-left:3px solid rgba(16,185,129,0.3);padding:1rem 1.25rem;">
                                         <div class="text-muted small mb-1" style="text-transform:uppercase;letter-spacing:0.05em;">Operational Notes</div>
                                         <div class="text-white" style="white-space:pre-line;font-size:0.9rem;">{{ resource.notes or 'No operational notes attached.' }}</div>
                                         <div class="text-muted small mt-2">
@@ -103,72 +101,8 @@
         </div>
     </div>
 
-    <!-- Allocate Resource Form -->
     <div class="col-12 mb-4">
-        <div class="card card-custom h-100">
-            <div class="card-body p-4">
-                <div class="d-flex align-items-center gap-2 mb-4">
-                    <div class="icon-badge icon-badge-success"><i class="bi bi-plus-circle-fill"></i></div>
-                    <h5 class="mb-0">Allocate Resource</h5>
-                </div>
-
-                {% if response.status != 'CLOSED' %}
-                    <form method="POST" action="{{ url_for('commander.allocate_resource', response_id=response.id) }}">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <div class="required-legend"><span class="required-indicator" aria-hidden="true">*</span> Required field</div>
-                        <div class="mb-3">
-                            <label class="form-label required" for="resource_type">Resource Type <span class="required-indicator" aria-hidden="true">*</span></label>
-                            <select id="resource_type" name="resource_type" class="form-select" required>
-                                <option value="">— Select Resource Type —</option>
-                                <option value="Personnel">Personnel (Emergency Teams)</option>
-                                <option value="Vehicles">Vehicles (Ambulances/Trucks)</option>
-                                <option value="Medical Equipment">Medical Equipment</option>
-                                <option value="Rescue Equipment">Rescue Equipment</option>
-                                <option value="Shelters">Shelters (Mobile/Tents)</option>
-                                <option value="Food Supplies">Food Supplies</option>
-                                <option value="Water">Water Logistics</option>
-                                <option value="Generators">Generators & Power</option>
-                                <option value="Communications Equipment">Communications</option>
-                                <option value="Heavy Equipment">Heavy Machinery</option>
-                                <option value="Other">Other Resource</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label required" for="agency">Provider Agency <span class="required-indicator" aria-hidden="true">*</span></label>
-                            <select id="agency" name="agency" class="form-select" required>
-                                <option value="">— Select Source Agency —</option>
-                                {% for a in agencies %}
-                                <option value="{{ a.name }}">{{ a.name }}</option>
-                                {% endfor %}
-                            </select>
-                            {% if not agencies %}
-                                <small class="text-warning d-block mt-1">No agencies are registered yet. Contact an administrator to add agencies first.</small>
-                            {% endif %}
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label required" for="quantity">Quantity <span class="required-indicator" aria-hidden="true">*</span></label>
-                            <input id="quantity" type="number" name="quantity" class="form-control" min="1" value="1" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label" for="location">Initial Deployment Location</label>
-                            <input id="location" type="text" name="location" class="form-control" placeholder="e.g., Zone C Shelter, Sector 2 Highway">
-                        </div>
-                        <div class="mb-4">
-                            <label class="form-label" for="notes">Operational Notes</label>
-                            <textarea id="notes" name="notes" class="form-control" rows="3" placeholder="Condition reports, radio channels, staging instructions..."></textarea>
-                        </div>
-                        <button type="submit" class="btn btn-success-modern btn-modern w-100 py-2">
-                            <i class="bi bi-check-circle me-2"></i>Allocate Resource
-                        </button>
-                    </form>
-                {% else %}
-                    <div style="padding:2rem;text-align:center;background:rgba(107,114,128,0.08);border-radius:8px;border:1px solid rgba(107,114,128,0.2);">
-                        <i class="bi bi-lock-fill text-muted fs-2 d-block mb-2"></i>
-                        <span class="text-muted">This incident response is closed. Resource allocation is locked.</span>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
+        <p class="small text-muted mb-0">Dispatchers allocate operational resources. IMT staff retain oversight of resource status and location.</p>
     </div>
 </div>
 

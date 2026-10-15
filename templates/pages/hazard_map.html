@@ -3,10 +3,9 @@
 {% block title %}{{ _('Hazard Map') }} | DICS AI{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
-<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" />
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/leaflet/leaflet.css', v='2026-10-14-1') }}" />
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/leaflet/plugins/MarkerCluster.css', v='2026-10-14-1') }}" />
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/leaflet/plugins/MarkerCluster.Default.css', v='2026-10-14-1') }}" />
 <style>
     .map-container-wrap {
         position: relative;
@@ -198,6 +197,10 @@
     .hazard-layer-panel .btn {
         white-space: normal;
     }
+    .rainfall-ranking-table {
+        max-height: 24rem;
+        overflow-y: auto;
+    }
     @media (max-width: 991.98px) {
         .hazard-filter-grid {
             grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -376,7 +379,7 @@
                                 <button id="resourcesToggle" class="btn btn-outline-secondary btn-sm active">Resources</button>
                                 <button id="heatMapToggle" class="btn btn-outline-warning btn-sm active">Heat Map</button>
                                 <button id="satelliteBasemapToggle" class="btn btn-outline-dark btn-sm" title="Switch between street map and satellite imagery">Satellite View</button>
-                                <button id="rainfallWatchToggle" class="btn btn-outline-cyan btn-sm active" title="Rainfall watch layer for CALABARZON weather intensity">Rainfall Watch</button>
+                                <button id="rainfallWatchToggle" class="btn btn-outline-cyan btn-sm active" title="San Pablo barangay rainfall watch">Rainfall Watch</button>
                                 <button id="typhoonTrackToggle" class="btn btn-outline-info btn-sm active" title="Typhoon advisory and projected storm track">Typhoon Track</button>
                                 <button id="thermalHotspotsToggle" class="btn btn-outline-warning btn-sm active" title="NASA FIRMS thermal-anomaly detections (volcanic + fire signatures)">Satellite Thermal Hotspots</button>
                                 <button id="floodFootprintsToggle" class="btn btn-outline-primary btn-sm active" title="GDACS/EC-JRC satellite-modeled flood extent">Flood Extent (Satellite)</button>
@@ -415,6 +418,24 @@
                             <div class="map-legend-item"><span class="map-legend-line" style="background:#0284c7;">&nbsp;</span>Flood extent</div>
                         </div>
                     </div>
+                    <section id="rainfallRankingPanel" class="hazard-layer-panel d-none mt-3" aria-labelledby="rainfallRankingTitle">
+                        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+                            <div>
+                                <h2 id="rainfallRankingTitle" class="h5 mb-1">San Pablo Rainfall by Barangay</h2>
+                                <p class="text-muted small mb-0">Ranked by rainfall over the last 24 hours. Values are Open-Meteo gridded model estimates sampled at barangay centroids; nearby barangays may have similar readings. <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Weather data by Open-Meteo.com</a>.</p>
+                            </div>
+                            <span id="rainfallRankingStatus" class="small text-muted" role="status" aria-live="polite"></span>
+                        </div>
+                        <div class="rainfall-ranking-table table-responsive">
+                            <table class="table table-sm table-dark table-hover align-middle mb-0">
+                                <thead>
+                                    <tr><th scope="col">Rank</th><th scope="col">Barangay</th><th scope="col">Current (mm)</th><th scope="col">Last 24 hours (mm)</th></tr>
+                                </thead>
+                                <tbody id="rainfallRankingRows"></tbody>
+                            </table>
+                        </div>
+                        <p class="text-muted small mt-2 mb-0">Confirm whether CDRRMO gauges or PAGASA/DOST readings are available before operational use.</p>
+                    </section>
                 </div>
             </div>
         </div>
@@ -423,11 +444,11 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
-<script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+<script src="{{ url_for('static', filename='vendor/leaflet/leaflet.js', v='2026-10-14-1') }}"></script>
+<script src="{{ url_for('static', filename='vendor/leaflet/plugins/leaflet.markercluster.js', v='2026-10-14-1') }}"></script>
+<script src="{{ url_for('static', filename='vendor/leaflet/plugins/leaflet-heat.js', v='2026-10-14-1') }}"></script>
 <script>
-const map = L.map('map').setView([13.9411, 121.1622], 10);
+const map = L.map('map').setView([14.0683, 121.3256], 12);
 const streetBasemap = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '© OpenStreetMap'
@@ -600,7 +621,7 @@ function renderOperationalLayers() {
     if (resourcesVisible) {
         resourcesData.forEach(resource => {
             const marker = L.marker([resource.lat, resource.lng], { icon: createPointIcon('#64748b', 'R') });
-            marker.bindPopup(`<strong>${resource.resource_type}</strong><br/>Agency: ${resource.agency}<br/>Quantity: ${resource.quantity}<br/>Status: ${resource.status}<br/>${resource.location || ''}`);
+            marker.bindPopup(`<strong>${resource.resource_type}</strong><br/>Quantity: ${resource.quantity}<br/>Status: ${resource.status}<br/>${resource.location || ''}`);
             resourcesLayer.addLayer(marker);
         });
     }
@@ -665,34 +686,63 @@ function getRainfallColor(rainfallMm) {
 
 function renderRainfallWatch() {
     rainfallLayer.clearLayers();
+    const rankingPanel = document.getElementById('rainfallRankingPanel');
+    rankingPanel.classList.toggle('d-none', !rainfallWatchVisible);
+    renderRainfallRanking();
     if (!rainfallWatchVisible) return;
     rainfallWatchData.forEach(station => {
         if (station.lat == null || station.lon == null) return;
         const color = getRainfallColor(station.rainfall_mm || 0);
         const circle = L.circleMarker([station.lat, station.lon], {
-            radius: 9 + (station.rainfall_mm || 0) / 14,
+            radius: Math.min(18, 9 + (station.rainfall_mm || 0) / 14),
             color: '#ffffff',
             weight: 1.5,
             fillColor: color,
             fillOpacity: 0.82,
         });
         circle.bindPopup(
-            `<strong>${station.name || 'Rainfall station'}</strong><br/>` +
+            `<strong>${station.name || 'Barangay'}</strong><br/>` +
             `${station.status || 'Rainfall watch'}<br/>` +
-            `Rainfall: ${(station.rainfall_mm || 0)} mm/hr<br/>` +
+            `Current rainfall: ${station.rainfall_mm == null ? 'Unavailable' : `${station.rainfall_mm} mm`}<br/>` +
             `${station.rainfall_24h_mm == null ? '' : `Last 24 hours: ${station.rainfall_24h_mm} mm<br/>`}` +
-            `Source: ${station.source || 'Live weather feed'}`
+            `Source: <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">${station.source || 'Open-Meteo gridded model'}</a>`
         );
         rainfallLayer.addLayer(circle);
+    });
+}
 
-        const halo = L.circle([station.lat, station.lon], {
-            radius: 7000,
-            color: color,
-            fillColor: color,
-            fillOpacity: 0.12,
-            weight: 1,
+function renderRainfallRanking() {
+    const rows = document.getElementById('rainfallRankingRows');
+    const status = document.getElementById('rainfallRankingStatus');
+    rows.replaceChildren();
+
+    if (!rainfallWatchData.length) {
+        status.textContent = 'Live rainfall estimates are unavailable.';
+        return;
+    }
+
+    const rankedBarangays = [...rainfallWatchData].sort((left, right) => {
+        const left24h = left.rainfall_24h_mm ?? -1;
+        const right24h = right.rainfall_24h_mm ?? -1;
+        if (right24h !== left24h) return right24h - left24h;
+        return (right.rainfall_mm ?? -1) - (left.rainfall_mm ?? -1);
+    });
+    status.textContent = `${rankedBarangays.length} barangays`;
+
+    rankedBarangays.forEach((barangay, index) => {
+        const row = document.createElement('tr');
+        const values = [
+            String(index + 1),
+            barangay.name,
+            barangay.rainfall_mm == null ? '—' : `${barangay.rainfall_mm.toFixed(1)} mm`,
+            barangay.rainfall_24h_mm == null ? '—' : `${barangay.rainfall_24h_mm.toFixed(1)} mm`,
+        ];
+        values.forEach(value => {
+            const cell = document.createElement('td');
+            cell.textContent = value;
+            row.appendChild(cell);
         });
-        rainfallLayer.addLayer(halo);
+        rows.appendChild(row);
     });
 }
 
@@ -1021,12 +1071,19 @@ fetch('/api/hazard-layers/flood-footprints')
     .catch(() => { floodFootprintsData = []; });
 
 fetch('/api/hazard-layers/rainfall')
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) throw new Error(`Rainfall request failed: ${response.status}`);
+        return response.json();
+    })
     .then(data => {
         rainfallWatchData = Array.isArray(data) ? data : [];
         renderRainfallWatch();
     })
-    .catch(() => { rainfallWatchData = []; });
+    .catch(error => {
+        console.error('Failed to load San Pablo rainfall estimates:', error);
+        rainfallWatchData = [];
+        renderRainfallWatch();
+    });
 
 fetch('/api/hazard-layers/typhoon-tracks')
     .then(response => response.json())

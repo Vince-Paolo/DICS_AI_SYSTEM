@@ -1,0 +1,100 @@
+{% extends 'pages/base.html' %}
+{% block title %}Emergency Log | IMT | DICS AI{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+    <div>
+        <h1 class="h3 mb-1">Emergency Log</h1>
+        <p class="text-muted mb-0">Citizen SOS and dispatcher-reported incidents, ordered by control number.</p>
+    </div>
+    <form method="GET" class="d-flex gap-2" role="search">
+        <label class="visually-hidden" for="emergency-search">Search emergency log</label>
+        <input id="emergency-search" class="form-control" type="search" name="q" value="{{ search }}" placeholder="Control number or location">
+        <button class="btn btn-primary" type="submit"><i class="bi bi-search me-1"></i>Search</button>
+        {% if search %}
+        <a class="btn btn-outline-secondary" href="{{ url_for('eoc.emergency_log') }}">Clear</a>
+        {% endif %}
+    </form>
+</div>
+
+{% if can_create_emergency %}
+<details class="card card-custom mb-4" {{ 'open' if request.args.get('create') == '1' else '' }}>
+    <summary class="card-header h6 mb-0">Log a manual emergency</summary>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('dispatcher.create_emergency') }}" class="row g-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="col-12 col-md-6 col-lg-3">
+                <label class="form-label" for="manual-emergency-location">Location</label>
+                <input id="manual-emergency-location" class="form-control" name="location" maxlength="255" required>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+                <label class="form-label" for="manual-emergency-description">Emergency details</label>
+                <input id="manual-emergency-description" class="form-control" name="description" maxlength="255" required>
+            </div>
+            <div class="col-12 col-md-6 col-lg-2">
+                <label class="form-label" for="manual-emergency-severity">Severity</label>
+                <select id="manual-emergency-severity" class="form-select" name="severity" required>
+                    <option value="" selected disabled>Select severity</option>
+                    {% for severity in ('Low', 'Moderate', 'High', 'Severe') %}
+                    <option value="{{ severity }}">{{ severity }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-6 col-lg-2">
+                <label class="form-label" for="manual-emergency-barangay">Barangay</label>
+                <select id="manual-emergency-barangay" class="form-select" name="barangay_id" required>
+                    <option value="" selected disabled>Select barangay</option>
+                    {% for barangay in barangays %}
+                    <option value="{{ barangay.id }}">{{ barangay.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-8 col-md-4 col-lg-1">
+                <label class="form-label" for="manual-emergency-patients">Patients</label>
+                <input id="manual-emergency-patients" class="form-control" type="number" name="patient_count" min="0" value="0" required>
+            </div>
+            <div class="col-4 col-md-2 col-lg-1 d-flex align-items-end">
+                <button class="btn btn-primary w-100" type="submit" aria-label="Log emergency"><i class="bi bi-plus-lg"></i></button>
+            </div>
+        </form>
+    </div>
+</details>
+{% endif %}
+
+<div class="card card-custom">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th scope="col">Control number</th>
+                    <th scope="col">Location</th>
+                    <th scope="col">Reported</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Patients</th>
+                    <th scope="col"><span class="visually-hidden">Actions</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for incident in incidents %}
+                <tr>
+                    <th scope="row">{{ incident.control_number }}</th>
+                    <td>{{ incident.location or 'Location unavailable' }}</td>
+                    <td>{{ incident.display_time|manila_time('%b %d, %Y %I:%M %p') }}</td>
+                    <td>{{ incident.status or 'NEW' }}</td>
+                    <td>{{ incident.patient_count }}</td>
+                    <td class="text-end">
+                        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('eoc.emergency_log_detail', incident_id=incident.id) }}">Open</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-5">
+                        {% if search %}No emergencies match this search.{% else %}No emergency records have been logged.{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

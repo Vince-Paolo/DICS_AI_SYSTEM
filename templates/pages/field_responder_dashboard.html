@@ -18,7 +18,7 @@
                             <i class="bi bi-geo-alt-fill me-1" aria-hidden="true"></i><span id="gps-status" role="status" aria-live="polite">GPS OFF</span>
                         </span>
                         <span style="padding:0.3em 0.85em;background:rgba(56,189,248,0.12);color:#38BDF8;border:1px solid rgba(56,189,248,0.35);border-radius:20px;font-size:0.78rem;font-weight:700;font-family:monospace;">
-                            <i class="bi bi-circle-fill me-1" style="font-size:0.45rem;vertical-align:middle;"></i>{{ session.agency or 'FIELD UNIT' }}
+                            <i class="bi bi-circle-fill me-1" style="font-size:0.45rem;vertical-align:middle;"></i>{{ _('CDRRMO FIELD UNIT') }}
                         </span>
                     </span>
                 </div>
@@ -184,6 +184,9 @@
                                         <span class="badge" style="font-size:0.65rem;background:{% if task.status == 'IN_PROGRESS' %}rgba(56,189,248,0.2);color:#38BDF8{% else %}rgba(234,179,8,0.2);color:#EAB308{% endif %};">
                                             {{ task.status.replace('_', ' ') }}
                                         </span>
+                                        {% if task.remarks %}
+                                            <div class="small mt-1 text-info" style="white-space:pre-line;">{{ task.remarks }}</div>
+                                        {% endif %}
                                         <span class="badge" style="font-size:0.65rem;background:{% if task.priority == 'CRITICAL' %}rgba(239,68,68,0.2);color:#EF4444{% elif task.priority == 'HIGH' %}rgba(249,115,22,0.2);color:#F97316{% else %}rgba(107,114,128,0.2);color:#9CA3AF{% endif %};">
                                             {{ task.priority }}
                                         </span>

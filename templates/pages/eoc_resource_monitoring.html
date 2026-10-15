@@ -20,7 +20,7 @@
                         </a>
                     </span>
                 </div>
-                <p class="text-muted mb-0 mt-2" style="padding-left:2.75rem;">Every resource allocated across all active incident responses, region-wide.</p>
+                <p class="text-muted mb-0 mt-2" style="padding-left:2.75rem;">CDRRMO resources allocated across active incident responses in San Pablo City.</p>
             </div>
         </div>
     </div>
@@ -76,7 +76,7 @@
                 <div>
                     <div class="stat-label">Total Units Deployed</div>
                     <div class="stat-value">{{ total_units }}</div>
-                    <div class="stat-description">Summed quantity, all agencies</div>
+                    <div class="stat-description">Summed quantity across responses</div>
                 </div>
                 <div class="icon-badge icon-badge-primary">
                     <i class="bi bi-boxes"></i>
@@ -88,7 +88,7 @@
 
 <div class="row g-4 mb-4">
     <!-- Resource Table -->
-    <div class="col-lg-8">
+    <div class="col-12">
         <div class="card card-custom shadow-lg h-100">
             <div class="card-body p-4">
                 <div class="d-flex align-items-center gap-2 mb-4">
@@ -100,21 +100,12 @@
                 </div>
 
                 <form method="GET" action="{{ url_for('eoc.eoc_resource_monitoring') }}" class="row g-3 align-items-end mb-4">
-                    <div class="col-12 col-sm-6">
+                    <div class="col-12 col-sm-8">
                         <label class="form-label text-muted small text-uppercase" for="status">Status</label>
                         <select id="status" name="status" class="form-select">
                             <option value="">All Statuses</option>
                             {% for st in ['DEPLOYED', 'AVAILABLE', 'RETURNING', 'UNAVAILABLE'] %}
                                 <option value="{{ st }}" {{ 'selected' if status_filter == st else '' }}>{{ st }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-12 col-sm-6">
-                        <label class="form-label text-muted small text-uppercase" for="agency">Agency</label>
-                        <select id="agency" name="agency" class="form-select">
-                            <option value="">All Agencies</option>
-                            {% for ag in agencies %}
-                                <option value="{{ ag }}" {{ 'selected' if agency_filter == ag else '' }}>{{ ag }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -134,7 +125,6 @@
                             <thead>
                                 <tr>
                                     <th>Type</th>
-                                    <th>Agency</th>
                                     <th>Qty</th>
                                     <th>Status</th>
                                     <th>Location</th>
@@ -151,7 +141,6 @@
                                         <br><span class="text-muted" style="font-size:0.72rem;">{{ res.notes[:40] }}{% if res.notes|length > 40 %}...{% endif %}</span>
                                         {% endif %}
                                     </td>
-                                    <td><span style="color:#C4B5FD;font-size:0.82rem;font-weight:600;">{{ res.agency }}</span></td>
                                     <td><strong class="text-info">{{ res.quantity }}</strong></td>
                                     <td>
                                         {% if res.status == 'DEPLOYED' %}
@@ -179,36 +168,6 @@
         </div>
     </div>
 
-    <!-- Deployment by Agency -->
-    <div class="col-lg-4">
-        <div class="card card-custom shadow-lg h-100">
-            <div class="card-body p-4">
-                <div class="d-flex align-items-center gap-2 mb-4">
-                    <div class="icon-badge icon-badge-primary">
-                        <i class="bi bi-diagram-3-fill"></i>
-                    </div>
-                    <h5 class="mb-0">Deployed by Agency</h5>
-                </div>
-
-                {% if agency_breakdown %}
-                    {% set max_count = agency_breakdown[0][1] %}
-                    {% for agency, count in agency_breakdown %}
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between mb-1">
-                            <span class="text-muted small">{{ agency }}</span>
-                            <span class="text-white small fw-bold">{{ count }}</span>
-                        </div>
-                        <div style="height:6px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden;">
-                            <div style="height:100%;width:{{ (count / max_count * 100) if max_count else 0 }}%;background:linear-gradient(90deg,#8B5CF6,#6D28D9);border-radius:4px;"></div>
-                        </div>
-                    </div>
-                    {% endfor %}
-                {% else %}
-                    {{ es.render('bi-boxes', 'No Resources Deployed', subtitle='Resources assigned to active responses will appear here.', size='sm') }}
-                {% endif %}
-            </div>
-        </div>
-    </div>
 </div>
 
 {% endblock %}

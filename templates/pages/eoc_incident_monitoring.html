@@ -14,7 +14,7 @@
             <div class="card-body">
                 <div class="section-header mb-0">
                     <span class="section-header-icon" style="color:#C4B5FD;"><i class="bi bi-binoculars-fill"></i></span>
-                    <h4 class="mb-0">Incident Monitoring</h4>
+                    <h4 class="mb-0">{{ _('Emergencies') }}</h4>
                     <span class="ms-3">
                         <a href="{{ url_for('eoc.eoc_dashboard') }}" class="btn btn-sm btn-modern" style="background:rgba(139,92,246,0.1);color:#C4B5FD;border:1px solid rgba(139,92,246,0.25);font-size:0.78rem;">
                             <i class="bi bi-arrow-left me-1"></i>Back to Command Dashboard
@@ -26,6 +26,23 @@
         </div>
     </div>
 </div>
+
+<nav class="nav nav-pills gap-2 mb-4" aria-label="{{ _('Emergency views') }}">
+    {% for tab, label, icon in [
+        ('active', _('Active'), 'bi-activity'),
+        ('verification', _('Verification'), 'bi-shield-check'),
+        ('closed', _('Closed'), 'bi-archive')
+    ] %}
+    <a class="nav-link {{ 'active' if view_filter == tab else '' }}"
+       href="{{ url_for('admin.eoc_verifications') if tab == 'verification' else url_for('eoc.eoc_incident_monitoring', view=tab) }}"
+       {% if view_filter == tab %}aria-current="page"{% endif %}>
+        <i class="bi {{ icon }} me-1" aria-hidden="true"></i>{{ label }}
+        <span class="badge rounded-pill ms-1 {{ 'bg-light text-dark' if view_filter == tab else 'bg-secondary' }}">
+            {{ tab_counts[tab] }}
+        </span>
+    </a>
+    {% endfor %}
+</nav>
 
 <!-- Summary Stats -->
 <div class="row g-3 mb-4">
@@ -91,6 +108,7 @@
 <div class="card card-custom shadow-lg mb-4">
     <div class="card-body p-4">
         <form method="GET" action="{{ url_for('eoc.eoc_incident_monitoring') }}" class="row g-3 align-items-end">
+            <input type="hidden" name="view" value="{{ view_filter }}">
             <div class="col-12 col-sm-6 col-lg-4">
                 <label class="form-label text-muted small text-uppercase" for="level">Risk Level</label>
                 <select id="level" name="level" class="form-select">
@@ -122,7 +140,7 @@
                 <button type="submit" class="btn btn-primary-modern btn-modern text-nowrap">
                     <i class="bi bi-funnel-fill me-1"></i>Apply Filters
                 </button>
-                <a href="{{ url_for('eoc.eoc_incident_monitoring') }}" class="btn btn-outline-secondary btn-modern flex-shrink-0" title="Reset">
+                <a href="{{ url_for('eoc.eoc_incident_monitoring', view=view_filter) }}" class="btn btn-outline-secondary btn-modern flex-shrink-0" title="Reset">
                     <i class="bi bi-x-lg"></i>
                 </a>
             </div>
@@ -137,7 +155,7 @@
             <div class="icon-badge" style="background:rgba(139,92,246,0.15);color:#C4B5FD;border:1px solid rgba(139,92,246,0.3);">
                 <i class="bi bi-list-ul"></i>
             </div>
-            <h5 class="mb-0">Incident Log</h5>
+            <h5 class="mb-0">{{ _('Emergency and incident records') }}</h5>
             <span class="ms-2 text-muted small">({{ incidents|length }} matching)</span>
         </div>
 
@@ -159,7 +177,13 @@
                     <tbody>
                         {% for incident in incidents %}
                         <tr>
-                            <td><a href="{{ url_for('eoc.eoc_incident_detail', incident_id=incident.id) }}" class="text-white fw-bold" style="text-decoration:none;">#{{ incident.id }}</a></td>
+                            <td>
+                                {% if incident.hazard_type == 'EMERGENCY' %}
+                                <a href="{{ url_for('eoc.emergency_log_detail', incident_id=incident.id) }}" class="text-white fw-bold" style="text-decoration:none;">{{ incident.control_number }}</a>
+                                {% else %}
+                                <a href="{{ url_for('eoc.eoc_incident_detail', incident_id=incident.id) }}" class="text-white fw-bold" style="text-decoration:none;">#{{ incident.id }}</a>
+                                {% endif %}
+                            </td>
                             <td>
                                 <span style="padding:0.3em 0.6em;background:rgba(139,92,246,0.15);color:#C4B5FD;border:1px solid rgba(139,92,246,0.4);border-radius:6px;font-size:0.75em;font-weight:700;text-transform:uppercase;">
                                     {{ incident.hazard_type }}

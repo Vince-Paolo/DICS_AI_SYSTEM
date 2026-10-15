@@ -1,0 +1,490 @@
+{% extends 'pages/base.html' %}
+{% import 'partials/empty_state.html' as es %}
+{% block title %}{{ incident.control_number }} | Emergency Log | DICS AI{% endblock %}
+
+{% block content %}
+<header class="d-flex align-items-start justify-content-between flex-wrap gap-3 mb-3">
+    <div>
+        {% if is_emergency_record %}
+        <a href="{{ url_for('eoc.emergency_log') }}" class="text-decoration-none"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Emergency log</a>
+        {% else %}
+        <a href="{{ url_for('dispatcher.decision_support') }}" class="text-decoration-none"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Decision support</a>
+        {% endif %}
+        <h1 class="h3 mt-2 mb-1">{{ incident.control_number }}</h1>
+        <p class="text-muted mb-0">{{ incident.location or 'Location unavailable' }} &middot; {{ incident.display_time|manila_time('%b %d, %Y %I:%M %p') }}</p>
+        <p class="mt-2 mb-0">{{ incident.message }}</p>
+    </div>
+    <span class="badge text-bg-secondary">{{ incident.status or 'NEW' }}</span>
+</header>
+
+<section class="card card-custom mb-3" aria-label="Emergency summary">
+    <div class="card-body py-3">
+        <div class="row g-3">
+            <div class="col-6 col-lg emergency-summary-item">
+                <div class="small text-muted">Status</div>
+                <div class="emergency-summary-value">{{ incident.status or 'NEW' }}</div>
+            </div>
+            <div class="col-6 col-lg emergency-summary-item">
+                <div class="small text-muted">Severity</div>
+                <div class="emergency-summary-value">{{ incident.level or 'Not assessed' }}</div>
+            </div>
+            <div class="col-12 col-lg-5 emergency-summary-item">
+                <div class="small text-muted">Location</div>
+                <div class="emergency-summary-value">{{ incident.location or 'Location unavailable' }}</div>
+            </div>
+            <div class="col-6 col-lg emergency-summary-item">
+                <div class="small text-muted">Patients</div>
+                <div class="emergency-summary-value">{{ incident.patient_count }}</div>
+            </div>
+            <div class="col-6 col-lg emergency-summary-item">
+                <div class="small text-muted">Updated</div>
+                <div class="emergency-summary-value">{{ incident.updated_at|manila_time('%b %d, %I:%M %p') if incident.updated_at else '—' }}</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{% set default_tab = 'dispatch' if can_dispatch else 'decision' %}
+<ul class="nav nav-tabs emergency-tabs mb-3" id="emergencyDetailTabs" role="tablist" aria-label="Emergency details">
+    {% for tab_id, tab_label, tab_icon in [
+        ('dispatch', 'Dispatch', 'bi-broadcast-pin'),
+        ('barangay', 'Barangay contact', 'bi-telephone'),
+        ('decision', 'Decision', 'bi-clipboard2-pulse'),
+        ('patients', 'Patients', 'bi-heart-pulse'),
+        ('timeline', 'Timeline', 'bi-clock-history')
+    ] %}
+    <li class="nav-item" role="presentation">
+        <button class="nav-link {{ 'active' if default_tab == tab_id }}" id="{{ tab_id }}-tab"
+                data-bs-toggle="tab" data-bs-target="#{{ tab_id }}-panel" type="button" role="tab"
+                aria-controls="{{ tab_id }}-panel" aria-selected="{{ 'true' if default_tab == tab_id else 'false' }}">
+            <i class="bi {{ tab_icon }} me-1" aria-hidden="true"></i>{{ tab_label }}
+        </button>
+    </li>
+    {% endfor %}
+</ul>
+
+<div class="tab-content" id="emergencyDetailTabContent">
+    <section class="tab-pane fade {{ 'show active' if default_tab == 'dispatch' else '' }}" id="dispatch-panel" role="tabpanel" aria-labelledby="dispatch-tab" tabindex="0">
+        {% if can_dispatch %}
+        <section class="card card-custom mb-4" aria-labelledby="dispatch-title-heading">
+            <div class="card-body">
+                <h2 class="h5" id="dispatch-title-heading">Dispatch response</h2>
+                {% if incident.response and incident.response.status in ['CLOSED', 'RESOLVED'] %}
+                <p class="text-muted mb-0">This response is {{ incident.response.status|lower }} and cannot receive new assignments.</p>
+                {% else %}
+                <form method="POST" action="{{ url_for('dispatcher.dispatch_incident', incident_id=incident.id) }}" class="row g-3">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="col-12">
+                        <label class="form-label" for="dispatch-title">Task</label>
+                        <input id="dispatch-title" class="form-control" name="title" maxlength="200" required>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="dispatch-description">Instructions</label>
+                        <textarea id="dispatch-description" class="form-control" name="description" rows="3" required></textarea>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="dispatch-assignee">CDRRMO responder or team</label>
+                        <select id="dispatch-assignee" class="form-select" name="assignee" required>
+                            <option value="">Select responder or team</option>
+                            {% for responder in dispatch_responders %}
+                            <option value="user:{{ responder.id }}">{{ responder.full_name or responder.username }}</option>
+                            {% endfor %}
+                            {% for team in response_teams %}
+                            <option value="team:{{ team.id }}">{{ team.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label" for="dispatch-priority">Priority</label>
+                        <select id="dispatch-priority" class="form-select" name="priority">
+                            {% for priority in ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] %}
+                            <option value="{{ priority }}" {{ 'selected' if priority == 'MEDIUM' }}>{{ priority|title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label" for="dispatch-due">Estimated completion</label>
+                        <input id="dispatch-due" class="form-control" type="datetime-local" name="estimated_completion">
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="dispatch-resource-type">Optional CDRRMO resource</label>
+                        <select id="dispatch-resource-type" class="form-select" name="resource_type">
+                            <option value="">No additional resource</option>
+                            <option value="Personnel">Personnel</option>
+                            <option value="Medical Assistance &amp; Equipment">Medical Assistance &amp; Equipment</option>
+                            <option value="Vehicles">Vehicles</option>
+                        </select>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label" for="dispatch-resource-quantity">Resource quantity</label>
+                        <input id="dispatch-resource-quantity" class="form-control" type="number" name="resource_quantity" min="1" value="1">
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="dispatch-vehicle">Vehicle identifier (optional)</label>
+                        <input id="dispatch-vehicle" class="form-control" name="vehicle_identifier" maxlength="255" placeholder="Plate or unit number">
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="dispatch-vehicle-location">Resource staging location</label>
+                        <input id="dispatch-vehicle-location" class="form-control" name="vehicle_location" maxlength="255">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="dispatch-resource-notes">Resource notes</label>
+                        <textarea id="dispatch-resource-notes" class="form-control" name="resource_notes" rows="2" maxlength="4000"></textarea>
+                    </div>
+                    <div class="col-12">
+                        <button class="btn btn-primary" type="submit"><i class="bi bi-broadcast-pin me-1" aria-hidden="true"></i>Dispatch task</button>
+                    </div>
+                </form>
+                {% endif %}
+            </div>
+        </section>
+
+        {% if incident.response and incident.response.tasks %}
+        <section class="card card-custom mb-4" aria-labelledby="assigned-tasks-title">
+            <div class="card-body">
+                <h2 class="h5" id="assigned-tasks-title">Assigned tasks</h2>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead><tr><th scope="col">Task</th><th scope="col">Assigned to</th><th scope="col">Priority</th><th scope="col">Status</th></tr></thead>
+                        <tbody>
+                            {% for task in incident.response.tasks %}
+                            <tr>
+                                <td>{{ task.title }}<div class="small text-muted">{{ task.description }}</div></td>
+                                <td>{{ task.assignee_label }}</td>
+                                <td>{{ task.priority }}</td>
+                                <td>{{ task.status }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% set vehicles = incident.response.resources|selectattr('resource_type', 'equalto', 'Vehicles')|list %}
+                {% if vehicles %}
+                <h3 class="h6 mt-3">Vehicles assigned to this response</h3>
+                <ul class="mb-0">
+                    {% for vehicle in vehicles %}
+                    <li>{{ vehicle.notes }}{% if vehicle.location %} · {{ vehicle.location }}{% endif %} ({{ vehicle.status }})</li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </div>
+        </section>
+        {% else %}
+        {{ es.render('bi-list-task', 'No dispatch tasks yet', subtitle='New assignments for this emergency will appear here.', size='sm') }}
+        {% endif %}
+        {% else %}
+        {{ es.render('bi-broadcast-pin', 'Dispatch access unavailable', subtitle='Dispatch assignments are managed by dispatchers.', size='sm') }}
+        {% endif %}
+    </section>
+
+    <section class="tab-pane fade" id="barangay-panel" role="tabpanel" aria-labelledby="barangay-tab" tabindex="0">
+        {% if can_log_contact %}
+        <section class="card card-custom mb-4" id="barangay-contact-log" aria-labelledby="barangay-contact-title">
+            <div class="card-body">
+                <h2 class="h5" id="barangay-contact-title">Barangay contact log</h2>
+                <form method="POST" action="{{ url_for('dispatcher.log_barangay_contact', incident_id=incident.id) }}" class="row g-3 mb-4">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="col-12">
+                        <label class="form-label" for="contact-unit">Barangay response unit</label>
+                        <select id="contact-unit" class="form-select" name="response_unit_id" required>
+                            <option value="">Select barangay</option>
+                            {% for unit in response_units %}
+                            <option value="{{ unit.id }}" {{ 'selected' if response_assessment and response_assessment.barangay_unit_id == unit.id }}>{{ unit.barangay.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label" for="contact-person">Contact person</label>
+                        <input id="contact-person" class="form-control" name="contacted_person" maxlength="150">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label" for="contact-method">Method</label>
+                        <select id="contact-method" class="form-select" name="contact_method">
+                            <option value="PHONE">Phone</option>
+                            <option value="RADIO">Radio</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="contact-outcome">Outcome</label>
+                        <select id="contact-outcome" class="form-select" name="outcome" required>
+                            <option value="CONTACTED">Contacted</option>
+                            <option value="NO_ANSWER">No answer</option>
+                            <option value="ASSISTANCE_DISPATCHED">Assistance dispatched</option>
+                            <option value="UNAVAILABLE">Unavailable</option>
+                            <option value="OTHER">Other</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="contact-notes">Notes</label>
+                        <textarea id="contact-notes" class="form-control" name="notes" rows="2" maxlength="4000"></textarea>
+                    </div>
+                    <div class="col-12">
+                        <button class="btn btn-outline-primary" type="submit">Log contact</button>
+                    </div>
+                </form>
+                <h3 class="h6">Recent contacts</h3>
+                {% if contact_logs %}
+                <ul class="list-group list-group-flush">
+                    {% for log in contact_logs %}
+                    <li class="list-group-item bg-transparent text-body px-0">
+                        <strong>{{ log.response_unit.barangay.name }}</strong> · {{ log.outcome|replace('_', ' ')|title }}
+                        <div class="small text-muted">{{ log.contacted_at|manila_time('%b %d, %Y %I:%M %p') }} · {{ log.contact_method|title }} · {{ log.logged_by.full_name or log.logged_by.username }}</div>
+                        {% if log.contacted_person %}<div class="small">Contact: {{ log.contacted_person }}</div>{% endif %}
+                        {% if log.notes %}<div class="small">{{ log.notes }}</div>{% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                {{ es.render('bi-telephone', 'No barangay contacts', subtitle='Logged phone and radio coordination will appear here.', size='sm') }}
+                {% endif %}
+            </div>
+        </section>
+        {% else %}
+        {{ es.render('bi-telephone', 'Barangay contact access unavailable', subtitle='Contact logging is available to dispatchers.', size='sm') }}
+        {% endif %}
+    </section>
+
+    <section class="tab-pane fade {{ 'show active' if default_tab == 'decision' else '' }}" id="decision-panel" role="tabpanel" aria-labelledby="decision-tab" tabindex="0">
+        {% if can_edit_emergency_assessment %}
+        <section class="card card-custom mb-4" aria-labelledby="incident-assessment-fields-title">
+            <div class="card-body">
+                <h2 class="h5" id="incident-assessment-fields-title">Incident severity and barangay</h2>
+                <p class="text-muted small">Keep these fields current so response decision support can use the incident severity and San Pablo barangay context.</p>
+                <form method="POST" action="{{ url_for('eoc.update_emergency_assessment', incident_id=incident.id) }}" class="row g-3 align-items-end">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="col-12 col-md-4">
+                        <label class="form-label" for="incident-severity">Severity</label>
+                        <select class="form-select" id="incident-severity" name="severity" required>
+                            <option value="" disabled {{ 'selected' if incident.level not in ['Low', 'Moderate', 'High', 'Severe'] }}>Select severity</option>
+                            {% for severity in ('Low', 'Moderate', 'High', 'Severe') %}
+                            <option value="{{ severity }}" {{ 'selected' if incident.level == severity }}>{{ severity }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-5">
+                        <label class="form-label" for="incident-barangay">Barangay</label>
+                        <select class="form-select" id="incident-barangay" name="barangay_id" required>
+                            <option value="" disabled {{ 'selected' if not incident.barangay_id }}>Select barangay</option>
+                            {% for barangay in barangays %}
+                            <option value="{{ barangay.id }}" {{ 'selected' if incident.barangay_id == barangay.id }}>{{ barangay.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <button class="btn btn-primary" type="submit">Save incident details</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+        {% endif %}
+
+        {% if response_assessment %}
+        <section class="card card-custom border-primary mb-4" aria-labelledby="response-guidance-title">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3">
+                    <div>
+                        <h2 class="h5 mb-1" id="response-guidance-title">Response decision support</h2>
+                        <p class="text-muted small mb-0">Rules-based guidance only. The dispatcher makes the final decision; this is not an automatic dispatch order.</p>
+                        <p class="text-muted small mb-0">Matched barangay: {{ response_assessment.barangay_name or 'Not identified' }}</p>
+                    </div>
+                    {% if response_assessment.score is not none %}
+                    <span class="badge text-bg-primary">{{ response_assessment.score }}/100 response-need points</span>
+                    {% else %}
+                    <span class="badge text-bg-warning">Insufficient information</span>
+                    {% endif %}
+                </div>
+                <div class="alert alert-primary mb-3">
+                    <strong>Suggested outcome: {{ response_assessment.outcome_label }}</strong>
+                    {% if response_assessment.outcome %}
+                    <div class="small mt-1">Provisional ruleset {{ response_assessment.rules_version }}: 0–24 monitor, 25–59 support, 60–100 CDRRMO takes over. CDRRMO has not validated these weights or cutoffs.</div>
+                    {% else %}
+                    <div class="small mt-1">A response category needs both a usable severity assessment and an identifiable incident location. Missing inputs add no points. The dispatcher must record a reason with any final choice.</div>
+                    {% endif %}
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                        <thead><tr><th scope="col">Factor</th><th scope="col">Incident data</th><th scope="col">Score effect</th><th scope="col">How it is used / limitation</th></tr></thead>
+                        <tbody>
+                            {% for factor in response_assessment.factors %}
+                            <tr>
+                                <th scope="row">{{ factor.name }}</th>
+                                <td>{{ factor.value }}</td>
+                                <td>{{ '%+d'|format(factor.points) }}</td>
+                                <td class="small text-muted">{{ factor.basis }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if can_record_decision %}
+                <form method="POST" action="{{ url_for('dispatcher.record_response_decision', incident_id=incident.id) }}" class="border-top pt-3">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="assessment_token" value="{{ response_assessment_token }}">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-12 col-md-5">
+                            <label class="form-label" for="response-decision">Dispatcher decision</label>
+                            <select class="form-select" id="response-decision" name="decision" required>
+                                {% if not response_assessment.outcome %}
+                                <option value="" selected disabled>Select a final decision</option>
+                                {% endif %}
+                                {% for outcome, label in response_outcomes.items() %}
+                                <option value="{{ outcome }}" {{ 'selected' if outcome == response_assessment.outcome }}>{{ label }}{{ ' (suggested)' if outcome == response_assessment.outcome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-7">
+                            <label class="form-label" for="response-decision-reason">Reason <span class="text-muted">(required if data is insufficient or your decision differs)</span></label>
+                            <input class="form-control" id="response-decision-reason" name="decision_reason" maxlength="2000">
+                        </div>
+                        <div class="col-12">
+                            <button class="btn btn-primary" type="submit">Record decision</button>
+                        </div>
+                    </div>
+                </form>
+                {% endif %}
+            </div>
+        </section>
+        {% else %}
+        {{ es.render('bi-clipboard2-pulse', 'Decision support unavailable', subtitle='No open response assessment is available for this emergency.', size='sm') }}
+        {% endif %}
+
+        {% if response_decisions %}
+        <section class="card card-custom mb-4" aria-labelledby="response-decision-history-title">
+            <div class="card-body">
+                <h2 class="h6" id="response-decision-history-title">Decision log</h2>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead><tr><th scope="col">Recorded</th><th scope="col">Suggestion</th><th scope="col">Staff decision</th><th scope="col">Reason</th><th scope="col">Recorded by</th></tr></thead>
+                        <tbody>
+                            {% for entry in response_decisions %}
+                            <tr>
+                                <td>{{ entry.created_at|manila_time('%b %d, %Y %I:%M %p') }}</td>
+                                <td>{{ entry.summary }}</td>
+                                <td>{{ response_outcomes.get(entry.decision, entry.decision or 'Not recorded') }}</td>
+                                <td>{{ entry.decision_reason or '—' }}</td>
+                                <td>{{ entry.decided_by.full_name or entry.decided_by.username if entry.decided_by else 'Unknown' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+        {% else %}
+        {{ es.render('bi-clipboard2-pulse', 'No decisions recorded', subtitle='Dispatcher decisions and reasons will appear here.', size='sm') }}
+        {% endif %}
+    </section>
+
+    <section class="tab-pane fade" id="patients-panel" role="tabpanel" aria-labelledby="patients-tab" tabindex="0">
+        {% if is_emergency_record %}
+        <section class="card card-custom mb-4" aria-labelledby="patient-count-title">
+            <div class="card-body">
+                <h2 class="h5" id="patient-count-title">Patient count</h2>
+                <p class="text-muted">Total patients reported for this emergency.</p>
+                <form method="POST" action="{{ url_for('eoc.update_emergency_patient_count', incident_id=incident.id) }}" class="row g-2 align-items-end">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="col-12 col-sm-8">
+                        <label class="form-label" for="patient-count">Number of patients</label>
+                        <input id="patient-count" class="form-control" type="number" name="patient_count" min="{{ incident.patient_records|length }}" value="{{ incident.patient_count }}" required>
+                    </div>
+                    <div class="col-12 col-sm-4">
+                        <button class="btn btn-primary" type="submit">Save count</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <section class="card card-custom mb-4" aria-labelledby="patient-records-title">
+            <div class="card-body">
+                <h2 class="h5 mb-3" id="patient-records-title">Patient records</h2>
+                <p class="small text-muted">Do not enter patient names or personal identifiers. Record only condition, destination, and status.</p>
+                {% if incident.patient_records %}
+                <div class="vstack gap-3 mb-4">
+                    {% for patient in incident.patient_records %}
+                    <div class="border rounded p-3">
+                        <form method="POST" action="{{ url_for('eoc.update_emergency_patient', incident_id=incident.id, patient_id=patient.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div class="row g-2">
+                                <div class="col-12 col-md-5">
+                                    <label class="form-label" for="condition-{{ patient.id }}">Condition</label>
+                                    <input id="condition-{{ patient.id }}" class="form-control" type="text" name="condition" maxlength="255" value="{{ patient.condition }}" required>
+                                </div>
+                                <div class="col-12 col-md-4">
+                                    <label class="form-label" for="destination-{{ patient.id }}">Destination</label>
+                                    <input id="destination-{{ patient.id }}" class="form-control" type="text" name="destination" maxlength="255" value="{{ patient.destination or '' }}">
+                                </div>
+                                <div class="col-12 col-md-3">
+                                    <label class="form-label" for="status-{{ patient.id }}">Status</label>
+                                    <input id="status-{{ patient.id }}" class="form-control" type="text" name="status" maxlength="50" value="{{ patient.status }}" required>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-end mt-3">
+                                <button class="btn btn-sm btn-primary" type="submit">Update record</button>
+                            </div>
+                        </form>
+                        <form class="d-flex justify-content-end mt-2" method="POST" action="{{ url_for('eoc.delete_emergency_patient', incident_id=incident.id, patient_id=patient.id) }}" data-confirm="Delete this patient record?">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button class="btn btn-sm btn-outline-danger" type="submit">Delete record</button>
+                        </form>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                {{ es.render('bi-heart-pulse', 'No individual patient records', subtitle='Non-identifying patient records added for this emergency will appear here.', size='sm') }}
+                {% endif %}
+
+                <hr>
+                <h3 class="h6">Add a patient record</h3>
+                <form method="POST" action="{{ url_for('eoc.add_emergency_patient', incident_id=incident.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="row g-3">
+                        <div class="col-12 col-md-5">
+                            <label class="form-label" for="new-condition">Condition</label>
+                            <input id="new-condition" class="form-control" type="text" name="condition" maxlength="255" required>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label" for="new-destination">Destination</label>
+                            <input id="new-destination" class="form-control" type="text" name="destination" maxlength="255">
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <label class="form-label" for="new-status">Status</label>
+                            <input id="new-status" class="form-control" type="text" name="status" maxlength="50" value="RECEIVING_CARE" required>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary mt-3" type="submit"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Add record</button>
+                </form>
+            </div>
+        </section>
+        {% else %}
+        {{ es.render('bi-heart-pulse', 'Patient tracking unavailable', subtitle='Patient records are available for emergency-log incidents.', size='sm') }}
+        {% endif %}
+    </section>
+
+    <section class="tab-pane fade" id="timeline-panel" role="tabpanel" aria-labelledby="timeline-tab" tabindex="0">
+        <section class="card card-custom mb-4" aria-labelledby="emergency-timeline-title">
+            <div class="card-body">
+                <h2 class="h5" id="emergency-timeline-title">Emergency timeline</h2>
+                {% if timeline_events %}
+                <ol class="emergency-timeline mt-3">
+                    {% for event in timeline_events %}
+                    <li>
+                        <div class="d-flex align-items-start gap-2">
+                            <i class="bi {{ event.icon }}" aria-hidden="true"></i>
+                            <div>
+                                <strong>{{ event.title }}</strong>
+                                <div class="small text-muted">{{ event.occurred_at|manila_time('%b %d, %Y %I:%M %p') }}</div>
+                                {% if event.detail %}<p class="mb-0 mt-1">{{ event.detail }}</p>{% endif %}
+                            </div>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ol>
+                {% else %}
+                {{ es.render('bi-clock-history', 'No timeline events yet', subtitle='Activity recorded for this emergency will appear here.', size='sm') }}
+                {% endif %}
+            </div>
+        </section>
+    </section>
+</div>
+{% endblock %}

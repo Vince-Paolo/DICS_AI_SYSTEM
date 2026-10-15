@@ -3,7 +3,7 @@
 {% block title %}Report Incident | DICS AI Citizen Portal{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/leaflet/leaflet.css', v='2026-10-14-1') }}" />
 <style>
     .gps-marker-icon {
         background: transparent;
@@ -455,13 +455,13 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="{{ url_for('static', filename='vendor/leaflet/leaflet.js', v='2026-10-14-1') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     // ── Province -> Municipality -> Barangay cascade ─────────
-    // Only the ~5 provinces are rendered server-side; municipalities and
-    // barangays (142 and 4,018 across all of CALABARZON) are fetched on
-    // demand for just the selected parent, both to keep this page light
+    // The single province is rendered server-side; the city and its
+    // barangays are fetched on demand for the selected parent to keep
+    // this page light
     // and so each dropdown only ever shows options that actually belong
     // to what's selected above it.
     const provinceSelect = document.getElementById('province_id');

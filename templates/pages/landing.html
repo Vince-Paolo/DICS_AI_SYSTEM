@@ -1,0 +1,98 @@
+{% extends 'pages/base.html' %}
+
+{% block title %}{{ _('DICS AI') }} | {{ _('Digital Incident Command System') }}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css', v='2026-10-12-2') }}">
+{% endblock %}
+
+{% block content %}
+<div class="landing-page">
+    <header class="landing-nav">
+        <a class="landing-brand" href="{{ url_for('landing') }}" aria-label="{{ _('DICS AI home') }}">
+            <span class="landing-brand-mark"><i class="bi bi-geo-alt-fill" aria-hidden="true"></i></span>
+            <span>DICS <strong>AI</strong></span>
+        </a>
+        <nav class="landing-nav-links" aria-label="{{ _('Main navigation') }}">
+            <a class="landing-nav-emergency" href="{{ url_for('citizen.emergency_assistance') }}">
+                <i class="bi bi-telephone-fill" aria-hidden="true"></i>
+                {{ _('Emergency assistance') }}
+            </a>
+            <a class="landing-nav-login" href="{{ url_for('login') }}"><i class="bi bi-box-arrow-in-right" aria-hidden="true"></i>{{ _('Login') }}</a>
+        </nav>
+    </header>
+
+    <section class="landing-hero" aria-labelledby="landing-title">
+        <div class="landing-hero-copy">
+            <p class="landing-eyebrow">
+                <span class="landing-live-dot" aria-hidden="true"></span>
+                {{ _('SAN PABLO CITY · LAGUNA') }}
+            </p>
+            <h1 id="landing-title">{{ _('One city. One coordinated response.') }}</h1>
+            <p class="landing-lead">
+                {{ _('DICS AI brings incident information, response teams, and operational decisions together to help San Pablo City prepare, coordinate, and respond.') }}
+            </p>
+            <div class="landing-actions">
+                <a class="landing-primary-action" href="{{ url_for('login') }}">
+                    <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i>
+                    {{ _('Login') }}
+                    <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                </a>
+                <a class="landing-secondary-action" href="{{ url_for('citizen.emergency_assistance') }}">
+                    <i class="bi bi-telephone" aria-hidden="true"></i>
+                    {{ _('Get emergency contact information') }}
+                </a>
+            </div>
+            <p class="landing-access-note">
+                <i class="bi bi-shield-lock" aria-hidden="true"></i>
+                {{ _('Operations access is for authorized personnel.') }}
+                <a href="{{ url_for('register') }}">{{ _('Request an account') }}</a>
+            </p>
+        </div>
+
+        <div class="landing-visual" aria-label="{{ _('Incident coordination overview') }}">
+            <div class="landing-visual-top">
+                <span><i class="bi bi-broadcast" aria-hidden="true"></i> {{ _('CITY RESPONSE OVERVIEW') }}</span>
+                <span class="landing-status"><span aria-hidden="true"></span>{{ _('COORDINATED') }}</span>
+            </div>
+            <div class="landing-map">
+                <div class="landing-map-grid" aria-hidden="true"></div>
+                <div class="landing-map-ring landing-map-ring-one" aria-hidden="true"></div>
+                <div class="landing-map-ring landing-map-ring-two" aria-hidden="true"></div>
+                <div class="landing-map-route" aria-hidden="true"></div>
+                <span class="landing-map-point landing-map-point-one"><i class="bi bi-geo-alt-fill" aria-hidden="true"></i><span>{{ _('Incident information') }}</span></span>
+                <span class="landing-map-point landing-map-point-two"><i class="bi bi-shield-fill" aria-hidden="true"></i><span>{{ _('Response teams') }}</span></span>
+                <span class="landing-map-point landing-map-point-three"><i class="bi bi-hospital-fill" aria-hidden="true"></i><span>{{ _('Evacuation support') }}</span></span>
+                <div class="landing-map-center"><i class="bi bi-bullseye" aria-hidden="true"></i></div>
+            </div>
+            <div class="landing-visual-footer">
+                <div><span class="landing-footer-icon"><i class="bi bi-activity" aria-hidden="true"></i></span><span><strong>{{ _('Situational awareness') }}</strong><small>{{ _('Shared operational picture') }}</small></span></div>
+                <div><span class="landing-footer-icon"><i class="bi bi-diagram-3" aria-hidden="true"></i></span><span><strong>{{ _('Unified coordination') }}</strong><small>{{ _('Teams and dispatch aligned') }}</small></span></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="landing-capabilities" aria-label="{{ _('System capabilities') }}">
+        <article class="landing-capability">
+            <span class="landing-capability-icon landing-icon-blue"><i class="bi bi-map" aria-hidden="true"></i></span>
+            <h2>{{ _('See the situation') }}</h2>
+            <p>{{ _('Bring incident reports and hazard information into a shared city operations picture.') }}</p>
+        </article>
+        <article class="landing-capability">
+            <span class="landing-capability-icon landing-icon-amber"><i class="bi bi-lightning-charge" aria-hidden="true"></i></span>
+            <h2>{{ _('Coordinate the response') }}</h2>
+            <p>{{ _('Connect dispatch, response teams, and incident oversight in one workflow.') }}</p>
+        </article>
+        <article class="landing-capability">
+            <span class="landing-capability-icon landing-icon-green"><i class="bi bi-heart-pulse" aria-hidden="true"></i></span>
+            <h2>{{ _('Support the community') }}</h2>
+            <p>{{ _('Make emergency contacts and public assistance information easy to find.') }}</p>
+        </article>
+    </section>
+
+    <footer class="landing-footer">
+        <span>{{ _('Digital Incident Command System') }}</span>
+        <span>{{ _('San Pablo City, Laguna') }}</span>
+    </footer>
+</div>
+{% endblock %}

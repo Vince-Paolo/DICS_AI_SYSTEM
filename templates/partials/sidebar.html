@@ -8,7 +8,7 @@
     </button>
     <div class="mobile-topbar-brand">
         <i class="bi bi-geo-alt-fill"></i>
-        <span>DICS <span style="color:#3b82f6;">AI</span></span>
+        <span>DICS <span class="brand-accent">AI</span></span>
     </div>
 </div>
 
@@ -21,7 +21,7 @@
         <div class="sidebar-header">
             <div class="sidebar-brand">
                 <div class="sidebar-text-content sidebar-text-show">
-                    <h6 class="mb-0 fw-bold">DICS <span style="color:#3b82f6;">AI</span></h6>
+                    <h6 class="mb-0 fw-bold">DICS <span class="brand-accent">AI</span></h6>
                     <small class="text-muted-custom">{{ _('Crisis Response') }}</small>
                 </div>
             </div>
@@ -62,107 +62,98 @@
                     <span class="nav-text sidebar-text-show">{{ _('Backup') }}</span>
                 </a>
 
-                {% elif session.role == 'agency_coordinator' %}
-                {# ── AGENCY COORDINATOR LINKS ── #}
-                <div class="menu-subgroup-label sidebar-text-show">{{ _('Operations') }}</div>
-                <a href="/coordinator" class="sidebar-nav-link {{ 'active' if sidebar_endpoint == 'coordinator.coordinator_dashboard' else '' }}" data-tooltip="{{ _('Dashboard') }}" aria-label="{{ _('Dashboard') }}">
-                    <i class="bi bi-building-check"></i>
+                {% elif session.role == 'dispatcher' %}
+                <div class="menu-subgroup-label sidebar-text-show">{{ _('Dispatch') }}</div>
+                <a href="{{ url_for('dispatcher.dispatcher_dashboard') }}" class="sidebar-nav-link {{ 'active' if sidebar_endpoint == 'dispatcher.dispatcher_dashboard' else '' }}" data-tooltip="{{ _('Dashboard') }}" aria-label="{{ _('Dashboard') }}">
+                    <i class="bi bi-speedometer2"></i>
                     <span class="nav-text sidebar-text-show">{{ _('Dashboard') }}</span>
                 </a>
-                <a href="/coordinator/tasks" class="sidebar-nav-link {{ 'active' if sidebar_endpoint == 'coordinator.coordinator_tasks' else '' }}" data-tooltip="{{ _('Tasks') }}" aria-label="{{ _('Tasks') }}">
-                    <i class="bi bi-list-task"></i>
-                    <span class="nav-text sidebar-text-show">{{ _('Tasks') }}</span>
+                <a href="{{ url_for('eoc.emergency_log') }}" class="sidebar-nav-link {{ 'active' if sidebar_endpoint.startswith('eoc.emergency_log') or sidebar_endpoint in ['dispatcher.create_emergency', 'dispatcher.dispatch_incident', 'dispatcher.log_barangay_contact'] else '' }}" data-tooltip="{{ _('Emergency Log') }}" aria-label="{{ _('Emergency Log') }}">
+                    <i class="bi bi-broadcast-pin"></i>
+                    <span class="nav-text sidebar-text-show">{{ _('Emergency Log') }}</span>
                 </a>
-                <a href="/coordinator/resources" class="sidebar-nav-link {{ 'active' if sidebar_endpoint in ['coordinator.coordinator_resources', 'coordinator.coordinator_resource_requests'] else '' }}" data-tooltip="{{ _('Resources') }}" aria-label="{{ _('Resources') }}">
-                    <i class="bi bi-box-seam-fill"></i>
-                    <span class="nav-text sidebar-text-show">{{ _('Resources') }}</span>
+                <a href="{{ url_for('dispatcher.decision_support') }}" class="sidebar-nav-link {{ 'active' if sidebar_endpoint == 'dispatcher.decision_support' or sidebar_endpoint == 'dispatcher.record_response_decision' }}" data-tooltip="{{ _('Decision Support') }}" aria-label="{{ _('Decision Support') }}">
+                    <i class="bi bi-clipboard2-pulse"></i>
+                    <span class="nav-text sidebar-text-show">{{ _('Decision Support') }}</span>
                 </a>
-
-                <div class="menu-subgroup-label sidebar-text-show">{{ _('Monitoring') }}</div>
-                <a href="/coordinator/reports" class="sidebar-nav-link {{ 'active' if sidebar_endpoint == 'coordinator.coordinator_reports' else '' }}" data-tooltip="{{ _('Reports') }}" aria-label="{{ _('Reports') }}">
-                    <i class="bi bi-file-earmark-bar-graph-fill"></i>
-                    <span class="nav-text sidebar-text-show">{{ _('Reports') }}</span>
+                <a href="{{ url_for('dispatcher.regional_alerts') }}" class="sidebar-nav-link {{ 'active' if sidebar_endpoint == 'dispatcher.regional_alerts' else '' }}" data-tooltip="{{ _('Regional Event Alerts') }}" aria-label="{{ _('Regional Event Alerts') }}">
+                    <i class="bi bi-bell-fill"></i>
+                    <span class="nav-text sidebar-text-show">{{ _('Regional Event Alerts') }}</span>
+                    {% if dispatcher_alert_count is defined and dispatcher_alert_count > 0 %}
+                    <span class="badge bg-danger rounded-pill ms-auto sidebar-text-show" style="font-size:0.65rem;min-width:1.3rem;">{{ dispatcher_alert_count }}</span>
+                    {% endif %}
                 </a>
-                <a href="/hazard-map" class="sidebar-nav-link {{ 'active' if sidebar_endpoint == 'hazard_map' else '' }}" data-tooltip="{{ _('Hazard Map') }}" aria-label="{{ _('Hazard Map') }}">
-                    <i class="bi bi-pin-map-fill"></i>
-                    <span class="nav-text sidebar-text-show">{{ _('Hazard Map') }}</span>
+                <a href="{{ url_for('dispatcher.response_teams') }}" class="sidebar-nav-link {{ 'active' if sidebar_endpoint in ['dispatcher.response_teams', 'dispatcher.save_response_team'] else '' }}" data-tooltip="{{ _('Response Teams') }}" aria-label="{{ _('Response Teams') }}">
+                    <i class="bi bi-people-fill"></i>
+                    <span class="nav-text sidebar-text-show">{{ _('Response Teams') }}</span>
                 </a>
-
-                <div class="menu-subgroup-label sidebar-text-show">{{ _('Communication') }}</div>
-                <a href="/coordinator/comms" class="sidebar-nav-link {{ 'active' if sidebar_endpoint == 'coordinator.coordinator_comms' else '' }}" data-tooltip="{{ _('Communications') }}" aria-label="{{ _('Communications') }}">
-                    <i class="bi bi-chat-dots-fill"></i>
-                    <span class="nav-text sidebar-text-show">{{ _('Communications') }}</span>
+                <a href="{{ url_for('dispatcher.barangay_units') }}" class="sidebar-nav-link {{ 'active' if sidebar_endpoint in ['dispatcher.barangay_units', 'dispatcher.update_barangay_unit'] else '' }}" data-tooltip="{{ _('Barangay Units') }}" aria-label="{{ _('Barangay Units') }}">
+                    <i class="bi bi-buildings-fill"></i>
+                    <span class="nav-text sidebar-text-show">{{ _('Barangay Units') }}</span>
                 </a>
-
-                {% elif session.role == 'incident_commander' %}
-                {# ── INCIDENT COMMANDER LINKS ── #}
-                <div class="menu-subgroup-label sidebar-text-show">{{ _('Operations') }}</div>
-                <a href="/incident-commander-dashboard" class="sidebar-nav-link {{ 'active' if sidebar_endpoint == 'commander.incident_commander_dashboard' or sidebar_endpoint.startswith('commander.incident_response_') }}" data-tooltip="{{ _('Command Center') }}" aria-label="{{ _('Command Center') }}">
-                    <i class="bi bi-person-badge-fill"></i>
-                    <span class="nav-text sidebar-text-show">{{ _('Command Center') }}</span>
-                </a>
-                <a href="/eoc/resource-requests" class="sidebar-nav-link {{ 'active' if sidebar_endpoint == 'eoc.eoc_resource_requests' else '' }}" data-tooltip="{{ _('Resource Requests') }}" aria-label="{{ _('Resource Requests') }}">
-                    <i class="bi bi-inbox-fill"></i>
-                    <span class="nav-text sidebar-text-show">{{ _('Resource Requests') }}</span>
-                </a>
-                <a href="/all-incidents" class="sidebar-nav-link {{ 'active' if sidebar_endpoint == 'admin.all_incidents' else '' }}" data-tooltip="{{ _('Incident History') }}" aria-label="{{ _('Incident History') }}">
-                    <i class="bi bi-clock-history"></i>
-                    <span class="nav-text sidebar-text-show">{{ _('Incident History') }}</span>
-                </a>
-
                 <div class="menu-subgroup-label sidebar-text-show">{{ _('Monitoring') }}</div>
                 <a href="/hazard-map" class="sidebar-nav-link {{ 'active' if sidebar_endpoint == 'hazard_map' else '' }}" data-tooltip="{{ _('Hazard Map') }}" aria-label="{{ _('Hazard Map') }}">
                     <i class="bi bi-pin-map-fill"></i>
                     <span class="nav-text sidebar-text-show">{{ _('Hazard Map') }}</span>
-                </a>
-                <a href="/facilities" class="sidebar-nav-link {{ 'active' if sidebar_endpoint == 'facilities.list_facilities' else '' }}" data-tooltip="{{ _('Facility Directory') }}" aria-label="{{ _('Facility Directory') }}">
-                    <i class="bi bi-building-fill"></i>
-                    <span class="nav-text sidebar-text-show">{{ _('Facilities') }}</span>
-                </a>
-                <div class="menu-subgroup-label sidebar-text-show">{{ _('Communication') }}</div>
-                <a href="/eoc/alerts" class="sidebar-nav-link {{ 'active' if sidebar_endpoint == 'eoc.official_alerts' else '' }}" data-tooltip="{{ _('Public Advisories') }}" aria-label="{{ _('Public Advisories') }}">
-                    <i class="bi bi-megaphone-fill"></i>
-                    <span class="nav-text sidebar-text-show">{{ _('Public Advisories') }}</span>
-                </a>
-
-                {% elif session.role == 'eoc_staff' %}
-                {# ── EOC STAFF LINKS ── #}
-                <div class="menu-subgroup-label sidebar-text-show">{{ _('Overview') }}</div>
-                <a href="/eoc-dashboard" class="sidebar-nav-link {{ 'active' if sidebar_endpoint == 'eoc.eoc_dashboard' else '' }}" data-tooltip="{{ _('Command Dashboard') }}" aria-label="{{ _('Command Dashboard') }}">
-                    <i class="bi bi-display-fill"></i>
-                    <span class="nav-text sidebar-text-show">{{ _('Dashboard') }}</span>
                 </a>
                 <a href="/analytics" class="sidebar-nav-link {{ 'active' if sidebar_endpoint == 'analytics' else '' }}" data-tooltip="{{ _('Analytics') }}" aria-label="{{ _('Analytics') }}">
                     <i class="bi bi-graph-up"></i>
                     <span class="nav-text sidebar-text-show">{{ _('Analytics') }}</span>
                 </a>
+                {% elif session.role in ['eoc_staff', 'eoc', 'imt_staff', 'imt', 'incident_commander', 'commander'] %}
+                {# ── IMT STAFF LINKS ── #}
+                <div class="menu-subgroup-label sidebar-text-show">{{ _('Dashboard') }}</div>
+                <a href="/eoc-dashboard" class="sidebar-nav-link {{ 'active' if sidebar_endpoint == 'eoc.eoc_dashboard' else '' }}" data-tooltip="{{ _('Command Dashboard') }}" aria-label="{{ _('Command Dashboard') }}">
+                    <i class="bi bi-display-fill"></i>
+                    <span class="nav-text sidebar-text-show">{{ _('Command Dashboard') }}</span>
+                </a>
+                <div class="menu-subgroup-label sidebar-text-show">{{ _('Emergencies') }}</div>
+                <a href="{{ url_for('eoc.eoc_incident_monitoring', view='active') }}" class="sidebar-nav-link {{ 'active' if sidebar_endpoint == 'eoc.eoc_incident_monitoring' or sidebar_endpoint == 'eoc.eoc_incident_detail' or sidebar_endpoint == 'eoc.emergency_log_detail' or sidebar_endpoint == 'admin.eoc_verifications' or sidebar_endpoint == 'admin.eoc_operations' }}" data-tooltip="{{ _('Active, verification, and closed incidents') }}" aria-label="{{ _('Emergencies') }}">
+                    <i class="bi bi-clipboard2-pulse-fill"></i>
+                    <span class="nav-text sidebar-text-show">{{ _('Emergencies') }}</span>
+                </a>
 
-                <div class="menu-subgroup-label sidebar-text-show">{{ _('Monitoring') }}</div>
-                <a href="/hazard-map" class="sidebar-nav-link {{ 'active' if sidebar_endpoint == 'hazard_map' else '' }}" data-tooltip="{{ _('Heat Maps') }}" aria-label="{{ _('Heat Maps') }}">
-                    <i class="bi bi-pin-map-fill"></i>
-                    <span class="nav-text sidebar-text-show">{{ _('Hazard Map') }}</span>
+                <div class="menu-subgroup-label sidebar-text-show">{{ _('Units and Resources') }}</div>
+                <a href="{{ url_for('dispatcher.response_teams') }}" class="sidebar-nav-link {{ 'active' if sidebar_endpoint in ['dispatcher.response_teams', 'dispatcher.save_response_team'] else '' }}" data-tooltip="{{ _('Response Teams') }}" aria-label="{{ _('Response Teams') }}">
+                    <i class="bi bi-people-fill"></i>
+                    <span class="nav-text sidebar-text-show">{{ _('Response Teams') }}</span>
                 </a>
-                <a href="/eoc/incidents" class="sidebar-nav-link {{ 'active' if sidebar_endpoint in ['eoc.eoc_incident_monitoring', 'eoc.eoc_incident_detail'] else '' }}" data-tooltip="{{ _('Incident Monitoring') }}" aria-label="{{ _('Incident Monitoring') }}">
-                    <i class="bi bi-binoculars-fill"></i>
-                    <span class="nav-text sidebar-text-show">{{ _('Incidents') }}</span>
+                <a href="{{ url_for('dispatcher.barangay_units') }}" class="sidebar-nav-link {{ 'active' if sidebar_endpoint in ['dispatcher.barangay_units', 'dispatcher.update_barangay_unit'] else '' }}" data-tooltip="{{ _('Barangay Units') }}" aria-label="{{ _('Barangay Units') }}">
+                    <i class="bi bi-buildings-fill"></i>
+                    <span class="nav-text sidebar-text-show">{{ _('Barangay Units') }}</span>
                 </a>
-                <a href="/eoc/resources" class="sidebar-nav-link {{ 'active' if sidebar_endpoint == 'eoc.eoc_resource_monitoring' else '' }}" data-tooltip="{{ _('Resource Monitoring') }}" aria-label="{{ _('Resource Monitoring') }}">
+                <a href="{{ url_for('eoc.eoc_resource_monitoring') }}" class="sidebar-nav-link {{ 'active' if sidebar_endpoint == 'eoc.eoc_resource_monitoring' else '' }}" data-tooltip="{{ _('Resources') }}" aria-label="{{ _('Resources') }}">
                     <i class="bi bi-truck"></i>
                     <span class="nav-text sidebar-text-show">{{ _('Resources') }}</span>
                 </a>
 
-                <div class="menu-subgroup-label sidebar-text-show">{{ _('Dispatch') }}</div>
-                <a href="{{ url_for('admin.eoc_verifications') }}" class="sidebar-nav-link {{ 'active' if sidebar_endpoint == 'admin.eoc_verifications' else '' }}" data-tooltip="{{ _('Verification Queue') }}" aria-label="{{ _('Verification Queue') }}">
-                    <i class="bi bi-check-circle-fill"></i>
-                    <span class="nav-text sidebar-text-show">{{ _('Verification Queue') }}</span>
+                <div class="menu-subgroup-label sidebar-text-show">{{ _('Map and Weather') }}</div>
+                <a href="/hazard-map" class="sidebar-nav-link {{ 'active' if sidebar_endpoint == 'hazard_map' else '' }}" data-tooltip="{{ _('Hazard Map') }}" aria-label="{{ _('Hazard Map') }}">
+                    <i class="bi bi-pin-map-fill"></i>
+                    <span class="nav-text sidebar-text-show">{{ _('Hazard Map') }}</span>
                 </a>
-                <a href="{{ url_for('admin.eoc_operations') }}" class="sidebar-nav-link {{ 'active' if sidebar_endpoint == 'admin.eoc_operations' else '' }}" data-tooltip="{{ _('Active Operations') }}" aria-label="{{ _('Active Operations') }}">
+                <div class="menu-subgroup-label sidebar-text-show">{{ _('Analytics') }}</div>
+                <a href="/analytics" class="sidebar-nav-link {{ 'active' if sidebar_endpoint == 'analytics' else '' }}" data-tooltip="{{ _('Analytics') }}" aria-label="{{ _('Analytics') }}">
+                    <i class="bi bi-graph-up"></i>
+                    <span class="nav-text sidebar-text-show">{{ _('Analytics') }}</span>
+                </a>
+
+                <div class="menu-subgroup-label sidebar-text-show">{{ _('More') }}</div>
+                <a href="{{ url_for('dispatcher.decision_support') }}" class="sidebar-nav-link {{ 'active' if sidebar_endpoint == 'dispatcher.decision_support' or sidebar_endpoint == 'dispatcher.record_response_decision' }}" data-tooltip="{{ _('Decision Support') }}" aria-label="{{ _('Decision Support') }}">
+                    <i class="bi bi-clipboard2-pulse"></i>
+                    <span class="nav-text sidebar-text-show">{{ _('Decision Support') }}</span>
+                </a>
+                <a href="{{ url_for('commander.incident_commander_dashboard') }}" class="sidebar-nav-link {{ 'active' if sidebar_endpoint == 'commander.incident_commander_dashboard' or sidebar_endpoint.startswith('commander.incident_response_') }}" data-tooltip="{{ _('Response Oversight') }}" aria-label="{{ _('Response Oversight') }}">
+                    <i class="bi bi-person-badge-fill"></i>
+                    <span class="nav-text sidebar-text-show">{{ _('Response Oversight') }}</span>
+                </a>
+                <a href="{{ url_for('commander.dispatcher_operations') }}" class="sidebar-nav-link {{ 'active' if sidebar_endpoint == 'commander.dispatcher_operations' }}" data-tooltip="{{ _('Dispatcher Operations') }}" aria-label="{{ _('Dispatcher Operations') }}">
+                    <i class="bi bi-broadcast-pin"></i>
+                    <span class="nav-text sidebar-text-show">{{ _('Dispatcher Operations') }}</span>
+                </a>
+                <a href="{{ url_for('admin.eoc_operations') }}" class="sidebar-nav-link {{ 'active' if sidebar_endpoint == 'admin.eoc_operations' }}" data-tooltip="{{ _('Operations Overview') }}" aria-label="{{ _('Operations Overview') }}">
                     <i class="bi bi-shield-fill-exclamation"></i>
-                    <span class="nav-text sidebar-text-show">{{ _('Active Operations') }}</span>
-                </a>
-                <a href="{{ url_for('eoc.eoc_resource_requests') }}" class="sidebar-nav-link {{ 'active' if sidebar_endpoint == 'eoc.eoc_resource_requests' else '' }}" data-tooltip="{{ _('Resource Requests') }}" aria-label="{{ _('Resource Requests') }}">
-                    <i class="bi bi-inbox-fill"></i>
-                    <span class="nav-text sidebar-text-show">{{ _('Resource Requests') }}</span>
+                    <span class="nav-text sidebar-text-show">{{ _('Operations Overview') }}</span>
                 </a>
                 <a href="/facilities" class="sidebar-nav-link {{ 'active' if sidebar_endpoint == 'facilities.list_facilities' else '' }}" data-tooltip="{{ _('Facility Directory') }}" aria-label="{{ _('Facility Directory') }}">
                     <i class="bi bi-building-fill"></i>

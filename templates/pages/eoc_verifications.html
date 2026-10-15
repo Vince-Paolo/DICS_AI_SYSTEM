@@ -27,9 +27,66 @@
     .verification-card:hover {
         box-shadow: 0 10px 26px rgba(0, 0, 0, 0.2);
     }
+    .verification-card-main {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 190px;
+        gap: 1.25rem;
+        align-items: start;
+        padding: 1.25rem 1.4rem 1.1rem;
+    }
+    .verification-card-summary {
+        display: flex;
+        min-width: 0;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    .verification-hazard-icon {
+        width: 46px;
+        height: 46px;
+        display: flex;
+        flex: 0 0 46px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        font-size: 1.4rem;
+    }
+    .verification-card-title {
+        font-size: 1rem;
+        letter-spacing: .015em;
+    }
+    .verification-card-description {
+        max-width: 76ch;
+        margin-top: .55rem;
+        font-size: .84rem;
+        line-height: 1.55;
+        overflow-wrap: anywhere;
+    }
     .verification-card-meta {
-        border-top: 1px solid rgba(255, 255, 255, 0.06);
-        background: rgba(255, 255, 255, 0.02);
+        display: grid;
+        gap: .55rem;
+        padding: .75rem .85rem;
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.025);
+    }
+    .verification-meta-label {
+        display: block;
+        margin-bottom: .1rem;
+        color: #9CA3AF;
+        font-size: .66rem;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+    }
+    .verification-meta-value {
+        color: #E5E7EB;
+        font-size: .77rem;
+        line-height: 1.35;
+        overflow-wrap: anywhere;
+    }
+    .verification-meta-risk {
+        color: #60A5FA;
+        font-size: .9rem;
+        font-weight: 700;
     }
     .verification-actions {
         display: flex;
@@ -58,6 +115,17 @@
         .verification-toolbar {
             grid-template-columns: 1fr;
         }
+        .verification-card-main {
+            grid-template-columns: minmax(0, 1fr);
+            gap: .9rem;
+            padding: 1rem;
+        }
+        .verification-card-meta {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .verification-card-description {
+            max-width: none;
+        }
         .verification-assignment {
             margin-left: 0;
             width: 100%;
@@ -85,7 +153,7 @@
                     <h4 class="mb-0 fw-bold text-uppercase tracking-wide">Incident Verification</h4>
                 </div>
                 <p class="text-muted mb-0 ms-1" style="font-size:.85rem;">
-                    Review, verify, and assign commanders to reported incidents.
+                    Review and verify incidents, then assign an IMT lead when needed.
                 </p>
             </div>
             <div class="d-flex gap-2">
@@ -97,6 +165,21 @@
                 </button>
             </div>
         </div>
+
+        <nav class="nav nav-pills gap-2 mb-4" aria-label="{{ _('Emergency views') }}">
+            <a class="nav-link" href="{{ url_for('eoc.eoc_incident_monitoring', view='active') }}">
+                <i class="bi bi-activity me-1" aria-hidden="true"></i>{{ _('Active') }}
+            </a>
+            <a class="nav-link active" href="{{ url_for('admin.eoc_verifications') }}" aria-current="page">
+                <i class="bi bi-shield-check me-1" aria-hidden="true"></i>{{ _('Verification') }}
+                <span class="badge rounded-pill bg-light text-dark ms-1">
+                    {{ incidents|selectattr('status', 'equalto', 'NEW')|list|length }}
+                </span>
+            </a>
+            <a class="nav-link" href="{{ url_for('eoc.eoc_incident_monitoring', view='closed') }}">
+                <i class="bi bi-archive me-1" aria-hidden="true"></i>{{ _('Closed') }}
+            </a>
+        </nav>
 
         <!-- ── Summary Stats ── -->
         <div class="row g-3 mb-4">
@@ -124,7 +207,7 @@
             </div>
             <div class="col-6 col-md-3">
                 <div class="card card-custom h-100 p-3" style="border-left:3px solid rgba(245,158,11,0.5);">
-                    <div class="text-muted" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;">No Commander</div>
+                    <div class="text-muted" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;">No IMT lead</div>
                     <div class="fw-bold mt-1" style="font-size:1.6rem;color:var(--status-warning);">{{ unresponded }}</div>
                 </div>
             </div>
@@ -145,7 +228,7 @@
                     <button type="button" class="btn btn-sm btn-outline-secondary filter-btn active" data-filter="all">All</button>
                     <button type="button" class="btn btn-sm btn-outline-warning filter-btn" data-filter="unverified">Needs Verification</button>
                     <button type="button" class="btn btn-sm btn-outline-danger filter-btn" data-filter="alert">Active Alert</button>
-                    <button type="button" class="btn btn-sm btn-outline-info filter-btn" data-filter="unassigned">No Commander</button>
+                    <button type="button" class="btn btn-sm btn-outline-info filter-btn" data-filter="unassigned">No IMT lead</button>
                     <button type="button" class="btn btn-sm btn-outline-success filter-btn" data-filter="verified">Verified</button>
                 </div>
             </div>
@@ -165,11 +248,11 @@
                         border-left:4px solid {% if incident.level and incident.level|lower in ['severe','high'] %}#ef4444{% elif incident.level and incident.level|lower == 'moderate' %}#f59e0b{% elif incident.level and incident.level|lower in ['unknown','insufficient_data','insufficient-data','insufficient data'] %}#94a3b8{% else %}#10b981{% endif %};">
                 <div class="card-body p-0">
 
-                    <!-- Top row: meta info -->
-                    <div class="d-flex flex-wrap align-items-start gap-3 p-3 p-md-4 pb-3">
+                    <div class="verification-card-main">
+                        <div class="verification-card-summary">
 
                         <!-- Hazard icon -->
-                        <div style="width:46px;height:46px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;
+                        <div class="verification-hazard-icon" style="
                             background:{% if incident.level and incident.level|lower in ['severe','high'] %}rgba(239,68,68,0.12){% elif incident.level and incident.level|lower == 'moderate' %}rgba(245,158,11,0.12){% elif incident.level and incident.level|lower in ['unknown','insufficient_data','insufficient-data','insufficient data'] %}rgba(148,163,184,0.12){% else %}rgba(16,185,129,0.12){% endif %};
                             color:{% if incident.level and incident.level|lower in ['severe','high'] %}#ef4444{% elif incident.level and incident.level|lower == 'moderate' %}#f59e0b{% elif incident.level and incident.level|lower in ['unknown','insufficient_data','insufficient-data','insufficient data'] %}#94a3b8{% else %}#10b981{% endif %};">
                             {{ hz.hazard_icon(incident.hazard_type) }}
@@ -178,7 +261,7 @@
                         <!-- Incident info -->
                         <div class="flex-grow-1 min-w-0">
                             <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
-                                <span class="fw-bold text-white" style="font-size:.95rem;">
+                                <span class="verification-card-title fw-bold text-white">
                                     {{ incident.hazard_type|upper }}
                                 </span>
                                 <span class="text-muted" style="font-size:.8rem;">#{{ incident.id }}</span>
@@ -222,31 +305,32 @@
                             </div>
                             {% endif %}
                             <div class="text-muted" style="font-size:.8rem;line-height:1.4;">
-                                {{ incident.message }}
+                                {{ incident.message or 'No additional incident details were provided.' }}
                             </div>
+                        </div>
                         </div>
 
                         <!-- Right meta -->
-                        <div class="verification-card-meta text-md-end flex-shrink-0 rounded-3 p-2" style="min-width:140px;">
-                            <div class="text-muted" style="font-size:.72rem;">
-                                <i class="bi bi-clock me-1"></i>
-                                {{ incident.display_time|manila_time('%b %d, %Y') }}
-                            </div>
-                            <div class="text-muted" style="font-size:.72rem;">
-                                {{ incident.display_time|manila_time('%I:%M %p') }}
+                        <div class="verification-card-meta">
+                            <div>
+                                <span class="verification-meta-label"><i class="bi bi-clock me-1"></i>Occurred</span>
+                                <span class="verification-meta-value">{{ incident.display_time|manila_time('%b %d, %Y · %I:%M %p') }}</span>
                             </div>
                             {% if incident.event_time and incident.created_at and (incident.created_at - incident.event_time).total_seconds()|abs > 3600 %}
-                            <div class="text-muted" style="font-size:.65rem;opacity:.7;">
-                                Logged {{ incident.created_at|manila_time('%b %d, %I:%M %p') }}
+                            <div>
+                                <span class="verification-meta-label"><i class="bi bi-cloud-arrow-down me-1"></i>Logged</span>
+                                <span class="verification-meta-value">{{ incident.created_at|manila_time('%b %d, %I:%M %p') }}</span>
                             </div>
                             {% endif %}
                             {% if incident.score %}
-                            <div class="mt-1 fw-bold" style="font-size:.85rem;color:#60A5FA;">
-                                Risk: {{ '%.1f'|format(incident.score|float(0)) }}%
+                            <div>
+                                <span class="verification-meta-label">Risk score</span>
+                                <span class="verification-meta-risk">{{ '%.1f'|format(incident.score|float(0)) }}%</span>
                             </div>
                             {% endif %}
-                            <div class="mt-1" style="font-size:.72rem;color:#6B7280;">
-                                Source: {{ incident.reported_by or 'system' }}
+                            <div>
+                                <span class="verification-meta-label">Source</span>
+                                <span class="verification-meta-value">{{ incident.reported_by or 'system' }}</span>
                             </div>
                         </div>
                     </div>
@@ -288,17 +372,17 @@
                             </button>
                         </form>
 
-                        <!-- Assign commander (only if no response exists) -->
-                        {% if not incident.response and commanders %}
+                        <!-- Assign IMT lead (only if no response exists) -->
+                        {% if not incident.response and imt_staff %}
                         <form method="post" action="{{ url_for('eoc.assign_commander', incident_id=incident.id) }}"
                               class="verification-assignment">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <label style="font-size:.75rem;color:#9CA3AF;white-space:nowrap;margin-bottom:0;" for="commander_id_{{ incident.id }}">
-                                <i class="bi bi-person-badge me-1"></i>Assign Commander:
+                                <i class="bi bi-person-badge me-1"></i>Assign IMT lead:
                             </label>
                             <select id="commander_id_{{ incident.id }}" name="commander_id"
                                 style="font-size:.78rem;padding:.3em .7em;border-radius:6px;background:rgba(255,255,255,0.05);color:#e5e7eb;border:1px solid rgba(255,255,255,0.15);min-width:150px;max-width:200px;">
-                                {% for c in commanders %}
+                                {% for c in imt_staff %}
                                 <option value="{{ c.id }}">{{ c.full_name or c.username }}</option>
                                 {% endfor %}
                             </select>
@@ -309,7 +393,7 @@
                         </form>
                         {% elif incident.response %}
                         <div class="ms-auto d-flex align-items-center gap-2">
-                            <div style="font-size:.78rem;color:#6B7280;">Commander:</div>
+                            <div style="font-size:.78rem;color:#6B7280;">IMT lead:</div>
                             <div style="font-size:.78rem;font-weight:600;color:#38BDF8;">
                                 {{ incident.response.commander.full_name or incident.response.commander.username }}
                             </div>

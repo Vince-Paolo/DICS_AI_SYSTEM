@@ -45,7 +45,7 @@
             <tr>
               <th>Incident</th>
               <th>Location</th>
-              <th class="table-hide-tablet">Commander</th>
+              <th class="table-hide-tablet">IMT lead</th>
               <th>Priority</th>
               <th class="table-hide-tablet">Tasks</th>
               <th class="table-hide-tablet">Resources</th>
@@ -58,7 +58,7 @@
             <tr>
               <td data-label="Incident"><strong class="text-info">#{{ r.incident_id }}</strong> <span class="text-muted small">{{ r.incident.hazard_type|upper }}</span></td>
               <td data-label="Location"><span class="text-muted small">{{ r.incident.location or '—' }}</span></td>
-              <td data-label="Commander" class="table-hide-tablet"><span class="fw-semibold">{{ r.commander.full_name or r.commander.username }}</span></td>
+              <td data-label="IMT lead" class="table-hide-tablet"><span class="fw-semibold">{{ r.commander.full_name or r.commander.username }}</span></td>
               <td data-label="Priority" class="priority-status-cell">
                 <span class="priority-badge {% if r.priority_level == 'CRITICAL' %}priority-critical{% elif r.priority_level == 'HIGH' %}priority-high{% elif r.priority_level == 'MEDIUM' %}priority-medium{% else %}priority-low{% endif %}">
                   {{ r.priority_level }}
@@ -71,7 +71,7 @@
                 <form method="POST" action="{{ url_for('eoc.transfer_commander', response_id=r.id) }}" class="response-transfer-form d-flex gap-2 align-items-center">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <select name="commander_id" class="response-transfer-select form-select form-select-sm bg-dark text-light border-secondary">
-                    {% for c in commanders %}
+                    {% for c in imt_staff %}
                       <option value="{{ c.id }}" {% if c.id == r.commander_id %}selected{% endif %}>{{ c.username }}</option>
                     {% endfor %}
                   </select>
@@ -102,7 +102,7 @@
       {% if closed_responses %}
       <div class="table-responsive">
         <table class="table table-enhanced align-middle">
-          <thead><tr><th>Incident</th><th>Commander</th><th>Closed</th><th>Tasks Done</th></tr></thead>
+          <thead><tr><th>Incident</th><th>IMT lead</th><th>Closed</th><th>Tasks Done</th></tr></thead>
           <tbody>
             {% for r in closed_responses %}
             <tr>

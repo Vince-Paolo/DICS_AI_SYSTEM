@@ -9,9 +9,8 @@
 {# ============================================================ #}
 {# ADMIN DASHBOARD — Administration Console                     #}
 {# Scope: accounts and backup health only. Incident verification,#}
-{# commander assignment, and operations monitoring are owned by #}
-{# EOC staff; hazard/incident field work lives with EOC staff,  #}
-{# Incident Commander, and Agency Coordinator.                  #}
+{# response oversight is owned by IMT; dispatch owns operational #}
+{# task and resource assignments.                               #}
 {# ============================================================ #}
 
 <div class="row mb-4">
@@ -58,9 +57,9 @@
         <div class="card card-custom border-warning h-100">
             <div class="card-body d-flex flex-row align-items-start justify-content-between" style="min-height: 120px;">
                 <div class="text-start" style="flex:1;">
-                    <p class="text-muted small text-uppercase mb-1">Coordinators &amp; Commanders</p>
-                    <div class="h3 text-warning fw-bold mb-0">{{ role_counts.get('agency_coordinator', 0) + role_counts.get('incident_commander', 0) }}</div>
-                    <span class="small text-muted">Operational leads registered</span>
+                    <p class="text-muted small text-uppercase mb-1">IMT Staff</p>
+                    <div class="h3 text-warning fw-bold mb-0">{{ role_counts.get('imt_staff', 0) }}</div>
+                    <span class="small text-muted">Incident operations staff</span>
                 </div>
                 <div class="fs-4 text-warning ms-2"><i class="bi bi-person-badge-fill"></i></div>
             </div>
@@ -117,7 +116,7 @@
                 <h5 class="card-title text-center">Accounts by Role</h5>
                 <div class="role-chart-content">
                     <div class="role-chart-frame">
-                        <canvas id="roleChart" height="220"></canvas>
+                        <canvas id="roleChart" height="220" role="img" aria-label="Accounts by user role"></canvas>
                     </div>
                 </div>
             </div>
@@ -170,24 +169,24 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='vendor/chartjs/chart.umd.js', v=static_asset_version) }}"></script>
+<script src="{{ url_for('static', filename='js/chart-theme.js', v=static_asset_version) }}"></script>
 <script>
 const roleCtx = document.getElementById('roleChart');
 if (roleCtx) {
     new Chart(roleCtx, {
         type: 'doughnut',
         data: {
-            labels: ['Admin', 'Coordinator', 'Commander', 'EOC Staff', 'Field Responder', 'Citizen'],
+            labels: ['Admin', 'IMT Staff', 'Dispatcher', 'Field Responder', 'Citizen'],
             datasets: [{
                 data: [
                     {{ role_counts.get('admin', 0) }},
-                    {{ role_counts.get('agency_coordinator', 0) }},
-                    {{ role_counts.get('incident_commander', 0) }},
-                    {{ role_counts.get('eoc_staff', 0) }},
+                    {{ role_counts.get('imt_staff', 0) }},
+                    {{ role_counts.get('dispatcher', 0) }},
                     {{ role_counts.get('field_responder', 0) }},
                     {{ role_counts.get('citizen', 0) }}
                 ],
-                backgroundColor: ['#3b82f6', '#F59E0B', '#EF4444', '#10B981', '#8B5CF6', '#6B7280'],
+                backgroundColor: window.dicsChartTheme.palette,
                 borderWidth: 0
             }]
         },
@@ -207,7 +206,7 @@ if (roleCtx) {
                 legend: {
                     position: 'bottom',
                     align: 'center',
-                    labels: { color: '#9CA3AF', boxWidth: 12, padding: 10, font: { size: 11 } }
+                    labels: { boxWidth: 12, padding: 10, font: { size: 11 } }
                 }
             }
         }

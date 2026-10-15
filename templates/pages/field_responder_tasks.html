@@ -32,7 +32,7 @@
     <div class="col-12">
         <div class="d-flex flex-wrap gap-2 align-items-center">
             <a href="{{ url_for('responder.responder_tasks') }}" class="btn btn-sm {% if not status_filter %}active{% endif %}" style="background:{% if not status_filter %}rgba(249,115,22,0.2);color:#F97316;border:1px solid rgba(249,115,22,0.5){% else %}rgba(255,255,255,0.04);color:#9CA3AF;border:1px solid rgba(255,255,255,0.08){% endif %};font-size:0.78rem;">All</a>
-            {% for s in ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'FAILED'] %}
+            {% for s in ['PENDING', 'IN_PROGRESS', 'COMPLETED'] %}
             <a href="{{ url_for('responder.responder_tasks', status=s) }}" class="btn btn-sm {% if status_filter == s %}active{% endif %}" style="background:{% if status_filter == s %}rgba(249,115,22,0.2);color:#F97316;border:1px solid rgba(249,115,22,0.5){% else %}rgba(255,255,255,0.04);color:#9CA3AF;border:1px solid rgba(255,255,255,0.08){% endif %};font-size:0.78rem;">
                 {{ s.replace('_', ' ') | title }}
             </a>
@@ -85,7 +85,7 @@
                         <div class="col-md-3">
                             <div class="d-flex flex-column gap-2" style="font-size:0.78rem;color:#9CA3AF;">
                                 <div>
-                                    <i class="bi bi-building me-1"></i>{{ task.assigned_to_agency }}
+                                    <i class="bi bi-person-workspace me-1"></i>{{ task.assignee_label }}
                                 </div>
                                 {% if task.estimated_completion %}
                                 <div>
@@ -104,7 +104,7 @@
                         <div class="col-md-3">
                             <div class="d-flex flex-column gap-2">
                                 <div class="d-flex gap-2 flex-wrap">
-                                    <span class="badge" style="font-size:0.68rem;background:{% if task.status == 'COMPLETED' %}rgba(16,185,129,0.2);color:#6EE7B7{% elif task.status == 'IN_PROGRESS' %}rgba(56,189,248,0.2);color:#38BDF8{% elif task.status == 'FAILED' %}rgba(239,68,68,0.2);color:#FCA5A5{% else %}rgba(234,179,8,0.2);color:#EAB308{% endif %};">
+                                    <span class="badge" style="font-size:0.68rem;background:{% if task.status == 'COMPLETED' %}rgba(16,185,129,0.2);color:#6EE7B7{% elif task.status == 'IN_PROGRESS' %}rgba(56,189,248,0.2);color:#38BDF8{% else %}rgba(234,179,8,0.2);color:#EAB308{% endif %};">
                                         {{ task.status.replace('_', ' ') }}
                                     </span>
                                     <span class="badge" style="font-size:0.68rem;background:{% if task.priority == 'CRITICAL' %}rgba(239,68,68,0.2);color:#EF4444{% elif task.priority == 'HIGH' %}rgba(249,115,22,0.2);color:#F97316{% elif task.priority == 'MEDIUM' %}rgba(234,179,8,0.2);color:#EAB308{% else %}rgba(107,114,128,0.2);color:#9CA3AF{% endif %};">
@@ -135,6 +135,16 @@
                             </div>
                         </div>
                     </div>
+
+                    <form method="POST" action="{{ url_for('responder.responder_update_task', task_id=task.id) }}" class="mt-3 pt-3" style="border-top:1px solid rgba(255,255,255,0.06);">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        {% if task.remarks %}
+                            <div class="mb-2" style="font-size:0.8rem;white-space:pre-line;color:#BAE6FD;"><strong>Current remarks:</strong> {{ task.remarks }}</div>
+                        {% endif %}
+                        <label class="form-label small mb-1" for="responder-task-remarks-{{ task.id }}">Progress notes / remarks</label>
+                        <textarea id="responder-task-remarks-{{ task.id }}" name="remarks" class="form-control form-control-sm" rows="2" maxlength="4000">{{ task.remarks or '' }}</textarea>
+                        <button type="submit" class="btn btn-sm btn-outline-info mt-2">Save remarks</button>
+                    </form>
 
                     <!-- Checklist sub-section -->
                     {% if task.status in ['PENDING', 'IN_PROGRESS'] %}

@@ -1,0 +1,127 @@
+{% extends 'pages/base.html' %}
+{% block title %}Response Teams | DICS AI{% endblock %}
+
+{% block content %}
+<div class="section-header mb-4">
+    <span class="section-header-icon" aria-hidden="true"><i class="bi bi-people-fill"></i></span>
+    <div>
+        <h4>{{ _('CDRRMO Response Teams') }}</h4>
+        <p class="text-muted mb-0">{{ _('Manage teams and their active CDRRMO field responder roster.') }}</p>
+    </div>
+</div>
+
+<div class="row g-4 align-items-stretch">
+    <div class="col-12 col-xl-5 d-flex flex-column">
+        <div class="d-flex align-items-center gap-2 mb-3">
+            <i class="bi bi-plus-circle text-primary" aria-hidden="true"></i>
+            <h2 class="h5 mb-0" id="create-team-heading">{{ _('Create a response team') }}</h2>
+        </div>
+        <section class="card card-custom flex-grow-1 mb-0" aria-labelledby="create-team-heading">
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('dispatcher.save_response_team') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold" for="new-team-name">{{ _('Team name') }}</label>
+                        <input id="new-team-name" class="form-control" name="name" maxlength="120" required
+                               placeholder="{{ _('e.g. Medical Response Team') }}">
+                    </div>
+                    <fieldset>
+                        <legend class="form-label fw-semibold mb-2">
+                            {{ _('Select members') }}
+                            <span class="small text-muted fw-normal">({{ responders|length }})</span>
+                        </legend>
+                        {% for responder in responders %}
+                        <label class="form-check d-flex align-items-center gap-2 border rounded-2 p-3 mb-2"
+                               for="new-member-{{ responder.id }}">
+                            <input class="form-check-input m-0 flex-shrink-0" type="checkbox"
+                                   name="member_ids" value="{{ responder.id }}"
+                                   id="new-member-{{ responder.id }}">
+                            <span class="form-check-label ms-0">{{ responder.full_name or responder.username }}</span>
+                        </label>
+                        {% else %}
+                        <div class="rounded-2 border p-3 text-muted small">
+                            <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+                            {{ _('No active CDRRMO field responders are available.') }}
+                        </div>
+                        {% endfor %}
+                    </fieldset>
+                    <div class="d-flex justify-content-end mt-4">
+                        <button class="btn btn-primary px-4" type="submit">
+                            <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>{{ _('Create team') }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+    </div>
+
+    <div class="col-12 col-xl-7 d-flex flex-column">
+        <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
+            <h2 class="h5 mb-0">{{ _('Current teams') }}</h2>
+            <span class="badge rounded-pill bg-secondary">{{ teams|length }}</span>
+        </div>
+        <div class="vstack gap-3 flex-grow-1">
+            {% for team in teams %}
+            <section class="card card-custom mb-0 {{ 'flex-grow-1' if teams|length == 1 else '' }}"
+                     aria-labelledby="team-heading-{{ team.id }}">
+                <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <h3 class="h6 mb-0" id="team-heading-{{ team.id }}">
+                        <i class="bi bi-people me-2 text-primary" aria-hidden="true"></i>{{ team.name }}
+                    </h3>
+                    <span class="badge rounded-pill bg-secondary">
+                        {{ ngettext('%(count)s member', '%(count)s members', team.members|length, count=team.members|length) }}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('dispatcher.save_response_team') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="team_id" value="{{ team.id }}">
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold" for="team-name-{{ team.id }}">{{ _('Team name') }}</label>
+                            <input id="team-name-{{ team.id }}" class="form-control" name="name" maxlength="120"
+                                   value="{{ team.name }}" required>
+                        </div>
+                        <fieldset>
+                            <legend class="form-label fw-semibold mb-2">{{ _('Roster') }}</legend>
+                            <div class="row g-2">
+                                {% for responder in responders %}
+                                <div class="col-12 col-md-6">
+                                    <label class="form-check d-flex align-items-center gap-2 border rounded-2 p-3 h-100"
+                                           for="team-{{ team.id }}-member-{{ responder.id }}">
+                                        <input class="form-check-input m-0 flex-shrink-0" type="checkbox"
+                                               name="member_ids" value="{{ responder.id }}"
+                                               id="team-{{ team.id }}-member-{{ responder.id }}"
+                                               {{ 'checked' if responder in team.members }}>
+                                        <span class="form-check-label ms-0">{{ responder.full_name or responder.username }}</span>
+                                    </label>
+                                </div>
+                                {% else %}
+                                <div class="col-12">
+                                    <div class="rounded-2 border p-3 text-muted small">
+                                        {{ _('No active CDRRMO field responders are available.') }}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </fieldset>
+                        <div class="d-flex justify-content-end mt-4">
+                            <button class="btn btn-outline-primary px-4" type="submit">
+                                <i class="bi bi-check2 me-1" aria-hidden="true"></i>{{ _('Save roster') }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+            {% else %}
+            <section class="card card-custom mb-0">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-people display-6 text-muted" aria-hidden="true"></i>
+                    <h3 class="h6 mt-3">{{ _('No response teams yet') }}</h3>
+                    <p class="text-muted small mb-0">{{ _('Create a team to organize active CDRRMO field responders.') }}</p>
+                </div>
+            </section>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,7 +1,7 @@
 {% extends 'pages/base.html' %}
 {% import 'partials/empty_state.html' as es %}
 
-{% block title %}AI Decision Support | DICS AI{% endblock %}
+{% block title %}Operational Analytics | DICS AI{% endblock %}
 
 {% block extra_head %}
 <style>
@@ -76,7 +76,7 @@
 {% endblock %}
 
 {% block content %}
-<h1 class="visually-hidden">AI Decision Support</h1>
+<h1 class="visually-hidden">Operational Analytics</h1>
 
 <!-- Header -->
 <div class="row mb-4">
@@ -85,42 +85,15 @@
             <div class="card-body">
                 <div class="section-header mb-0">
                     <span class="section-header-icon text-info"><i class="bi bi-graph-up-arrow"></i></span>
-                    <h4 class="mb-0">AI Prediction Insights</h4>
+                    <h4 class="mb-0">Operational Analytics</h4>
                     <span class="ms-auto d-flex align-items-center gap-2">
-                        <span class="badge rounded-pill border border-info-subtle bg-info-subtle text-info-emphasis px-3 py-2" style="font-size:0.72rem;">
-                            <i class="bi bi-cpu me-1"></i> AI provider: {{ active_ai_provider_label }}
-                        </span>
                         <span class="badge-status-active px-3 py-2" style="font-size:0.8rem;">
-                            <i class="bi bi-circle-fill me-1" style="font-size:0.5rem; vertical-align:middle;"></i>LIVE DATA
+                            <i class="bi bi-circle-fill me-1" style="font-size:0.5rem; vertical-align:middle;"></i>INCIDENT RECORDS
                         </span>
                     </span>
                 </div>
-                <p class="text-muted mb-0 mt-2" style="padding-left:2.75rem;">AI-assisted hazard assessments, response recommendations, and operational analytics for the region.</p>
+                <p class="text-muted mb-0 mt-2" style="padding-left:2.75rem;">Incident, patient, location, status, and response-time summaries for CDRRMO operations.</p>
                 <p class="text-muted mb-0 mt-1" style="padding-left:2.75rem;font-size:0.8rem;">Last refresh: <strong id="refreshTime" class="text-white">--:--:--</strong></p>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- About the Engine -->
-<div class="card card-custom shadow-lg mb-4">
-    <div class="card-body p-4">
-        <div class="d-flex align-items-center gap-2 mb-3">
-            <div class="icon-badge icon-badge-primary">
-                <i class="bi bi-cpu-fill"></i>
-            </div>
-            <h5 class="mb-0">How AI Decision Support Works</h5>
-        </div>
-        <p class="text-muted">For a selected site and hazard, the configured AI provider reviews available rainfall, river-level, humidity, population-density, and nearby seismic context. It returns a risk level and score, a confidence estimate, and the factors supporting its assessment.</p>
-        <p class="text-muted mb-0">When warranted by the available inputs, it also suggests response agencies and resources for a duty officer to consider. These recommendations are advisory, not dispatch orders; staff remain responsible for validating the assessment and deciding what action to take.</p>
-        <div class="alert alert-warning border-warning aftershock-caveat mt-3 mb-0" role="alert">
-            <div class="d-flex align-items-center gap-2 mb-1">
-                <i class="bi bi-exclamation-triangle-fill text-warning"></i>
-                <strong class="text-white">Aftershock module calibration caveat</strong>
-            </div>
-            <div class="small text-muted">
-                <div><span class="text-white">MVFS parameters:</span> <strong>Proxy model — not calibrated to this fault</strong></div>
-                <div><span class="text-white">Fault geometry:</span> <strong>Proxy model — not calibrated to this fault</strong></div>
             </div>
         </div>
     </div>
@@ -249,11 +222,11 @@
                     <div class="icon-badge" style="background:rgba(59,130,246,0.15);color:var(--status-info);border:1px solid rgba(59,130,246,0.3);">
                         <i class="bi bi-bar-chart-fill"></i>
                     </div>
-                    <h5 class="mb-0">Hazard Forecast Overview</h5>
+                    <h5 class="mb-0">Incidents by hazard type</h5>
                     <span class="ms-auto badge" style="background:rgba(6,182,212,0.15);color:#67E8F9;border:1px solid rgba(6,182,212,0.3);font-size:0.7rem;">FROM INCIDENT DATABASE</span>
                 </div>
-                <p class="text-muted small mb-3">Actual incident counts logged per hazard category, region-wide.</p>
-                <canvas id="hazardChart" height="240"></canvas>
+                <p class="text-muted small mb-3">Recorded incident counts by hazard type.</p>
+                <canvas id="hazardChart" height="240" role="img" aria-label="Incident counts by hazard type"></canvas>
                 {% if not hazard_labels %}
                 {{ es.render('bi-bar-chart', 'No Incidents Logged Yet', subtitle='This chart will populate as incidents are recorded.', size='sm') }}
                 {% endif %}
@@ -274,7 +247,7 @@
                     <span class="text-muted small">Average resolution</span>
                     <strong id="avgResponseTime" class="text-white">-- min</strong>
                 </div>
-                <canvas id="responseTimeChart" height="240"></canvas>
+                <canvas id="responseTimeChart" height="240" role="img" aria-label="Resolved response times by period"></canvas>
             </div>
         </div>
     </div>
@@ -291,7 +264,7 @@
                 </div>
                 <p class="text-muted small mb-3">Resource allocation status across all active responses.</p>
                 <div class="resource-utilization-chart">
-                    <canvas id="resourceUtilizationChart"></canvas>
+                    <canvas id="resourceUtilizationChart" role="img" aria-label="Resources by allocation status"></canvas>
                 </div>
             </div>
         </div>
@@ -314,7 +287,7 @@
                     </tr>
                 </thead>
                 <tbody id="monthlySummaryBody">
-                    <tr><td colspan="2" class="text-muted">Loading monthly summary...</td></tr>
+                    <tr><td colspan="2" role="status"><span class="visually-hidden">Loading monthly summary...</span><span class="dics-skeleton dics-skeleton-line" aria-hidden="true"></span></td></tr>
                 </tbody>
             </table>
         </div>
@@ -338,12 +311,81 @@
                     </tr>
                 </thead>
                 <tbody id="geoSummaryBody">
-                    <tr><td colspan="4" class="text-muted">Loading geography summary...</td></tr>
+                    <tr><td colspan="4" role="status"><span class="visually-hidden">Loading geography summary...</span><span class="dics-skeleton dics-skeleton-line" aria-hidden="true"></span></td></tr>
                 </tbody>
             </table>
         </div>
     </div>
 </div>
+
+<div class="row g-4 mb-4">
+    <div class="col-12 col-lg-6">
+        <section class="card card-custom h-100" aria-labelledby="year-summary-title">
+            <div class="card-body">
+                <h2 class="h5" id="year-summary-title">Incidents by year</h2>
+                <div class="table-responsive">
+                    <table class="table table-enhanced align-middle mb-0">
+                        <thead><tr><th>Year</th><th class="text-end">Incidents</th></tr></thead>
+                        <tbody id="yearSummaryBody"><tr><td colspan="2" role="status"><span class="visually-hidden">Loading yearly summary...</span><span class="dics-skeleton dics-skeleton-line" aria-hidden="true"></span></td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </div>
+    <div class="col-12 col-lg-6">
+        <section class="card card-custom h-100" aria-labelledby="status-summary-title">
+            <div class="card-body">
+                <h2 class="h5" id="status-summary-title">Incidents by status</h2>
+                <div class="table-responsive">
+                    <table class="table table-enhanced align-middle mb-0">
+                        <thead><tr><th>Status</th><th class="text-end">Incidents</th></tr></thead>
+                        <tbody id="statusSummaryBody"><tr><td colspan="2" role="status"><span class="visually-hidden">Loading status summary...</span><span class="dics-skeleton dics-skeleton-line" aria-hidden="true"></span></td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<section class="card card-custom shadow-lg mb-4" aria-labelledby="patient-summary-title">
+    <div class="card-body p-4">
+        <div class="d-flex align-items-start justify-content-between flex-wrap gap-3 mb-3">
+            <div>
+                <h2 class="h5 mb-1" id="patient-summary-title">Patients per emergency</h2>
+                <p class="text-muted small mb-0">Patient counts are aggregate totals; this report does not expose individual patient details. Control-number search spans all years.</p>
+            </div>
+            <div class="text-end">
+                <div><span class="text-muted small">Patients in period:</span> <strong id="totalPatientCount">0</strong></div>
+                <div><span class="text-muted small">Average per emergency:</span> <strong id="averagePatientCount">0</strong></div>
+                <div class="text-muted small">Totals use the reporting period; search results span all years.</div>
+            </div>
+        </div>
+        <form id="controlNumberSearchForm" class="row g-2 mb-3" role="search">
+            <div class="col-12 col-md-8 col-lg-6">
+                <label for="controlNumberSearch" class="form-label">Search by control number</label>
+                <input id="controlNumberSearch" class="form-control" type="search" maxlength="32" placeholder="e.g. 2026-00001">
+            </div>
+            <div class="col-12 col-md-auto d-flex align-items-end">
+                <button class="btn btn-outline-primary" type="submit"><i class="bi bi-search me-1"></i>Search</button>
+            </div>
+            <div class="col-12 d-flex align-items-center justify-content-between">
+                <small id="controlNumberResultCount" class="text-muted">Recent emergencies in the selected period</small>
+                <button id="clearControlNumberSearch" class="btn btn-sm btn-link" type="button">Clear search</button>
+            </div>
+        </form>
+        <div class="table-responsive">
+            <table class="table table-enhanced table-mobile-stack align-middle mb-0">
+                <thead>
+                    <tr><th>Control number</th><th>Date/time (PHT)</th><th>Hazard</th><th>Barangay</th><th>Status</th><th class="text-end">Patients</th></tr>
+                </thead>
+                <tbody id="patientSummaryBody">
+                    <tr><td colspan="6" role="status"><span class="visually-hidden">Loading emergency patient counts...</span><span class="dics-skeleton dics-skeleton-line" aria-hidden="true"></span></td></tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-muted small mt-2 mb-0">Showing at most 100 emergencies. Use the control-number search to narrow results.</p>
+    </div>
+</section>
 
 <!-- Post-Incident Evaluations -->
 <div class="card card-custom shadow-lg mb-4">
@@ -398,7 +440,8 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='vendor/chartjs/chart.umd.js', v=static_asset_version) }}"></script>
+<script src="{{ url_for('static', filename='js/chart-theme.js', v=static_asset_version) }}"></script>
 <script>
 const refreshTime = document.getElementById('refreshTime');
 const hazardCtx = document.getElementById('hazardChart');
@@ -409,9 +452,14 @@ const exportCsvBtn = document.getElementById('exportCsvBtn');
 const exportPdfBtn = document.getElementById('exportPdfBtn');
 const monthlySummaryBody = document.getElementById('monthlySummaryBody');
 const geoSummaryBody = document.getElementById('geoSummaryBody');
-
-Chart.defaults.color = 'rgba(255,255,255,0.6)';
-Chart.defaults.borderColor = 'rgba(255,255,255,0.08)';
+const yearSummaryBody = document.getElementById('yearSummaryBody');
+const statusSummaryBody = document.getElementById('statusSummaryBody');
+const patientSummaryBody = document.getElementById('patientSummaryBody');
+const controlNumberSearchForm = document.getElementById('controlNumberSearchForm');
+const controlNumberSearch = document.getElementById('controlNumberSearch');
+const controlNumberResultCount = document.getElementById('controlNumberResultCount');
+const totalPatientCount = document.getElementById('totalPatientCount');
+const averagePatientCount = document.getElementById('averagePatientCount');
 
 const currentYear = {{ analytics_current_year }};
 for (let year = currentYear - 3; year <= currentYear + 2; year += 1) {
@@ -422,12 +470,32 @@ for (let year = currentYear - 3; year <= currentYear + 2; year += 1) {
     yearSelect.appendChild(option);
 }
 
+function populateYearOptions(yearCounts) {
+    const selectedYear = yearSelect.value || String(currentYear);
+    const availableYears = new Set(
+        yearCounts.map(item => Number(item.year)).filter(Number.isInteger),
+    );
+    for (let year = currentYear - 3; year <= currentYear + 2; year += 1) {
+        availableYears.add(year);
+    }
+    yearSelect.replaceChildren();
+    [...availableYears].sort((left, right) => left - right).forEach(year => {
+        const option = document.createElement('option');
+        option.value = String(year);
+        option.textContent = String(year);
+        yearSelect.appendChild(option);
+    });
+    yearSelect.value = availableYears.has(Number(selectedYear))
+        ? selectedYear
+        : String(currentYear);
+}
+
 const hazardData = {
     labels: {{ hazard_labels|default([])|tojson }},
     datasets: [{
         label: 'Incidents Logged',
         data: {{ hazard_counts|default([])|tojson }},
-        backgroundColor: ['#3b82f6', '#f59e0b', '#ef4444', '#8B5CF6', '#06b6d4', '#10b981'],
+        backgroundColor: window.dicsChartTheme.palette,
         borderRadius: 8,
         maxBarThickness: 40
     }]
@@ -459,8 +527,8 @@ const responseTimeData = {
     datasets: [{
         label: 'Resolved Responses',
         data: [],
-        borderColor: '#22c55e',
-        backgroundColor: 'rgba(34,197,94,0.15)',
+        borderColor: window.dicsChartTheme.palette[5],
+        backgroundColor: window.dicsChartTheme.translucent(window.dicsChartTheme.palette[5], 0.16),
         tension: 0.35,
         fill: true,
         pointRadius: 4
@@ -489,7 +557,13 @@ const resourceUtilData = {
     datasets: [{
         label: 'Resources',
         data: [],
-        backgroundColor: ['#f59e0b', '#3b82f6', '#10b981', '#ef4444', '#8b5cf6'],
+        backgroundColor: [
+            window.dicsChartTheme.palette[1],
+            window.dicsChartTheme.palette[0],
+            window.dicsChartTheme.palette[5],
+            window.dicsChartTheme.palette[2],
+            window.dicsChartTheme.palette[3],
+        ],
         hoverOffset: 8
     }]
 };
@@ -503,7 +577,7 @@ const resourceUtilizationChart = new Chart(resourceUtilCtx, {
         plugins: {
             legend: {
                 position: 'bottom',
-                labels: { color: 'rgba(255,255,255,0.75)' }
+                labels: {}
             }
         }
     }
@@ -548,9 +622,74 @@ function renderGeoSummary(data) {
     `).join('');
 }
 
+function renderKeyValueTable(tbody, entries, emptyMessage) {
+    tbody.replaceChildren();
+    if (!entries.length) {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 2;
+        cell.className = 'text-muted';
+        cell.textContent = emptyMessage;
+        row.appendChild(cell);
+        tbody.appendChild(row);
+        return;
+    }
+
+    entries.forEach(([label, count]) => {
+        const row = document.createElement('tr');
+        const labelCell = document.createElement('td');
+        const countCell = document.createElement('td');
+        labelCell.textContent = String(label);
+        countCell.textContent = String(count);
+        countCell.className = 'text-end fw-bold';
+        row.append(labelCell, countCell);
+        tbody.appendChild(row);
+    });
+}
+
+function renderPatientCounts(data) {
+    const summary = data.patient_counts || {};
+    const records = summary.records || [];
+    totalPatientCount.textContent = String(summary.total_patients || 0);
+    averagePatientCount.textContent = Number(summary.average_per_emergency || 0).toFixed(2);
+    const query = data.control_number_query || '';
+    controlNumberResultCount.textContent = query
+        ? `${summary.matching_emergencies || 0} match(es) for "${query}"`
+        : `${summary.matching_emergencies || 0} emergencies in the selected period`;
+    patientSummaryBody.replaceChildren();
+    if (!records.length) {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 6;
+        cell.className = 'text-muted';
+        cell.textContent = query ? 'No matching control numbers.' : 'No emergencies recorded in this period.';
+        row.appendChild(cell);
+        patientSummaryBody.appendChild(row);
+        return;
+    }
+    records.forEach(record => {
+        const row = document.createElement('tr');
+        [
+            record.control_number,
+            record.created_at,
+            record.hazard_type,
+            record.barangay,
+            record.status,
+            record.patient_count,
+        ].forEach((value, index) => {
+            const cell = document.createElement('td');
+            cell.textContent = String(value ?? '');
+            if (index === 5) cell.className = 'text-end fw-bold';
+            row.appendChild(cell);
+        });
+        patientSummaryBody.appendChild(row);
+    });
+}
+
 function renderAnalyticsData(data) {
     if (!data) return;
 
+    populateYearOptions(data.year_counts || []);
     const incidentLabels = Object.keys(data.incident_counts || {});
     const incidentValues = Object.values(data.incident_counts || {});
     hazardChart.data.labels = incidentLabels;
@@ -572,14 +711,27 @@ function renderAnalyticsData(data) {
 
     renderMonthlySummary(data);
     renderGeoSummary(data);
+    renderKeyValueTable(
+        yearSummaryBody,
+        (data.year_counts || []).map(item => [item.year, item.count]),
+        'No incident history available.',
+    );
+    renderKeyValueTable(
+        statusSummaryBody,
+        Object.entries(data.status_counts || {}),
+        'No incidents in the selected period.',
+    );
+    renderPatientCounts(data);
 }
 
 function fetchAnalyticsData() {
     const params = new URLSearchParams();
     const selectedYear = yearSelect.value || String(new Date().getFullYear());
     const selectedMonth = monthSelect.value;
+    const selectedControlNumber = controlNumberSearch.value.trim();
     if (selectedYear) params.set('year', selectedYear);
     if (selectedMonth) params.set('month', selectedMonth);
+    if (selectedControlNumber) params.set('control_number', selectedControlNumber);
 
     fetch(`/api/analytics-data?${params.toString()}`)
         .then(response => response.ok ? response.json() : Promise.reject(response))
@@ -594,6 +746,14 @@ function fetchAnalyticsData() {
 }
 
 applyFiltersBtn.addEventListener('click', fetchAnalyticsData);
+controlNumberSearchForm.addEventListener('submit', event => {
+    event.preventDefault();
+    fetchAnalyticsData();
+});
+document.getElementById('clearControlNumberSearch').addEventListener('click', () => {
+    controlNumberSearch.value = '';
+    fetchAnalyticsData();
+});
 exportCsvBtn.addEventListener('click', () => {
     const params = new URLSearchParams();
     if (yearSelect.value) params.set('year', yearSelect.value);

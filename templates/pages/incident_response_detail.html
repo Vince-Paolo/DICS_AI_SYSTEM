@@ -161,12 +161,12 @@
                 <div class="d-flex flex-column gap-2">
                     <a href="{{ url_for('commander.incident_response_tasks', response_id=response.id) }}"
                        class="btn btn-primary-modern btn-modern py-3 d-flex justify-content-between align-items-center">
-                        <span><i class="bi bi-list-task me-2"></i>Assign Agency Task</span>
+                        <span><i class="bi bi-list-task me-2"></i>View Assigned Tasks</span>
                         <i class="bi bi-arrow-right"></i>
                     </a>
                     <a href="{{ url_for('commander.incident_response_resources', response_id=response.id) }}"
                        class="btn btn-success-modern btn-modern py-3 d-flex justify-content-between align-items-center">
-                        <span><i class="bi bi-boxes me-2"></i>Allocate Resource</span>
+                        <span><i class="bi bi-boxes me-2"></i>Monitor Resources</span>
                         <i class="bi bi-arrow-right"></i>
                     </a>
                     <a href="{{ url_for('commander.incident_response_reports', response_id=response.id) }}"
@@ -225,9 +225,9 @@
                         <i class="bi bi-person-badge-fill" style="color:var(--status-info);font-size:1.2rem;"></i>
                     </div>
                     <div>
-                        <span class="d-block text-muted" style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.05em;">Incident Commander</span>
+                        <span class="d-block text-muted" style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.05em;">IMT Lead</span>
                         <strong class="text-white">{{ response.commander.full_name or response.commander.username }}</strong>
-                        <span class="d-block text-muted small">{{ response.commander.agency or 'Emergency Operations' }}</span>
+                        <span class="d-block text-muted small">Incident Management Team</span>
                     </div>
                 </div>
                 <div style="height:1px;background:rgba(255,255,255,0.06);margin-bottom:1rem;"></div>

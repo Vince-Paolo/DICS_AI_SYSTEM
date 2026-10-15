@@ -13,7 +13,7 @@
                 <div class="alert alert-danger rounded-3">{{ error }}</div>
             {% endif %}
 
-            <form method="post" action="/">
+            <form method="post" action="{{ url_for('login') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                 <label class="auth-label" for="username">{{ _('Username') }}</label>
@@ -38,7 +38,7 @@
             </a>
 
             <div class="auth-footer">
-                <span>v2.4 &middot; Region IV-A</span>
+                <span>v2.4 &middot; {{ _('San Pablo City, Laguna') }}</span>
                 <a href="{{ url_for('forgot_password') }}">{{ _('Forgot password?') }}</a>
                 <a href="/register">{{ _('Register new account') }}</a>
             </div>

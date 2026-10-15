@@ -1,0 +1,258 @@
+{% extends 'pages/base.html' %}
+{% block title %}Response Decision Support | DICS AI{% endblock %}
+
+{% block extra_head %}
+<style>
+    .decision-toolbar {
+        display: grid;
+        grid-template-columns: minmax(16rem, 1fr) auto;
+        gap: 1rem;
+        align-items: end;
+    }
+    .decision-filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .decision-filter {
+        border-radius: 999px;
+    }
+    .decision-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 1rem;
+        align-items: center;
+        padding: 1rem 1.15rem;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+    }
+    .decision-row:last-child {
+        border-bottom: 0;
+    }
+    .decision-row:hover {
+        background: rgba(59, 130, 246, 0.045);
+    }
+    .decision-primary {
+        min-width: 0;
+    }
+    .decision-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem 1rem;
+        font-size: 0.8rem;
+    }
+    .decision-summary {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        min-width: 12rem;
+    }
+    .decision-score {
+        font-variant-numeric: tabular-nums;
+    }
+    .decision-outcome {
+        font-size: 0.88rem;
+        text-align: right;
+    }
+    .decision-insufficient {
+        color: #fcd34d;
+    }
+    .decision-empty {
+        display: none;
+    }
+    @media (max-width: 767.98px) {
+        .decision-toolbar {
+            grid-template-columns: 1fr;
+        }
+        .decision-row {
+            grid-template-columns: 1fr;
+            align-items: start;
+        }
+        .decision-summary {
+            align-items: flex-start;
+            min-width: 0;
+        }
+        .decision-outcome {
+            text-align: left;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% set counts = namespace(total=assessments|length, insufficient=0, monitor=0, support=0, takeover=0) %}
+{% for incident, assessment in assessments %}
+    {% if assessment.score is none %}
+        {% set counts.insufficient = counts.insufficient + 1 %}
+    {% elif assessment.outcome == 'BARANGAY_MONITOR' %}
+        {% set counts.monitor = counts.monitor + 1 %}
+    {% elif assessment.outcome == 'BARANGAY_SUPPORT' %}
+        {% set counts.support = counts.support + 1 %}
+    {% elif assessment.outcome == 'CDRRMO_TAKEOVER' %}
+        {% set counts.takeover = counts.takeover + 1 %}
+    {% endif %}
+{% endfor %}
+
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-3">
+    <div>
+        <h1 class="h3 mb-1">Response decision support</h1>
+        <p class="text-muted mb-0">Prioritize open emergencies. The dispatcher makes the final decision.</p>
+    </div>
+    <a class="btn btn-outline-primary" href="{{ url_for('eoc.emergency_log') }}">
+        <i class="bi bi-journal-text me-1" aria-hidden="true"></i>Emergency log
+    </a>
+</div>
+
+<details class="card card-custom mb-3">
+    <summary class="card-body py-3 fw-semibold" style="cursor:pointer">
+        <i class="bi bi-info-circle me-2 text-info" aria-hidden="true"></i>How to read these recommendations
+    </summary>
+    <div class="card-body pt-0 small text-muted">
+        The response-need score is a transparent rule-based aid, not a probability or dispatch order.
+        Outcome bands: 0–24 barangay can handle it; 25–59 barangay needs support; 60–100 CDRRMO takes over.
+        Some local data (vulnerable-person counts, geocoded response-unit locations, fleet inventory, and mapped
+        flood/landslide exposure) is not yet collected and is shown as unavailable in each emergency detail.
+    </div>
+</details>
+
+{% if assessments %}
+<section class="card card-custom mb-3" aria-label="Filter decision support emergencies">
+    <div class="card-body">
+        <div class="decision-toolbar">
+            <div>
+                <label for="decision-search" class="form-label fw-semibold">Find an emergency</label>
+                <div class="input-group">
+                    <span class="input-group-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                    <input class="form-control" id="decision-search" type="search"
+                           placeholder="Control number, location, or description"
+                           autocomplete="off" aria-controls="decision-list">
+                </div>
+            </div>
+            <div class="d-flex align-items-center justify-content-between gap-3">
+                <span id="decision-result-count" class="small text-muted" aria-live="polite"></span>
+                <button class="btn btn-link btn-sm p-0" type="button" id="decision-clear">Clear filters</button>
+            </div>
+        </div>
+        <div class="decision-filters mt-3" role="group" aria-label="Filter by suggested response">
+            <button type="button" class="btn btn-sm btn-outline-secondary decision-filter active"
+                    data-decision-filter="all" aria-pressed="true">All <span class="badge text-bg-secondary ms-1">{{ counts.total }}</span></button>
+            <button type="button" class="btn btn-sm btn-outline-secondary decision-filter"
+                    data-decision-filter="CDRRMO_TAKEOVER" aria-pressed="false">CDRRMO takes over <span class="badge text-bg-secondary ms-1">{{ counts.takeover }}</span></button>
+            <button type="button" class="btn btn-sm btn-outline-secondary decision-filter"
+                    data-decision-filter="BARANGAY_SUPPORT" aria-pressed="false">Barangay needs support <span class="badge text-bg-secondary ms-1">{{ counts.support }}</span></button>
+            <button type="button" class="btn btn-sm btn-outline-secondary decision-filter"
+                    data-decision-filter="BARANGAY_MONITOR" aria-pressed="false">Barangay can handle <span class="badge text-bg-secondary ms-1">{{ counts.monitor }}</span></button>
+            <button type="button" class="btn btn-sm btn-outline-secondary decision-filter"
+                    data-decision-filter="insufficient" aria-pressed="false">Needs information <span class="badge text-bg-secondary ms-1">{{ counts.insufficient }}</span></button>
+        </div>
+    </div>
+</section>
+
+<section class="card card-custom" id="decision-list" aria-label="Open emergencies prioritized for response assessment">
+    {% for incident, assessment in assessments %}
+    <article class="decision-row" data-decision-row
+             data-outcome="{{ assessment.outcome or 'insufficient' }}"
+             data-search="{{ (incident.control_number ~ ' ' ~ (incident.location or '') ~ ' ' ~ incident.message ~ ' ' ~ incident.hazard_type)|lower }}">
+        <div class="decision-primary">
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                <h2 class="h6 mb-0">
+                    <a href="{{ url_for('eoc.emergency_log_detail', incident_id=incident.id) }}">{{ incident.control_number }}</a>
+                </h2>
+                {% if assessment.score is not none %}
+                <span class="badge text-bg-secondary">Priority {{ loop.index }}</span>
+                {% else %}
+                <span class="badge text-bg-warning">Needs information</span>
+                {% endif %}
+            </div>
+            <div class="decision-meta text-muted">
+                <span><i class="bi bi-geo-alt me-1" aria-hidden="true"></i>{{ incident.location or 'Location unavailable' }}</span>
+                <span><i class="bi bi-activity me-1" aria-hidden="true"></i>{{ incident.hazard_type|replace('_', ' ')|title }}</span>
+                <span>Status: {{ incident.status or 'NEW' }}</span>
+                <span>Patients: {{ incident.patient_count }}</span>
+            </div>
+            <div class="small mt-1 text-truncate">{{ incident.message }}</div>
+        </div>
+        <div class="decision-summary">
+            {% if assessment.score is not none %}
+            <span class="badge text-bg-primary decision-score mb-1">{{ assessment.score }}/100 response need</span>
+            {% endif %}
+            <strong class="decision-outcome {{ 'decision-insufficient' if assessment.score is none else '' }}">
+                {{ assessment.outcome_label }}
+            </strong>
+            <a class="btn btn-sm btn-outline-primary mt-2"
+               href="{{ url_for('eoc.emergency_log_detail', incident_id=incident.id) }}">
+                <i class="bi bi-clipboard2-check me-1" aria-hidden="true"></i>Review and decide
+            </a>
+        </div>
+    </article>
+    {% endfor %}
+    <div class="decision-empty card-body text-center text-muted py-5" id="decision-empty" aria-live="polite">
+        <i class="bi bi-search fs-3" aria-hidden="true"></i>
+        <p class="mt-2 mb-2">No emergencies match those filters.</p>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="decision-empty-clear">Clear filters</button>
+    </div>
+</section>
+{% else %}
+<div class="card card-custom">
+    <div class="card-body text-center text-muted py-5">
+        <i class="bi bi-check2-circle fs-2 d-block mb-2" aria-hidden="true"></i>
+        There are no open emergencies requiring a response assessment.
+    </div>
+</div>
+{% endif %}
+
+{% if assessments %}
+<script>
+    (() => {
+        const search = document.getElementById('decision-search');
+        const rows = Array.from(document.querySelectorAll('[data-decision-row]'));
+        const filters = Array.from(document.querySelectorAll('[data-decision-filter]'));
+        const count = document.getElementById('decision-result-count');
+        const empty = document.getElementById('decision-empty');
+        const clearButtons = [
+            document.getElementById('decision-clear'),
+            document.getElementById('decision-empty-clear'),
+        ];
+        let activeFilter = 'all';
+
+        function updateRows() {
+            const query = search.value.trim().toLocaleLowerCase();
+            let visibleCount = 0;
+            for (const row of rows) {
+                const visible = (
+                    activeFilter === 'all' || row.dataset.outcome === activeFilter
+                ) && row.dataset.search.includes(query);
+                row.hidden = !visible;
+                if (visible) visibleCount += 1;
+            }
+            count.textContent = `${visibleCount} of ${rows.length} emergencies`;
+            empty.style.display = visibleCount ? 'none' : 'block';
+        }
+
+        function clearFilters() {
+            search.value = '';
+            activeFilter = 'all';
+            filters.forEach(filter => {
+                const selected = filter.dataset.decisionFilter === 'all';
+                filter.classList.toggle('active', selected);
+                filter.setAttribute('aria-pressed', String(selected));
+            });
+            updateRows();
+            search.focus();
+        }
+
+        filters.forEach(filter => filter.addEventListener('click', () => {
+            activeFilter = filter.dataset.decisionFilter;
+            filters.forEach(option => {
+                const selected = option === filter;
+                option.classList.toggle('active', selected);
+                option.setAttribute('aria-pressed', String(selected));
+            });
+            updateRows();
+        }));
+        search.addEventListener('input', updateRows);
+        clearButtons.forEach(button => button.addEventListener('click', clearFilters));
+        updateRows();
+    })();
+</script>
+{% endif %}
+{% endblock %}
