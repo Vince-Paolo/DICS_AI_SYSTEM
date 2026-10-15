@@ -9,7 +9,7 @@
             <div class="card backup-confirm-card">
                 <div class="card-body backup-confirm-body">
                     <h3 class="card-title backup-confirm-title mb-4">Confirm Database Backup</h3>
-                    <p class="backup-confirm-copy">For security and audit purposes, administrators must confirm their password before exporting the SQLite backup.</p>
+                    <p class="backup-confirm-copy">For security and audit purposes, administrators must confirm their password before exporting a backup of the configured database.</p>
                     <form method="POST" action="{{ url_for('admin.export_backup') }}">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="mb-3 backup-confirm-field">
