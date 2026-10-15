@@ -4,6 +4,9 @@ Backend selection (EMAIL_BACKEND):
   auto   -> SMTP when SMTP_HOST is set, otherwise Resend
   smtp   -> always SMTP
   resend -> always Resend
+
+Callers may pass a backend explicitly when delivery must not follow the
+application-wide selection.
 """
 import smtplib
 import ssl
@@ -91,13 +94,13 @@ def _send_resend(to, subject, body):
     return True
 
 
-def send_email(to, subject, body):
+def send_email(to, subject, body, backend=None):
     """Send a plain-text email. Returns True on success, never raises."""
     try:
         if _cfg('RESEND_SUPPRESS_SEND'):
             current_app.logger.info('Email suppressed for %s', to)
             return True
-        backend = selected_backend()
+        backend = backend or selected_backend()
         if backend == 'smtp':
             _send_smtp(to, subject, body)
         elif backend == 'resend':
