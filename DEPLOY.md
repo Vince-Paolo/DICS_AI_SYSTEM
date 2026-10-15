@@ -109,8 +109,8 @@ For local development, `FILE_STORAGE_BACKEND=local` stores files under
 
 ## Email (SMTP)
 
-Email verification codes and password-reset emails use SMTP when `SMTP_HOST` is set, otherwise the Resend API.
-SMTP requires Railway Pro or higher.
+Password-reset links are sent through SMTP. Email verification codes continue to
+use the configured email backend. SMTP requires Railway Pro or higher.
 
 Set these in Railway -> your service -> Variables, then redeploy:
 
@@ -119,8 +119,14 @@ Set these in Railway -> your service -> Variables, then redeploy:
 | `SMTP_HOST` | `smtp.gmail.com` |
 | `SMTP_PORT` | `587` (STARTTLS; 465 = SSL) |
 | `SMTP_USERNAME` | `you@gmail.com` |
-| `SMTP_PASSWORD` | Gmail App Password (16 chars, no spaces) |
+| `SMTP_PASSWORD` | Gmail App Password (16 chars; spaces are accepted) |
 | `SMTP_FROM_EMAIL` | `you@gmail.com` (must match the account for Gmail) |
 
-Test from the Railway shell: `flask --app app test-email you@example.com`
-(prints the active settings without the password and the real error on failure).
+For Gmail, enable 2-Step Verification and create an App Password for the
+account. Set all five SMTP variables above in Railway -> your service ->
+Variables, then redeploy. Password-reset delivery uses SMTP even if Resend is
+configured for verification emails.
+
+Test the selected email backend from the Railway shell:
+`flask --app app test-email you@example.com` (prints active settings without
+the password and the real error on failure).

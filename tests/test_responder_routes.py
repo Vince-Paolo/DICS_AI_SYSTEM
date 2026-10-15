@@ -192,25 +192,36 @@ class ResponderRoutesTestCase(unittest.TestCase):
             self.assertIsNotNone(user.reset_token)
 
     def test_forgot_password_sends_reset_email_with_link(self):
-        self.app.config.update(TESTING=False, RESEND_API_KEY='test-resend-key')
+        self.app.config.update(
+            TESTING=False,
+            EMAIL_BACKEND='resend',
+            RESEND_API_KEY='test-resend-key',
+            RESEND_SUPPRESS_SEND=False,
+            SMTP_HOST='smtp.gmail.com',
+            SMTP_PORT=587,
+            SMTP_USERNAME='sender@gmail.com',
+            SMTP_PASSWORD='gmail-app-password',
+            SMTP_FROM_EMAIL='sender@gmail.com',
+        )
 
         with self.app.app_context():
-            with patch('app.requests.post') as resend_post:
-                resend_post.return_value.raise_for_status.return_value = None
+            with patch('services.mailer.smtplib.SMTP') as smtp:
+                smtp.return_value.__enter__.return_value = smtp.return_value
                 response = self.client.post('/forgot-password', data={'email': 'responder@example.com'}, follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'If an account exists', response.data)
-        resend_post.assert_called_once()
-        request_kwargs = resend_post.call_args.kwargs
-        self.assertEqual(request_kwargs['headers']['Authorization'], 'Bearer test-resend-key')
-        self.assertEqual(request_kwargs['json']['to'], ['responder@example.com'])
-        self.assertIn('Reset your password', request_kwargs['json']['subject'])
+        smtp.assert_called_once_with('smtp.gmail.com', 587, timeout=10)
+        smtp.return_value.starttls.assert_called_once()
+        smtp.return_value.login.assert_called_once_with('sender@gmail.com', 'gmail-app-password')
+        message = smtp.return_value.send_message.call_args.args[0]
+        self.assertEqual(message['To'], 'responder@example.com')
+        self.assertIn('Reset your password', message['Subject'])
 
         with self.app.app_context():
             user = User.query.filter_by(email='responder@example.com').first()
             self.assertIsNotNone(user.reset_token)
-            self.assertIn(f'/reset-password/{user.reset_token}', request_kwargs['json']['text'])
+            self.assertIn(f'/reset-password/{user.reset_token}', message.get_content())
 
     def test_plaintext_stored_password_is_rejected(self):
         user = SimpleNamespace(username='legacy_plaintext', password='known-test-password')

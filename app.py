@@ -1527,7 +1527,7 @@ def send_password_reset_email(user, token):
         'This link will expire in 1 hour. If you did not request this reset, '
         'you can safely ignore this email.'
     )
-    return send_email(user.email, subject, body)
+    return send_email(user.email, subject, body, backend='smtp')
 
 
 @app.cli.command('test-email')
