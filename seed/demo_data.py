@@ -1,20 +1,15 @@
-"""Seed helpers for CALABARZON reference geography (province / municipality /
-barangay) used to populate the citizen incident-report location dropdowns.
+"""Seed San Pablo City reference geography for operational location lists.
 
-The actual data lives in calabarzon_geography.json rather than inline in this
-file: at full CALABARZON coverage (5 provinces, 142 cities/municipalities,
-~4,018 barangays) an inline Python literal would be an unreviewable ~4,000+
-line file. The JSON was built from the Philippine Standard Geographic Code
-(PSGC) via the `psgc` npm package's published data (itself derived from PSA's
-official PSGC publication), filtered to Region IV-A (CALABARZON) municipality
-codes and cross-verified so every municipality here has exactly the barangays
-PSGC records for it -- see the data-build notes in that file's directory.
+The source data lives in calabarzon_geography.json rather than inline in this
+file. It was built from the Philippine Standard Geographic Code (PSGC) via the
+`psgc` npm package's published data (itself derived from PSA's official PSGC
+publication), then filtered here to San Pablo City and its barangays.
 """
 
 import json
 from pathlib import Path
 
-from models import Barangay, Municipality, Province, db
+from models import Barangay, BarangayResponseUnit, Municipality, Province, db
 
 GEOGRAPHY_DATA_PATH = Path(__file__).parent / "calabarzon_geography.json"
 
@@ -26,15 +21,15 @@ def _load_geography_data():
 
 def seed_geography_data():
     """Populate/refresh province, municipality, and barangay reference data
-    for all of CALABARZON.
+    for Laguna, San Pablo City, and its barangays.
 
     Idempotent and safe to call on a database that already has data,
-    including the older 1-province demo seed this replaces: rows are
+    including the older demo seed this replaces: rows are
     matched by `code` first (the real PSGC code, for anything already
     migrated), falling back to matching by name within the right parent
     (province for municipalities, municipality for barangays) so a legacy
-    row like the old Batangas municipalities gets its `code` corrected in
-    place instead of leaving a duplicate row alongside a newly-inserted one.
+    San Pablo row gets its `code` corrected in place instead of leaving a
+    duplicate row alongside a newly-inserted one.
 
     Uses bulk fetch-then-insert rather than a per-row exists-check query,
     since this runs in test setUp() for many test classes (after a fresh
@@ -43,6 +38,15 @@ def seed_geography_data():
     it noticeably slower.
     """
     data = _load_geography_data()
+    data = [
+        province for province in data
+        if province['name'].casefold() == 'laguna'
+    ]
+    for province in data:
+        province['municipalities'] = [
+            municipality for municipality in province['municipalities']
+            if municipality['code'] == '043424'
+        ]
 
     existing_provinces_by_code = {p.code: p for p in Province.query.all() if p.code}
     province_id_by_json_code = {}
@@ -104,6 +108,21 @@ def seed_geography_data():
     if new_barangays:
         db.session.add_all(new_barangays)
 
+    san_pablo = Municipality.query.filter_by(code='043424').first()
+    if san_pablo:
+        barangays = Barangay.query.filter_by(municipality_id=san_pablo.id).all()
+        existing_unit_barangay_ids = {
+            barangay_id for (barangay_id,) in
+            db.session.query(BarangayResponseUnit.barangay_id).filter(
+                BarangayResponseUnit.barangay_id.in_([barangay.id for barangay in barangays])
+            ).all()
+        } if barangays else set()
+        db.session.add_all([
+            BarangayResponseUnit(barangay_id=barangay.id)
+            for barangay in barangays
+            if barangay.id not in existing_unit_barangay_ids
+        ])
+
     db.session.commit()
 
 
@@ -113,4 +132,3 @@ def seed_demo_data():
 
 if __name__ == "__main__":
     seed_demo_data()
-

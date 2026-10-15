@@ -20,6 +20,8 @@ def _cfg(key, default=None):
 def selected_backend():
     backend = (_cfg('EMAIL_BACKEND', 'auto') or 'auto').strip().lower()
     if backend == 'auto':
+        if _cfg('RESEND_API_KEY'):
+            return 'resend'
         return 'smtp' if _cfg('SMTP_HOST') else 'resend'
     return backend
 
@@ -69,7 +71,7 @@ def _send_resend(to, subject, body):
     response = requests.post(
         _cfg('RESEND_API_URL'),
         headers={
-            'Authorization': f"Bearer {_cfg('RESEND_API_KEY')}",
+            'Authorization': 'Bearer ' + _cfg('RESEND_API_KEY'),
             'Content-Type': 'application/json',
         },
         json={

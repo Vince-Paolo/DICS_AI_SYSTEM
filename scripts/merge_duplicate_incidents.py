@@ -54,7 +54,6 @@ DEPENDENT_TABLES_ONE_TO_ONE = [
 ]
 DEPENDENT_TABLES_ONE_TO_MANY = [
     ('incident_report', 'incident_id'),
-    ('resource_request', 'incident_id'),
     ('ai_recommendation', 'incident_id'),
     ('alert', 'incident_id'),
     ('report', 'incident_id'),

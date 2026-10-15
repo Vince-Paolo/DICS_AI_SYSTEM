@@ -11,15 +11,19 @@ ROLE_ALIASES = {
     'user': 'CITIZEN',
     'field_responder': 'RESPONDER',
     'responder': 'RESPONDER',
-    'agency_coordinator': 'COORDINATOR',
-    'coordinator': 'COORDINATOR',
-    'incident_commander': 'COMMANDER',
-    'commander': 'COMMANDER',
-    'eoc_staff': 'EOC',
-    'eoc': 'EOC',
+    'agency_coordinator': 'RETIRED',
+    'coordinator': 'RETIRED',
+    'incident_commander': 'IMT',
+    'commander': 'IMT',
+    'dispatcher': 'DISPATCHER',
+    'dispatch': 'DISPATCHER',
+    'imt_staff': 'IMT',
+    'imt': 'IMT',
+    'eoc_staff': 'IMT',
+    'eoc': 'IMT',
     'admin': 'ADMIN',
 }
-OPERATIONAL_STAFF_ROLES = ('ADMIN', 'RESPONDER', 'COORDINATOR', 'COMMANDER', 'EOC')
+OPERATIONAL_STAFF_ROLES = ('ADMIN', 'RESPONDER', 'IMT', 'DISPATCHER')
 
 
 def normalize_role(role: str | None) -> str | None:
@@ -78,16 +82,17 @@ def is_responder() -> bool:
     return has_any_role('RESPONDER')
 
 
-def is_coordinator() -> bool:
-    return has_any_role('COORDINATOR')
+def is_imt() -> bool:
+    return has_any_role('IMT')
 
 
-def is_commander() -> bool:
-    return has_any_role('COMMANDER')
+def is_dispatcher() -> bool:
+    return has_any_role('DISPATCHER')
 
 
 def is_eoc() -> bool:
-    return has_any_role('EOC')
+    """Backward-compatible alias for IMT since legacy EOC roles still exist."""
+    return is_imt()
 
 
 def is_admin() -> bool:
@@ -103,7 +108,7 @@ def can_view_incident(user, incident) -> bool:
         return getattr(incident, 'user_id', None) == user.id
     if user_has_any_role(user, 'RESPONDER'):
         return True
-    if user_has_any_role(user, 'COORDINATOR', 'COMMANDER', 'EOC'):
+    if user_has_any_role(user, 'IMT', 'DISPATCHER'):
         return True
     return False
 
@@ -115,7 +120,7 @@ def can_edit_incident(user, incident) -> bool:
         return True
     if user_has_any_role(user, 'CITIZEN'):
         return getattr(incident, 'user_id', None) == user.id
-    if user_has_any_role(user, 'COORDINATOR', 'COMMANDER', 'EOC'):
+    if user_has_any_role(user, 'IMT', 'DISPATCHER'):
         return True
     return False
 
@@ -123,26 +128,25 @@ def can_edit_incident(user, incident) -> bool:
 def can_assign_task(user, incident) -> bool:
     if not user or not incident:
         return False
-    return user_has_any_role(user, 'ADMIN', 'COORDINATOR', 'COMMANDER', 'EOC')
+    return user_has_any_role(user, 'DISPATCHER')
 
 
 def can_allocate_resource(user, resource) -> bool:
     if not user or not resource:
         return False
-    return user_has_any_role(user, 'ADMIN', 'COORDINATOR', 'COMMANDER', 'EOC')
+    return user_has_any_role(user, 'DISPATCHER')
 
 
 def can_verify_incident(user) -> bool:
-    return user_has_any_role(user, 'ADMIN', 'EOC')
+    return user_has_any_role(user, 'ADMIN', 'IMT')
 
 
 def can_issue_alert(user) -> bool:
-    """Publishing an official, citizen-facing alert is an EOC/Commander
+    """Publishing an official, citizen-facing alert is an IMT
     operational action. Admin is intentionally excluded -- same boundary
     as the rest of admin's role being pure administration, not incident
-    operations (see is_agency_coordinator() in blueprints/common.py for the
-    coordinator-dashboard precedent for this)."""
-    return user_has_any_role(user, 'COMMANDER', 'EOC')
+    operations."""
+    return user_has_any_role(user, 'IMT')
 
 
 def can_manage_users(user) -> bool:
@@ -150,32 +154,18 @@ def can_manage_users(user) -> bool:
 
 
 def can_view_analytics(user) -> bool:
-    return user_has_any_role(user, 'ADMIN', 'COORDINATOR', 'COMMANDER', 'EOC')
+    return user_has_any_role(user, 'ADMIN', 'IMT', 'DISPATCHER')
 
 
 def can_manage_facilities(user) -> bool:
-    """Adding facilities to the directory is an EOC operational action.
+    """Adding facilities to the directory is an IMT operational action.
     Admin is intentionally excluded -- same boundary as can_issue_alert()."""
-    return user_has_any_role(user, 'EOC')
+    return user_has_any_role(user, 'IMT')
 
 
 def can_manage_evacuation_centers(user) -> bool:
-    return user_has_any_role(user, 'EOC', 'COORDINATOR')
-
-
-def can_request_resources(user) -> bool:
-    """Submitting an agency resource request is a coordinator action -- it's
-    asking EOC/Commander for something this coordinator's own agency
-    doesn't have on hand. Admin has no agency of its own to request on
-    behalf of, so it's intentionally excluded (see is_agency_coordinator()
-    in blueprints/common.py for the same boundary on the rest of the
-    coordinator dashboard)."""
-    return user_has_any_role(user, 'COORDINATOR')
-
-
-def can_decide_resource_request(user) -> bool:
-    return user_has_any_role(user, 'ADMIN', 'EOC', 'COMMANDER')
+    return user_has_any_role(user, 'IMT')
 
 
 def can_log_incident_report(user) -> bool:
-    return user_has_any_role(user, 'ADMIN', 'EOC')
+    return user_has_any_role(user, 'ADMIN', 'IMT')

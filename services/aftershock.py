@@ -422,6 +422,7 @@ def forecast_for_event(magnitude, event_time, target_magnitude=None, window_hour
         window_hours=window_hours,
     )
     forecast['message'] = build_forecast_message(forecast)
+    forecast['message_fil'] = build_forecast_message_fil(forecast)
     return forecast
 
 
@@ -527,4 +528,28 @@ def build_forecast_message(forecast):
         f"M{forecast['target_magnitude']}+ aftershock{radius_phrase} within {forecast['window_hours']}h "
         f"of the M{forecast['mainshock_magnitude']} mainshock{caveat}. "
         f"This is a probabilistic estimate, not a deterministic prediction."
+    )
+
+
+def build_forecast_message_fil(forecast):
+    """Filipino-language summary for aftershock probability messaging."""
+    if forecast['is_default_params']:
+        caveat = ' (gumagamit ng pandaigdigang default na parameter, hindi pa nakakalibrate para sa rehiyon na ito)'
+    elif forecast.get('is_proxy'):
+        caveat = ' (gumagamit ng parameter na hiniram mula sa ibang fault na may katulad na tectonic profile -- hindi direktang nakakalibrate para sa fault na ito)'
+    else:
+        caveat = ''
+
+    if forecast.get('radius_km') is not None and forecast.get('is_radius_modeled'):
+        radius_phrase = f" sa loob ng {forecast['radius_km']:.0f}km mula sa epicenter"
+    elif forecast.get('radius_km') is not None:
+        radius_phrase = f" (hiniling ang {forecast['radius_km']:.0f}km radius ngunit hindi modelo para sa rehiyong ito; ipinapakita ang zone-wide estimate)"
+    else:
+        radius_phrase = ""
+
+    return (
+        f"May mataas na posibilidad: {forecast['probability_pct']}% na magkaroon ng aftershock na "
+        f"M{forecast['target_magnitude']}+{radius_phrase} sa loob ng {forecast['window_hours']}h "
+        f"mula sa mainshock na M{forecast['mainshock_magnitude']}{caveat}. "
+        f"Ito ay probabilistic estimate, hindi tiyak na hula."
     )

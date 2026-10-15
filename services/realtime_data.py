@@ -21,10 +21,12 @@ _cache = {
     'volcano_events': {'data': None, 'timestamp': None},
     'thermal_hotspots': {'data': None, 'timestamp': None},
     'flood_footprints': {'data': None, 'timestamp': None},
-    'rainfall_watch': {'data': None, 'timestamp': None},
+    'rainfall_watch_san_pablo': {'data': None, 'timestamp': None},
     'typhoon_tracks': {'data': None, 'timestamp': None},
 }
 _cache_duration = 300  # 5 minutes
+_rainfall_cache_duration = timedelta(minutes=15)
+_rainfall_failure_cache_duration = timedelta(minutes=2)
 _CACHE_DB_PATH = Path(__file__).resolve().parents[1] / 'instance' / 'realtime_cache.sqlite3'
 
 
@@ -108,12 +110,15 @@ CALABARZON_CITIES = {
     'san fernando': 'San Fernando',
 }
 
+SAN_PABLO_CITY = 'San Pablo'
+SAN_PABLO_COORDINATES = (14.0683, 121.3256)
+
 CALABARZON_CITY_COORDINATES = {
     'Lipa': (13.9411, 121.1631),
     'Batangas': (13.7565, 121.0583),
     'Tanauan': (14.0863, 121.1497),
     'Calamba': (14.2117, 121.1653),
-    'San Pablo': (14.0683, 121.3256),
+    SAN_PABLO_CITY: SAN_PABLO_COORDINATES,
     'Lucena': (13.9373, 121.6172),
     'Tagaytay': (14.1153, 120.9621),
     'Imus': (14.4297, 120.9367),
@@ -128,6 +133,19 @@ CALABARZON_CITY_COORDINATES = {
     'Nagcarlan': (14.1364, 121.4165),
     'San Fernando': (14.8127, 120.4642),
 }
+SAN_PABLO_CITY_COORDINATES = {
+    SAN_PABLO_CITY: SAN_PABLO_COORDINATES,
+}
+
+_SAN_PABLO_BARANGAY_CENTROIDS_PATH = (
+    Path(__file__).resolve().parents[1] / 'data' / 'san_pablo_barangay_centroids.json'
+)
+with _SAN_PABLO_BARANGAY_CENTROIDS_PATH.open(encoding='utf-8') as centroid_file:
+    SAN_PABLO_BARANGAYS = json.load(centroid_file)['barangays']
+if len(SAN_PABLO_BARANGAYS) != 80:
+    raise ValueError(
+        f'Expected 80 San Pablo barangay centroids, found {len(SAN_PABLO_BARANGAYS)}'
+    )
 
 
 def _canonical_city_key(city):
@@ -141,7 +159,7 @@ def _canonical_city_key(city):
 
 
 def get_all_weather_data():
-    """Fetch current weather for every Calabarzon city in the supported list."""
+    """Fetch current weather across supported regional locations for context."""
     return {
         display_name: get_weather_data(city_key)
         for city_key, display_name in CALABARZON_CITIES.items()
@@ -560,22 +578,29 @@ def get_thermal_hotspots():
 
 
 def get_rainfall_watch():
-    """Fetch current and recent rainfall for CALABARZON from Open-Meteo."""
-    cache_key = 'rainfall_watch'
+    """Fetch current and 24-hour Open-Meteo rainfall for San Pablo barangays."""
+    cache_key = 'rainfall_watch_san_pablo'
     cached = _cache.get(cache_key)
     if cached and cached['data'] is not None and cached['timestamp'] is not None:
-        if utcnow() - _normalize_cache_timestamp(cached['timestamp']) < timedelta(seconds=_cache_duration):
+        cache_duration = (
+            _rainfall_cache_duration if cached['data']
+            else _rainfall_failure_cache_duration
+        )
+        if utcnow() - _normalize_cache_timestamp(cached['timestamp']) < cache_duration:
             return cached['data']
 
     shared = _read_shared_cache(cache_key, {'data': None, 'timestamp': None})
     if shared and shared.get('data') is not None and shared.get('timestamp') is not None:
-        if utcnow() - _normalize_cache_timestamp(shared['timestamp']) < timedelta(seconds=_cache_duration):
+        cache_duration = (
+            _rainfall_cache_duration if shared['data']
+            else _rainfall_failure_cache_duration
+        )
+        if utcnow() - _normalize_cache_timestamp(shared['timestamp']) < cache_duration:
             _cache[cache_key] = shared
             return shared['data']
 
-    names = list(CALABARZON_CITY_COORDINATES)
-    latitudes = ','.join(str(CALABARZON_CITY_COORDINATES[name][0]) for name in names)
-    longitudes = ','.join(str(CALABARZON_CITY_COORDINATES[name][1]) for name in names)
+    latitudes = ','.join(str(barangay['lat']) for barangay in SAN_PABLO_BARANGAYS)
+    longitudes = ','.join(str(barangay['lon']) for barangay in SAN_PABLO_BARANGAYS)
     params = {
         'latitude': latitudes,
         'longitude': longitudes,
@@ -591,33 +616,47 @@ def get_rainfall_watch():
     )
     data = _fetch_json(url)
     if not data:
-        return []
+        return _store_rainfall_watch_cache(cache_key, [])
 
     results = data if isinstance(data, list) else [data]
+    if len(results) != len(SAN_PABLO_BARANGAYS):
+        return _store_rainfall_watch_cache(cache_key, [])
+
     rainfall_points = []
-    for name, entry in zip(names, results):
-        current = (entry.get('current') or {}).get('precipitation') or 0
+    for barangay, entry in zip(SAN_PABLO_BARANGAYS, results):
+        current = (entry.get('current') or {}).get('precipitation')
         hourly = (entry.get('hourly') or {}).get('precipitation') or []
-        rainfall_mm = round(float(current), 1)
-        rainfall_24h_mm = round(sum(value for value in hourly if value is not None), 1)
-        lat, lon = CALABARZON_CITY_COORDINATES[name]
+        rainfall_mm = round(float(current), 1) if current is not None else None
+        hourly_values = [float(value) for value in hourly if value is not None]
+        rainfall_24h_mm = round(sum(hourly_values), 1) if hourly_values else None
         rainfall_points.append({
-            'name': name,
-            'lat': lat,
-            'lon': lon,
+            'barangay_code': barangay['code'],
+            'name': barangay['name'],
+            'lat': barangay['lat'],
+            'lon': barangay['lon'],
             'rainfall_mm': rainfall_mm,
             'rainfall_24h_mm': rainfall_24h_mm,
             'status': _rainfall_status(rainfall_mm),
             'source': 'Open-Meteo',
         })
 
+    return _store_rainfall_watch_cache(cache_key, rainfall_points)
+
+
+def _store_rainfall_watch_cache(cache_key, rainfall_points):
     now = utcnow()
-    _cache[cache_key] = {'data': rainfall_points, 'timestamp': now}
-    _write_shared_cache(cache_key, {'data': rainfall_points, 'timestamp': now.isoformat() + 'Z'})
+    cache_entry = {'data': rainfall_points, 'timestamp': now}
+    _cache[cache_key] = cache_entry
+    _write_shared_cache(
+        cache_key,
+        {'data': rainfall_points, 'timestamp': now.isoformat() + 'Z'},
+    )
     return rainfall_points
 
 
 def _rainfall_status(mm_per_hour):
+    if mm_per_hour is None:
+        return 'Rainfall unavailable'
     if mm_per_hour >= 30:
         return 'Torrential rain (Red)'
     if mm_per_hour >= 15:

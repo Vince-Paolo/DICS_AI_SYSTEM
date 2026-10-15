@@ -1,47 +1,9 @@
 /* /static/css/style.css */
 
-:root {
-    --bg-main: #0B0F19;         /* Deep Operations Midnight Blue */
-    --bg-card: #141B2D;         /* Sleek Dark Slate for Telemetry Cards */
-    --bg-nav: #080B14;          /* Pure Command Top Bar Background */
-    --text-primary: #F3F4F6;    /* Highly Visible Off-White */
-    --text-muted: #9CA3AF;      /* Muted Gray for Secondary Framework Data */
-    --text-subtle: #94A3B8;
-    --surface-subtle: rgba(255, 255, 255, 0.04);
-    --surface-muted: rgba(255, 255, 255, 0.06);
-    --surface-elevated: rgba(20, 27, 45, 0.95);
-    
-    /* Hazard Operational Tiers */
-    --hazard-low: #10B981;      /* Emerald Green - Stable Telemetry */
-    --hazard-mod: #F59E0B;      /* Amber / Orange - Active System Watch */
-    --hazard-high: #EF4444;     /* Crimson Red - Force Outbreak Warning */
-    --accent-glow: #3B82F6;     /* Matrix UI Blue */
-    --border-color: rgba(255, 255, 255, 0.07);
-
-    /* Semantic status colors shared by badges, alerts, and operational labels. */
-    --status-info: #93C5FD;
-    --status-success: #86EFAC;
-    --status-danger: #FCA5A5;
-    --status-warning: #FCD34D;
-    --status-neutral: #94A3B8;
-
-    /* Shared type scale: micro, label, body, and display tiers. */
-    --type-xs: 0.65rem;
-    --type-sm: 0.75rem;
-    --type-md: 0.85rem;
-    --type-body: 0.95rem;
-    --type-lg: 1.05rem;
-    --type-xl: 1.25rem;
-    --type-2xl: 1.5rem;
-    --type-3xl: 1.85rem;
-    --type-4xl: 2.5rem;
-    --type-icon: 1.1rem;
-}
-
 body {
     background-color: var(--bg-main) !important;
     color: var(--text-primary) !important;
-    font-family: 'SF Pro Display', -apple-system, 'Segoe UI', Roboto, sans-serif;
+    font-family: var(--font-family-sans);
     letter-spacing: 0.01em;
     line-height: 1.6;
     font-size: var(--type-body);
@@ -149,16 +111,16 @@ body {
 }
 
 .backup-confirm-submit {
-    background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+    background: linear-gradient(135deg, var(--action-primary), var(--accent-glow));
     border: 1px solid rgba(96, 165, 250, 0.65);
-    color: #ffffff;
+    color: var(--text-on-accent);
     box-shadow: 0 10px 22px rgba(59, 130, 246, 0.25);
     padding: 0.7rem 1.25rem;
 }
 
 .backup-confirm-submit:hover {
-    background: linear-gradient(135deg, #2563eb, #60a5fa);
-    color: #ffffff;
+    background: linear-gradient(135deg, var(--action-primary-hover), var(--focus-ring));
+    color: var(--text-on-accent);
     transform: translateY(-1px);
     box-shadow: 0 12px 26px rgba(59, 130, 246, 0.35);
 }
@@ -257,7 +219,7 @@ button:focus-visible,
 .navbar-custom .navbar-brand {
     font-weight: 800;
     letter-spacing: 0.08em;
-    color: #ffffff !important;
+    color: var(--text-on-accent) !important;
     text-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
 }
 .navbar-custom .nav-link {
@@ -269,7 +231,7 @@ button:focus-visible,
 }
 .navbar-custom .nav-link:hover, 
 .navbar-custom .nav-item.active .nav-link {
-    color: #ffffff !important;
+    color: var(--text-on-accent) !important;
 }
 
 /* Command Console Cards */
@@ -476,7 +438,7 @@ button:focus-visible,
 .list-group-item:hover {
     background-color: rgba(59, 130, 246, 0.12) !important;
     border-color: rgba(59, 130, 246, 0.3) !important;
-    color: #ffffff !important;
+    color: var(--text-on-accent) !important;
 }
 .list-group-flush .list-group-item {
     border-left: 0;
@@ -511,49 +473,53 @@ button:focus-visible,
 /* Tables in Dark Theme */
 .table {
     color: var(--text-primary) !important;
+    --bs-table-color: var(--table-body-text);
+    --bs-table-bg: var(--table-bg);
+    --bs-table-border-color: var(--table-border);
+}
+.table > :not(caption) > * > * {
+    border-color: var(--table-border);
 }
 .table thead th {
-    background-color: rgba(10, 13, 26, 0.8) !important;
-    color: #E0E7FF !important;
-    border-bottom: 2px solid var(--border-color) !important;
+    background-color: var(--table-head-bg) !important;
+    color: var(--table-head-text) !important;
+    border-bottom: 2px solid var(--table-border) !important;
     font-weight: 700;
 }
 .table tbody td {
-    background-color: transparent !important;
-    color: #D1D5DB !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    background-color: var(--table-bg) !important;
+    color: var(--table-body-text) !important;
+    border-bottom: 1px solid var(--table-border) !important;
 }
 .table tbody th {
-    background-color: transparent !important;
-    color: #E0E7FF !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    background-color: var(--table-bg) !important;
+    color: var(--table-head-text) !important;
+    border-bottom: 1px solid var(--table-border) !important;
     font-weight: 700;
 }
-.table-striped tbody tr:nth-of-type(odd) {
-    background-color: rgba(59, 130, 246, 0.05) !important;
+.table-striped > tbody > tr:nth-of-type(odd) > *,
+.table-active > * {
+    background-color: var(--table-row-alt) !important;
 }
-.table-striped tbody tr:hover {
-    background-color: rgba(59, 130, 246, 0.12) !important;
+.table tbody tr:hover > * {
+    background-color: var(--table-row-hover) !important;
 }
 .table-borderless {
     color: var(--text-primary) !important;
 }
 .table-borderless tbody th {
-    background-color: transparent !important;
-    color: #E0E7FF !important;
+    background-color: var(--table-bg) !important;
+    color: var(--table-head-text) !important;
     font-weight: 700;
     padding: 0.85rem 1rem;
 }
 .table-borderless tbody td {
-    background-color: transparent !important;
-    color: #D1D5DB !important;
+    background-color: var(--table-bg) !important;
+    color: var(--table-body-text) !important;
     padding: 0.85rem 1rem;
 }
-.table-borderless tbody tr:nth-of-type(odd) {
-    background-color: rgba(59, 130, 246, 0.05) !important;
-}
-.table-borderless tbody tr:hover {
-    background-color: rgba(59, 130, 246, 0.12) !important;
+.table-borderless tbody tr:nth-of-type(odd) > * {
+    background-color: var(--table-row-alt) !important;
 }
 .form-label {
     color: #D1D5DB !important;
@@ -662,30 +628,33 @@ p.text-muted {
     color: var(--text-primary) !important;
 }
 .table-custom thead th {
-    background-color: #0A0D1A !important;
-    color: #E0E7FF !important;
+    background-color: var(--table-head-bg) !important;
+    color: var(--table-head-text) !important;
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.06em;
     font-weight: 700;
-    border-bottom: 2px solid var(--border-color) !important;
+    border-bottom: 2px solid var(--table-border) !important;
     padding: 0.75rem 1rem;
 }
 .table-custom tbody td {
-    border-bottom: 1px solid var(--border-color) !important;
+    border-bottom: 1px solid var(--table-border) !important;
     padding: 0.85rem 1rem;
-    background-color: transparent !important;
-    color: #D1D5DB !important;
+    background-color: var(--table-bg) !important;
+    color: var(--table-body-text) !important;
     font-weight: 500;
 }
 .table-custom tbody tr:hover {
-    background-color: rgba(59, 130, 246, 0.08) !important;
+    background-color: var(--table-row-hover) !important;
+}
+.table-custom tbody tr:hover > * {
+    background-color: var(--table-row-hover) !important;
 }
 
 /* Action Interface Buttons */
 .btn-brand {
     background: linear-gradient(135deg, #2563EB, #1D4ED8) !important;
-    color: #ffffff !important;
+    color: var(--text-on-accent) !important;
     border: 1px solid rgba(255, 255, 255, 0.12) !important;
     font-weight: 600;
     text-transform: uppercase;
@@ -784,7 +753,7 @@ p.text-muted {
 }
 .flash-message-info {
     border-color: rgba(59, 130, 246, 0.55) !important;
-    border-left: 4px solid #3b82f6 !important;
+    border-left: 4px solid var(--accent-glow) !important;
     background-color: rgba(59, 130, 246, 0.1) !important;
     color: #bfdbfe !important;
 }
@@ -828,7 +797,7 @@ p.text-muted {
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    color: #ffffff;
+    color: var(--text-on-accent);
     font-weight: 800;
     font-size: 1.05rem;
     text-shadow: 0 0 6px rgba(0, 0, 0, 0.35);
@@ -847,7 +816,7 @@ p.text-muted {
 .leaflet-popup-content-wrapper,
 .leaflet-popup-tip {
     background: rgba(15, 23, 42, 0.96);
-    color: #ffffff;
+    color: var(--text-on-accent);
     border-radius: 0.75rem;
     box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
 }
@@ -1092,7 +1061,7 @@ p.text-muted {
 
 .btn-primary-modern {
     background: linear-gradient(135deg, #1E40AF, #1D4ED8);
-    color: #ffffff;
+    color: var(--text-on-accent);
     box-shadow: 0 4px 15px rgba(29, 78, 216, 0.3);
     white-space: nowrap;
 }
@@ -1105,7 +1074,7 @@ p.text-muted {
 
 .btn-success-modern {
     background: linear-gradient(135deg, #065F46, #047857);
-    color: #ffffff;
+    color: var(--text-on-accent);
     box-shadow: 0 4px 15px rgba(6, 95, 70, 0.3);
     white-space: nowrap;
 }
@@ -1308,8 +1277,11 @@ p.text-muted {
 }
 
 .table-enhanced tbody tr:hover {
-    background-color: rgba(59, 130, 246, 0.15) !important;
-    box-shadow: inset -4px 0 0 rgba(59, 130, 246, 0.5);
+    background-color: var(--table-row-hover) !important;
+    box-shadow: inset -4px 0 0 var(--accent-glow);
+}
+.table-enhanced tbody tr:hover > * {
+    background-color: var(--table-row-hover) !important;
 }
 
 /* Icon Badge Enhancement */
@@ -1371,7 +1343,7 @@ p.text-muted {
 .card-custom .card-body ul,
 .card-custom .card-body ol,
 .card-custom .card-body li {
-    color: #d1d5db;
+    color: var(--text-soft);
 }
 
 @media (min-width: 992px) {
@@ -1505,7 +1477,7 @@ p.text-muted {
     margin-bottom: 0.5rem;
     font-size: var(--type-lg);
     font-weight: 700;
-    color: #ffffff;
+    color: var(--text-on-accent);
 }
 
 .status-banner .status-detail {
@@ -1613,7 +1585,7 @@ p.text-muted {
 
 .fab-primary {
     background: linear-gradient(135deg, #1E40AF, #1D4ED8);
-    color: #ffffff;
+    color: var(--text-on-accent);
     box-shadow: 0 4px 12px rgba(29, 78, 216, 0.4);
 }
 
@@ -3497,7 +3469,7 @@ body {
     outline-offset: 1px;
 }
 .btn-auth {
-    background: linear-gradient(135deg, #60a5fa, #3b82f6);
+    background: linear-gradient(135deg, var(--focus-ring), var(--accent-glow));
     color: #06101F;
     border: none;
     font-weight: 700;
