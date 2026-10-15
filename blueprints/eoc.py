@@ -1,13 +1,374 @@
+import re
+from datetime import timezone
+
 from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, session, url_for
 from flask_babel import gettext as _
 from sqlalchemy import and_
 from sqlalchemy.orm import aliased
 
-from models import AIRecommendation, AuditEvent, db, Incident, IncidentResponse, Resource, ResourceRequest, Alert, Report, User, Task, utcnow
+from models import AIRecommendation, AuditEvent, BarangayContactLog, BarangayResponseUnit, Barangay, db, Incident, IncidentResponse, Municipality, PatientRecord, Resource, Alert, Report, ResponseTeam, User, Task, utcnow
 from blueprints.common import is_eoc_staff, current_user
 from services import permissions as permission_service
+from services.response_decision_support import (
+    OUTCOMES,
+    build_response_assessment,
+    is_assessable_response_incident,
+    sign_response_assessment,
+)
 
 eoc_bp = Blueprint('eoc', __name__)
+
+
+def _require_emergency_log_access():
+    if not (permission_service.is_imt() or permission_service.is_dispatcher()):
+        abort(403)
+
+
+def _get_emergency_incident(incident_id):
+    incident = db.get_or_404(Incident, incident_id)
+    if incident.hazard_type != 'EMERGENCY':
+        abort(404)
+    return incident
+
+
+def _timeline_sort_key(event):
+    occurred_at = event['occurred_at']
+    if occurred_at.tzinfo is None:
+        occurred_at = occurred_at.replace(tzinfo=timezone.utc)
+    return occurred_at.timestamp()
+
+
+@eoc_bp.route('/eoc/emergency-log')
+def emergency_log():
+    _require_emergency_log_access()
+    search = request.args.get('q', '').strip()
+    query = Incident.query.filter_by(hazard_type='EMERGENCY')
+    if search:
+        term = f'%{search}%'
+        query = query.filter(
+            db.or_(
+                Incident.control_number.ilike(term),
+                Incident.location.ilike(term),
+            )
+        )
+
+    incidents = query.order_by(
+        db.cast(db.func.substr(Incident.control_number, 1, 4), db.Integer).desc(),
+        db.cast(db.func.substr(Incident.control_number, 6), db.Integer).desc(),
+    ).all()
+    barangays = Barangay.query.join(Municipality).filter(
+        Municipality.code == '043424'
+    ).order_by(Barangay.name).all()
+    return render_template(
+        'pages/eoc_emergency_log.html',
+        incidents=incidents,
+        barangays=barangays,
+        search=search,
+        can_create_emergency=permission_service.is_dispatcher(),
+    )
+
+
+@eoc_bp.route('/eoc/emergency-search')
+def emergency_search():
+    _require_emergency_log_access()
+    control_number = request.args.get('q', '').strip().upper()
+    if not re.fullmatch(r'\d{4}-\d{5}', control_number):
+        flash(_('Enter a valid control number, for example 2026-00001.'), 'warning')
+        return redirect(url_for('eoc.emergency_log'))
+
+    incident = Incident.query.filter_by(control_number=control_number).first()
+    if incident is None:
+        flash(_('No incident was found with control number %(control_number)s.') % {
+            'control_number': control_number,
+        }, 'info')
+        return redirect(url_for('eoc.emergency_log'))
+    if incident.hazard_type != 'EMERGENCY':
+        flash(_(
+            'Control number %(control_number)s belongs to a %(incident_type)s record, '
+            'not a dispatcher-logged emergency. This search only opens dispatcher-logged emergencies.'
+        ) % {
+            'control_number': control_number,
+            'incident_type': incident.hazard_type,
+        }, 'info')
+        return redirect(url_for('eoc.emergency_log'))
+    return redirect(url_for('eoc.emergency_log_detail', incident_id=incident.id))
+
+
+@eoc_bp.route('/eoc/emergency-log/<int:incident_id>')
+def emergency_log_detail(incident_id):
+    _require_emergency_log_access()
+    incident = db.get_or_404(Incident, incident_id)
+    if not is_assessable_response_incident(incident):
+        abort(404)
+    is_emergency_record = incident.hazard_type == 'EMERGENCY'
+    is_dispatcher = permission_service.is_dispatcher()
+    can_edit_emergency_assessment = is_emergency_record and (
+        is_dispatcher or permission_service.is_imt()
+    )
+    can_dispatch = is_dispatcher and is_emergency_record
+    is_open = incident.status not in {'REJECTED', 'RESOLVED', 'CLOSED'} and not (
+        incident.response and incident.response.status in {'CLOSED', 'RESOLVED'}
+    )
+    response_assessment = build_response_assessment(incident) if is_open else None
+    response_decisions = AIRecommendation.query.filter_by(
+        incident_id=incident.id,
+        recommendation_type='response_decision_support',
+    ).order_by(AIRecommendation.created_at.desc()).limit(10).all()
+    dispatch_responders = []
+    response_teams = []
+    response_units = []
+    contact_logs = []
+    barangays = []
+    if can_edit_emergency_assessment:
+        barangays = Barangay.query.join(Municipality).filter(
+            Municipality.code == '043424'
+        ).order_by(Barangay.name).all()
+    if can_dispatch:
+        dispatch_responders = User.query.filter_by(
+            role='field_responder',
+            is_disabled=False,
+        ).order_by(User.full_name, User.username).all()
+        response_teams = [
+            team for team in ResponseTeam.query.order_by(ResponseTeam.name).all()
+            if any(
+                member.role == 'field_responder'
+                and not member.is_disabled
+                for member in team.members
+            )
+        ]
+    if is_dispatcher:
+        response_units = BarangayResponseUnit.query.join(Barangay).join(Municipality).filter(
+            Municipality.code == '043424'
+        ).order_by(Barangay.name).all()
+        contact_logs = BarangayContactLog.query.filter_by(
+            incident_id=incident.id,
+        ).order_by(BarangayContactLog.contacted_at.desc()).all()
+    timeline_events = []
+
+    def add_timeline_event(occurred_at, title, detail, icon):
+        if occurred_at:
+            timeline_events.append({
+                'occurred_at': occurred_at,
+                'title': title,
+                'detail': detail,
+                'icon': icon,
+            })
+
+    add_timeline_event(
+        incident.created_at,
+        'Emergency logged',
+        incident.control_number,
+        'bi-plus-circle',
+    )
+    if incident.event_time and incident.event_time != incident.created_at:
+        add_timeline_event(
+            incident.event_time,
+            'Reported event time',
+            'Time the emergency was reported to have occurred.',
+            'bi-clock',
+        )
+    if incident.response:
+        add_timeline_event(
+            incident.response.started_at,
+            'Response started',
+            incident.response.status,
+            'bi-broadcast-pin',
+        )
+        for task in incident.response.tasks:
+            add_timeline_event(
+                task.created_at,
+                'Dispatch task assigned',
+                f'{task.title} · {task.status}',
+                'bi-list-task',
+            )
+    for entry in response_decisions:
+        add_timeline_event(
+            entry.created_at,
+            'Dispatcher decision recorded',
+            OUTCOMES.get(entry.decision, entry.decision or 'Not recorded'),
+            'bi-clipboard2-check',
+        )
+    for log in contact_logs:
+        add_timeline_event(
+            log.contacted_at,
+            'Barangay contacted',
+            f'{log.response_unit.barangay.name} · {log.outcome.replace("_", " ").title()} via {log.contact_method.lower()}',
+            'bi-telephone',
+        )
+    for patient in incident.patient_records:
+        add_timeline_event(
+            patient.created_at,
+            'Patient record added',
+            None,
+            'bi-heart-pulse',
+        )
+        if patient.updated_at and patient.updated_at != patient.created_at:
+            add_timeline_event(
+                patient.updated_at,
+                'Patient record updated',
+                None,
+                'bi-pencil',
+            )
+    timeline_events.sort(key=_timeline_sort_key, reverse=True)
+    return render_template(
+        'pages/eoc_emergency_detail.html',
+        incident=incident,
+        can_dispatch=can_dispatch,
+        can_log_contact=is_dispatcher,
+        can_record_decision=is_dispatcher,
+        can_edit_emergency_assessment=can_edit_emergency_assessment,
+        barangays=barangays,
+        is_emergency_record=is_emergency_record,
+        response_assessment=response_assessment,
+        response_assessment_token=(
+            sign_response_assessment(incident.id, response_assessment)
+            if response_assessment and is_dispatcher else None
+        ),
+        response_decisions=response_decisions,
+        response_outcomes=OUTCOMES,
+        dispatch_responders=dispatch_responders,
+        response_teams=response_teams,
+        response_units=response_units,
+        contact_logs=contact_logs,
+        timeline_events=timeline_events[:50],
+    )
+
+
+@eoc_bp.route('/eoc/emergency-log/<int:incident_id>/assessment', methods=['POST'])
+def update_emergency_assessment(incident_id):
+    _require_emergency_log_access()
+    incident = _get_emergency_incident(incident_id)
+    severity = request.form.get('severity', '').strip()
+    barangay_id = request.form.get('barangay_id', type=int)
+    if severity not in {'Low', 'Moderate', 'High', 'Severe'} or barangay_id is None:
+        flash('Select a valid severity and San Pablo barangay.', 'error')
+        return redirect(url_for('eoc.emergency_log_detail', incident_id=incident.id))
+
+    barangay = Barangay.query.join(Municipality).filter(
+        Barangay.id == barangay_id,
+        Municipality.code == '043424',
+    ).first()
+    if barangay is None:
+        flash('Select a barangay within San Pablo City.', 'error')
+        return redirect(url_for('eoc.emergency_log_detail', incident_id=incident.id))
+
+    old_severity = incident.level
+    old_barangay = db.session.get(Barangay, incident.barangay_id) if incident.barangay_id else None
+    changes = []
+    if old_severity != severity:
+        changes.append(f'Severity changed from {old_severity or "not recorded"} to {severity}.')
+    if incident.barangay_id != barangay.id:
+        changes.append(
+            f'Barangay changed from {old_barangay.name if old_barangay else "not recorded"} '
+            f'to {barangay.name}.'
+        )
+
+    incident.level = severity
+    incident.barangay_id = barangay.id
+    incident.municipality_id = barangay.municipality_id
+    if changes:
+        editor = current_user()
+        db.session.add(AuditEvent(
+            user_id=editor.id if editor else None,
+            entity_type='Incident',
+            entity_id=incident.id,
+            action='ASSESSMENT_FIELDS_UPDATED',
+            details=' '.join(changes),
+        ))
+
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception('Failed to update emergency assessment fields')
+        flash('Unable to update severity and barangay. Please try again.', 'error')
+        return redirect(url_for('eoc.emergency_log_detail', incident_id=incident.id))
+
+    flash('Emergency severity and barangay updated.', 'success')
+    return redirect(url_for('eoc.emergency_log_detail', incident_id=incident.id))
+
+
+@eoc_bp.route('/eoc/emergency-log/<int:incident_id>/patient-count', methods=['POST'])
+def update_emergency_patient_count(incident_id):
+    _require_emergency_log_access()
+    incident = _get_emergency_incident(incident_id)
+    patient_count = request.form.get('patient_count', type=int)
+    if patient_count is None or patient_count < len(incident.patient_records):
+        flash('Patient count must be a non-negative number and cannot be less than the recorded patients.', 'error')
+    else:
+        incident.patient_count = patient_count
+        db.session.commit()
+        flash('Patient count updated.', 'success')
+    return redirect(url_for('eoc.emergency_log_detail', incident_id=incident.id))
+
+
+@eoc_bp.route('/eoc/emergency-log/<int:incident_id>/patients', methods=['POST'])
+def add_emergency_patient(incident_id):
+    _require_emergency_log_access()
+    incident = _get_emergency_incident(incident_id)
+    condition = request.form.get('condition', '').strip()
+    destination = request.form.get('destination', '').strip()
+    status = request.form.get('status', 'RECEIVING_CARE').strip().upper()
+    if not condition or len(condition) > 255 or len(destination) > 255 or not status or len(status) > 50:
+        flash('Condition and a status of 50 characters or fewer are required; destination must be 255 characters or fewer.', 'error')
+        return redirect(url_for('eoc.emergency_log_detail', incident_id=incident.id))
+
+    incident.patient_records.append(PatientRecord(
+        condition=condition,
+        destination=destination or None,
+        status=status,
+    ))
+    incident.patient_count = max(incident.patient_count, len(incident.patient_records))
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception('Failed to add an emergency patient record')
+        flash('Unable to save the patient record. Please try again.', 'error')
+    else:
+        flash('Patient record added.', 'success')
+    return redirect(url_for('eoc.emergency_log_detail', incident_id=incident.id))
+
+
+@eoc_bp.route('/eoc/emergency-log/<int:incident_id>/patients/<int:patient_id>', methods=['POST'])
+def update_emergency_patient(incident_id, patient_id):
+    _require_emergency_log_access()
+    incident = _get_emergency_incident(incident_id)
+    patient = db.get_or_404(PatientRecord, patient_id)
+    if patient.incident_id != incident.id:
+        abort(404)
+
+    condition = request.form.get('condition', '').strip()
+    destination = request.form.get('destination', '').strip()
+    status = request.form.get('status', '').strip().upper()
+    if not condition or len(condition) > 255 or len(destination) > 255 or not status or len(status) > 50:
+        flash('Condition and a status of 50 characters or fewer are required; destination must be 255 characters or fewer.', 'error')
+    else:
+        patient.condition = condition
+        patient.destination = destination or None
+        patient.status = status
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception('Failed to update an emergency patient record')
+            flash('Unable to update the patient record. Please try again.', 'error')
+        else:
+            flash('Patient record updated.', 'success')
+    return redirect(url_for('eoc.emergency_log_detail', incident_id=incident.id))
+
+
+@eoc_bp.route('/eoc/emergency-log/<int:incident_id>/patients/<int:patient_id>/delete', methods=['POST'])
+def delete_emergency_patient(incident_id, patient_id):
+    _require_emergency_log_access()
+    incident = _get_emergency_incident(incident_id)
+    patient = db.get_or_404(PatientRecord, patient_id)
+    if patient.incident_id != incident.id:
+        abort(404)
+    db.session.delete(patient)
+    db.session.commit()
+    flash('Patient record deleted.', 'success')
+    return redirect(url_for('eoc.emergency_log_detail', incident_id=incident.id))
 
 
 @eoc_bp.route('/eoc-dashboard')
@@ -93,11 +454,31 @@ def eoc_incident_monitoring():
         flash('EOC Staff access required.', 'danger')
         return redirect(url_for('dashboard'))
 
+    view_filter = request.args.get('view', 'active').strip().lower()
+    if view_filter not in {'active', 'verification', 'closed'}:
+        view_filter = 'active'
     level_filter = request.args.get('level', '').strip()
     hazard_filter = request.args.get('hazard', '').strip()
     status_filter = request.args.get('status', '').strip()
 
     query = db.session.query(Incident)
+    closed_statuses = ['REJECTED', 'RESOLVED', 'CLOSED']
+    closed_responses = ['RESOLVED', 'CLOSED']
+    if view_filter == 'verification':
+        query = query.filter(Incident.status == 'NEW')
+    elif view_filter == 'closed':
+        query = query.filter(db.or_(
+            Incident.status.in_(closed_statuses),
+            Incident.response.has(IncidentResponse.status.in_(closed_responses)),
+        ))
+    else:
+        query = query.filter(
+            db.or_(
+                Incident.status.is_(None),
+                ~Incident.status.in_(['NEW', *closed_statuses]),
+            ),
+            ~Incident.response.has(IncidentResponse.status.in_(closed_responses)),
+        )
     if level_filter:
         query = query.filter(Incident.level == level_filter)
     if hazard_filter:
@@ -138,9 +519,26 @@ def eoc_incident_monitoring():
         )
     ).filter(active_response.id.is_(None)).count()
 
+    tab_counts = {
+        'active': Incident.query.filter(
+            db.or_(
+                Incident.status.is_(None),
+                ~Incident.status.in_(['NEW', *closed_statuses]),
+            ),
+            ~Incident.response.has(IncidentResponse.status.in_(closed_responses)),
+        ).count(),
+        'verification': Incident.query.filter_by(status='NEW').count(),
+        'closed': Incident.query.filter(db.or_(
+            Incident.status.in_(closed_statuses),
+            Incident.response.has(IncidentResponse.status.in_(closed_responses)),
+        )).count(),
+    }
+
     return render_template('pages/eoc_incident_monitoring.html',
                          incidents=incidents,
                          hazard_types=hazard_types,
+                         view_filter=view_filter,
+                         tab_counts=tab_counts,
                          level_filter=level_filter,
                          hazard_filter=hazard_filter,
                          status_filter=status_filter,
@@ -157,17 +555,11 @@ def eoc_resource_monitoring():
         return redirect(url_for('dashboard'))
 
     status_filter = request.args.get('status', '').strip()
-    agency_filter = request.args.get('agency', '').strip()
-
     query = db.session.query(Resource).join(IncidentResponse).join(Incident)
     if status_filter:
         query = query.filter(Resource.status == status_filter)
-    if agency_filter:
-        query = query.filter(Resource.agency == agency_filter)
 
     resources = query.order_by(Resource.allocated_at.desc()).all()
-
-    agencies = [row[0] for row in db.session.query(Resource.agency).distinct().order_by(Resource.agency).all()]
 
     total_deployed = db.session.query(Resource).filter(Resource.status == 'DEPLOYED').count()
     total_available = db.session.query(Resource).filter(Resource.status == 'AVAILABLE').count()
@@ -176,20 +568,13 @@ def eoc_resource_monitoring():
         Resource.status == 'DEPLOYED'
     ).scalar()
 
-    agency_breakdown = db.session.query(
-        Resource.agency, db.func.count(Resource.id)
-    ).filter(Resource.status == 'DEPLOYED').group_by(Resource.agency).order_by(db.func.count(Resource.id).desc()).all()
-
     return render_template('pages/eoc_resource_monitoring.html',
                          resources=resources,
-                         agencies=agencies,
                          status_filter=status_filter,
-                         agency_filter=agency_filter,
                          total_deployed=total_deployed,
                          total_available=total_available,
                          total_returning=total_returning,
-                         total_units=total_units,
-                         agency_breakdown=agency_breakdown)
+                         total_units=total_units)
 
 
 @eoc_bp.route('/admin/alerts/<int:incident_id>/toggle', methods=['POST'])
@@ -263,14 +648,11 @@ def verify_incident(incident_id):
 @eoc_bp.route('/admin/incidents/<int:incident_id>/reject', methods=['POST'])
 def reject_incident(incident_id):
     user = current_user()
-    if not user or not permission_service.has_any_role('EOC', 'COMMANDER'):
+    if not user or not permission_service.has_any_role('IMT'):
         return {'error': 'Unauthorized'}, 403
 
     incident = db.get_or_404(Incident, incident_id)
     response = incident.response
-    if permission_service.is_commander() and (not response or response.commander_id != user.id):
-        return {'error': 'Forbidden'}, 403
-
     reason = request.form.get('reason', '').strip()
     if not reason:
         flash('A reason is required to mark an incident as a false alarm.', 'error')
@@ -307,7 +689,7 @@ def reject_incident(incident_id):
         return redirect(url_for('admin.eoc_verifications'))
 
     flash('Incident marked as rejected false alarm.', 'success')
-    return redirect(url_for('commander.incident_commander_dashboard') if permission_service.is_commander() else url_for('admin.eoc_verifications'))
+    return redirect(url_for('eoc.eoc_dashboard'))
 
 
 @eoc_bp.route('/admin/incidents/<int:incident_id>/assign-commander', methods=['POST'])
@@ -330,7 +712,11 @@ def assign_commander(incident_id):
         return redirect(url_for('admin.eoc_verifications'))
 
     commander = db.session.get(User, commander_id)
-    if not commander or commander.role != 'incident_commander':
+    if (
+        not commander
+        or commander.is_disabled
+        or not permission_service.user_has_any_role(commander, 'IMT')
+    ):
         flash('Invalid commander selected.', 'error')
         return redirect(url_for('admin.eoc_verifications'))
 
@@ -384,7 +770,11 @@ def transfer_commander(response_id):
         return redirect(url_for('admin.eoc_operations'))
 
     new_commander = db.session.get(User, new_commander_id)
-    if not new_commander or new_commander.role != 'incident_commander':
+    if (
+        not new_commander
+        or new_commander.is_disabled
+        or not permission_service.user_has_any_role(new_commander, 'IMT')
+    ):
         flash('Invalid commander selected.', 'error')
         return redirect(url_for('admin.eoc_operations'))
 
@@ -418,136 +808,15 @@ def transfer_commander(response_id):
     return redirect(url_for('admin.eoc_operations'))
 
 
-@eoc_bp.route('/eoc/resource-requests')
-def eoc_resource_requests():
-    """Review requests submitted by agency coordinators and decide on them."""
-    if not permission_service.can_decide_resource_request(current_user()):
-        flash('You do not have permission to review resource requests.', 'danger')
-        return redirect(url_for('dashboard'))
-
-    status_filter = request.args.get('status', 'OPEN').strip().upper()
-    query = ResourceRequest.query
-    user = current_user()
-    if permission_service.is_commander():
-        query = query.join(Incident).join(IncidentResponse).filter(
-            IncidentResponse.commander_id == user.id
-        )
-    if status_filter and status_filter != 'ALL':
-        query = query.filter(ResourceRequest.status == status_filter)
-    requests_ = query.order_by(ResourceRequest.created_at.desc()).all()
-
-    open_count = ResourceRequest.query.filter_by(status='OPEN').count()
-
-    return render_template('pages/eoc_resource_requests.html',
-        requests=requests_,
-        status_filter=status_filter,
-        open_count=open_count,
-    )
-
-
-@eoc_bp.route('/eoc/resource-requests/<int:request_id>/decide', methods=['POST'])
-def eoc_decide_resource_request(request_id):
-    user = current_user()
-    if not permission_service.can_decide_resource_request(user):
-        flash('You do not have permission to decide resource requests.', 'danger')
-        return redirect(url_for('dashboard'))
-
-    resource_request = db.get_or_404(ResourceRequest, request_id)
-    if permission_service.is_commander():
-        response = resource_request.incident.response if resource_request.incident else None
-        if not response or response.commander_id != user.id:
-            abort(403)
-    decision = request.form.get('decision', '').strip().upper()
-    notes = request.form.get('notes', '').strip()
-
-    if decision not in ('APPROVED', 'DENIED', 'FULFILLED'):
-        flash('Invalid decision.', 'error')
-        return redirect(url_for('eoc.eoc_resource_requests'))
-
-    response = resource_request.incident.response if resource_request.incident else None
-
-    # Fulfilling a request means resources actually get committed to the
-    # response -- that only makes sense once a response exists to commit
-    # them to, so this is blocked rather than silently marking a request
-    # fulfilled with nothing behind it.
-    if decision == 'FULFILLED' and response is None:
-        flash(
-            'This incident has no active response yet. A commander must '
-            'activate the response before this request can be fulfilled.',
-            'error',
-        )
-        return redirect(url_for('eoc.eoc_resource_requests'))
-
-    resource_request.status = decision
-    resource_request.decision_notes = notes or None
-    resource_request.decided_by_id = user.id
-    resource_request.decided_at = utcnow()
-
-    audit_details = (
-        f'Request #{resource_request.id} ({resource_request.quantity}x '
-        f'{resource_request.resource_type} for {resource_request.agency}) '
-        f'marked {decision} by {user.username}.'
-    )
-
-    created_resource = None
-    if decision == 'FULFILLED':
-        created_resource = Resource(
-            incident_response_id=response.id,
-            resource_request_id=resource_request.id,
-            resource_type=resource_request.resource_type,
-            agency=resource_request.agency or 'Unassigned',
-            quantity=resource_request.quantity,
-            status='DEPLOYED',
-            notes=f'Auto-allocated from Resource Request #{resource_request.id}.',
-        )
-        db.session.add(created_resource)
-        audit_details += f' Resource allocation created for response #{response.id}.'
-
-    try:
-        db.session.flush()
-        db.session.add(AuditEvent(
-            user_id=user.id,
-            entity_type='ResourceRequest',
-            entity_id=resource_request.id,
-            action=f'DECISION_{decision}',
-            details=audit_details,
-        ))
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
-        current_app.logger.exception('EOC operation failed')
-        flash('Unable to complete the EOC operation. Please try again.', 'error')
-        return redirect(url_for('eoc.eoc_resource_requests'))
-
-    if created_resource:
-        flash(_('Request #%(request_id)s marked fulfilled — %(quantity)s x %(resource_type)s '
-                'allocated to response #%(incident_id)s.') % {
-            'request_id': resource_request.id,
-            'quantity': resource_request.quantity,
-            'resource_type': resource_request.resource_type,
-            'incident_id': response.id,
-        }, 'success')
-    else:
-        flash(_('Request #%(request_id)s marked %(decision)s.') % {
-            'request_id': resource_request.id,
-            'decision': decision.title(),
-        }, 'success')
-    return redirect(url_for('eoc.eoc_resource_requests'))
-
-
 @eoc_bp.route('/eoc/alerts')
 def official_alerts():
-    """Official, citizen-facing alerts -- separate from the automatic AI risk
-    flag on Incident.alert, which stays an internal signal on the
-    verification page. Viewable by EOC/Commander/Coordinator; Admin is
-    intentionally excluded (pure administration, not incident operations).
-    Issuing/resolving is gated to can_issue_alert (EOC/Commander)."""
-    if not permission_service.has_any_role('EOC', 'COMMANDER', 'COORDINATOR'):
+    """Official, citizen-facing alerts are an IMT operational action."""
+    if not permission_service.has_any_role('IMT'):
         flash('You do not have permission to view alerts.', 'danger')
         return redirect(url_for('dashboard'))
 
     status_filter = request.args.get('status', 'ACTIVE').strip().upper()
-    query = Alert.query
+    query = Alert.query.filter_by(audience='PUBLIC')
     if status_filter and status_filter != 'ALL':
         query = query.filter(Alert.status == status_filter)
     alerts = query.order_by(Alert.created_at.desc()).all()
@@ -587,6 +856,7 @@ def issue_alert():
     alert = Alert(
         incident_id=incident_id or None,
         user_id=user.id,
+        audience='PUBLIC',
         title=title,
         message=message,
         severity=severity,
@@ -620,7 +890,7 @@ def resolve_alert(alert_id):
         flash('You do not have permission to resolve alerts.', 'danger')
         return redirect(url_for('dashboard'))
 
-    alert = db.get_or_404(Alert, alert_id)
+    alert = Alert.query.filter_by(id=alert_id, audience='PUBLIC').first_or_404()
     alert.status = 'RESOLVED'
     try:
         db.session.flush()

@@ -10,12 +10,13 @@ from flask import Blueprint, current_app, flash, redirect, render_template, requ
 from flask_babel import gettext as _
 from werkzeug.security import generate_password_hash
 
-from models import AuditEvent, db, User, Incident, IncidentResponse, Agency, utcnow
+from models import AuditEvent, db, User, Incident, IncidentResponse, utcnow
 from blueprints.common import is_admin, is_eoc_staff
 from services import permissions as permission_service
 from services.passwords import verify_and_migrate
 
 admin_bp = Blueprint('admin', __name__)
+ASSIGNABLE_USER_ROLES = ('citizen', 'field_responder', 'imt_staff', 'dispatcher', 'admin')
 
 
 def _build_pg_dump_command(database_uri, backup_path):
@@ -69,17 +70,17 @@ def eoc_verifications():
         return redirect(url_for('dashboard'))
 
     incidents = Incident.query.order_by(Incident.created_at.desc()).all()
-    commanders = User.query.filter_by(role='incident_commander', is_disabled=False).all()
-    return render_template('pages/eoc_verifications.html', incidents=incidents, commanders=commanders)
+    imt_staff = User.query.filter_by(role='imt_staff', is_disabled=False).all()
+    return render_template('pages/eoc_verifications.html', incidents=incidents, imt_staff=imt_staff)
 
 
 @admin_bp.route('/all-incidents')
 def all_incidents():
-    """Show all incidents for operational roles (admin, coordinator, commander, eoc_staff)"""
+    """Show all incidents for administrators and IMT staff."""
     if 'username' not in session:
         return redirect(url_for('login'))
 
-    if not permission_service.has_any_role('ADMIN', 'COORDINATOR', 'COMMANDER', 'EOC'):
+    if not permission_service.has_any_role('ADMIN', 'IMT'):
         flash('You do not have permission to view all incidents.', 'danger')
         return redirect(url_for('dashboard'))
 
@@ -89,11 +90,11 @@ def all_incidents():
 
 @admin_bp.route('/all-alerts')
 def all_alerts():
-    """Show all active alerts for operational roles (admin, coordinator, commander, eoc_staff)"""
+    """Show all active alerts for administrators and IMT staff."""
     if 'username' not in session:
         return redirect(url_for('login'))
 
-    if not permission_service.has_any_role('ADMIN', 'COORDINATOR', 'COMMANDER', 'EOC'):
+    if not permission_service.has_any_role('ADMIN', 'IMT'):
         flash('You do not have permission to view all alerts.', 'danger')
         return redirect(url_for('dashboard'))
 
@@ -109,9 +110,8 @@ def manage_users():
         return redirect(url_for('dashboard'))
 
     users = User.query.order_by(User.created_at.desc()).all()
-    roles = ['user', 'agency_coordinator', 'incident_commander', 'field_responder', 'eoc_staff', 'admin']
-    agencies = Agency.query.order_by(Agency.name).all()
-    return render_template('pages/user_management.html', users=users, roles=roles, agencies=agencies)
+    roles = ASSIGNABLE_USER_ROLES
+    return render_template('pages/user_management.html', users=users, roles=roles)
 
 
 @admin_bp.route('/admin/users/new')
@@ -121,8 +121,7 @@ def new_user():
         flash('Admin access required.', 'danger')
         return redirect(url_for('dashboard'))
 
-    agencies = Agency.query.order_by(Agency.name).all()
-    return render_template('pages/user_create.html', agencies=agencies)
+    return render_template('pages/user_create.html')
 
 
 @admin_bp.route('/admin/users/add', methods=['POST'])
@@ -138,11 +137,14 @@ def add_user():
         password = request.form.get('password', '').strip()
         full_name = request.form.get('full_name', '').strip()
         contact_number = request.form.get('contact_number', '').strip()
-        agency = request.form.get('agency', '').strip()
-        role = request.form.get('role', 'citizen')
+        role = request.form.get('role', 'citizen').strip().lower()
 
         if not username or not password or not email:
             flash('Username, email, and password are required.', 'error')
+            return redirect(url_for('admin.new_user'))
+
+        if role not in ASSIGNABLE_USER_ROLES:
+            flash('Select a valid account role.', 'error')
             return redirect(url_for('admin.new_user'))
 
         if len(password) < 8:
@@ -157,22 +159,12 @@ def add_user():
             flash('Email already registered.', 'error')
             return redirect(url_for('admin.new_user'))
 
-        agency_linked_roles = {'agency_coordinator', 'field_responder'}
-        valid_agency_names = [a.name for a in Agency.query.all()]
-        if role in agency_linked_roles and not agency:
-            flash('An agency must be selected for this role, or tasks/resources assigned to it will never reach this user.', 'error')
-            return redirect(url_for('admin.new_user'))
-        if agency and agency not in valid_agency_names:
-            flash(_('Invalid agency "%(agency)s". Please select from the list.') % {'agency': agency}, 'error')
-            return redirect(url_for('admin.new_user'))
-
         new_user = User(
             username=username,
             email=email,
             password=generate_password_hash(password),
             full_name=full_name,
             contact_number=contact_number,
-            agency=agency,
             role=role,
             email_verified=True,
         )
@@ -209,21 +201,20 @@ def update_user(user_id):
                 flash('Cannot remove last admin account.', 'error')
                 return redirect(url_for('admin.manage_users'))
 
-        new_agency = request.form.get('agency', user.agency or '').strip()
-        new_role = request.form.get('role', user.role)
-
-        agency_linked_roles = {'agency_coordinator', 'field_responder'}
-        valid_agency_names = [a.name for a in Agency.query.all()]
-        if new_role in agency_linked_roles and not new_agency:
-            flash('An agency must be selected for this role, or tasks/resources assigned to it will never reach this user.', 'error')
-            return redirect(url_for('admin.manage_users'))
-        if new_agency and new_agency not in valid_agency_names:
-            flash(_('Invalid agency "%(agency)s". Please select from the list.') % {'agency': new_agency}, 'error')
-            return redirect(url_for('admin.manage_users'))
+        requested_role = request.form.get('role', user.role).strip().lower()
+        if user.role == 'retired':
+            if requested_role not in {'', 'retired'}:
+                flash('Retired accounts cannot be returned to active service.', 'error')
+                return redirect(url_for('admin.manage_users'))
+            new_role = 'retired'
+        else:
+            if requested_role not in ASSIGNABLE_USER_ROLES:
+                flash('Select a valid account role.', 'error')
+                return redirect(url_for('admin.manage_users'))
+            new_role = requested_role
 
         user.full_name = request.form.get('full_name', user.full_name).strip()
         user.contact_number = request.form.get('contact_number', user.contact_number).strip()
-        user.agency = new_agency
         user.role = new_role
 
         try:
@@ -251,6 +242,10 @@ def toggle_user_status(user_id):
     user = db.get_or_404(User, user_id)
 
     try:
+        if user.role == 'retired':
+            flash('Retired accounts cannot be enabled.', 'error')
+            return redirect(url_for('admin.manage_users'))
+
         if user.role == 'admin' and not user.is_disabled:
             admin_count = User.query.filter_by(role='admin', is_disabled=False).count()
             if admin_count <= 1:
@@ -289,12 +284,12 @@ def eoc_operations():
         IncidentResponse.status.in_(['CLOSED', 'RESOLVED'])
     ).order_by(IncidentResponse.closed_at.desc()).limit(10).all()
 
-    commanders = User.query.filter_by(role='incident_commander', is_disabled=False).all()
+    imt_staff = User.query.filter_by(role='imt_staff', is_disabled=False).all()
 
     return render_template('pages/eoc_operations.html',
                            active_responses=active_responses,
                            closed_responses=closed_responses,
-                           commanders=commanders)
+                           imt_staff=imt_staff)
 
 
 def verify_admin_password(user, password):

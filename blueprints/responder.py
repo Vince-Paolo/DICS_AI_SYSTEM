@@ -5,6 +5,7 @@ from io import BytesIO
 from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for
 from flask_babel import gettext as _
 from PIL import Image, UnidentifiedImageError
+from sqlalchemy import or_
 from sqlalchemy.orm.exc import StaleDataError
 from werkzeug.utils import secure_filename
 
@@ -66,14 +67,21 @@ def _current_responder():
     return redirect(url_for('dashboard'))
 
 
+def _responder_task_query(user):
+    team_ids = [team.id for team in user.response_teams]
+    assigned_conditions = [Task.assigned_to_user_id == user.id]
+    if team_ids:
+        assigned_conditions.append(Task.assigned_to_team_id.in_(team_ids))
+    return Task.query.filter(or_(*assigned_conditions))
+
+
 @responder_bp.route('/responder-dashboard')
 def responder_dashboard():
     user = _current_responder()
     if not isinstance(user, User):
         return user
 
-    session['agency'] = user.agency or 'FIELD UNIT'
-    my_tasks = Task.query.filter_by(assigned_to_agency=user.agency or '').order_by(Task.created_at.desc()).all()
+    my_tasks = _responder_task_query(user).order_by(Task.created_at.desc()).all()
     my_reports = IncidentMessage.query.filter_by(reporter_id=user.id).order_by(IncidentMessage.created_at.desc()).limit(8).all()
     active_responses = IncidentResponse.query.filter_by(status='ACTIVE').order_by(IncidentResponse.started_at.desc()).all()
 
@@ -97,7 +105,7 @@ def responder_tasks():
         return user
 
     status_filter = request.args.get('status', '').upper()
-    query = Task.query.filter_by(assigned_to_agency=user.agency or '')
+    query = _responder_task_query(user)
     if status_filter:
         query = query.filter(Task.status == status_filter)
 
@@ -130,10 +138,10 @@ def responder_checklist():
     checklist_items = [
         ('ppe', 'Personal Protective Equipment (PPE) donned and inspected'),
         ('comms', 'Radio / communication device tested and frequency confirmed'),
-        ('briefing', 'Incident briefing received from coordinator'),
+        ('briefing', 'Incident briefing received and understood'),
         ('vehicle', 'Vehicle / equipment checked and fuelled'),
         ('firstaid', 'First aid kit and supplies on board'),
-        ('id', 'ID and agency credentials on person'),
+        ('id', 'Responder ID and required credentials on person'),
         ('gps', 'GPS / location device active and confirmed'),
         ('buddy', 'Buddy system / team members confirmed'),
     ]
@@ -264,17 +272,26 @@ def responder_update_task(task_id):
         return user
 
     task = db.get_or_404(Task, task_id)
-    if task.assigned_to_agency != (user.agency or ''):
+    assigned_team_ids = {team.id for team in user.response_teams}
+    is_assigned = (
+        task.assigned_to_user_id == user.id
+        or task.assigned_to_team_id in assigned_team_ids
+    )
+    if not is_assigned:
         flash('You can only update tasks assigned to your unit.', 'danger')
         return redirect(url_for('responder.responder_tasks'))
 
     new_status = request.form.get('status', '').upper()
-    if new_status in {'PENDING', 'IN_PROGRESS', 'COMPLETED', 'FAILED'}:
-        task.status = new_status
-        if new_status == 'COMPLETED':
-            task.completed_at = utcnow()
-        else:
-            task.completed_at = None
+    has_remarks = 'remarks' in request.form
+    if new_status in {'PENDING', 'IN_PROGRESS', 'COMPLETED'} or has_remarks:
+        if new_status:
+            if new_status not in {'PENDING', 'IN_PROGRESS', 'COMPLETED'}:
+                flash('A valid task status was not provided.', 'danger')
+                return redirect(url_for('responder.responder_tasks'))
+            task.status = new_status
+            task.completed_at = utcnow() if new_status == 'COMPLETED' else None
+        if has_remarks:
+            task.remarks = request.form.get('remarks', '').strip() or None
         try:
             db.session.commit()
         except StaleDataError:
@@ -286,9 +303,9 @@ def responder_update_task(task_id):
             current_app.logger.exception('Responder operation failed')
             flash('Unable to complete the responder operation. Please try again.', 'error')
             return redirect(url_for('responder.responder_tasks'))
-        flash('Task status updated.', 'success')
+        flash('Task status and remarks updated.' if new_status else 'Task remarks saved.', 'success')
     else:
-        flash('A valid task status was not provided.', 'danger')
+        flash('A task status or remarks must be provided.', 'danger')
 
     return redirect(url_for('responder.responder_tasks'))
 

@@ -45,23 +45,22 @@ def _log_audit(user, entity_type, entity_id, action, details):
 
 @facilities_bp.route('/facilities')
 def list_facilities():
-    """Reference directory of critical infrastructure. Read access for EOC/
-    Commander/Coordinator; Admin is intentionally excluded (pure
-    administration, not incident operations); only EOC can add new entries
+    """Reference directory of critical infrastructure. Read access for IMT;
+    Admin is intentionally excluded (pure administration); only IMT can add entries
     (see can_manage_facilities)."""
     if 'username' not in session:
         return redirect(url_for('login'))
-    if not permission_service.has_any_role('EOC', 'COMMANDER', 'COORDINATOR'):
+    if not permission_service.has_any_role('IMT'):
         flash('You do not have permission to view the facility directory.', 'danger')
         return redirect(url_for('dashboard'))
 
     facility_type_filter = request.args.get('type', '').strip()
-    query = Facility.query
+    query = Facility.query.join(Municipality).filter(Municipality.code == '043424')
     if facility_type_filter:
         query = query.filter(Facility.facility_type == facility_type_filter)
     facilities = query.order_by(Facility.name).all()
 
-    provinces = Province.query.order_by(Province.name).all()
+    provinces = Province.query.filter_by(name='Laguna').order_by(Province.name).all()
 
     return render_template(
         'pages/facilities.html',
@@ -77,7 +76,7 @@ def list_facilities():
 def add_facility():
     user = _current_user()
     if not permission_service.can_manage_facilities(user):
-        flash('Only EOC staff can add facilities.', 'danger')
+        flash('Only IMT staff can add facilities.', 'danger')
         return redirect(url_for('facilities.list_facilities'))
 
     name = request.form.get('name', '').strip()
@@ -99,17 +98,27 @@ def add_facility():
 
     if barangay_id:
         barangay = db.session.get(Barangay, barangay_id)
-        if not barangay or (municipality_id and barangay.municipality_id != municipality_id):
+        if not barangay or (
+            barangay.municipality_id != municipality_id
+            or not Municipality.query.filter_by(id=barangay.municipality_id, code='043424').first()
+        ):
             flash('Please select a barangay within the selected municipality.', 'error')
             return redirect(url_for('facilities.list_facilities'))
         municipality_id = barangay.municipality_id
     if municipality_id:
         municipality = db.session.get(Municipality, municipality_id)
-        if not municipality or (province_id and municipality.province_id != province_id):
+        if (
+            not municipality
+            or municipality.code != '043424'
+            or (province_id and municipality.province_id != province_id)
+        ):
             flash('Please select a municipality within the selected province.', 'error')
             return redirect(url_for('facilities.list_facilities'))
         province_id = municipality.province_id
-    if province_id and not db.session.get(Province, province_id):
+    if province_id and (
+        not db.session.get(Province, province_id)
+        or db.session.get(Province, province_id).name.casefold() != 'laguna'
+    ):
         flash('Please select a valid province.', 'error')
         return redirect(url_for('facilities.list_facilities'))
 

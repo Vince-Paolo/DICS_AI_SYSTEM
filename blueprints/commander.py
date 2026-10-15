@@ -4,22 +4,21 @@ from flask import Blueprint, abort, current_app, flash, jsonify, redirect, rende
 from flask_babel import gettext as _
 from sqlalchemy.orm.exc import StaleDataError
 
-from models import AIRecommendation, AuditEvent, db, User, Incident, IncidentResponse, Task, Resource, IncidentMessage, PostIncidentReport, Agency, EvacuationCenter, EvacuationRecord, utcnow
-from blueprints.common import is_incident_commander
+from models import AIRecommendation, AuditEvent, db, User, Incident, IncidentResponse, Task, Resource, IncidentMessage, PostIncidentReport, EvacuationCenter, EvacuationRecord, utcnow
+from blueprints.common import is_eoc_staff
 
 commander_bp = Blueprint('commander', __name__)
 
 
 @commander_bp.route('/incident-commander-dashboard')
 def incident_commander_dashboard():
-    if not is_incident_commander():
-        flash('Incident Commander access required.', 'danger')
+    if not is_eoc_staff():
+        flash('IMT access required.', 'danger')
         return redirect(url_for('dashboard'))
 
     commander = User.query.filter_by(username=session['username']).first()
 
     active_responses = db.session.query(IncidentResponse).filter(
-        IncidentResponse.commander_id == commander.id,
         IncidentResponse.status.in_(['ACTIVE', 'MONITORING'])
     ).all()
 
@@ -42,11 +41,9 @@ def incident_commander_dashboard():
     total_active = len(active_responses)
     total_critical = len(critical_incidents)
     total_tasks = db.session.query(Task).join(IncidentResponse).filter(
-        IncidentResponse.commander_id == commander.id,
         Task.status != 'COMPLETED'
     ).count()
     total_resources = db.session.query(Resource).join(IncidentResponse).filter(
-        IncidentResponse.commander_id == commander.id,
         Resource.status == 'DEPLOYED'
     ).count()
 
@@ -60,9 +57,19 @@ def incident_commander_dashboard():
                          total_resources=total_resources)
 
 
+@commander_bp.route('/commander/dispatcher-operations')
+def dispatcher_operations():
+    if not is_eoc_staff():
+        abort(403)
+    responses = IncidentResponse.query.filter(
+        IncidentResponse.dispatched_by_id.isnot(None)
+    ).order_by(IncidentResponse.updated_at.desc()).all()
+    return render_template('pages/commander_dispatcher_operations.html', responses=responses)
+
+
 @commander_bp.route('/incident/<int:incident_id>/activate-response', methods=['POST'])
 def activate_incident_response(incident_id):
-    if not is_incident_commander():
+    if not is_eoc_staff():
         return jsonify({'error': 'Unauthorized'}), 403
 
     incident = db.get_or_404(Incident, incident_id)
@@ -153,13 +160,11 @@ def activate_incident_response(incident_id):
 
 @commander_bp.route('/incident-response/<int:response_id>/reject', methods=['POST'])
 def reject_incident_response(response_id):
-    if not is_incident_commander():
+    if not is_eoc_staff():
         return jsonify({'error': 'Unauthorized'}), 403
 
     commander = User.query.filter_by(username=session['username']).first()
     response = db.get_or_404(IncidentResponse, response_id)
-    if response.commander_id != commander.id:
-        abort(403)
 
     reason = request.form.get('reason', '').strip()
     if not reason:
@@ -218,7 +223,7 @@ def compile_incident_timeline(response):
             'type': 'task_assign',
             'icon': 'bi-list-task',
             'badge_class': 'bg-primary',
-            'details': f"Assigned to {task.assigned_to_agency} (Priority: {task.priority})."
+            'details': f"Assigned to {task.assignee_label} (Priority: {task.priority})."
         })
         if task.completed_at:
             events.append({
@@ -227,7 +232,7 @@ def compile_incident_timeline(response):
                 'type': 'task_complete',
                 'icon': 'bi-check-circle-fill',
                 'badge_class': 'bg-success',
-                'details': f"Completed by {task.assigned_to_agency}."
+                'details': f"Completed by {task.assignee_label}."
             })
 
     for resource in response.resources:
@@ -237,7 +242,7 @@ def compile_incident_timeline(response):
             'type': 'resource_allocate',
             'icon': 'bi-boxes',
             'badge_class': 'bg-info',
-            'details': f"Allocated from {resource.agency}."
+            'details': f"CDRRMO resource allocated."
         })
         if resource.deployed_at:
             events.append({
@@ -277,13 +282,11 @@ def compile_incident_timeline(response):
 
 @commander_bp.route('/incident-response/<int:response_id>/post-incident-evaluation', methods=['POST'])
 def post_incident_evaluation(response_id):
-    if not is_incident_commander():
+    if not is_eoc_staff():
         return jsonify({'error': 'Unauthorized'}), 403
 
     commander = User.query.filter_by(username=session['username']).first()
     response = db.get_or_404(IncidentResponse, response_id)
-    if response.commander_id != commander.id:
-        abort(403)
 
     lessons_learned = (request.form.get('lessons_learned') or '').strip()
     response_rating = request.form.get('response_rating', '').strip()
@@ -328,14 +331,12 @@ def incident_response_no_id():
 
 @commander_bp.route('/incident-response/<int:response_id>')
 def incident_response_detail(response_id):
-    if not is_incident_commander():
+    if not is_eoc_staff():
         flash('Incident Commander access required.', 'danger')
         return redirect(url_for('dashboard'))
 
     commander = User.query.filter_by(username=session['username']).first()
     response = db.get_or_404(IncidentResponse, response_id)
-    if response.commander_id != commander.id:
-        abort(403)
     incident = response.incident
     if incident is None:
         flash('The incident linked to this response could not be found. It may have been deleted.', 'danger')
@@ -376,60 +377,48 @@ def incident_response_detail(response_id):
 
 @commander_bp.route('/incident-response/<int:response_id>/tasks')
 def incident_response_tasks(response_id):
-    if not is_incident_commander():
+    if not is_eoc_staff():
         flash('Incident Commander access required.', 'danger')
         return redirect(url_for('dashboard'))
 
     commander = User.query.filter_by(username=session['username']).first()
     response = db.get_or_404(IncidentResponse, response_id)
-    if response.commander_id != commander.id:
-        abort(403)
     if response.incident is None:
         flash('The incident linked to this response could not be found. It may have been deleted.', 'danger')
         return redirect(url_for('commander.incident_commander_dashboard'))
     tasks = Task.query.filter_by(incident_response_id=response_id).all()
-    agencies = Agency.query.order_by(Agency.name).all()
-
     return render_template('pages/incident_response_tasks.html',
                          response=response,
                          tasks=tasks,
-                         agencies=agencies,
                          active_tab='tasks')
 
 
 @commander_bp.route('/incident-response/<int:response_id>/resources')
 def incident_response_resources(response_id):
-    if not is_incident_commander():
+    if not is_eoc_staff():
         flash('Incident Commander access required.', 'danger')
         return redirect(url_for('dashboard'))
 
     commander = User.query.filter_by(username=session['username']).first()
     response = db.get_or_404(IncidentResponse, response_id)
-    if response.commander_id != commander.id:
-        abort(403)
     if response.incident is None:
         flash('The incident linked to this response could not be found. It may have been deleted.', 'danger')
         return redirect(url_for('commander.incident_commander_dashboard'))
     resources = Resource.query.filter_by(incident_response_id=response_id).all()
-    agencies = Agency.query.order_by(Agency.name).all()
-
     return render_template('pages/incident_response_resources.html',
                          response=response,
                          resources=resources,
-                         agencies=agencies,
                          active_tab='resources')
 
 
 @commander_bp.route('/incident-response/<int:response_id>/reports')
 def incident_response_reports(response_id):
-    if not is_incident_commander():
+    if not is_eoc_staff():
         flash('Incident Commander access required.', 'danger')
         return redirect(url_for('dashboard'))
 
     commander = User.query.filter_by(username=session['username']).first()
     response = db.get_or_404(IncidentResponse, response_id)
-    if response.commander_id != commander.id:
-        abort(403)
     if response.incident is None:
         flash('The incident linked to this response could not be found. It may have been deleted.', 'danger')
         return redirect(url_for('commander.incident_commander_dashboard'))
@@ -443,14 +432,12 @@ def incident_response_reports(response_id):
 
 @commander_bp.route('/incident-response/<int:response_id>/timeline')
 def incident_response_timeline(response_id):
-    if not is_incident_commander():
+    if not is_eoc_staff():
         flash('Incident Commander access required.', 'danger')
         return redirect(url_for('dashboard'))
 
     commander = User.query.filter_by(username=session['username']).first()
     response = db.get_or_404(IncidentResponse, response_id)
-    if response.commander_id != commander.id:
-        abort(403)
     if response.incident is None:
         flash('The incident linked to this response could not be found. It may have been deleted.', 'danger')
         return redirect(url_for('commander.incident_commander_dashboard'))
@@ -464,14 +451,12 @@ def incident_response_timeline(response_id):
 
 @commander_bp.route('/incident-response/<int:response_id>/close', methods=['GET', 'POST'])
 def incident_response_close_page(response_id):
-    if not is_incident_commander():
+    if not is_eoc_staff():
         flash('Incident Commander access required.', 'danger')
         return redirect(url_for('dashboard'))
 
     commander = User.query.filter_by(username=session['username']).first()
     response = db.get_or_404(IncidentResponse, response_id)
-    if response.commander_id != commander.id:
-        abort(403)
 
     if request.method == 'POST':
         summary = request.form.get('notes', '').strip()
@@ -527,13 +512,11 @@ def incident_response_close_page(response_id):
 
 @commander_bp.route('/incident-response/<int:response_id>/reopen', methods=['POST'])
 def reopen_incident_response(response_id):
-    if not is_incident_commander():
+    if not is_eoc_staff():
         return jsonify({'error': 'Unauthorized'}), 403
 
     commander = User.query.filter_by(username=session['username']).first()
     response = db.get_or_404(IncidentResponse, response_id)
-    if response.commander_id != commander.id:
-        abort(403)
     if response.status != 'CLOSED':
         flash('Only closed incident responses can be reopened.', 'warning')
         return redirect(url_for('commander.incident_response_detail', response_id=response.id))
@@ -565,108 +548,6 @@ def reopen_incident_response(response_id):
     return redirect(url_for('commander.incident_response_detail', response_id=response.id))
 
 
-@commander_bp.route('/incident-response/<int:response_id>/assign-task', methods=['GET', 'POST'])
-def assign_task(response_id):
-    if not is_incident_commander():
-        flash('Incident Commander access required.', 'danger')
-        return redirect(url_for('dashboard'))
-
-    commander = User.query.filter_by(username=session['username']).first()
-    response = db.get_or_404(IncidentResponse, response_id)
-    if response.commander_id != commander.id:
-        abort(403)
-
-    agencies = Agency.query.order_by(Agency.name).all()
-
-    if request.method == 'POST':
-        agency = request.form.get('agency', '').strip()
-        title = request.form.get('title')
-        description = request.form.get('description')
-        priority = request.form.get('priority', 'MEDIUM')
-        estimated_completion = request.form.get('estimated_completion')
-
-        # Validate agency exists in the Agency table
-        valid_agency_names = [a.name for a in agencies]
-        if agency not in valid_agency_names:
-            flash(_('Invalid agency "%(agency)s". Please select from the list.') % {'agency': agency}, 'error')
-            return redirect(url_for('commander.incident_response_tasks', response_id=response_id))
-
-        task = Task(
-            incident_response_id=response_id,
-            assigned_to_agency=agency,
-            assigned_by_id=commander.id,
-            title=title,
-            description=description,
-            priority=priority,
-            status='PENDING',
-            estimated_completion=datetime.fromisoformat(estimated_completion) if estimated_completion else None
-        )
-
-        db.session.add(task)
-        try:
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-            current_app.logger.exception('Commander operation failed')
-            flash('Unable to complete the commander operation. Please try again.', 'error')
-            return redirect(url_for('commander.incident_response_tasks', response_id=response_id))
-
-        flash(_('Task "%(title)s" assigned to %(agency)s.') % {'title': title, 'agency': agency}, 'success')
-        return redirect(url_for('commander.incident_response_tasks', response_id=response_id))
-
-    return render_template('pages/assign_task.html', response=response, agencies=agencies, active_tab='tasks')
-
-
-@commander_bp.route('/incident-response/<int:response_id>/allocate-resource', methods=['GET', 'POST'])
-def allocate_resource(response_id):
-    if not is_incident_commander():
-        flash('Incident Commander access required.', 'danger')
-        return redirect(url_for('dashboard'))
-
-    commander = User.query.filter_by(username=session['username']).first()
-    response = db.get_or_404(IncidentResponse, response_id)
-    if response.commander_id != commander.id:
-        abort(403)
-
-    if request.method == 'POST':
-        resource_type = request.form.get('resource_type')
-        agency = request.form.get('agency')
-        quantity = int(request.form.get('quantity', 1))
-        location = request.form.get('location')
-        notes = request.form.get('notes')
-
-        if quantity < 1:
-            flash('Quantity must be at least 1.', 'error')
-            return redirect(url_for('commander.incident_response_resources', response_id=response_id))
-
-        resource = Resource(
-            incident_response_id=response_id,
-            resource_type=resource_type,
-            agency=agency,
-            quantity=quantity,
-            location=location,
-            notes=notes,
-            status='AVAILABLE'
-        )
-
-        db.session.add(resource)
-        try:
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-            current_app.logger.exception('Commander operation failed')
-            flash('Unable to complete the commander operation. Please try again.', 'error')
-            return redirect(url_for('commander.incident_response_resources', response_id=response_id))
-
-        flash(_('Resource allocated: %(quantity)s x %(resource_type)s from %(agency)s.') % {
-            'quantity': quantity,
-            'resource_type': resource_type,
-            'agency': agency,
-        }, 'success')
-
-    return redirect(url_for('commander.incident_response_resources', response_id=response_id))
-
-
 @commander_bp.route('/incident-response/<int:response_id>/evacuate', methods=['POST'])
 def record_evacuation(response_id):
     """Move people into an evacuation center as part of this response.
@@ -677,14 +558,12 @@ def record_evacuation(response_id):
     always agree, and the closure summary can be computed from real
     records instead of a free-text number.
     """
-    if not is_incident_commander():
+    if not is_eoc_staff():
         flash('Incident Commander access required.', 'danger')
         return redirect(url_for('dashboard'))
 
     commander = User.query.filter_by(username=session['username']).first()
     response = db.get_or_404(IncidentResponse, response_id)
-    if response.commander_id != commander.id:
-        abort(403)
 
     center = db.get_or_404(EvacuationCenter, request.form.get('evacuation_center_id', type=int))
     people_count = request.form.get('people_count', type=int)
@@ -752,20 +631,14 @@ def create_situation_report(response_id):
     """
     Create a situation report for an incident response.
     
-    Only the assigned Incident Commander can create situation reports for their response.
-    
-    Agency Coordinators use the separate coordinator_submit_report route to submit
-    broadcast messages and reports for their agency's participation.
+    IMT staff can create situation reports for incident responses.
     """
-    if not is_incident_commander():
-        flash('Only Incident Commanders can create situation reports. Coordinators use their Coordinator portal to submit reports.', 'danger')
+    if not is_eoc_staff():
+        flash('IMT access required to create situation reports.', 'danger')
         return redirect(url_for('dashboard'))
 
     commander = User.query.filter_by(username=session['username']).first()
     response = db.get_or_404(IncidentResponse, response_id)
-    if response.commander_id != commander.id:
-        flash('You can only create situation reports for incidents you command.', 'danger')
-        return redirect(url_for('commander.incident_commander_dashboard'))
     reporter = commander
 
     if request.method == 'POST':
@@ -805,21 +678,26 @@ def create_situation_report(response_id):
 
 @commander_bp.route('/incident-response/<int:response_id>/update-task/<int:task_id>', methods=['POST'])
 def update_task(response_id, task_id):
-    if not is_incident_commander():
+    if not is_eoc_staff():
         return jsonify({'error': 'Unauthorized'}), 403
 
     commander = User.query.filter_by(username=session['username']).first()
     response = db.get_or_404(IncidentResponse, response_id)
-    if response.commander_id != commander.id:
-        abort(403)
     task = db.get_or_404(Task, task_id)
     if task.incident_response_id != response.id:
         abort(404)
     status = request.form.get('status')
+    has_remarks = 'remarks' in request.form
+    if status and status not in {'PENDING', 'IN_PROGRESS', 'COMPLETED'}:
+        abort(400)
+    if not status and not has_remarks:
+        abort(400)
 
-    task.status = status
-    if status == 'COMPLETED':
-        task.completed_at = utcnow()
+    if status:
+        task.status = status
+        task.completed_at = utcnow() if status == 'COMPLETED' else None
+    if has_remarks:
+        task.remarks = request.form.get('remarks', '').strip() or None
 
     try:
         db.session.commit()
@@ -833,19 +711,20 @@ def update_task(response_id, task_id):
         flash('Unable to complete the commander operation. Please try again.', 'error')
         return redirect(url_for('commander.incident_response_tasks', response_id=response_id))
 
-    flash(_('Task status updated to %(status)s.') % {'status': status}, 'success')
+    if status:
+        flash(_('Task status updated to %(status)s.') % {'status': status}, 'success')
+    else:
+        flash(_('Task remarks saved.'), 'success')
     return redirect(url_for('commander.incident_response_tasks', response_id=response_id))
 
 
 @commander_bp.route('/incident-response/<int:response_id>/update-resource/<int:resource_id>', methods=['POST'])
 def update_resource(response_id, resource_id):
-    if not is_incident_commander():
+    if not is_eoc_staff():
         return jsonify({'error': 'Unauthorized'}), 403
 
     commander = User.query.filter_by(username=session['username']).first()
     response = db.get_or_404(IncidentResponse, response_id)
-    if response.commander_id != commander.id:
-        abort(403)
     resource = db.get_or_404(Resource, resource_id)
     if resource.incident_response_id != response.id:
         abort(404)
@@ -876,23 +755,20 @@ def update_resource(response_id, resource_id):
 
 @commander_bp.route('/api/incident-response-stats')
 def get_incident_response_stats():
-    if not is_incident_commander():
+    if not is_eoc_staff():
         return jsonify({'error': 'Unauthorized'}), 403
 
     commander = User.query.filter_by(username=session['username']).first()
 
     active_responses = db.session.query(IncidentResponse).filter(
-        IncidentResponse.commander_id == commander.id,
         IncidentResponse.status.in_(['ACTIVE', 'MONITORING'])
     ).count()
 
     pending_tasks = db.session.query(Task).join(IncidentResponse).filter(
-        IncidentResponse.commander_id == commander.id,
         Task.status.in_(['PENDING', 'IN_PROGRESS'])
     ).count()
 
     deployed_resources = db.session.query(Resource).join(IncidentResponse).filter(
-        IncidentResponse.commander_id == commander.id,
         Resource.status == 'DEPLOYED'
     ).count()
 

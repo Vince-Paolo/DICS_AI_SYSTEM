@@ -41,8 +41,6 @@ import logging
 import urllib.request
 from pathlib import Path
 
-from models import Agency
-
 logger = logging.getLogger(__name__)
 
 # --- .env loading (same convention as services/realtime_data.py) ---------
@@ -99,7 +97,7 @@ UNKNOWN_RISK_LEVELS = {'UNKNOWN', 'INSUFFICIENT_DATA', 'INSUFFICIENT DATA', 'INS
 
 SYSTEM_PROMPT = (
     "You are a disaster-risk decision-support assistant for a Digital Incident "
-    "Command System covering the CALABARZON region of the Philippines. Given "
+    "Command System serving San Pablo City, Laguna, Philippines. Given "
     "sensor and environmental readings for a single site, assess hazard risk "
     "and produce a structured, actionable recommendation for a duty officer.\n\n"
     "Respond with ONLY a JSON object -- no markdown fences, no commentary -- "
@@ -110,13 +108,12 @@ SYSTEM_PROMPT = (
     '  "level": "Low" | "Moderate" | "High" | "Severe" | "Insufficient Data",\n'
     '  "message": "<one short paragraph, plain language, for a duty officer>",\n'
     '  "primary_factors": ["<factor>", ...],\n'
-    '  "recommended_agencies": ["<agency>", ...],\n'
     '  "recommended_resources": ["<resource, with a rough quantity if useful>", ...]\n'
     "}\n\n"
     "Level bands: 0-24 Low, 25-49 Moderate, 50-74 High, 75-100 Severe. "
     "A missing river gauge reading is routine and is not a blocking gap: assess flood and landslide risk from the available rainfall and humidity readings, and mention the missing gauge as a limitation. "
     "Use \"Insufficient Data\" when both rainfall and humidity readings are unavailable, or when the available inputs genuinely cannot support an assessment. "
-    "Only include agencies/resources genuinely warranted by the inputs given -- "
+    "Only include resources genuinely warranted by the inputs given -- "
     "an empty list is correct when nothing is warranted. You provide a "
     "recommendation for a human to review, not a dispatch order; do not imply "
     "the recommendation has already been actioned."
@@ -304,7 +301,6 @@ def _deterministic_low_risk_exit(hazard_type, rainfall_mm, river_level_m,
             'level': 'Low',
             'message': 'Deterministic input thresholds indicate low hazard risk; AI inference is not required.',
             'alert': False,
-            'recommended_agencies': [],
             'recommended_resources': [],
             'confidence': 95.0,
             'primary_factors': factors,
@@ -313,33 +309,6 @@ def _deterministic_low_risk_exit(hazard_type, rainfall_mm, river_level_m,
             'model': 'threshold-filter-v1',
         }
     return None
-
-
-def _normalize_recommended_agencies(recommended_agencies):
-    if not isinstance(recommended_agencies, list):
-        return []
-
-    agency_lookup = None
-    try:
-        agency_lookup = {a.name.upper(): a.name for a in Agency.query.all()}
-    except Exception:
-        agency_lookup = None
-
-    normalized = []
-    for raw in recommended_agencies:
-        if not isinstance(raw, str):
-            continue
-        agency_name = raw.strip()
-        if not agency_name:
-            continue
-        if agency_lookup is None:
-            normalized.append(agency_name)
-            continue
-        canonical = agency_lookup.get(agency_name.upper())
-        if canonical:
-            normalized.append(canonical)
-
-    return list(dict.fromkeys(normalized))
 
 
 def _rainfall_humidity_score(rainfall_mm, humidity_pct):
@@ -389,7 +358,6 @@ def _parse_ai_response(raw_text, hazard_type, rainfall_mm=None, humidity_pct=Non
     else:
         primary_factors = [str(item).strip() for item in primary_factors if str(item).strip()]
 
-    recommended_agencies = _normalize_recommended_agencies(data.get('recommended_agencies') or [])
     recommended_resources = data.get('recommended_resources') or []
     if not isinstance(recommended_resources, list):
         recommended_resources = []
@@ -402,7 +370,6 @@ def _parse_ai_response(raw_text, hazard_type, rainfall_mm=None, humidity_pct=Non
         'alert': score >= 50,
         'confidence': confidence,
         'primary_factors': primary_factors,
-        'recommended_agencies': recommended_agencies,
         'recommended_resources': recommended_resources,
         'degraded': False,
     }
@@ -415,7 +382,6 @@ def _fallback_response(hazard_type, reason):
         'level': 'INSUFFICIENT_DATA',
         'message': 'AI hazard assessment is temporarily unavailable. Please use manual review and retry shortly.',
         'alert': False,
-        'recommended_agencies': [],
         'recommended_resources': [],
         'degraded': True,
         'provider': None,
@@ -470,7 +436,7 @@ def assess_hazard(hazard_type, rainfall_mm, river_level_m, humidity_pct,
 # `from ai.prediction import predict_hazard`. Swapping that single import
 # line to `from ai.decision_support import predict_hazard` is a drop-in
 # replacement -- same keyword arguments, same return shape (with three new
-# optional keys: recommended_agencies, recommended_resources, degraded).
+# optional keys: recommended_resources, degraded).
 def predict_hazard(hazard_type, rainfall_mm, river_level_m, humidity_pct,
                     population_density, earthquake_data=None, aftershock_forecast=None):
     return assess_hazard(

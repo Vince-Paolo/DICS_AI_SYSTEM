@@ -21,7 +21,7 @@ from models import (
     db,
     utcnow,
 )
-from services.permissions import can_view_incident
+from services.permissions import can_view_incident, normalize_role
 from services.hotlines import build_hotline_services, cdrrmo_hotline_configured, get_general_hotline
 from services.realtime_data import get_earthquake_data, get_weather_data
 from ai.decision_support import predict_hazard
@@ -101,14 +101,16 @@ def _is_safe_upload_directory(upload_dir):
 
 @citizen_bp.route('/api/municipalities/<int:province_id>')
 def api_municipalities_for_province(province_id):
-    """Powers the cascading Province -> Municipality -> Barangay dropdown on
-    the citizen report form. Returns only the municipalities belonging to
-    the given province, fetched on demand rather than shipping all 142
-    CALABARZON municipalities (and, one level down, all 4,018 barangays) in
-    every page load."""
+    """Return San Pablo City as the only operational municipality."""
     if 'username' not in session:
         return {'error': 'Unauthorized'}, 401
-    municipalities = Municipality.query.filter_by(province_id=province_id).order_by(Municipality.name).all()
+    province = db.session.get(Province, province_id)
+    if not province or province.name.casefold() != 'laguna':
+        return {'municipalities': []}
+    municipalities = Municipality.query.filter_by(
+        province_id=province_id,
+        code='043424',
+    ).order_by(Municipality.name).all()
     return {'municipalities': [{'id': m.id, 'name': m.name} for m in municipalities]}
 
 
@@ -116,6 +118,9 @@ def api_municipalities_for_province(province_id):
 def api_barangays_for_municipality(municipality_id):
     if 'username' not in session:
         return {'error': 'Unauthorized'}, 401
+    municipality = db.session.get(Municipality, municipality_id)
+    if not municipality or municipality.code != '043424':
+        return {'barangays': []}
     barangays = Barangay.query.filter_by(municipality_id=municipality_id).order_by(Barangay.name).all()
     return {'barangays': [{'id': b.id, 'name': b.name} for b in barangays]}
 
@@ -136,7 +141,7 @@ def emergency_assistance():
             if service['key'] not in {'medical', 'police', 'fire'}
         ],
         show_config_warning=(
-            session.get('role') in {'admin', 'eoc_staff'} and not cdrrmo_hotline_configured()
+            normalize_role(session.get('role')) in {'ADMIN', 'IMT'} and not cdrrmo_hotline_configured()
         ),
     ))
     if session.get('username'):
@@ -159,7 +164,7 @@ def citizen_report():
     if not user:
         return redirect(url_for('logout'))
 
-    provinces = Province.query.order_by(Province.name).all()
+    provinces = Province.query.filter_by(name='Laguna').order_by(Province.name).all()
 
     if request.method == 'POST':
         hazard_type = request.form.get('hazard_type', '').strip()
@@ -184,14 +189,28 @@ def citizen_report():
         # a mismatched combination. Reject rather than silently store a
         # location that points at inconsistent province/municipality/
         # barangay rows.
+        municipality = None
+        if province_id:
+            province = db.session.get(Province, province_id)
+            if not province or province.name.casefold() != 'laguna':
+                flash('Only San Pablo City, Laguna locations are supported.', 'error')
+                return redirect(url_for('citizen.citizen_report'))
         if municipality_id:
             municipality = db.session.get(Municipality, municipality_id)
-            if not municipality or (province_id and municipality.province_id != province_id):
+            if (
+                not municipality
+                or municipality.code != '043424'
+                or (province_id and municipality.province_id != province_id)
+            ):
                 flash('Selected municipality does not match the selected province.', 'error')
                 return redirect(url_for('citizen.citizen_report'))
         if barangay_id:
             barangay = db.session.get(Barangay, barangay_id)
-            if not barangay or (municipality_id and barangay.municipality_id != municipality_id):
+            if (
+                not barangay
+                or not municipality
+                or barangay.municipality_id != municipality_id
+            ):
                 flash('Selected barangay does not match the selected municipality.', 'error')
                 return redirect(url_for('citizen.citizen_report'))
 
@@ -315,7 +334,6 @@ def citizen_report():
                 recommendation_type='hazard_prediction',
                 summary=prediction.get('message', '').strip() or 'AI hazard prediction generated.',
                 confidence_score=prediction.get('confidence'),
-                recommended_agencies=json.dumps(prediction.get('recommended_agencies', [])),
                 recommended_resources=json.dumps(prediction.get('recommended_resources', [])),
                 primary_factors=json.dumps(prediction.get('primary_factors', [])),
             ))
@@ -387,7 +405,10 @@ def citizen_alerts():
 
     # Official, human-issued advisories -- distinct from the raw AI risk flags
     # above. See eoc.issue_alert / models.Alert.
-    official_alerts = Alert.query.filter_by(status='ACTIVE').order_by(Alert.created_at.desc()).all()
+    official_alerts = Alert.query.filter_by(
+        audience='PUBLIC',
+        status='ACTIVE',
+    ).order_by(Alert.created_at.desc()).all()
 
     return render_template('pages/citizen_alerts.html', alerts=alerts, alert_count=alert_count,
                             official_alerts=official_alerts)

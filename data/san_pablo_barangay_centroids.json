@@ -1,0 +1,488 @@
+{
+  "source": "NAMRIA administrative boundaries (shapefile version 2023-11-06), distributed by bendlikeabamboo/barangay-boundaries-repository v2026.4.13.0",
+  "source_url": "https://github.com/bendlikeabamboo/barangay-boundaries-repository/releases/download/v2026.4.13.0/barangays.geojson",
+  "source_crs": "EPSG:4326",
+  "centroid_method": "Polygon centroid calculated from source GeoJSON coordinates and rounded to 6 decimal places.",
+  "barangays": [
+    {
+      "code": "043424001",
+      "name": "Bagong Bayan II-A (Pob.)",
+      "lat": 14.066511,
+      "lon": 121.316748
+    },
+    {
+      "code": "043424002",
+      "name": "Bagong Pook VI-C (Pob.)",
+      "lat": 14.074561,
+      "lon": 121.320642
+    },
+    {
+      "code": "043424003",
+      "name": "Barangay I-A (Pob.)",
+      "lat": 14.072461,
+      "lon": 121.317334
+    },
+    {
+      "code": "043424004",
+      "name": "Barangay I-B (Pob.)",
+      "lat": 14.0675,
+      "lon": 121.314602
+    },
+    {
+      "code": "043424005",
+      "name": "Barangay II-A (Pob.)",
+      "lat": 14.063107,
+      "lon": 121.319512
+    },
+    {
+      "code": "043424006",
+      "name": "Barangay II-B (Pob.)",
+      "lat": 14.062762,
+      "lon": 121.321567
+    },
+    {
+      "code": "043424007",
+      "name": "Barangay II-C (Pob.)",
+      "lat": 14.065234,
+      "lon": 121.322838
+    },
+    {
+      "code": "043424008",
+      "name": "Barangay II-D (Pob.)",
+      "lat": 14.066906,
+      "lon": 121.32458
+    },
+    {
+      "code": "043424009",
+      "name": "Barangay II-E (Pob.)",
+      "lat": 14.063792,
+      "lon": 121.325209
+    },
+    {
+      "code": "043424010",
+      "name": "Barangay II-F (Pob.)",
+      "lat": 14.060203,
+      "lon": 121.322671
+    },
+    {
+      "code": "043424011",
+      "name": "Barangay III-A (Pob.)",
+      "lat": 14.066739,
+      "lon": 121.326835
+    },
+    {
+      "code": "043424012",
+      "name": "Barangay III-B (Pob.)",
+      "lat": 14.068966,
+      "lon": 121.326776
+    },
+    {
+      "code": "043424013",
+      "name": "Barangay III-C (Pob.)",
+      "lat": 14.065985,
+      "lon": 121.328714
+    },
+    {
+      "code": "043424014",
+      "name": "Barangay III-D (Pob.)",
+      "lat": 14.070107,
+      "lon": 121.330421
+    },
+    {
+      "code": "043424015",
+      "name": "Barangay III-E (Pob.)",
+      "lat": 14.070723,
+      "lon": 121.333433
+    },
+    {
+      "code": "043424016",
+      "name": "Barangay III-F (Pob.)",
+      "lat": 14.068091,
+      "lon": 121.328401
+    },
+    {
+      "code": "043424017",
+      "name": "Barangay IV-A (Pob.)",
+      "lat": 14.072169,
+      "lon": 121.329697
+    },
+    {
+      "code": "043424018",
+      "name": "Barangay IV-B (Pob.)",
+      "lat": 14.070898,
+      "lon": 121.327045
+    },
+    {
+      "code": "043424019",
+      "name": "Barangay IV-C (Pob.)",
+      "lat": 14.071355,
+      "lon": 121.3262
+    },
+    {
+      "code": "043424020",
+      "name": "Barangay V-A (Pob.)",
+      "lat": 14.075683,
+      "lon": 121.325151
+    },
+    {
+      "code": "043424021",
+      "name": "Barangay V-B (Pob.)",
+      "lat": 14.071919,
+      "lon": 121.323912
+    },
+    {
+      "code": "043424022",
+      "name": "Barangay V-C (Pob.)",
+      "lat": 14.071586,
+      "lon": 121.324601
+    },
+    {
+      "code": "043424023",
+      "name": "Barangay V-D (Pob.)",
+      "lat": 14.071608,
+      "lon": 121.325185
+    },
+    {
+      "code": "043424024",
+      "name": "Barangay VI-A (Pob.)",
+      "lat": 14.072858,
+      "lon": 121.322121
+    },
+    {
+      "code": "043424025",
+      "name": "Barangay VI-B (Pob.)",
+      "lat": 14.076999,
+      "lon": 121.322992
+    },
+    {
+      "code": "043424027",
+      "name": "Barangay VI-D (Pob.)",
+      "lat": 14.076951,
+      "lon": 121.320595
+    },
+    {
+      "code": "043424028",
+      "name": "Barangay VI-E (Pob.)",
+      "lat": 14.074526,
+      "lon": 121.318323
+    },
+    {
+      "code": "043424029",
+      "name": "Barangay VII-A (Pob.)",
+      "lat": 14.070499,
+      "lon": 121.321787
+    },
+    {
+      "code": "043424030",
+      "name": "Barangay VII-B (Pob.)",
+      "lat": 14.06925,
+      "lon": 121.323381
+    },
+    {
+      "code": "043424031",
+      "name": "Barangay VII-C (Pob.)",
+      "lat": 14.068863,
+      "lon": 121.325023
+    },
+    {
+      "code": "043424032",
+      "name": "Barangay VII-D (Pob.)",
+      "lat": 14.068571,
+      "lon": 121.325417
+    },
+    {
+      "code": "043424033",
+      "name": "Barangay VII-E (Pob.)",
+      "lat": 14.067773,
+      "lon": 121.324409
+    },
+    {
+      "code": "043424034",
+      "name": "Bautista",
+      "lat": 13.988088,
+      "lon": 121.271683
+    },
+    {
+      "code": "043424035",
+      "name": "Concepcion",
+      "lat": 14.079703,
+      "lon": 121.341722
+    },
+    {
+      "code": "043424036",
+      "name": "Del Remedio",
+      "lat": 14.083893,
+      "lon": 121.311154
+    },
+    {
+      "code": "043424037",
+      "name": "Dolores",
+      "lat": 14.103782,
+      "lon": 121.339489
+    },
+    {
+      "code": "043424040",
+      "name": "San Antonio 1",
+      "lat": 14.008274,
+      "lon": 121.337696
+    },
+    {
+      "code": "043424041",
+      "name": "San Antonio 2",
+      "lat": 13.994869,
+      "lon": 121.3273
+    },
+    {
+      "code": "043424042",
+      "name": "San Bartolome",
+      "lat": 14.027057,
+      "lon": 121.288833
+    },
+    {
+      "code": "043424043",
+      "name": "San Buenaventura",
+      "lat": 14.11523,
+      "lon": 121.330282
+    },
+    {
+      "code": "043424044",
+      "name": "San Crispin",
+      "lat": 14.077478,
+      "lon": 121.284159
+    },
+    {
+      "code": "043424045",
+      "name": "San Cristobal",
+      "lat": 14.043735,
+      "lon": 121.397014
+    },
+    {
+      "code": "043424046",
+      "name": "San Diego",
+      "lat": 14.087933,
+      "lon": 121.37585
+    },
+    {
+      "code": "043424047",
+      "name": "San Francisco",
+      "lat": 14.056908,
+      "lon": 121.33181
+    },
+    {
+      "code": "043424048",
+      "name": "San Gabriel",
+      "lat": 14.055322,
+      "lon": 121.313277
+    },
+    {
+      "code": "043424049",
+      "name": "San Gregorio",
+      "lat": 14.044036,
+      "lon": 121.328035
+    },
+    {
+      "code": "043424050",
+      "name": "San Ignacio",
+      "lat": 14.050484,
+      "lon": 121.347824
+    },
+    {
+      "code": "043424051",
+      "name": "San Isidro",
+      "lat": 13.981637,
+      "lon": 121.306398
+    },
+    {
+      "code": "043424052",
+      "name": "San Joaquin",
+      "lat": 14.026643,
+      "lon": 121.32629
+    },
+    {
+      "code": "043424053",
+      "name": "San Jose",
+      "lat": 14.067181,
+      "lon": 121.368343
+    },
+    {
+      "code": "043424054",
+      "name": "San Juan",
+      "lat": 14.094302,
+      "lon": 121.297502
+    },
+    {
+      "code": "043424055",
+      "name": "San Lorenzo",
+      "lat": 14.114306,
+      "lon": 121.357507
+    },
+    {
+      "code": "043424056",
+      "name": "San Lucas 1",
+      "lat": 14.081586,
+      "lon": 121.326061
+    },
+    {
+      "code": "043424057",
+      "name": "San Lucas 2",
+      "lat": 14.087762,
+      "lon": 121.326385
+    },
+    {
+      "code": "043424058",
+      "name": "San Marcos",
+      "lat": 14.10354,
+      "lon": 121.303043
+    },
+    {
+      "code": "043424059",
+      "name": "San Mateo",
+      "lat": 14.108887,
+      "lon": 121.305324
+    },
+    {
+      "code": "043424060",
+      "name": "San Miguel",
+      "lat": 14.035811,
+      "lon": 121.302348
+    },
+    {
+      "code": "043424061",
+      "name": "San Nicolas",
+      "lat": 14.065649,
+      "lon": 121.290239
+    },
+    {
+      "code": "043424062",
+      "name": "San Pedro",
+      "lat": 14.095277,
+      "lon": 121.3318
+    },
+    {
+      "code": "043424063",
+      "name": "San Rafael",
+      "lat": 14.072187,
+      "lon": 121.300546
+    },
+    {
+      "code": "043424064",
+      "name": "San Roque",
+      "lat": 14.069379,
+      "lon": 121.311732
+    },
+    {
+      "code": "043424065",
+      "name": "San Vicente",
+      "lat": 14.022613,
+      "lon": 121.339811
+    },
+    {
+      "code": "043424066",
+      "name": "Santa Ana",
+      "lat": 14.013148,
+      "lon": 121.326485
+    },
+    {
+      "code": "043424067",
+      "name": "Santa Catalina",
+      "lat": 14.127769,
+      "lon": 121.346744
+    },
+    {
+      "code": "043424068",
+      "name": "Santa Cruz",
+      "lat": 14.023319,
+      "lon": 121.353482
+    },
+    {
+      "code": "043424069",
+      "name": "Santa Felomina",
+      "lat": 14.090828,
+      "lon": 121.286259
+    },
+    {
+      "code": "043424070",
+      "name": "Santa Isabel",
+      "lat": 14.079674,
+      "lon": 121.370227
+    },
+    {
+      "code": "043424071",
+      "name": "Santa Maria Magdalena",
+      "lat": 14.096649,
+      "lon": 121.311577
+    },
+    {
+      "code": "043424072",
+      "name": "Santa Veronica",
+      "lat": 14.043266,
+      "lon": 121.287747
+    },
+    {
+      "code": "043424073",
+      "name": "Santiago I",
+      "lat": 14.018136,
+      "lon": 121.283545
+    },
+    {
+      "code": "043424074",
+      "name": "Santiago II",
+      "lat": 14.00179,
+      "lon": 121.264714
+    },
+    {
+      "code": "043424075",
+      "name": "Santisimo Rosario",
+      "lat": 13.999253,
+      "lon": 121.306148
+    },
+    {
+      "code": "043424076",
+      "name": "Santo Angel",
+      "lat": 14.103269,
+      "lon": 121.367217
+    },
+    {
+      "code": "043424077",
+      "name": "Santo Cristo",
+      "lat": 14.06387,
+      "lon": 121.332255
+    },
+    {
+      "code": "043424078",
+      "name": "Santo Niño",
+      "lat": 14.048214,
+      "lon": 121.363086
+    },
+    {
+      "code": "043424079",
+      "name": "Soledad",
+      "lat": 14.038974,
+      "lon": 121.315712
+    },
+    {
+      "code": "043424080",
+      "name": "Atisan",
+      "lat": 13.975502,
+      "lon": 121.28011
+    },
+    {
+      "code": "043424081",
+      "name": "Santa Elena",
+      "lat": 14.044071,
+      "lon": 121.375308
+    },
+    {
+      "code": "043424082",
+      "name": "Santa Maria",
+      "lat": 14.022062,
+      "lon": 121.311846
+    },
+    {
+      "code": "043424083",
+      "name": "Santa Monica",
+      "lat": 14.054989,
+      "lon": 121.300356
+    }
+  ]
+}
