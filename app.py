@@ -407,21 +407,27 @@ limiter = Limiter(
 scheduler = APScheduler()
 scheduler.init_app(app)
 _scheduler_started = False
+_scheduler_lock = threading.Lock()
 
 def start_scheduler():
     global _scheduler_started
-    if _scheduler_started or app.config.get('TESTING'):
+    if app.config.get('TESTING'):
         return
-    scheduler.add_job(
-        id='monitor_hazards',
-        func=monitor_hazards,
-        trigger='interval',
-        minutes=15,
-        max_instances=1,
-        coalesce=True,
-    )
-    scheduler.start()
-    _scheduler_started = True
+    with _scheduler_lock:
+        if _scheduler_started:
+            return
+        scheduler.add_job(
+            id='monitor_hazards',
+            func=monitor_hazards,
+            trigger='interval',
+            minutes=15,
+            max_instances=1,
+            coalesce=True,
+            replace_existing=True,
+        )
+        if not scheduler.running:
+            scheduler.start()
+        _scheduler_started = True
 
 @app.context_processor
 def inject_csrf_token():
