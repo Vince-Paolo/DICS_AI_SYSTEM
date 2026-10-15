@@ -1,6 +1,5 @@
 import os
 import re
-import sqlite3
 import unittest
 import base64
 from datetime import datetime, timezone
@@ -68,8 +67,14 @@ class ApiEndpointFunctionalTestCase(unittest.TestCase):
                     username='api_coordinator',
                     email='api-coordinator@example.com',
                     password='secret',
-                    role='agency_coordinator',
-                    agency='BFP',
+                    role='imt_staff',
+                    email_verified=True,
+                ),
+                User(
+                    username='api_dispatcher',
+                    email='api-dispatcher@example.com',
+                    password='secret',
+                    role='dispatcher',
                     email_verified=True,
                 ),
             ])
@@ -123,10 +128,71 @@ class ApiEndpointFunctionalTestCase(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         html = response.data.decode()
-        self.assertIn('id="languageSwitcher" class="language-switcher d-flex justify-content-end mb-3"', html)
+        self.assertIn('id="languageSwitcher"', html)
+        self.assertIn(
+            'class="language-switcher d-flex align-items-center justify-content-between flex-wrap gap-3 mb-3"',
+            html,
+        )
         self.assertNotIn('language-switcher position-fixed', html)
         self.assertIn('id="hazardSearchInput"', html)
         self.assertIn('Search hazard areas...', html)
+
+    def test_hazard_map_credits_open_meteo_rainfall_data(self):
+        self._login('api_citizen', 'citizen')
+
+        response = self.client.get('/hazard-map')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            'href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer"',
+            response.get_data(as_text=True),
+        )
+
+    def test_public_landing_page_links_to_login_and_emergency_assistance(self):
+        response = self.client.get('/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('public', response.headers['Cache-Control'])
+        html = response.get_data(as_text=True)
+        self.assertIn('One city. One coordinated response.', html)
+        self.assertIn('href="/login"', html)
+        self.assertIn('href="/emergency-assistance"', html)
+        self.assertIn("const publicPages = ['landing', 'citizen.emergency_assistance']", html)
+        self.assertNotIn('name="password"', html)
+
+        login_page = self.client.get('/login')
+        self.assertEqual(login_page.status_code, 200)
+        self.assertIn('action="/login"', login_page.get_data(as_text=True))
+
+        hotline_page = self.client.get('/emergency-assistance')
+        self.assertEqual(hotline_page.status_code, 200)
+        self.assertIn('public', hotline_page.headers['Cache-Control'])
+
+    def test_signed_in_user_visiting_landing_page_still_sees_landing_page(self):
+        self._login('api_dispatcher', 'dispatcher')
+
+        response = self.client.get('/', follow_redirects=False)
+
+        self.assertEqual(response.status_code, 200)
+        html = response.get_data(as_text=True)
+        self.assertIn('private', response.headers['Cache-Control'])
+        self.assertIn('no-store', response.headers['Cache-Control'])
+        self.assertIn('One city. One coordinated response.', html)
+        self.assertIn("const authPages = ['login', 'register'", html)
+        self.assertNotIn('id="global-control-number"', html)
+
+    def test_landing_page_is_translated_to_filipino(self):
+        self.client.get('/language/fil_PH?next=/')
+
+        response = self.client.get('/')
+        html = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Isang lungsod. Iisang pinag-ugnay na pagtugon.', html)
+        self.assertIn('Pangunahing pahina ng DICS AI', html)
+        self.assertIn('Mag-login', html)
+        self.assertIn('Maliwanag na tema', html)
+        self.assertNotIn('Open the operations system', html)
 
     def test_shared_layout_uses_local_bootstrap_assets(self):
         response = self.client.get('/login')
@@ -144,6 +210,8 @@ class ApiEndpointFunctionalTestCase(unittest.TestCase):
             'vendor/bootstrap/js/bootstrap.bundle.min.js',
             'vendor/bootstrap-icons/font/bootstrap-icons.css',
             'vendor/bootstrap-icons/font/fonts/bootstrap-icons.woff2',
+            'css/theme.css',
+            'css/landing.css',
         ):
             with self.subTest(asset=asset):
                 asset_response = self.client.get(f'/static/{asset}')
@@ -152,6 +220,65 @@ class ApiEndpointFunctionalTestCase(unittest.TestCase):
         worker = self.client.get('/service-worker.js').get_data(as_text=True)
         self.assertIn('/static/vendor/bootstrap/css/bootstrap.min.css', worker)
         self.assertIn('/static/css/sidebar.css', worker)
+        self.assertIn('/static/css/theme.css', worker)
+        self.assertIn('/static/css/tokens.css', worker)
+        self.assertIn('/static/css/landing.css', worker)
+        self.assertIn("cachePublicPage('/')", worker)
+        self.assertIn("cachePublicPage('/emergency-assistance')", worker)
+        self.assertIn("url.pathname === '/' || url.pathname === '/emergency-assistance'", worker)
+        self.assertIn("cache.match(request, { ignoreSearch: true })", worker)
+
+    def test_chartjs_is_local_on_dashboard_and_analytics(self):
+        with self.app.app_context():
+            db.session.add(User(
+                username='api_dashboard_admin',
+                email='api-dashboard-admin@example.com',
+                password='secret',
+                role='admin',
+                email_verified=True,
+            ))
+            db.session.commit()
+
+        self._login('api_dashboard_admin', 'admin')
+        for path in ('/dashboard', '/analytics'):
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                self.assertEqual(response.status_code, 200)
+                html = response.get_data(as_text=True)
+                self.assertIn('/static/vendor/chartjs/chart.umd.js', html)
+                self.assertIn('/static/js/chart-theme.js', html)
+                self.assertIn('/static/css/theme.css', html)
+                self.assertIn('/static/css/tokens.css', html)
+                self.assertNotIn('cdn.jsdelivr.net/npm/chart.js', html)
+                self.assertIn('role="img" aria-label=', html)
+
+        chart_bundle = self.client.get('/static/vendor/chartjs/chart.umd.js')
+        self.assertEqual(chart_bundle.status_code, 200)
+        self.assertIn(b'Chart.js v4.4.7', chart_bundle.data[:300])
+
+        worker = self.client.get('/service-worker.js').get_data(as_text=True)
+        self.assertIn('/static/vendor/chartjs/chart.umd.js', worker)
+        self.assertIn('/static/js/chart-theme.js', worker)
+        self.assertIn(
+            f"dics-app-shell-{self.app.config['STATIC_ASSET_VERSION']}",
+            worker,
+        )
+        self.assertNotIn('__STATIC_ASSET_VERSION__', worker)
+
+        tokens_css = self.client.get('/static/css/tokens.css').get_data(as_text=True)
+        style_css = self.client.get('/static/css/style.css').get_data(as_text=True)
+        for token in (
+            '--table-head-bg:',
+            '--table-head-text:',
+            '--table-body-text:',
+            '--table-row-alt:',
+            '--table-row-hover:',
+            '--chart-series-1:',
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, tokens_css)
+        self.assertIn('var(--table-head-bg)', style_css)
+        self.assertIn('var(--table-row-hover)', style_css)
 
     def test_heat_map_and_navigation_are_available_without_tutorial(self):
         self._login('api_commander', 'incident_commander')
@@ -410,44 +537,8 @@ class ApiEndpointFunctionalTestCase(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             FileStorage(app_stub)
 
-    def test_legacy_sqlite_database_adds_missing_resource_request_id_column(self):
-        from app import app, migrate_legacy_sqlite_resource_columns
-
-        configured_uri = app.config['SQLALCHEMY_DATABASE_URI']
-        self.assertTrue(configured_uri.startswith('sqlite:'))
-
-        db_path = configured_uri.removeprefix('sqlite:///')
-        if os.name == 'nt' and db_path.startswith('/'):
-            db_path = db_path[1:]
-        db_path = os.path.abspath(db_path)
-
-        with sqlite3.connect(db_path) as conn:
-            conn.execute('DROP TABLE IF EXISTS resource')
-            conn.execute('''
-                CREATE TABLE resource (
-                    id INTEGER PRIMARY KEY,
-                    incident_response_id INTEGER NOT NULL,
-                    resource_type VARCHAR(100) NOT NULL,
-                    agency VARCHAR(150) NOT NULL,
-                    quantity INTEGER NOT NULL,
-                    status VARCHAR(20) DEFAULT 'AVAILABLE',
-                    location VARCHAR(255),
-                    notes TEXT,
-                    allocated_at DATETIME,
-                    deployed_at DATETIME
-                )
-            ''')
-            conn.commit()
-
-        migrate_legacy_sqlite_resource_columns()
-
-        with sqlite3.connect(db_path) as conn:
-            columns = [row[1] for row in conn.execute('PRAGMA table_info(resource)')]
-        self.assertIn('resource_request_id', columns)
-        self.assertIn('updated_at', columns)
-
     def test_map_operational_layer_endpoints_return_geolocated_centers_and_resources(self):
-        self._login('api_coordinator', 'agency_coordinator')
+        self._login('api_coordinator', 'imt_staff')
         with self.app.app_context():
             user = User.query.filter_by(username='api_coordinator').one()
             report = CitizenReport(
@@ -477,7 +568,7 @@ class ApiEndpointFunctionalTestCase(unittest.TestCase):
             db.session.add_all([response, facility])
             db.session.flush()
             db.session.add(EvacuationCenter(facility_id=facility.id, capacity=100, occupancy=20, status='OPEN'))
-            db.session.add(Resource(incident_response_id=response.id, resource_type='Water', agency='BFP', quantity=5, status='DEPLOYED'))
+            db.session.add(Resource(incident_response_id=response.id, resource_type='Water', quantity=5, status='DEPLOYED'))
             db.session.commit()
 
         centers = self.client.get('/api/map-evacuation-centers')
@@ -488,8 +579,8 @@ class ApiEndpointFunctionalTestCase(unittest.TestCase):
         self.assertEqual(centers.get_json()[0]['name'], 'Mapped Shelter')
         self.assertEqual(resources.get_json()[0]['resource_type'], 'Water')
 
-    def test_analytics_api_returns_operational_summary_for_coordinator(self):
-        self._login('api_coordinator', 'agency_coordinator')
+    def test_analytics_api_returns_operational_summary_for_imt(self):
+        self._login('api_coordinator', 'imt_staff')
 
         response = self.client.get('/api/analytics-data')
 
@@ -526,14 +617,13 @@ class ApiEndpointFunctionalTestCase(unittest.TestCase):
         self.assertNotIn(b'No active alerts in your area', response.data)
 
     def test_analytics_api_includes_monthly_and_geography_breakdowns(self):
-        self._login('api_coordinator', 'agency_coordinator')
+        self._login('api_coordinator', 'imt_staff')
         with self.app.app_context():
             municipality = Municipality.query.first()
             barangay = Barangay.query.filter_by(municipality_id=municipality.id).first()
             municipality_name = municipality.name
             barangay_name = barangay.name
-            other_municipality = Municipality.query.filter(Municipality.id != municipality.id).first()
-            other_barangay = Barangay.query.filter_by(municipality_id=other_municipality.id).first()
+            other_barangay = Barangay.query.filter(Barangay.id != barangay.id).first()
             db.session.add_all([
                 Incident(
                     hazard_type='flood',
@@ -560,7 +650,7 @@ class ApiEndpointFunctionalTestCase(unittest.TestCase):
                     location='Fire elsewhere',
                     message='Warehouse fire',
                     level='High',
-                    municipality_id=other_municipality.id,
+                    municipality_id=municipality.id,
                     barangay_id=other_barangay.id,
                     status='ACTIVE',
                     created_at=datetime(2026, 2, 18),
@@ -583,8 +673,103 @@ class ApiEndpointFunctionalTestCase(unittest.TestCase):
         self.assertEqual(export_response.status_code, 200)
         self.assertIn('hazard_type', export_response.get_data(as_text=True))
 
+    def test_analytics_api_summarizes_year_status_patients_and_control_search(self):
+        self._login('api_coordinator', 'imt_staff')
+        with self.app.app_context():
+            municipality = Municipality.query.first()
+            barangay = Barangay.query.filter_by(municipality_id=municipality.id).first()
+            incidents = [
+                Incident(
+                    hazard_type='EMERGENCY',
+                    location='Old report',
+                    message='Prior-year report',
+                    status='CLOSED',
+                    patient_count=1,
+                    created_at=datetime(2024, 12, 31, 16, 0),
+                ),
+                Incident(
+                    hazard_type='EMERGENCY',
+                    location='San Pablo',
+                    message='Flood response',
+                    status='ACTIVE',
+                    patient_count=2,
+                    municipality_id=municipality.id,
+                    barangay_id=barangay.id,
+                    created_at=datetime(2026, 2, 5),
+                ),
+                Incident(
+                    hazard_type='EMERGENCY',
+                    location='San Pablo',
+                    message='Fire response',
+                    status='CLOSED',
+                    patient_count=3,
+                    municipality_id=municipality.id,
+                    barangay_id=barangay.id,
+                    created_at=datetime(2026, 2, 17),
+                ),
+                Incident(
+                    hazard_type='EMERGENCY',
+                    location='San Pablo',
+                    message='March response',
+                    status='ACTIVE',
+                    patient_count=10,
+                    created_at=datetime(2026, 3, 1),
+                ),
+            ]
+            db.session.add_all(incidents)
+            db.session.commit()
+            target_control_number = incidents[1].control_number
+            prior_year_control_number = incidents[0].control_number
+
+        response = self.client.get('/api/analytics-data?year=2026&month=2')
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(payload['status_counts'], {'ACTIVE': 1, 'CLOSED': 1})
+        self.assertEqual(payload['patient_counts']['total_patients'], 5)
+        self.assertEqual(payload['patient_counts']['emergencies_with_patients'], 2)
+        self.assertEqual(payload['patient_counts']['average_per_emergency'], 2.5)
+        self.assertEqual(
+            [record['patient_count'] for record in payload['patient_counts']['records']],
+            [3, 2],
+        )
+        self.assertEqual(
+            {item['year']: item['count'] for item in payload['year_counts']},
+            {2025: 1, 2026: 3},
+        )
+
+        searched = self.client.get(
+            '/api/analytics-data?year=2026&month=2'
+            f'&control_number={target_control_number}'
+        ).get_json()
+        self.assertEqual(searched['control_number_query'], target_control_number)
+        self.assertEqual(searched['patient_counts']['matching_emergencies'], 1)
+        self.assertEqual(
+            [record['control_number'] for record in searched['patient_counts']['records']],
+            [target_control_number],
+        )
+        prior_year_search = self.client.get(
+            '/api/analytics-data?year=2026&month=2'
+            f'&control_number={prior_year_control_number}'
+        ).get_json()
+        self.assertEqual(prior_year_search['patient_counts']['matching_emergencies'], 1)
+        self.assertEqual(
+            prior_year_search['patient_counts']['records'][0]['control_number'],
+            prior_year_control_number,
+        )
+        for wildcard_query in ('202_-00001', '%'):
+            wildcard_search = self.client.get(
+                '/api/analytics-data?year=2026&month=2'
+                f'&control_number={wildcard_query}'
+            ).get_json()
+            self.assertEqual(
+                wildcard_search['patient_counts']['matching_emergencies'],
+                0,
+                msg=f'{wildcard_query!r} should be treated as literal text',
+            )
+
     def test_analytics_monthly_counts_use_manila_calendar_boundaries(self):
-        self._login('api_coordinator', 'agency_coordinator')
+        self._login('api_coordinator', 'imt_staff')
         with self.app.app_context():
             db.session.add_all([
                 Incident(
@@ -609,7 +794,7 @@ class ApiEndpointFunctionalTestCase(unittest.TestCase):
         )
 
     def test_analytics_year_selector_uses_manila_year_at_utc_rollover(self):
-        self._login('api_coordinator', 'agency_coordinator')
+        self._login('api_coordinator', 'imt_staff')
         with patch('app.datetime') as datetime_mock:
             datetime_mock.now.return_value = datetime(2025, 12, 31, 16, 30, tzinfo=timezone.utc)
             response = self.client.get('/analytics')
@@ -618,7 +803,7 @@ class ApiEndpointFunctionalTestCase(unittest.TestCase):
         self.assertIn('const currentYear = 2026;', response.get_data(as_text=True))
 
     def test_analytics_pdf_paginates_and_queries_bounded_rows(self):
-        self._login('api_coordinator', 'agency_coordinator')
+        self._login('api_coordinator', 'imt_staff')
         with self.app.app_context():
             barangays = Barangay.query.limit(100).all()
             db.session.add_all([
@@ -686,7 +871,7 @@ class ApiEndpointFunctionalTestCase(unittest.TestCase):
             db.session.flush()
             db.session.add(Task(
                 incident_response_id=response.id,
-                assigned_to_agency='BFP',
+                assigned_to_user_id=commander.id,
                 assigned_by_id=commander.id,
                 status='PENDING',
                 title='Task',
@@ -694,7 +879,6 @@ class ApiEndpointFunctionalTestCase(unittest.TestCase):
             ))
             db.session.add(Resource(
                 incident_response_id=response.id,
-                agency='BFP',
                 status='DEPLOYED',
                 quantity=3,
                 resource_type='Water',

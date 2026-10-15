@@ -1,6 +1,8 @@
 import os
+import json
 import unittest
 from datetime import datetime, timedelta
+from urllib.parse import parse_qs, urlparse
 from unittest.mock import patch
 
 os.environ.setdefault('SECRET_KEY', os.environ.get('SECRET_KEY') or 'development-secret')
@@ -9,9 +11,8 @@ TEST_DB_PATH = os.path.abspath(os.path.join('instance', 'test_external_hazard_fe
 os.environ['DATABASE_URL'] = f'sqlite:///{TEST_DB_PATH}'
 
 from app import app, db
-from models import Incident, utcnow
-from models import AIRecommendation, AuditEvent, Incident, utcnow
-from seed.demo_data import seed_geography_data
+from models import Alert, AuditEvent, Incident, User
+from seed.demo_data import GEOGRAPHY_DATA_PATH, seed_geography_data
 import services.realtime_data as realtime_data
 import scheduler
 
@@ -131,7 +132,7 @@ class ExternalHazardFeedParsingTestCase(unittest.TestCase):
         realtime_data._cache['volcano_events'] = {'data': None, 'timestamp': None}
         realtime_data._cache['thermal_hotspots'] = {'data': None, 'timestamp': None}
         realtime_data._cache['flood_footprints'] = {'data': None, 'timestamp': None}
-        realtime_data._cache['rainfall_watch'] = {'data': None, 'timestamp': None}
+        realtime_data._cache['rainfall_watch_san_pablo'] = {'data': None, 'timestamp': None}
         realtime_data._cache['typhoon_tracks'] = {'data': None, 'timestamp': None}
 
     def test_get_rainfall_watch_parses_live_open_meteo_data(self):
@@ -140,22 +141,112 @@ class ExternalHazardFeedParsingTestCase(unittest.TestCase):
                 'current': {'precipitation': 8.25},
                 'hourly': {'precipitation': [None, 1.2, 2.3]},
             }
-            for _ in realtime_data.CALABARZON_CITY_COORDINATES
+            for _ in realtime_data.SAN_PABLO_BARANGAYS
         ]
         with patch.object(realtime_data, '_fetch_json', return_value=open_meteo_data) as fetch:
             rainfall = realtime_data.get_rainfall_watch()
 
-        self.assertEqual(len(rainfall), len(realtime_data.CALABARZON_CITY_COORDINATES))
-        self.assertEqual(rainfall[0]['name'], 'Lipa')
+        self.assertEqual(len(rainfall), 80)
+        self.assertEqual(rainfall[0]['name'], realtime_data.SAN_PABLO_BARANGAYS[0]['name'])
+        self.assertEqual(rainfall[0]['barangay_code'], realtime_data.SAN_PABLO_BARANGAYS[0]['code'])
+        self.assertEqual(rainfall[0]['lat'], realtime_data.SAN_PABLO_BARANGAYS[0]['lat'])
+        self.assertEqual(rainfall[0]['lon'], realtime_data.SAN_PABLO_BARANGAYS[0]['lon'])
         self.assertEqual(rainfall[0]['rainfall_mm'], 8.2)
         self.assertEqual(rainfall[0]['rainfall_24h_mm'], 3.5)
         self.assertEqual(rainfall[0]['status'], 'Heavy rain (Yellow)')
         self.assertEqual(rainfall[0]['source'], 'Open-Meteo')
-        self.assertIn('latitude=', fetch.call_args.args[0])
-        self.assertIn('longitude=', fetch.call_args.args[0])
+        params = parse_qs(urlparse(fetch.call_args.args[0]).query)
+        self.assertEqual(len(params['latitude'][0].split(',')), 80)
+        self.assertEqual(len(params['longitude'][0].split(',')), 80)
+        self.assertEqual(params['past_hours'], ['24'])
+
+    def test_rainfall_cache_uses_15_minute_interval(self):
+        now = datetime(2026, 10, 12, 12, 0)
+        cached_data = [{'name': 'Cached rainfall'}]
+        realtime_data._write_shared_cache(
+            'rainfall_watch_san_pablo',
+            {
+                'data': cached_data,
+                'timestamp': (now - timedelta(minutes=10)).isoformat() + 'Z',
+            },
+        )
+
+        with patch.object(realtime_data, 'utcnow', return_value=now), \
+                patch.object(realtime_data, '_fetch_json') as fetch:
+            rainfall = realtime_data.get_rainfall_watch()
+
+        self.assertEqual(rainfall, cached_data)
+        fetch.assert_not_called()
+
+    def test_rainfall_cache_refreshes_after_15_minutes(self):
+        now = datetime(2026, 10, 12, 12, 0)
+        realtime_data._cache['rainfall_watch_san_pablo'] = {
+            'data': [{'name': 'Stale rainfall'}],
+            'timestamp': now - timedelta(minutes=16),
+        }
+        fresh_data = [
+            {'current': {'precipitation': 1.0}, 'hourly': {'precipitation': [1.0]}}
+            for _ in realtime_data.SAN_PABLO_BARANGAYS
+        ]
+
+        with patch.object(realtime_data, 'utcnow', return_value=now), \
+                patch.object(realtime_data, '_fetch_json', return_value=fresh_data) as fetch:
+            rainfall = realtime_data.get_rainfall_watch()
+
+        self.assertEqual(len(rainfall), 80)
+        self.assertEqual(rainfall[0]['rainfall_mm'], 1.0)
+        fetch.assert_called_once()
+
+    def test_rainfall_centroids_cover_all_san_pablo_barangays(self):
+        barangays = realtime_data.SAN_PABLO_BARANGAYS
+        self.assertEqual(len(barangays), 80)
+        self.assertEqual(len({barangay['code'] for barangay in barangays}), 80)
+        self.assertTrue(all(13.9 <= item['lat'] <= 14.2 for item in barangays))
+        self.assertTrue(all(121.2 <= item['lon'] <= 121.5 for item in barangays))
+        with GEOGRAPHY_DATA_PATH.open(encoding='utf-8') as geography_file:
+            geography = json.load(geography_file)
+        expected_codes = {
+            barangay['code']
+            for province in geography if province['name'].casefold() == 'laguna'
+            for municipality in province['municipalities'] if municipality['code'] == '043424'
+            for barangay in municipality['barangays']
+        }
+        self.assertSetEqual({barangay['code'] for barangay in barangays}, expected_codes)
 
     def test_get_rainfall_watch_returns_empty_list_on_fetch_failure(self):
         with patch.object(realtime_data, '_fetch_json', return_value=None):
+            rainfall = realtime_data.get_rainfall_watch()
+        self.assertEqual(rainfall, [])
+
+    def test_rainfall_fetch_failure_is_throttled_for_2_minutes(self):
+        now = datetime(2026, 10, 12, 12, 0)
+
+        with patch.object(realtime_data, 'utcnow', return_value=now), \
+                patch.object(realtime_data, '_fetch_json', return_value=None) as fetch:
+            self.assertEqual(realtime_data.get_rainfall_watch(), [])
+            self.assertEqual(realtime_data.get_rainfall_watch(), [])
+
+        fetch.assert_called_once()
+
+    def test_rainfall_failure_cache_retries_after_2_minutes(self):
+        now = [datetime(2026, 10, 12, 12, 0)]
+        fresh_data = [
+            {'current': {'precipitation': 1.0}, 'hourly': {'precipitation': [1.0]}}
+            for _ in realtime_data.SAN_PABLO_BARANGAYS
+        ]
+
+        with patch.object(realtime_data, 'utcnow', side_effect=lambda: now[0]), \
+                patch.object(realtime_data, '_fetch_json', side_effect=[None, fresh_data]) as fetch:
+            self.assertEqual(realtime_data.get_rainfall_watch(), [])
+            now[0] += timedelta(minutes=3)
+            rainfall = realtime_data.get_rainfall_watch()
+
+        self.assertEqual(len(rainfall), 80)
+        self.assertEqual(rainfall[0]['rainfall_mm'], 1.0)
+        self.assertEqual(fetch.call_count, 2)
+
+    def test_get_rainfall_watch_does_not_return_partial_feed_results(self):
+        with patch.object(realtime_data, '_fetch_json', return_value=[{'current': {'precipitation': 1}}]):
             rainfall = realtime_data.get_rainfall_watch()
         self.assertEqual(rainfall, [])
 
@@ -322,7 +413,7 @@ class ExternalHazardFeedParsingTestCase(unittest.TestCase):
 
 
 class ExternalHazardMonitorTestCase(unittest.TestCase):
-    """Tests for the scheduler-side deterministic incident creation."""
+    """Tests for dispatcher-only alerts generated from regional event feeds."""
 
     def setUp(self):
         self.app = app
@@ -337,49 +428,45 @@ class ExternalHazardMonitorTestCase(unittest.TestCase):
         with self.app.app_context():
             db.session.remove()
 
-    def test_monitor_floods_gdacs_creates_incident_for_orange_alert(self):
+    def test_monitor_floods_gdacs_creates_dispatcher_alert_not_incident(self):
         parsed_flood = {
             'event_id': 1234567, 'name': 'Flood in Batangas', 'country': 'Philippines',
             'alert_level': 'Orange', 'severity_text': '3m water height',
             'from_date': '2026-08-10', 'to_date': '2026-08-13',
-            'is_current': True, 'lat': 14.1, 'lon': 121.0, 'source': 'GDACS',
+            'is_current': True, 'lat': 14.05, 'lon': 121.15, 'source': 'GDACS',
         }
         with self.app.app_context():
             with patch.object(scheduler, 'get_flood_events', return_value=[parsed_flood]):
                 created = scheduler.monitor_floods_gdacs(app)
             self.assertTrue(created)
-            incident = Incident.query.filter_by(hazard_type='flood', location='Flood in Batangas').first()
-            self.assertIsNotNone(incident)
-            self.assertEqual(incident.latitude, 14.1)
-            self.assertEqual(incident.longitude, 121.0)
-            self.assertEqual(incident.level, 'High')
-            self.assertTrue(incident.alert)
-            self.assertIn('GDACS', incident.message)
-            recommendation = AIRecommendation.query.filter_by(incident_id=incident.id).one()
-            self.assertEqual(recommendation.provider, 'deterministic')
-            self.assertIn('water rescue', recommendation.summary)
-            self.assertIn('BFP', recommendation.recommended_agencies)
-            self.assertEqual(AuditEvent.query.filter_by(entity_id=recommendation.id, action='CREATED').count(), 1)
+            alert = Alert.query.filter_by(external_event_id='gdacs:1234567').one()
+            self.assertEqual(alert.audience, 'DISPATCHER')
+            self.assertEqual(alert.severity, 'HIGH')
+            self.assertIn('GDACS', alert.message)
+            self.assertIn('km from San Pablo City', alert.message)
+            self.assertIsNone(alert.incident_id)
+            self.assertEqual(Incident.query.count(), 0)
+            self.assertEqual(AuditEvent.query.filter_by(entity_id=alert.id, action='EXTERNAL_EVENT_LOGGED').count(), 1)
 
-    def test_monitor_floods_gdacs_does_not_alert_on_green(self):
+    def test_monitor_floods_gdacs_logs_nearby_green_as_low_priority_alert(self):
         parsed_flood = {
             'event_id': 2, 'name': 'Minor Flood', 'country': 'Philippines',
             'alert_level': 'Green', 'severity_text': '', 'from_date': '', 'to_date': '',
-            'is_current': True, 'lat': 14.1, 'lon': 121.0, 'source': 'GDACS',
+            'is_current': True, 'lat': 14.05, 'lon': 121.15, 'source': 'GDACS',
         }
         with self.app.app_context():
             with patch.object(scheduler, 'get_flood_events', return_value=[parsed_flood]):
-                scheduler.monitor_floods_gdacs(app)
-            incident = Incident.query.filter_by(hazard_type='flood', location='Minor Flood').first()
-            self.assertIsNotNone(incident)
-            self.assertFalse(incident.alert)
-            self.assertEqual(incident.level, 'Moderate')
+                created = scheduler.monitor_floods_gdacs(app)
+            self.assertTrue(created)
+            alert = Alert.query.filter_by(external_event_id='gdacs:2').one()
+            self.assertEqual(alert.severity, 'LOW')
+            self.assertEqual(Incident.query.count(), 0)
 
-    def test_monitor_floods_gdacs_skips_duplicate_within_6_hours(self):
+    def test_monitor_floods_gdacs_deduplicates_by_external_event_id(self):
         parsed_flood = {
             'event_id': 3, 'name': 'Repeat Flood', 'country': 'Philippines',
             'alert_level': 'Red', 'severity_text': '', 'from_date': '', 'to_date': '',
-            'is_current': True, 'lat': 14.1, 'lon': 121.0, 'source': 'GDACS',
+            'is_current': True, 'lat': 14.05, 'lon': 121.15, 'source': 'GDACS',
         }
         with self.app.app_context():
             with patch.object(scheduler, 'get_flood_events', return_value=[parsed_flood]):
@@ -387,10 +474,11 @@ class ExternalHazardMonitorTestCase(unittest.TestCase):
                 second = scheduler.monitor_floods_gdacs(app)
             self.assertTrue(first)
             self.assertFalse(second)
-            count = Incident.query.filter_by(hazard_type='flood', location='Repeat Flood').count()
+            count = Alert.query.filter_by(external_event_id='gdacs:3').count()
             self.assertEqual(count, 1)
+            self.assertEqual(Incident.query.count(), 0)
 
-    def test_monitor_earthquakes_does_not_recreate_incident_once_stale_event_still_in_feed(self):
+    def test_monitor_earthquakes_logs_nearby_event_once_without_incident(self):
         """Regression test for the exact bug reported against production: the
         same real earthquake (a single USGS event) kept appearing in the
         "10 most recent" feed for CALABARZON days apart, and each time the
@@ -398,71 +486,63 @@ class ExternalHazardMonitorTestCase(unittest.TestCase):
         new duplicate incident got created for the same physical event.
         De-duping must be keyed on the quake's own USGS event id, not a
         rolling wall-clock window from our own row's created_at."""
-        quake = {'event_id': 'us7000example', 'magnitude': 5.2, 'place': '7 km NW of Cabacao, Philippines', 'time': 1723000000000}
+        quake = {
+            'event_id': 'us7000example', 'magnitude': 5.2,
+            'place': 'Batangas, Philippines', 'time': 1723000000000,
+            'lat': 13.75, 'lon': 121.05,
+        }
         with self.app.app_context():
             with patch.object(scheduler, 'get_earthquake_data', return_value=[quake]):
                 first = scheduler.monitor_earthquakes(app)
                 self.assertTrue(first)
 
-                # Simulate the incident having been created days ago (this is
-                # exactly the "created_at aged past the window" condition that
-                # used to let the same event slip back through).
-                stale = Incident.query.filter_by(hazard_type='earthquake', external_event_id='usgs:us7000example').first()
-                self.assertIsNotNone(stale)
-                stale.created_at = utcnow() - timedelta(days=6)
-                db.session.commit()
-
-                # USGS still returns the same quake (same id) on a later poll.
                 second = scheduler.monitor_earthquakes(app)
             self.assertFalse(second)
-            count = Incident.query.filter_by(hazard_type='earthquake', location='7 km NW of Cabacao, Philippines').count()
-            self.assertEqual(count, 1)
+            alert = Alert.query.filter_by(external_event_id='usgs:us7000example').one()
+            self.assertEqual(alert.audience, 'DISPATCHER')
+            self.assertIn('Batangas', alert.title)
+            self.assertEqual(Incident.query.count(), 0)
 
-    def test_monitor_earthquakes_connects_aftershock_forecast_to_incident(self):
+    def test_monitor_earthquakes_uses_magnitude_for_dispatcher_alert_severity(self):
         quake = {
-            'event_id': 'us7000forecast', 'magnitude': 5.2,
-            'place': 'Calatagan, Philippines', 'time': 1723000000000,
-            'lat': 13.58, 'lon': 120.63,
-        }
-        forecast = {
-            'message': 'Elevated probability window: 12.3% chance of a M4.5+ aftershock within 24h.'
+            'event_id': 'us7000forecast', 'magnitude': 5.8,
+            'place': 'Batangas, Philippines', 'time': 1723000000000,
+            'lat': 13.75, 'lon': 121.05,
         }
         with self.app.app_context():
-            with patch.object(scheduler, 'get_earthquake_data', return_value=[quake]), \
-                 patch.object(scheduler, 'forecast_for_event', return_value=forecast) as forecast_mock:
+            with patch.object(scheduler, 'get_earthquake_data', return_value=[quake]):
                 created = scheduler.monitor_earthquakes(app)
 
             self.assertTrue(created)
-            forecast_mock.assert_called_once()
-            incident = Incident.query.filter_by(external_event_id='usgs:us7000forecast').first()
-            self.assertIn(forecast['message'], incident.message)
-            self.assertEqual(incident.latitude, 13.58)
-            self.assertEqual(incident.longitude, 120.63)
-            recommendation = AIRecommendation.query.filter_by(incident_id=incident.id).one()
-            self.assertIn('search and rescue', recommendation.summary)
-            self.assertIn('Structural assessment equipment', recommendation.recommended_resources)
+            alert = Alert.query.filter_by(external_event_id='usgs:us7000forecast').one()
+            self.assertEqual(alert.severity, 'HIGH')
+            self.assertEqual(Incident.query.count(), 0)
 
-    def test_monitor_earthquakes_creates_new_incident_for_genuinely_different_event(self):
+    def test_monitor_earthquakes_logs_distinct_ids_as_distinct_alerts(self):
         """A different USGS event id at a similar location (e.g. an
         aftershock) must still create its own incident -- the fix must not
         become a blanket "one incident per location, ever" suppression."""
-        first_quake = {'event_id': 'us7000first', 'magnitude': 5.2, 'place': 'Cabacao, Philippines', 'time': 1723000000000}
-        second_quake = {'event_id': 'us7000second', 'magnitude': 4.8, 'place': 'Cabacao, Philippines', 'time': 1723003600000}
+        first_quake = {
+            'event_id': 'us7000first', 'magnitude': 5.2,
+            'place': 'Batangas, Philippines', 'time': 1723000000000,
+            'lat': 13.75, 'lon': 121.05,
+        }
+        second_quake = {
+            'event_id': 'us7000second', 'magnitude': 4.8,
+            'place': 'Batangas, Philippines', 'time': 1723003600000,
+            'lat': 13.75, 'lon': 121.05,
+        }
         with self.app.app_context():
             with patch.object(scheduler, 'get_earthquake_data', return_value=[first_quake]):
                 scheduler.monitor_earthquakes(app)
             with patch.object(scheduler, 'get_earthquake_data', return_value=[second_quake]):
                 created = scheduler.monitor_earthquakes(app)
             self.assertTrue(created)
-            count = Incident.query.filter_by(hazard_type='earthquake', location='Cabacao, Philippines').count()
+            count = Alert.query.filter(Alert.external_event_id.in_(['usgs:us7000first', 'usgs:us7000second'])).count()
             self.assertEqual(count, 2)
+            self.assertEqual(Incident.query.count(), 0)
 
-    def test_monitor_volcanoes_eonet_does_not_recreate_incident_once_stale_event_still_open(self):
-        """Same regression as the earthquake test above, for the monitor
-        that had not yet been updated to event-id-based de-duping: EONET
-        marks an event 'open' for as long as it's tracked (weeks, for
-        something like Taal), so the old 6-hour window would re-alert on
-        the same open event indefinitely."""
+    def test_monitor_volcanoes_eonet_deduplicates_dispatcher_alert(self):
         parsed_volcano = {
             'event_id': 'EONET_9999', 'title': 'Taal Volcano', 'date': '2026-08-07T00:00:00Z',
             'lat': 14.00, 'lon': 120.99, 'link': 'https://eonet.gsfc.nasa.gov/api/v3/events/EONET_9999',
@@ -471,19 +551,14 @@ class ExternalHazardMonitorTestCase(unittest.TestCase):
         with self.app.app_context():
             with patch.object(scheduler, 'get_volcano_events', return_value=[parsed_volcano]):
                 first = scheduler.monitor_volcanoes_eonet(app)
-                self.assertTrue(first)
-
-                stale = Incident.query.filter_by(hazard_type='volcanic', external_event_id='eonet:EONET_9999').first()
-                self.assertIsNotNone(stale)
-                stale.created_at = utcnow() - timedelta(days=6)
-                db.session.commit()
-
                 second = scheduler.monitor_volcanoes_eonet(app)
             self.assertFalse(second)
-            count = Incident.query.filter_by(hazard_type='volcanic', location='Taal Volcano').count()
+            self.assertTrue(first)
+            count = Alert.query.filter_by(external_event_id='eonet:EONET_9999').count()
             self.assertEqual(count, 1)
+            self.assertEqual(Incident.query.count(), 0)
 
-    def test_monitor_volcanoes_eonet_creates_high_alert_incident(self):
+    def test_monitor_volcanoes_eonet_creates_high_dispatcher_alert(self):
         parsed_volcano = {
             'event_id': 'EONET_1111', 'title': 'Taal Volcano', 'date': '2026-08-11T00:00:00Z',
             'lat': 14.00, 'lon': 120.99, 'link': 'https://eonet.gsfc.nasa.gov/api/v3/events/EONET_1111',
@@ -493,16 +568,12 @@ class ExternalHazardMonitorTestCase(unittest.TestCase):
             with patch.object(scheduler, 'get_volcano_events', return_value=[parsed_volcano]):
                 created = scheduler.monitor_volcanoes_eonet(app)
             self.assertTrue(created)
-            incident = Incident.query.filter_by(hazard_type='volcanic', location='Taal Volcano').first()
-            self.assertIsNotNone(incident)
-            self.assertEqual(incident.latitude, 14.00)
-            self.assertEqual(incident.longitude, 120.99)
-            recommendation = AIRecommendation.query.filter_by(incident_id=incident.id).one()
-            self.assertEqual(recommendation.recommendation_type, 'hazard_prediction')
-            self.assertIn('evacuation readiness', recommendation.summary)
-            self.assertEqual(incident.level, 'High')
-            self.assertTrue(incident.alert)
-            self.assertIn('EONET', incident.message)
+            alert = Alert.query.filter_by(external_event_id='eonet:EONET_1111').one()
+            self.assertEqual(alert.audience, 'DISPATCHER')
+            self.assertEqual(alert.severity, 'HIGH')
+            self.assertIn('EONET', alert.message)
+            self.assertIsNone(alert.incident_id)
+            self.assertEqual(Incident.query.count(), 0)
 
     def test_monitor_volcanoes_eonet_no_events_returns_false(self):
         with self.app.app_context():
@@ -510,65 +581,96 @@ class ExternalHazardMonitorTestCase(unittest.TestCase):
                 created = scheduler.monitor_volcanoes_eonet(app)
             self.assertFalse(created)
 
-    def test_monitor_earthquakes_sets_event_time_from_usgs_epoch_millis(self):
-        """This is the field that lets the UI show 'this actually happened
-        on Aug 7' instead of only 'we logged this on Aug 13' -- see
-        models.Incident.display_time and hazard_macros.event_time_cell."""
-        # 2026-08-07T14:22:00 UTC, in epoch milliseconds.
-        quake = {'event_id': 'us7000realdate', 'magnitude': 5.2, 'place': 'Cabacao, Philippines', 'time': 1786112520000}
-        with self.app.app_context():
-            with patch.object(scheduler, 'get_earthquake_data', return_value=[quake]):
-                scheduler.monitor_earthquakes(app)
-            incident = Incident.query.filter_by(external_event_id='usgs:us7000realdate').first()
-            self.assertIsNotNone(incident.event_time)
-            self.assertEqual(incident.event_time.year, 2026)
-            self.assertEqual(incident.event_time.month, 8)
-            self.assertEqual(incident.event_time.day, 7)
-
-    def test_monitor_earthquakes_missing_time_leaves_event_time_null_without_erroring(self):
-        quake = {'event_id': 'us7000notime', 'magnitude': 5.0, 'place': 'Cabacao, Philippines'}
-        with self.app.app_context():
-            with patch.object(scheduler, 'get_earthquake_data', return_value=[quake]):
-                created = scheduler.monitor_earthquakes(app)
-            self.assertTrue(created)
-            incident = Incident.query.filter_by(external_event_id='usgs:us7000notime').first()
-            self.assertIsNone(incident.event_time)
-            # display_time must still fall back cleanly to created_at.
-            self.assertEqual(incident.display_time, incident.created_at)
-
-    def test_monitor_floods_gdacs_sets_event_time_from_from_date(self):
-        parsed_flood = {
-            'event_id': 42, 'name': 'Flood with date', 'country': 'Philippines',
-            'alert_level': 'Orange', 'severity_text': '', 'from_date': '2026-08-10T06:30:00',
-            'to_date': '', 'is_current': True, 'lat': 14.1, 'lon': 121.0, 'source': 'GDACS',
+    def test_regional_event_handlers_ignore_events_outside_alert_radius(self):
+        far_flood = {
+            'event_id': 42, 'name': 'Flood outside radius', 'country': 'Philippines',
+            'alert_level': 'Red', 'is_current': True, 'lat': 15.5, 'lon': 121.0,
+        }
+        distant_volcano = {
+            'event_id': 'EONET_FAR', 'title': 'Distant Volcano',
+            'lat': 16.0, 'lon': 122.0,
         }
         with self.app.app_context():
-            with patch.object(scheduler, 'get_flood_events', return_value=[parsed_flood]):
-                scheduler.monitor_floods_gdacs(app)
-            incident = Incident.query.filter_by(external_event_id='gdacs:42').first()
-            self.assertEqual(incident.event_time, datetime(2026, 8, 10, 6, 30))
+            with patch.object(scheduler, 'get_flood_events', return_value=[far_flood]):
+                self.assertFalse(scheduler.monitor_floods_gdacs(app))
+            with patch.object(scheduler, 'get_volcano_events', return_value=[distant_volcano]):
+                self.assertFalse(scheduler.monitor_volcanoes_eonet(app))
+            self.assertEqual(Alert.query.filter_by(audience='DISPATCHER').count(), 0)
 
-    def test_monitor_volcanoes_eonet_sets_event_time_from_iso_date_with_z_suffix(self):
-        parsed_volcano = {
-            'event_id': 'EONET_2222', 'title': 'Mayon Volcano', 'date': '2026-08-01T03:00:00Z',
-            'lat': 14.00, 'lon': 120.99, 'link': 'https://eonet.gsfc.nasa.gov/api/v3/events/EONET_2222',
-            'source': 'NASA EONET',
-        }
+    def test_monitor_hazards_checks_regional_feeds_without_local_weather(self):
+        with patch.object(scheduler, 'monitor_earthquakes') as earthquakes, \
+             patch.object(scheduler, 'monitor_floods_gdacs') as floods, \
+             patch.object(scheduler, 'monitor_volcanoes_eonet') as volcanoes, \
+             patch.object(scheduler, 'get_all_weather_data', return_value={}):
+            scheduler._monitor_hazards_once(app)
+        earthquakes.assert_called_once_with(app)
+        floods.assert_called_once_with(app)
+        volcanoes.assert_called_once_with(app)
+
+    def test_regional_alerts_are_visible_to_dispatchers_but_not_citizens(self):
         with self.app.app_context():
-            with patch.object(scheduler, 'get_volcano_events', return_value=[parsed_volcano]):
-                scheduler.monitor_volcanoes_eonet(app)
-            incident = Incident.query.filter_by(external_event_id='eonet:EONET_2222').first()
-            self.assertEqual(incident.event_time, datetime(2026, 8, 1, 3, 0))
+            dispatcher = User(
+                username='regional-alert-dispatcher',
+                email='regional-alert-dispatcher@example.test',
+                password='test-password',
+                role='dispatcher',
+            )
+            citizen = User(
+                username='regional-alert-citizen',
+                email='regional-alert-citizen@example.test',
+                password='test-password',
+                role='citizen',
+            )
+            db.session.add_all([dispatcher, citizen])
+            dispatcher_alert = Alert(
+                audience='DISPATCHER',
+                external_event_id='usgs:visibility-test',
+                title='Dispatcher-only regional earthquake',
+                message='Nearby earthquake for dispatcher review.',
+                severity='HIGH',
+                status='ACTIVE',
+            )
+            db.session.add_all([
+                dispatcher_alert,
+                Alert(
+                    audience='PUBLIC',
+                    title='Public safety advisory',
+                    message='Official citizen-facing advisory.',
+                    severity='MEDIUM',
+                    status='ACTIVE',
+                ),
+            ])
+            db.session.commit()
+            dispatcher_alert_id = dispatcher_alert.id
 
-    def test_parse_epoch_millis_handles_none_and_garbage(self):
-        self.assertIsNone(scheduler._parse_epoch_millis(None))
-        self.assertIsNone(scheduler._parse_epoch_millis('not-a-number'))
-        self.assertIsNone(scheduler._parse_epoch_millis(object()))
+        client = self.app.test_client()
+        with client.session_transaction() as session:
+            session['username'] = 'regional-alert-dispatcher'
+            session['role'] = 'dispatcher'
+        dispatcher_response = client.get('/dispatcher/alerts')
+        self.assertEqual(dispatcher_response.status_code, 200)
+        self.assertIn(b'Dispatcher-only regional earthquake', dispatcher_response.data)
+        self.assertNotIn(b'Public safety advisory', dispatcher_response.data)
+        resolved = client.post(f'/dispatcher/alerts/{dispatcher_alert_id}/resolve')
+        self.assertEqual(resolved.status_code, 302)
+        with self.app.app_context():
+            self.assertEqual(db.session.get(Alert, dispatcher_alert_id).status, 'RESOLVED')
 
-    def test_parse_iso_datetime_handles_none_and_garbage(self):
-        self.assertIsNone(scheduler._parse_iso_datetime(None))
-        self.assertIsNone(scheduler._parse_iso_datetime(''))
-        self.assertIsNone(scheduler._parse_iso_datetime('not-a-date'))
+        with client.session_transaction() as session:
+            session.clear()
+            session['username'] = 'regional-alert-citizen'
+            session['role'] = 'citizen'
+        citizen_response = client.get('/citizen-alerts')
+        self.assertEqual(citizen_response.status_code, 200)
+        self.assertIn(b'Public safety advisory', citizen_response.data)
+        self.assertNotIn(b'Dispatcher-only regional earthquake', citizen_response.data)
+
+        with client.session_transaction() as session:
+            session.clear()
+            session['username'] = 'regional-alert-citizen'
+            session['role'] = 'citizen'
+        forbidden_response = client.get('/dispatcher/alerts')
+        self.assertEqual(forbidden_response.status_code, 403)
 
     def test_incident_display_time_prefers_event_time_over_created_at(self):
         with self.app.app_context():

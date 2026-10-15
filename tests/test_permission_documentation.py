@@ -26,9 +26,9 @@ class PermissionDocumentationTestCase(unittest.TestCase):
         expected_aliases = {
             'CITIZEN': ('citizen', 'user'),
             'RESPONDER': ('field_responder', 'responder'),
-            'COORDINATOR': ('agency_coordinator', 'coordinator'),
-            'COMMANDER': ('incident_commander', 'commander'),
-            'EOC': ('eoc_staff', 'eoc'),
+            'DISPATCHER': ('dispatcher', 'dispatch'),
+            'IMT': ('imt_staff', 'imt', 'eoc_staff', 'eoc'),
+            'RETIRED': ('agency_coordinator', 'coordinator', 'retired'),
             'ADMIN': ('admin',),
         }
 
@@ -42,29 +42,27 @@ class PermissionDocumentationTestCase(unittest.TestCase):
         roles = {
             'CITIZEN': SimpleNamespace(id=1, role='citizen'),
             'RESPONDER': SimpleNamespace(id=2, role='field_responder'),
-            'COORDINATOR': SimpleNamespace(id=3, role='agency_coordinator'),
-            'COMMANDER': SimpleNamespace(id=4, role='incident_commander'),
-            'EOC': SimpleNamespace(id=5, role='eoc_staff'),
-            'ADMIN': SimpleNamespace(id=6, role='admin'),
+            'DISPATCHER': SimpleNamespace(id=3, role='dispatcher'),
+            'IMT': SimpleNamespace(id=4, role='imt_staff'),
+            'ADMIN': SimpleNamespace(id=5, role='admin'),
+            'RETIRED': SimpleNamespace(id=6, role='retired'),
         }
         incident = SimpleNamespace(user_id=roles['CITIZEN'].id)
         task_incident = SimpleNamespace(id=99)
         resource = SimpleNamespace(id=100)
 
         expected = {
-            'can_view_incident': {'CITIZEN': True, 'RESPONDER': True, 'COORDINATOR': True, 'COMMANDER': True, 'EOC': True, 'ADMIN': True},
-            'can_edit_incident': {'CITIZEN': True, 'RESPONDER': False, 'COORDINATOR': True, 'COMMANDER': True, 'EOC': True, 'ADMIN': True},
-            'can_assign_task': {'CITIZEN': False, 'RESPONDER': False, 'COORDINATOR': True, 'COMMANDER': True, 'EOC': True, 'ADMIN': True},
-            'can_allocate_resource': {'CITIZEN': False, 'RESPONDER': False, 'COORDINATOR': True, 'COMMANDER': True, 'EOC': True, 'ADMIN': True},
-            'can_verify_incident': {'CITIZEN': False, 'RESPONDER': False, 'COORDINATOR': False, 'COMMANDER': False, 'EOC': True, 'ADMIN': True},
-            'can_issue_alert': {'CITIZEN': False, 'RESPONDER': False, 'COORDINATOR': False, 'COMMANDER': True, 'EOC': True, 'ADMIN': False},
-            'can_manage_users': {'CITIZEN': False, 'RESPONDER': False, 'COORDINATOR': False, 'COMMANDER': False, 'EOC': False, 'ADMIN': True},
-            'can_view_analytics': {'CITIZEN': False, 'RESPONDER': False, 'COORDINATOR': True, 'COMMANDER': True, 'EOC': True, 'ADMIN': True},
-            'can_manage_facilities': {'CITIZEN': False, 'RESPONDER': False, 'COORDINATOR': False, 'COMMANDER': False, 'EOC': True, 'ADMIN': False},
-            'can_manage_evacuation_centers': {'CITIZEN': False, 'RESPONDER': False, 'COORDINATOR': True, 'COMMANDER': False, 'EOC': True, 'ADMIN': False},
-            'can_request_resources': {'CITIZEN': False, 'RESPONDER': False, 'COORDINATOR': True, 'COMMANDER': False, 'EOC': False, 'ADMIN': False},
-            'can_decide_resource_request': {'CITIZEN': False, 'RESPONDER': False, 'COORDINATOR': False, 'COMMANDER': True, 'EOC': True, 'ADMIN': True},
-            'can_log_incident_report': {'CITIZEN': False, 'RESPONDER': False, 'COORDINATOR': False, 'COMMANDER': False, 'EOC': True, 'ADMIN': True},
+            'can_view_incident': {'CITIZEN': True, 'RESPONDER': True, 'DISPATCHER': True, 'IMT': True, 'ADMIN': True, 'RETIRED': False},
+            'can_edit_incident': {'CITIZEN': True, 'RESPONDER': False, 'DISPATCHER': True, 'IMT': True, 'ADMIN': True, 'RETIRED': False},
+            'can_assign_task': {'CITIZEN': False, 'RESPONDER': False, 'DISPATCHER': True, 'IMT': False, 'ADMIN': False, 'RETIRED': False},
+            'can_allocate_resource': {'CITIZEN': False, 'RESPONDER': False, 'DISPATCHER': True, 'IMT': False, 'ADMIN': False, 'RETIRED': False},
+            'can_verify_incident': {'CITIZEN': False, 'RESPONDER': False, 'DISPATCHER': False, 'IMT': True, 'ADMIN': True, 'RETIRED': False},
+            'can_issue_alert': {'CITIZEN': False, 'RESPONDER': False, 'DISPATCHER': False, 'IMT': True, 'ADMIN': False, 'RETIRED': False},
+            'can_manage_users': {'CITIZEN': False, 'RESPONDER': False, 'DISPATCHER': False, 'IMT': False, 'ADMIN': True, 'RETIRED': False},
+            'can_view_analytics': {'CITIZEN': False, 'RESPONDER': False, 'DISPATCHER': True, 'IMT': True, 'ADMIN': True, 'RETIRED': False},
+            'can_manage_facilities': {'CITIZEN': False, 'RESPONDER': False, 'DISPATCHER': False, 'IMT': True, 'ADMIN': False, 'RETIRED': False},
+            'can_manage_evacuation_centers': {'CITIZEN': False, 'RESPONDER': False, 'DISPATCHER': False, 'IMT': True, 'ADMIN': False, 'RETIRED': False},
+            'can_log_incident_report': {'CITIZEN': False, 'RESPONDER': False, 'DISPATCHER': False, 'IMT': True, 'ADMIN': True, 'RETIRED': False},
         }
 
         for helper_name, role_expectations in expected.items():

@@ -1,33 +1,23 @@
 import json
-from datetime import datetime, timedelta, timezone
+import math
+from datetime import timedelta
 
 from sqlalchemy import text
 
 from services.realtime_data import (
-    CALABARZON_CITY_COORDINATES,
+    SAN_PABLO_CITY,
+    SAN_PABLO_COORDINATES,
     get_all_weather_data,
     get_earthquake_data,
     get_flood_events,
     get_volcano_events,
 )
 from ai.decision_support import predict_hazard
-from models import AIRecommendation, AuditEvent, db, Incident, utcnow
-from services.aftershock import forecast_for_event
+from models import AIRecommendation, Alert, AuditEvent, db, Incident, utcnow
 
-# Earthquake severity is judged from real USGS magnitude readings, not the
-# rainfall/river/soil-moisture AI decision support call (which has no
-# meaningful relationship to seismic magnitude).
+# External events are dispatcher-only situational alerts, not incidents.
+REGIONAL_ALERT_RADIUS_KM = 100
 EARTHQUAKE_ALERT_MAGNITUDE = 4.5
-
-# GDACS alert levels (Green/Orange/Red) map directly to a score/level pair,
-# the same "confirmed external signal, skip the AI" treatment earthquakes
-# get -- a body already tracking floods worldwide reporting an active event
-# in the Philippines is itself the hazard signal.
-GDACS_ALERT_LEVEL_MAP = {
-    'RED': {'score': 90.0, 'level': 'Severe', 'alert': True, 'status': 'ACTIVE'},
-    'ORANGE': {'score': 65.0, 'level': 'High', 'alert': True, 'status': 'ACTIVE'},
-    'GREEN': {'score': 30.0, 'level': 'Moderate', 'alert': False, 'status': 'NEW'},
-}
 DEFAULT_POPULATION_DENSITY = 1200
 CITY_POPULATION_DENSITY = {
     'Lipa': 1650,
@@ -51,81 +41,77 @@ CITY_POPULATION_DENSITY = {
 }
 
 
-def _add_deterministic_recommendation(incident, summary, agencies, resources, factors):
-    """Attach a reviewable recommendation to an externally scored incident."""
-    db.session.flush()
-    recommendation = AIRecommendation(
-        incident_id=incident.id,
-        provider='deterministic',
-        model='external-hazard-threshold-v1',
-        recommendation_type='hazard_prediction',
-        summary=summary,
-        confidence_score=100.0,
-        recommended_agencies=json.dumps(agencies),
-        recommended_resources=json.dumps(resources),
-        primary_factors=json.dumps(factors),
-    )
-    db.session.add(recommendation)
-    db.session.flush()
-    db.session.add(AuditEvent(
-        entity_type='AIRecommendation',
-        entity_id=recommendation.id,
-        action='CREATED',
-        details=(
-            f'Deterministic external hazard recommendation created for '
-            f'incident_id={incident.id} model={recommendation.model}.'
-        ),
-    ))
-
-
 def _population_density_for_city(city):
     return CITY_POPULATION_DENSITY.get(city, DEFAULT_POPULATION_DENSITY)
 
 
-def _magnitude_to_level(magnitude):
-    if magnitude >= 6.0:
-        return "Severe"
-    if magnitude >= 5.5:
-        return "High"
-    if magnitude >= 5.0:
-        return "Moderate"
-    return "Low"
-
-
-def _magnitude_to_score(magnitude):
-    # Simple linear mapping for display purposes: M4.5 -> 50, M7.5+ -> 100
-    score = (magnitude - 4.5) / (7.5 - 4.5) * 100
-    return max(0.0, min(100.0, round(score, 1)))
-
-
-def _parse_epoch_millis(raw_value):
-    """USGS gives earthquake time as milliseconds since epoch. Returns a
-    naive UTC datetime (matching the rest of the app's convention), or None
-    if raw_value is missing or malformed -- a bad/absent timestamp from the
-    feed should never block incident creation, just leave event_time unset
-    so the UI falls back to created_at."""
-    if raw_value is None:
-        return None
+def _regional_event_distance_km(latitude, longitude):
     try:
-        return datetime.fromtimestamp(float(raw_value) / 1000, timezone.utc).replace(tzinfo=None)
-    except (TypeError, ValueError, OSError):
-        return None
-
-
-def _parse_iso_datetime(raw_value):
-    """GDACS (fromdate) and EONET (date) both give ISO 8601 datetime
-    strings, EONET's with a trailing 'Z'. Returns a naive UTC datetime, or
-    None if raw_value is missing or malformed."""
-    if not raw_value:
-        return None
-    try:
-        return datetime.fromisoformat(str(raw_value).replace('Z', '+00:00')).replace(tzinfo=None)
+        latitude = float(latitude)
+        longitude = float(longitude)
     except (TypeError, ValueError):
         return None
+    if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
+        return None
+
+    city_latitude, city_longitude = SAN_PABLO_COORDINATES
+    latitude_delta = math.radians(latitude - city_latitude)
+    longitude_delta = math.radians(longitude - city_longitude)
+    haversine = (
+        math.sin(latitude_delta / 2) ** 2
+        + math.cos(math.radians(city_latitude))
+        * math.cos(math.radians(latitude))
+        * math.sin(longitude_delta / 2) ** 2
+    )
+    return 6371 * 2 * math.atan2(math.sqrt(haversine), math.sqrt(1 - haversine))
+
+
+def _create_dispatcher_event_alert(
+    app, source, hazard, event_id, latitude, longitude, title, message, severity,
+):
+    if not event_id:
+        app.logger.warning('%s %s event has no id and cannot be deduplicated', source, hazard)
+        return False
+
+    distance_km = _regional_event_distance_km(latitude, longitude)
+    if distance_km is None or distance_km > REGIONAL_ALERT_RADIUS_KM:
+        return False
+
+    external_event_id = f'{source.lower()}:{event_id}'
+    if Alert.query.filter_by(external_event_id=external_event_id).first():
+        app.logger.info(
+            '%s %s event already logged for dispatchers (event_id=%s)',
+            source, hazard, event_id,
+        )
+        return False
+
+    alert = Alert(
+        audience='DISPATCHER',
+        external_event_id=external_event_id,
+        title=title[:200],
+        message=(
+            f'{message} Approximately {distance_km:.1f} km from San Pablo City. '
+            'Regional external-feed signal; verify locally before response.'
+        ),
+        severity=severity,
+        status='ACTIVE',
+    )
+    db.session.add(alert)
+    db.session.flush()
+    db.session.add(AuditEvent(
+        entity_type='Alert',
+        entity_id=alert.id,
+        action='EXTERNAL_EVENT_LOGGED',
+        details=(
+            f'{source} {hazard} event {event_id} logged for dispatcher review '
+            f'at {distance_km:.1f} km from San Pablo City.'
+        ),
+    ))
+    return True
 
 
 def monitor_earthquakes(app):
-    """Check real earthquake feed and raise an alert for significant events."""
+    """Log nearby significant USGS earthquakes as dispatcher-only alerts."""
     earthquake_data = get_earthquake_data()
     if not earthquake_data:
         app.logger.info("Earthquake monitoring skipped: no earthquake data available")
@@ -133,71 +119,40 @@ def monitor_earthquakes(app):
 
     created_any = False
     for quake in earthquake_data:
-        magnitude = float(quake.get("magnitude") or 0)
+        try:
+            magnitude = float(quake.get("magnitude") or 0)
+        except (TypeError, ValueError):
+            app.logger.warning(
+                'Earthquake monitoring skipped event with invalid magnitude: %s',
+                quake.get('event_id'),
+            )
+            continue
+        if not math.isfinite(magnitude):
+            app.logger.warning(
+                'Earthquake monitoring skipped event with invalid magnitude: %s',
+                quake.get('event_id'),
+            )
+            continue
         if magnitude < EARTHQUAKE_ALERT_MAGNITUDE:
             continue
 
-        location = quake.get("location") or quake.get("place") or "CALABARZON region"
-        raw_event_id = quake.get("event_id")
-        external_event_id = f"usgs:{raw_event_id}" if raw_event_id else None
-        event_time = _parse_epoch_millis(quake.get("time"))
-        aftershock_forecast = forecast_for_event(magnitude, event_time)
-
-        # De-dupe on the quake's own USGS event id when available, not on a
-        # wall-clock window: get_earthquake_data() has no guarantee the same
-        # physical earthquake won't still be the "most recent" result days
-        # or weeks later (CALABARZON doesn't reliably produce 10 new quakes
-        # to push an old one out), so a time-boxed check here would just
-        # re-alert on that same old event every time the box happened to be
-        # running again after the window lapsed. Falling back to a location
-        # match (still unbounded, not time-boxed) only covers the rare case
-        # where USGS didn't supply a feature id.
-        existing_query = Incident.query.filter_by(hazard_type="earthquake")
-        if external_event_id:
-            existing_query = existing_query.filter_by(external_event_id=external_event_id)
-        else:
-            existing_query = existing_query.filter_by(location=location)
-        recent_incident = existing_query.order_by(Incident.created_at.desc()).first()
-
-        if recent_incident:
-            app.logger.info(
-                "Earthquake monitoring: incident already recorded for %s (event_id=%s)",
-                location, external_event_id,
-            )
-            continue
-
-        incident = Incident(
-            hazard_type="earthquake",
-            location=location,
+        location = quake.get('location') or quake.get('place') or 'Regional area'
+        magnitude_text = f'Magnitude {magnitude:.1f}'
+        severity = 'CRITICAL' if magnitude >= 6.0 else 'HIGH' if magnitude >= 5.5 else 'MEDIUM'
+        created_any |= _create_dispatcher_event_alert(
+            app=app,
+            source='USGS',
+            hazard='earthquake',
+            event_id=quake.get('event_id'),
             latitude=quake.get('lat'),
             longitude=quake.get('lon'),
-            external_event_id=external_event_id,
-            event_time=event_time,
-            rainfall_mm=0.0,
-            river_level_m=None,
-            humidity_pct=0.0,
-            population_density=0,
-            score=_magnitude_to_score(magnitude),
-            level=_magnitude_to_level(magnitude),
+            title=f'{magnitude_text} earthquake near {location}',
             message=(
-                f"Magnitude {magnitude:.1f} earthquake detected near {location}."
-                + (f" {aftershock_forecast['message']}" if aftershock_forecast else '')
-            )[:255],
-            alert=True,
-            status='ACTIVE',
-            reported_by='system',
-        )
-        db.session.add(incident)
-        _add_deterministic_recommendation(
-            incident,
-            f'M{magnitude:.1f} earthquake near {location} — recommend search and rescue, medical, and engineering assessment.',
-            ['BFP', 'DOH', 'DPWH'],
-            ['Search and rescue teams', 'Medical teams', 'Structural assessment equipment'],
-            [f'M{magnitude:.1f} earthquake', 'USGS external event feed', 'Potential aftershock activity'],
-        )
-        created_any = True
-        app.logger.info(
-            "Earthquake monitoring: created alert for M%.1f near %s", magnitude, location
+                f'{magnitude_text} earthquake reported near {location}. '
+                f'Event time (epoch ms): {quake.get("time") or "unavailable"}. '
+                'Source: USGS.'
+            ),
+            severity=severity,
         )
 
     if created_any:
@@ -209,10 +164,7 @@ def monitor_earthquakes(app):
 
 
 def monitor_floods_gdacs(app):
-    """Check the GDACS global flood feed for active events affecting the
-    Philippines and raise an alert directly -- mirrors monitor_earthquakes:
-    a confirmed external event is the hazard signal, not an input to the AI.
-    """
+    """Log nearby active Philippine GDACS floods as dispatcher-only alerts."""
     flood_events = get_flood_events()
     if not flood_events:
         app.logger.info("GDACS flood monitoring: no Philippine flood events found")
@@ -220,9 +172,12 @@ def monitor_floods_gdacs(app):
 
     created_any = False
     for flood in flood_events:
+        if flood.get('is_current') is False:
+            continue
         alert_level = (flood.get('alert_level') or '').strip().upper()
-        mapping = GDACS_ALERT_LEVEL_MAP.get(alert_level)
-        if not mapping:
+        severity_by_level = {'RED': 'CRITICAL', 'ORANGE': 'HIGH', 'GREEN': 'LOW'}
+        severity = severity_by_level.get(alert_level)
+        if severity is None:
             app.logger.info(
                 "GDACS flood monitoring: unrecognized alert level %r for event %s, skipping",
                 flood.get('alert_level'), flood.get('event_id'),
@@ -230,60 +185,20 @@ def monitor_floods_gdacs(app):
             continue
 
         location = flood.get('name') or flood.get('country') or 'Philippines'
-        raw_event_id = flood.get('event_id')
-        external_event_id = f"gdacs:{raw_event_id}" if raw_event_id else None
-        event_time = _parse_iso_datetime(flood.get('from_date'))
-
-        # De-dupe on the GDACS event's own id (unbounded, and independent of
-        # alert level) rather than a wall-clock window. The previous version
-        # filtered on alert=True unconditionally, which meant GREEN-level
-        # events (alert=False) never matched any prior record and could
-        # duplicate on every single 5-minute poll for as long as GDACS kept
-        # reporting them as current.
-        existing_query = Incident.query.filter_by(hazard_type="flood")
-        if external_event_id:
-            existing_query = existing_query.filter_by(external_event_id=external_event_id)
-        else:
-            existing_query = existing_query.filter_by(location=location)
-        recent_incident = existing_query.order_by(Incident.created_at.desc()).first()
-
-        if recent_incident:
-            app.logger.info("GDACS flood monitoring: incident already recorded for %s (event_id=%s)", location, external_event_id)
-            continue
-
-        incident = Incident(
-            hazard_type="flood",
-            location=location,
+        created_any |= _create_dispatcher_event_alert(
+            app=app,
+            source='GDACS',
+            hazard='flood',
+            event_id=flood.get('event_id'),
             latitude=flood.get('lat'),
             longitude=flood.get('lon'),
-            external_event_id=external_event_id,
-            event_time=event_time,
-            rainfall_mm=0.0,
-            river_level_m=None,
-            humidity_pct=0.0,
-            population_density=0,
-            score=mapping['score'],
-            level=mapping['level'],
+            title=f'GDACS {alert_level.title()} flood near {location}',
             message=(
-                f"GDACS {alert_level.title()} flood alert for {flood.get('country')}"
-                f"{': ' + flood.get('name') if flood.get('name') else ''}. "
-                f"Source: GDACS (gdacs.org), event #{flood.get('event_id')}."
+                f'GDACS reports an active {alert_level.title()} flood near {location}'
+                f'{": " + str(flood.get("severity_text")) if flood.get("severity_text") else ""}. '
+                f'Event start: {flood.get("from_date") or "unavailable"}. Source: GDACS.'
             ),
-            alert=mapping['alert'],
-            status=mapping['status'],
-            reported_by='system',
-        )
-        db.session.add(incident)
-        _add_deterministic_recommendation(
-            incident,
-            f'GDACS {alert_level.title()} flood alert near {location} — recommend evacuation coordination, water rescue, and medical support.',
-            ['OCD', 'BFP', 'PNP', 'DOH'],
-            ['Rescue boats', 'Evacuation transport', 'Emergency medical supplies'],
-            [f'GDACS {alert_level.title()} alert', 'Confirmed external flood event', flood.get('severity_text') or 'Active flood monitoring'],
-        )
-        created_any = True
-        app.logger.info(
-            "GDACS flood monitoring: created %s incident for %s", mapping['level'], location
+            severity=severity,
         )
 
     if created_any:
@@ -295,9 +210,7 @@ def monitor_floods_gdacs(app):
 
 
 def monitor_volcanoes_eonet(app):
-    """Check NASA EONET for open volcanic events near Calabarzon (e.g. Taal)
-    and raise an alert directly, same deterministic treatment as
-    monitor_earthquakes and monitor_floods_gdacs."""
+    """Log nearby open EONET volcano events as dispatcher-only alerts."""
     volcano_events = get_volcano_events()
     if not volcano_events:
         app.logger.info("EONET volcano monitoring: no open events near Calabarzon")
@@ -306,61 +219,21 @@ def monitor_volcanoes_eonet(app):
     created_any = False
     for volcano in volcano_events:
         location = volcano.get('title') or 'Calabarzon volcano'
-        raw_event_id = volcano.get('event_id')
-        external_event_id = f"eonet:{raw_event_id}" if raw_event_id else None
-        event_time = _parse_iso_datetime(volcano.get('date'))
-
-        # De-dupe on the EONET event's own id (unbounded, not time-boxed),
-        # same reasoning as monitor_earthquakes/monitor_floods_gdacs: EONET
-        # marks an event "open" for as long as it's actively tracked, which
-        # for something like Taal can be weeks -- a wall-clock window here
-        # just re-alerts on the same open event every time the window lapses.
-        existing_query = Incident.query.filter_by(hazard_type="volcanic")
-        if external_event_id:
-            existing_query = existing_query.filter_by(external_event_id=external_event_id)
-        else:
-            existing_query = existing_query.filter_by(location=location)
-        recent_incident = existing_query.order_by(Incident.created_at.desc()).first()
-
-        if recent_incident:
-            app.logger.info(
-                "EONET volcano monitoring: incident already recorded for %s (event_id=%s)",
-                location, external_event_id,
-            )
-            continue
-
-        incident = Incident(
-            hazard_type="volcanic",
-            location=location,
+        created_any |= _create_dispatcher_event_alert(
+            app=app,
+            source='EONET',
+            hazard='volcano',
+            event_id=volcano.get('event_id'),
             latitude=volcano.get('lat'),
             longitude=volcano.get('lon'),
-            external_event_id=external_event_id,
-            event_time=event_time,
-            rainfall_mm=0.0,
-            river_level_m=None,
-            humidity_pct=0.0,
-            population_density=0,
-            score=75.0,
-            level="High",
+            title=f'Open volcanic event: {location}',
             message=(
-                f"NASA EONET reports an open volcanic event: {location} "
-                f"(observed {volcano.get('date')}). Source: eonet.gsfc.nasa.gov, "
-                f"event {volcano.get('event_id')}."
+                f'NASA EONET reports an open volcanic event at {location} '
+                f'(observed {volcano.get("date") or "date unavailable"}). '
+                f'Source: NASA EONET. {volcano.get("link") or ""}'
             ),
-            alert=True,
-            status='ACTIVE',
-            reported_by='system',
+            severity='HIGH',
         )
-        db.session.add(incident)
-        _add_deterministic_recommendation(
-            incident,
-            f'Open volcanic event at {location} — recommend evacuation readiness, medical support, and engineering assessment.',
-            ['PHIVOLCS', 'BFP', 'DOH', 'DPWH'],
-            ['Evacuation transport', 'Medical supplies', 'Engineering assessment teams'],
-            ['NASA EONET open volcanic event', 'Volcanic hazard monitoring', 'Potential evacuation requirement'],
-        )
-        created_any = True
-        app.logger.info("EONET volcano monitoring: created alert for %s", location)
 
     if created_any:
         db.session.commit()
@@ -403,16 +276,17 @@ def monitor_hazards():
 
 
 def _monitor_hazards_once(app):
-        if not app.config.get('TESTING', False):
-            monitor_earthquakes(app)
-            monitor_floods_gdacs(app)
-            monitor_volcanoes_eonet(app)
+        monitor_earthquakes(app)
+        monitor_floods_gdacs(app)
+        monitor_volcanoes_eonet(app)
 
         weather_by_city = get_all_weather_data()
-        if not weather_by_city:
-            app.logger.info("Hazard monitoring skipped: no weather data available")
+        san_pablo_weather = weather_by_city.get(SAN_PABLO_CITY) if weather_by_city else None
+        if not san_pablo_weather:
+            app.logger.info("Hazard monitoring skipped: no San Pablo weather data available")
             return
 
+        weather_by_city = {SAN_PABLO_CITY: san_pablo_weather}
         created_any = False
         for city, weather_data in weather_by_city.items():
             if not weather_data:
@@ -485,7 +359,7 @@ def _monitor_hazards_once(app):
                     )
                     continue
 
-                city_coordinates = CALABARZON_CITY_COORDINATES.get(city)
+                city_coordinates = SAN_PABLO_COORDINATES if city == SAN_PABLO_CITY else None
                 incident = Incident(
                     hazard_type=prediction.get("type", config["hazard_type"]),
                     location=city,
@@ -511,7 +385,6 @@ def _monitor_hazards_once(app):
                     recommendation_type='hazard_prediction',
                     summary=prediction.get('message', '').strip() or 'AI hazard prediction generated.',
                     confidence_score=prediction.get('confidence'),
-                    recommended_agencies=json.dumps(prediction.get('recommended_agencies', [])),
                     recommended_resources=json.dumps(prediction.get('recommended_resources', [])),
                     primary_factors=json.dumps(prediction.get('primary_factors', [])),
                 )
@@ -531,7 +404,7 @@ def _monitor_hazards_once(app):
 
         if created_any:
             db.session.commit()
-            app.logger.info("Created hazard incidents for monitored hazards in CALABARZON")
+            app.logger.info("Created hazard incidents for monitored hazards in San Pablo City")
         else:
             db.session.rollback()
             app.logger.info("Hazard monitoring: no high-risk incidents created")

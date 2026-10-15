@@ -1,5 +1,6 @@
 import importlib
 import os
+import re
 import unittest
 from datetime import datetime, timedelta, timezone
 from io import BytesIO
@@ -59,7 +60,7 @@ class ResponderRoutesTestCase(unittest.TestCase):
         with self.app.app_context():
             db.drop_all()
             db.create_all()
-            # `app.py`'s lazy_init() only seeds geography/agency reference data once
+            # `app.py`'s lazy_init() only seeds geography reference data once
             # per process (guarded by a module-level flag), so it won't re-fire after
             # this test's drop_all/create_all wipes the tables. Re-seed explicitly so
             # every test gets real barangay/municipality/province rows to reference,
@@ -70,7 +71,6 @@ class ResponderRoutesTestCase(unittest.TestCase):
                 email='responder@example.com',
                 password='secret',
                 role='field_responder',
-                agency='BFP',
                 email_verified=True,
             )
             db.session.add(user)
@@ -96,12 +96,10 @@ class ResponderRoutesTestCase(unittest.TestCase):
             db.session.commit()
             return response.id
 
-    def _set_persisted_role(self, role, username='responder1', agency=None):
+    def _set_persisted_role(self, role, username='responder1'):
         with self.app.app_context():
             user = User.query.filter_by(username=username).one()
             user.role = role
-            if agency is not None:
-                user.agency = agency
             db.session.commit()
 
     def test_predict_hazard_fallback_contract_uses_insufficient_data(self):
@@ -247,230 +245,228 @@ class ResponderRoutesTestCase(unittest.TestCase):
             'max-age=31536000; includeSubDomains',
         )
 
-    def test_coordinator_update_task_rejects_unowned_task(self):
+
+    def test_admin_dashboard_counts_legacy_and_canonical_imt_roles_together(self):
         with self.app.app_context():
-            coordinator = User(
-                username='coordinator1',
-                email='coord@example.com',
+            admin = User(
+                username='imt_count_admin',
+                email='imt-count-admin@example.com',
                 password='secret',
-                role='agency_coordinator',
-                agency='BFP',
+                role='admin',
                 email_verified=True,
             )
-            db.session.add(coordinator)
+            legacy_imt = User(
+                username='legacy_eoc_count',
+                email='legacy-eoc-count@example.com',
+                password='secret',
+                role='eoc_staff',
+                email_verified=True,
+            )
+            canonical_imt = User(
+                username='canonical_imt_count',
+                email='canonical-imt-count@example.com',
+                password='secret',
+                role='imt_staff',
+                email_verified=True,
+            )
+            db.session.add_all([admin, legacy_imt, canonical_imt])
             db.session.commit()
 
-            incident = Incident(user_id=coordinator.id, hazard_type='earthquake', location='Test', message='Test', level='High', alert=True, status='ACTIVE')
-            db.session.add(incident)
-            db.session.commit()
+        with self.client.session_transaction() as session:
+            session['username'] = 'imt_count_admin'
+            session['role'] = 'admin'
 
-            response = IncidentResponse(incident_id=incident.id, commander_id=coordinator.id, status='ACTIVE')
-            db.session.add(response)
-            db.session.commit()
+        response = self.client.get('/dashboard')
+        self.assertEqual(response.status_code, 200)
+        html = response.get_data(as_text=True)
+        self.assertIn("labels: ['Admin', 'IMT Staff', 'Dispatcher', 'Field Responder', 'Citizen']", html)
+        role_data = re.search(r'data:\s*\[([^\]]+)\]', html)
+        self.assertIsNotNone(role_data)
+        role_counts = [int(count) for count in re.findall(r'\d+', role_data.group(1))]
+        self.assertEqual(role_counts[1], 2)
 
+        create_user_page = self.client.get('/admin/users/new')
+        self.assertEqual(create_user_page.status_code, 200)
+        self.assertIn('value="imt_staff">IMT Staff</option>', create_user_page.get_data(as_text=True))
+        self.assertNotIn('value="eoc_staff"', create_user_page.get_data(as_text=True))
+
+    def test_retired_accounts_cannot_be_reactivated_or_reassigned(self):
+        with self.app.app_context():
+            admin = User(
+                username='retirement_admin',
+                email='retirement-admin@example.com',
+                password='secret',
+                role='admin',
+                email_verified=True,
+            )
+            retired = User(
+                username='retired_coordinator',
+                email='retired-coordinator@example.com',
+                password='secret',
+                role='retired',
+                is_disabled=True,
+                email_verified=True,
+            )
+            db.session.add_all([admin, retired])
+            db.session.commit()
+            retired_id = retired.id
+
+        with self.client.session_transaction() as session:
+            session['username'] = 'retirement_admin'
+            session['role'] = 'admin'
+
+        response = self.client.get('/admin/users')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'Historical record', response.data)
+
+        self.client.post(f'/admin/users/{retired_id}/toggle')
+        self.client.post(f'/admin/users/{retired_id}/update', data={
+            'role': 'imt_staff',
+            'full_name': '',
+            'contact_number': '',
+        })
+        create_response = self.client.post('/admin/users/add', data={
+            'username': 'new_coordinator',
+            'email': 'new-coordinator@example.com',
+            'password': 'long-enough-secret',
+            'role': 'agency_coordinator',
+        })
+
+        self.assertEqual(create_response.status_code, 302)
+        with self.app.app_context():
+            retired = db.session.get(User, retired_id)
+            self.assertEqual(retired.role, 'retired')
+            self.assertTrue(retired.is_disabled)
+            self.assertIsNone(User.query.filter_by(username='new_coordinator').first())
+
+    def test_responder_can_save_task_remarks_without_changing_status(self):
+        response_id = self._create_active_response_for_report()
+        with self.app.app_context():
+            user = User.query.filter_by(username='responder1').one()
             task = Task(
-                incident_response_id=response.id,
-                assigned_to_agency='DOH',
-                assigned_by_id=coordinator.id,
-                title='Unknown agency task',
-                description='Should not be mutable by BFP coordinator',
-                status='PENDING',
+                incident_response_id=response_id,
+                assigned_to_user_id=user.id,
+                assigned_by_id=user.id,
+                title='Field assessment',
+                description='Assess the affected area',
+                status='IN_PROGRESS',
             )
             db.session.add(task)
             db.session.commit()
             task_id = task.id
 
         with self.client.session_transaction() as session:
-            session['username'] = 'coordinator1'
-            session['role'] = 'agency_coordinator'
+            session['username'] = 'responder1'
+            session['role'] = 'field_responder'
             session['agency'] = 'BFP'
 
-        response = self.client.post(f'/coordinator/tasks/{task_id}/update', data={'status': 'IN_PROGRESS'}, follow_redirects=True)
-        self.assertEqual(response.status_code, 200)
+        result = self.client.post(
+            f'/responder-task/{task_id}/update',
+            data={'remarks': 'Road access is blocked.'},
+            follow_redirects=True,
+        )
+
+        self.assertEqual(result.status_code, 200)
         with self.app.app_context():
             refreshed = db.session.get(Task, task_id)
-            self.assertEqual(refreshed.status, 'PENDING')
+            self.assertEqual(refreshed.status, 'IN_PROGRESS')
+            self.assertEqual(refreshed.remarks, 'Road access is blocked.')
+        self.assertIn(b'Road access is blocked.', result.data)
 
-    def test_coordinator_allocate_resource_uses_coordinator_agency(self):
+    def test_responder_clears_completed_at_when_reopening_completed_task(self):
+        response_id = self._create_active_response_for_report()
         with self.app.app_context():
-            coordinator = User(
-                username='coordinator2',
-                email='coord2@example.com',
-                password='secret',
-                role='agency_coordinator',
-                agency='BFP',
-                email_verified=True,
-            )
-            db.session.add(coordinator)
-            db.session.commit()
-
-            incident = Incident(user_id=coordinator.id, hazard_type='earthquake', location='Test', message='Test', level='High', alert=True, status='ACTIVE')
-            db.session.add(incident)
-            db.session.commit()
-
-            response = IncidentResponse(incident_id=incident.id, commander_id=coordinator.id, status='ACTIVE')
-            db.session.add(response)
-            db.session.commit()
-
+            user = User.query.filter_by(username='responder1').one()
             task = Task(
-                incident_response_id=response.id,
-                assigned_to_agency='BFP',
-                assigned_by_id=coordinator.id,
-                title='BFP support task',
-                description='Ensures BFP is attached to the response',
-                status='PENDING',
+                incident_response_id=response_id,
+                assigned_to_user_id=user.id,
+                assigned_by_id=user.id,
+                title='Reopened field assessment',
+                description='Continue the field assessment',
+                status='COMPLETED',
+                completed_at=datetime.now(timezone.utc),
             )
             db.session.add(task)
             db.session.commit()
-            response_id = response.id
+            task_id = task.id
 
         with self.client.session_transaction() as session:
-            session['username'] = 'coordinator2'
-            session['role'] = 'agency_coordinator'
+            session['username'] = 'responder1'
+            session['role'] = 'field_responder'
             session['agency'] = 'BFP'
 
-        response = self.client.post('/coordinator/resources/allocate', data={
-            'response_id': response_id,
-            'agency': 'DOH',
-            'resource_type': 'Vehicles',
-            'quantity': 2,
-            'status': 'AVAILABLE',
-            'location': 'Base',
-            'notes': 'Test',
-        }, follow_redirects=True)
-        self.assertEqual(response.status_code, 200)
+        result = self.client.post(
+            f'/responder-task/{task_id}/update',
+            data={'status': 'IN_PROGRESS'},
+            follow_redirects=True,
+        )
+
+        self.assertEqual(result.status_code, 200)
         with self.app.app_context():
-            resource = Resource.query.filter_by(incident_response_id=response_id).first()
-            self.assertIsNotNone(resource)
-            self.assertEqual(resource.agency, 'BFP')
+            refreshed = db.session.get(Task, task_id)
+            self.assertEqual(refreshed.status, 'IN_PROGRESS')
+            self.assertIsNone(refreshed.completed_at)
 
-    def test_coordinator_submit_report_requires_agency_owned_response_assets(self):
-        with self.app.app_context():
-            coordinator = User(
-                username='coordinator3',
-                email='coord3@example.com',
-                password='secret',
-                role='agency_coordinator',
-                agency='BFP',
-                email_verified=True,
-            )
-            db.session.add(coordinator)
-            db.session.commit()
 
-            incident = Incident(user_id=coordinator.id, hazard_type='earthquake', location='Test', message='Test', level='High', alert=True, status='ACTIVE')
-            db.session.add(incident)
-            db.session.commit()
-
-            response = IncidentResponse(incident_id=incident.id, commander_id=coordinator.id, status='ACTIVE')
-            db.session.add(response)
-            db.session.commit()
-            response_id = response.id
-
-        with self.client.session_transaction() as session:
-            session['username'] = 'coordinator3'
-            session['role'] = 'agency_coordinator'
-            session['agency'] = 'BFP'
-
-        response = self.client.post('/coordinator/reports/submit', data={
-            'response_id': response_id,
-            'title': 'Test report',
-            'content': 'This should be blocked',
-            'report_type': 'UPDATE',
-        }, follow_redirects=True)
-        self.assertEqual(response.status_code, 200)
-        with self.app.app_context():
-            self.assertEqual(IncidentMessage.query.count(), 0)
-
-    def test_coordinator_response_detail_rejects_unowned_response(self):
-        with self.app.app_context():
-            coordinator = User(
-                username='coordinator4',
-                email='coord4@example.com',
-                password='secret',
-                role='agency_coordinator',
-                agency='BFP',
-                email_verified=True,
-            )
-            db.session.add(coordinator)
-            other_coordinator = User(
-                username='coordinator_other',
-                email='coord_other@example.com',
-                password='secret',
-                role='agency_coordinator',
-                agency='DOH',
-                email_verified=True,
-            )
-            db.session.add(other_coordinator)
-            db.session.commit()
-
-            incident = Incident(user_id=other_coordinator.id, hazard_type='earthquake', location='Test', message='Test', level='High', alert=True, status='ACTIVE')
-            db.session.add(incident)
-            db.session.commit()
-
-            response = IncidentResponse(incident_id=incident.id, commander_id=other_coordinator.id, status='ACTIVE')
-            db.session.add(response)
-            db.session.commit()
-            response_id = response.id
-
-        with self.client.session_transaction() as session:
-            session['username'] = 'coordinator4'
-            session['role'] = 'agency_coordinator'
-            session['agency'] = 'BFP'
-
-        response = self.client.get(f'/coordinator/response/{response_id}', follow_redirects=True)
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b'Access denied.', response.data)
-
-    def test_coordinator_response_detail_uses_shared_response_header(self):
+    def test_commander_can_save_task_remarks_without_changing_status(self):
         with self.app.app_context():
             commander = User(
-                username='commander5',
-                email='commander5@example.com',
+                username='remarks_commander',
+                email='remarks-commander@example.com',
                 password='secret',
                 role='incident_commander',
                 email_verified=True,
             )
-            coordinator = User(
-                username='coordinator5',
-                email='coord5@example.com',
-                password='secret',
-                role='agency_coordinator',
-                agency='BFP',
-                email_verified=True,
+            db.session.add(commander)
+            db.session.flush()
+            incident = Incident(
+                hazard_type='earthquake',
+                location='Test',
+                message='Test',
+                level='High',
+                status='ACTIVE',
             )
-            db.session.add_all([commander, coordinator])
-            db.session.commit()
-
-            incident = Incident(user_id=commander.id, hazard_type='fire', location='Test District', message='Test', level='High', alert=True, status='ACTIVE')
             db.session.add(incident)
-            db.session.commit()
-
-            response = IncidentResponse(incident_id=incident.id, commander_id=commander.id, status='ACTIVE')
+            db.session.flush()
+            response = IncidentResponse(
+                incident_id=incident.id,
+                commander_id=commander.id,
+                status='ACTIVE',
+            )
             db.session.add(response)
-            db.session.commit()
-
+            db.session.flush()
             task = Task(
                 incident_response_id=response.id,
-                assigned_to_agency='BFP',
+                assigned_to_user_id=User.query.filter_by(username='responder1').one().id,
                 assigned_by_id=commander.id,
-                title='Coordinate firefighting response',
-                description='Support field operations',
-                status='PENDING',
+                title='Assess building',
+                description='Inspect for structural damage',
+                status='IN_PROGRESS',
             )
             db.session.add(task)
             db.session.commit()
-            response_id = response.id
+            response_id, task_id = response.id, task.id
 
         with self.client.session_transaction() as session:
-            session['username'] = 'coordinator5'
-            session['role'] = 'agency_coordinator'
-            session['agency'] = 'BFP'
+            session['username'] = 'remarks_commander'
+            session['role'] = 'incident_commander'
 
-        response = self.client.get(f'/coordinator/response/{response_id}')
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b'response-header-card', response.data)
-        self.assertIn(b'Overview', response.data)
-        self.assertIn(b'Close Response', response.data)
+        result = self.client.post(
+            f'/incident-response/{response_id}/update-task/{task_id}',
+            data={'remarks': 'Inspection is ongoing.'},
+            follow_redirects=True,
+        )
+
+        self.assertEqual(result.status_code, 200)
+        self.assertIn(b'Inspection is ongoing.', result.data)
+        with self.app.app_context():
+            refreshed = db.session.get(Task, task_id)
+            self.assertEqual(refreshed.status, 'IN_PROGRESS')
+            self.assertEqual(refreshed.remarks, 'Inspection is ongoing.')
+
+
+
+
 
     def test_create_default_admin_requires_password_env(self):
         with patch.dict(os.environ, {'ADMIN_PASSWORD': ''}):
@@ -612,7 +608,7 @@ class ResponderRoutesTestCase(unittest.TestCase):
 
         response = self.client.get('/responder-dashboard')
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.location, '/')
+        self.assertEqual(response.location, '/login')
 
     def test_permission_policies_use_supplied_user(self):
         from services import permissions
@@ -687,7 +683,7 @@ class ResponderRoutesTestCase(unittest.TestCase):
         self.assertIn('dicsTheme', html)
         self.assertIn('css/theme.css', html)
         self.assertIn('lang="fil-PH"', html)
-        self.assertIn('Pag-login', html)
+        self.assertIn('Mag-login', html)
         self.assertIn('Ilagay ang username', html)
         self.assertIn('aria-label="Lumipat sa English"', html)
 
@@ -978,19 +974,22 @@ class ResponderRoutesTestCase(unittest.TestCase):
             self.assertEqual(CitizenReport.query.count(), 0)
             self.assertEqual(Incident.query.count(), 0)
 
-    def test_municipalities_api_scoped_to_requested_province(self):
+    def test_municipalities_api_only_returns_san_pablo_city(self):
         with self.client.session_transaction() as session:
             session['username'] = 'responder1'
             session['role'] = 'user'
 
         with self.app.app_context():
-            rizal = Province.query.filter_by(name='Rizal').first()
+            laguna = Province.query.filter_by(name='Laguna').one()
 
-        response = self.client.get(f'/api/municipalities/{rizal.id}')
+        response = self.client.get(f'/api/municipalities/{laguna.id}')
         self.assertEqual(response.status_code, 200)
         names = {m['name'] for m in response.get_json()['municipalities']}
-        self.assertIn('Angono', names)
-        self.assertNotIn('Lipa City', names, 'a Batangas municipality must not appear under Rizal')
+        self.assertEqual(names, {'San Pablo City'})
+
+        outside_scope = self.client.get('/api/municipalities/999999')
+        self.assertEqual(outside_scope.status_code, 200)
+        self.assertEqual(outside_scope.get_json()['municipalities'], [])
 
     def test_municipalities_api_requires_login(self):
         response = self.client.get('/api/municipalities/1')
@@ -1002,13 +1001,15 @@ class ResponderRoutesTestCase(unittest.TestCase):
             session['role'] = 'user'
 
         with self.app.app_context():
-            angono = Municipality.query.filter_by(name='Angono').first()
+            san_pablo = Municipality.query.filter_by(code='043424').one()
+            san_pablo_id = san_pablo.id
+            barangay_count = Barangay.query.filter_by(municipality_id=san_pablo_id).count()
 
-        response = self.client.get(f'/api/barangays/{angono.id}')
+        response = self.client.get(f'/api/barangays/{san_pablo_id}')
         self.assertEqual(response.status_code, 200)
         names = {b['name'] for b in response.get_json()['barangays']}
-        self.assertEqual(len(names), 10)
-        self.assertIn('Bagumbayan', names)
+        self.assertEqual(len(names), barangay_count)
+        self.assertGreater(barangay_count, 0)
 
     def test_barangays_api_requires_login(self):
         response = self.client.get('/api/barangays/1')
@@ -1035,22 +1036,26 @@ class ResponderRoutesTestCase(unittest.TestCase):
             session['role'] = 'user'
 
         with self.app.app_context():
-            batangas = Province.query.filter_by(name='Batangas').first()
-            angono = Municipality.query.filter_by(name='Angono').first()  # actually in Rizal
+            laguna = Province.query.filter_by(name='Laguna').one()
+            outside_municipality = Municipality(name='Out-of-scope City', code='999999', province_id=laguna.id)
+            db.session.add(outside_municipality)
+            db.session.commit()
+            laguna_id = laguna.id
+            outside_municipality_id = outside_municipality.id
 
         response = self.client.post('/citizen-report', data={
             'hazard_type': 'flood',
             'severity': 'high',
             'location': 'Barangay Test',
             'description': 'Water rising',
-            'province_id': batangas.id,
-            'municipality_id': angono.id,
+            'province_id': laguna_id,
+            'municipality_id': outside_municipality_id,
         }, follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'does not match the selected province', response.data)
         with self.app.app_context():
-            self.assertEqual(CitizenReport.query.filter_by(municipality_id=angono.id).count(), 0)
+            self.assertEqual(CitizenReport.query.filter_by(municipality_id=outside_municipality_id).count(), 0)
 
     def test_citizen_report_rejects_barangay_that_does_not_belong_to_submitted_municipality(self):
         with self.client.session_transaction() as session:
@@ -1058,23 +1063,29 @@ class ResponderRoutesTestCase(unittest.TestCase):
             session['role'] = 'user'
 
         with self.app.app_context():
-            lipa = Municipality.query.filter_by(name='Lipa City').first()
-            angono = Municipality.query.filter_by(name='Angono').first()
-            foreign_barangay = Barangay.query.filter_by(municipality_id=angono.id).first()  # in Rizal, not Lipa
+            san_pablo = Municipality.query.filter_by(code='043424').one()
+            outside_municipality = Municipality(name='Out-of-scope City', code='999999', province_id=san_pablo.province_id)
+            db.session.add(outside_municipality)
+            db.session.flush()
+            foreign_barangay = Barangay(name='Outside Barangay', municipality_id=outside_municipality.id)
+            db.session.add(foreign_barangay)
+            db.session.commit()
+            san_pablo_id = san_pablo.id
+            foreign_barangay_id = foreign_barangay.id
 
         response = self.client.post('/citizen-report', data={
             'hazard_type': 'flood',
             'severity': 'high',
             'location': 'Barangay Test',
             'description': 'Water rising',
-            'municipality_id': lipa.id,
-            'barangay_id': foreign_barangay.id,
+            'municipality_id': san_pablo_id,
+            'barangay_id': foreign_barangay_id,
         }, follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'does not match the selected municipality', response.data)
         with self.app.app_context():
-            self.assertEqual(CitizenReport.query.filter_by(barangay_id=foreign_barangay.id).count(), 0)
+            self.assertEqual(CitizenReport.query.filter_by(barangay_id=foreign_barangay_id).count(), 0)
 
     def test_map_pins_endpoint_returns_active_incidents_with_coordinates(self):
         with self.app.app_context():
@@ -1152,9 +1163,9 @@ class ResponderRoutesTestCase(unittest.TestCase):
 
         self.assertEqual(rendered, 'Status: 0')
 
-    def test_monitor_hazards_uses_city_coordinates_when_weather_has_no_lat_lon(self):
+    def test_monitor_hazards_uses_san_pablo_coordinates_when_weather_has_no_lat_lon(self):
         weather_data = {
-            'city': 'Calamba',
+            'city': 'San Pablo',
             'humidity': 85,
             'rainfall': 20,
             'fetched_at': 'now',
@@ -1176,20 +1187,20 @@ class ResponderRoutesTestCase(unittest.TestCase):
             'primary_factors': ['rainfall'],
         })
 
-        with patch.object(scheduler, 'get_all_weather_data', return_value={'Calamba': weather_data}), \
+        with patch.object(scheduler, 'get_all_weather_data', return_value={'San Pablo': weather_data}), \
             patch.object(scheduler, 'predict_hazard', return_value=prediction):
             with self.app.app_context():
                 scheduler.monitor_hazards()
 
         with self.app.app_context():
-            incident = Incident.query.filter_by(hazard_type='flood', location='Calamba').order_by(Incident.created_at.desc()).first()
+            incident = Incident.query.filter_by(hazard_type='flood', location='San Pablo').order_by(Incident.created_at.desc()).first()
             self.assertIsNotNone(incident)
-            self.assertEqual(incident.latitude, 14.2117)
-            self.assertEqual(incident.longitude, 121.1653)
+            self.assertEqual(incident.latitude, 14.0683)
+            self.assertEqual(incident.longitude, 121.3256)
 
     def test_monitor_hazards_creates_incident_for_high_risk_prediction(self):
         weather_data = {
-            'city': 'Lipa',
+            'city': 'San Pablo',
             'temperature': 31,
             'humidity': 85,
             'pressure': 1008,
@@ -1215,7 +1226,7 @@ class ResponderRoutesTestCase(unittest.TestCase):
             'primary_factors': ['rainfall'],
         })
 
-        with patch.object(scheduler, 'get_all_weather_data', return_value={'Lipa': weather_data}), \
+        with patch.object(scheduler, 'get_all_weather_data', return_value={'San Pablo': weather_data}), \
             patch.object(scheduler, 'predict_hazard', return_value=prediction) as mock_predict:
             with self.app.app_context():
                 scheduler.monitor_hazards()
@@ -1229,7 +1240,7 @@ class ResponderRoutesTestCase(unittest.TestCase):
             self.assertEqual(incident.status, 'NEW')
             self.assertIsNone(incident.response)
             self.assertEqual(incident.score, 80.0)
-            self.assertEqual(incident.location, 'Lipa')
+            self.assertEqual(incident.location, 'San Pablo')
             recommendation = AIRecommendation.query.filter_by(incident_id=incident.id).one()
             self.assertEqual(recommendation.provider, 'anthropic')
             self.assertEqual(recommendation.model, 'claude-test')
@@ -1398,7 +1409,7 @@ class ResponderRoutesTestCase(unittest.TestCase):
 
     def test_monitor_hazards_creates_incidents_for_multiple_hazard_types(self):
         weather_data = {
-            'city': 'Lipa',
+            'city': 'San Pablo',
             'temperature': 31,
             'humidity': 85,
             'pressure': 1008,
@@ -1417,7 +1428,7 @@ class ResponderRoutesTestCase(unittest.TestCase):
                 'alert': True,
             }
 
-        with patch.object(scheduler, 'get_all_weather_data', return_value={'Lipa': weather_data}), \
+        with patch.object(scheduler, 'get_all_weather_data', return_value={'San Pablo': weather_data}), \
              patch.object(scheduler, 'predict_hazard', side_effect=fake_predict_hazard):
             with self.app.app_context():
                 scheduler.monitor_hazards()
@@ -1426,6 +1437,43 @@ class ResponderRoutesTestCase(unittest.TestCase):
             incidents = Incident.query.filter(Incident.hazard_type.in_(['flood', 'landslide'])).all()
             self.assertEqual(len(incidents), 2)
             self.assertEqual({incident.hazard_type for incident in incidents}, {'flood', 'landslide'})
+
+    def test_monitor_hazards_checks_regional_feeds_but_limits_weather_incidents_to_san_pablo(self):
+        san_pablo_weather = {'humidity': 85, 'rainfall': 20, 'fetched_at': 'now'}
+        regional_weather = {'humidity': 90, 'rainfall': 80, 'fetched_at': 'now'}
+
+        def predict_hazard(hazard_type, **kwargs):
+            return {
+                'type': hazard_type,
+                'score': 80.0,
+                'level': 'Severe',
+                'message': 'Severe hazard risk.',
+                'alert': True,
+            }
+
+        with patch.object(
+            scheduler,
+            'get_all_weather_data',
+            return_value={'San Pablo': san_pablo_weather, 'Lipa': regional_weather},
+        ), patch.object(scheduler, 'predict_hazard', side_effect=predict_hazard) as mock_predict, \
+            patch.object(scheduler, 'monitor_earthquakes') as mock_earthquakes, \
+            patch.object(scheduler, 'monitor_floods_gdacs') as mock_floods, \
+            patch.object(scheduler, 'monitor_volcanoes_eonet') as mock_volcanoes, \
+            patch.dict(self.app.config, {'TESTING': False}):
+            with self.app.app_context():
+                scheduler.monitor_hazards()
+
+        self.assertEqual(mock_predict.call_count, 2)
+        mock_earthquakes.assert_called_once_with(app)
+        mock_floods.assert_called_once_with(app)
+        mock_volcanoes.assert_called_once_with(app)
+        with self.app.app_context():
+            incidents = Incident.query.filter(
+                Incident.reported_by == 'system',
+                Incident.hazard_type.in_(['flood', 'landslide']),
+            ).all()
+            self.assertEqual(len(incidents), 2)
+            self.assertEqual({incident.location for incident in incidents}, {'San Pablo'})
 
     def test_api_realtime_data_returns_all_calabarzon_cities(self):
         weather_data = {
@@ -1459,7 +1507,6 @@ class ResponderRoutesTestCase(unittest.TestCase):
                 email='commander@example.com',
                 password='secret',
                 role='incident_commander',
-                agency='BFP',
                 email_verified=True,
             )
             db.session.add(commander)
@@ -1507,15 +1554,10 @@ class ResponderRoutesTestCase(unittest.TestCase):
             self.assertEqual(report.response_rating, 5)
             self.assertEqual(report.recommendations, 'Add more evacuation buses')
 
-    def test_commander_update_task_rejects_task_from_unowned_response(self):
-        """A commander must not be able to mutate a task belonging to a
-        different commander's response, even if they own *some* response
-        and pass its id in the URL. Mirrors
-        test_coordinator_update_task_rejects_unowned_task's coverage of the
-        coordinator side of this same class of bug."""
+    def test_imt_cannot_update_task_through_a_different_response(self):
         with self.app.app_context():
-            commander_a = User(username='commanderA', email='ca@example.com', password='secret', role='incident_commander', agency='BFP', email_verified=True)
-            commander_b = User(username='commanderB', email='cb@example.com', password='secret', role='incident_commander', agency='PNP', email_verified=True)
+            commander_a = User(username='commanderA', email='ca@example.com', password='secret', role='imt_staff', email_verified=True)
+            commander_b = User(username='commanderB', email='cb@example.com', password='secret', role='imt_staff', email_verified=True)
             db.session.add_all([commander_a, commander_b])
             db.session.commit()
 
@@ -1531,7 +1573,6 @@ class ResponderRoutesTestCase(unittest.TestCase):
 
             task_b = Task(
                 incident_response_id=response_b.id,
-                assigned_to_agency='PNP',
                 assigned_by_id=commander_b.id,
                 title='Belongs to commander B',
                 description='Should not be mutable by commander A',
@@ -1544,7 +1585,6 @@ class ResponderRoutesTestCase(unittest.TestCase):
         with self.client.session_transaction() as session:
             session['username'] = 'commanderA'
             session['role'] = 'incident_commander'
-            session['agency'] = 'BFP'
 
         # Commander A owns response_a_id, but task_b_id belongs to response_b.
         result = self.client.post(
@@ -1556,10 +1596,10 @@ class ResponderRoutesTestCase(unittest.TestCase):
             refreshed = db.session.get(Task, task_b_id)
             self.assertEqual(refreshed.status, 'PENDING')
 
-    def test_commander_update_resource_rejects_resource_from_unowned_response(self):
+    def test_imt_cannot_update_resource_through_a_different_response(self):
         with self.app.app_context():
-            commander_a = User(username='commanderC', email='cc@example.com', password='secret', role='incident_commander', agency='BFP', email_verified=True)
-            commander_b = User(username='commanderD', email='cd@example.com', password='secret', role='incident_commander', agency='PNP', email_verified=True)
+            commander_a = User(username='commanderC', email='cc@example.com', password='secret', role='imt_staff', email_verified=True)
+            commander_b = User(username='commanderD', email='cd@example.com', password='secret', role='imt_staff', email_verified=True)
             db.session.add_all([commander_a, commander_b])
             db.session.commit()
 
@@ -1576,7 +1616,6 @@ class ResponderRoutesTestCase(unittest.TestCase):
             resource_b = Resource(
                 incident_response_id=response_b.id,
                 resource_type='Ambulance',
-                agency='PNP',
                 quantity=1,
                 status='AVAILABLE',
             )
@@ -1587,7 +1626,6 @@ class ResponderRoutesTestCase(unittest.TestCase):
         with self.client.session_transaction() as session:
             session['username'] = 'commanderC'
             session['role'] = 'incident_commander'
-            session['agency'] = 'BFP'
 
         result = self.client.post(
             f'/incident-response/{response_a_id}/update-resource/{resource_b_id}',
@@ -1797,8 +1835,7 @@ class ResponderRoutesTestCase(unittest.TestCase):
         latest_earthquake_magnitude come back as numbers Jinja's
         "%.0f"|format(...) filter can consume without raising, not just
         that the endpoint returns 200. A None or string value here would
-        pass a naive '200 OK' check but still break the citizen dashboard
-        and ai_prediction.html template that render these values."""
+        pass a naive '200 OK' check but still break the citizen dashboard."""
         with self.app.app_context():
             citizen = User(username='dashboard_citizen', email='dc@example.com', password='secret', role='citizen', email_verified=True)
             db.session.add(citizen)
@@ -1939,7 +1976,7 @@ class ResponderRoutesTestCase(unittest.TestCase):
         self.assertIn('Loading regional map...', html)
         self.assertIn('data-map-unavailable', html)
         self.assertIn('loadLeaflet()', html)
-        self.assertIn('https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js', html)
+        self.assertIn('/static/vendor/leaflet/leaflet.js', html)
         self.assertIn('World_Street_Map/MapServer/tile/', html)
         self.assertIn('window.setTimeout(failLayer, 10000)', html)
         self.assertIn("showAlert ? ('\\uD83D\\uDEA8 (' + count + ') NEW SOS') : originalTitle", html)
@@ -2103,19 +2140,15 @@ class ResponderRoutesTestCase(unittest.TestCase):
         finally:
             self.app.config.update(WTF_CSRF_ENABLED=False)
 
-    def test_analytics_accessible_to_coordinator_and_commander_not_just_admin_eoc(self):
-        """/analytics previously only allowed admin/EOC, which contradicted
-        services.permissions.can_view_analytics() (and docs/permissions-matrix.md),
-        both of which also grant coordinator and commander access."""
+    def test_analytics_accessible_to_imt(self):
         with self.app.app_context():
-            coordinator = User(username='analytics_coord', email='ac@example.com', password='secret', role='agency_coordinator', agency='BFP', email_verified=True)
-            db.session.add(coordinator)
+            imt = User(username='analytics_imt', email='imt@example.com', password='secret', role='imt_staff', email_verified=True)
+            db.session.add(imt)
             db.session.commit()
 
         with self.client.session_transaction() as session:
-            session['username'] = 'analytics_coord'
-            session['role'] = 'agency_coordinator'
-            session['agency'] = 'BFP'
+            session['username'] = 'analytics_imt'
+            session['role'] = 'imt_staff'
 
         response = self.client.get('/analytics')
         self.assertEqual(response.status_code, 200)
@@ -2142,237 +2175,33 @@ class ResponderRoutesTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 401)
         self.assertEqual(response.get_json(), {'error': 'Unauthorized'})
 
-    def test_analytics_api_allowed_for_coordinator(self):
+    def test_analytics_api_allowed_for_imt(self):
         with self.app.app_context():
-            coordinator = User(
-                username='analytics_api_coord', email='aac@example.com', password='secret',
-                role='agency_coordinator', agency='BFP', email_verified=True,
+            imt = User(
+                username='analytics_api_imt', email='imt-api@example.com', password='secret',
+                role='imt_staff', email_verified=True,
             )
-            db.session.add(coordinator)
+            db.session.add(imt)
             db.session.commit()
 
         with self.client.session_transaction() as session:
-            session['username'] = 'analytics_api_coord'
-            session['role'] = 'agency_coordinator'
+            session['username'] = 'analytics_api_imt'
+            session['role'] = 'imt_staff'
 
         response = self.client.get('/api/analytics-data')
         self.assertEqual(response.status_code, 200)
         self.assertIn('incident_counts', response.get_json())
 
-    def test_admin_denied_access_to_coordinator_dashboard(self):
-        """Admin was previously let into /coordinator/* via
-        is_admin_or_coordinator(), which meant an admin visiting these
-        pages saw everything empty (get_coordinator_agency() reads
-        admin.agency, which is normally blank) -- a confusing dead end
-        rather than a real feature. Admin's role is pure administration;
-        agency operations belong to coordinators only."""
-        with self.app.app_context():
-            admin = User(username='admin_only', email='admin_only@example.com', password='secret', role='admin', email_verified=True)
-            db.session.add(admin)
-            db.session.commit()
-
+    def test_retired_coordinator_routes_are_removed(self):
         with self.client.session_transaction() as session:
-            session['username'] = 'admin_only'
-            session['role'] = 'admin'
+            session['username'] = 'responder1'
+            session['role'] = 'retired'
 
         for path in ('/coordinator', '/coordinator/tasks', '/coordinator/team',
                      '/coordinator/resources', '/coordinator/resource-requests',
                      '/coordinator/reports', '/coordinator/comms'):
             with self.subTest(path=path):
-                result = self.client.get(path, follow_redirects=False)
-                self.assertEqual(result.status_code, 302)
-                self.assertNotIn('/coordinator', result.headers.get('Location', ''))
-
-    def test_agency_coordinator_still_has_access_to_coordinator_dashboard(self):
-        """Companion to the admin-denial test above: the fix must narrow
-        access to coordinators only, not lock coordinators out too."""
-        with self.app.app_context():
-            coordinator = User(username='coord_only', email='coord_only@example.com', password='secret', role='agency_coordinator', agency='BFP', email_verified=True)
-            db.session.add(coordinator)
-            db.session.commit()
-
-        with self.client.session_transaction() as session:
-            session['username'] = 'coord_only'
-            session['role'] = 'agency_coordinator'
-            session['agency'] = 'BFP'
-
-        result = self.client.get('/coordinator')
-        self.assertEqual(result.status_code, 200)
-
-    def test_coordinator_dashboard_uses_unambiguous_operational_status_labels(self):
-        self._set_persisted_role('agency_coordinator', agency='BFP')
-        with self.client.session_transaction() as session:
-            session['username'] = 'responder1'
-            session['role'] = 'agency_coordinator'
-            session['agency'] = 'BFP'
-
-        result = self.client.get('/coordinator')
-        self.assertEqual(result.status_code, 200)
-        self.assertIn(b'Open Tasks', result.data)
-        self.assertIn(b'Pending or in progress', result.data)
-        self.assertIn(b'Open Responses', result.data)
-        self.assertNotIn(b'Pending Tasks', result.data)
-
-    def test_coordinator_tasks_are_paginated(self):
-        with self.app.app_context():
-            coordinator = User(
-                username='pagination_coord', email='pagination@example.com', password='secret',
-                role='agency_coordinator', agency='BFP', email_verified=True,
-            )
-            db.session.add(coordinator)
-            db.session.flush()
-            incident = Incident(
-                user_id=coordinator.id, hazard_type='flood', location='Test',
-                message='Test incident', status='ACTIVE',
-            )
-            db.session.add(incident)
-            db.session.flush()
-            response = IncidentResponse(
-                incident_id=incident.id, commander_id=coordinator.id, status='ACTIVE',
-            )
-            db.session.add(response)
-            db.session.flush()
-            for index in range(26):
-                db.session.add(Task(
-                    incident_response_id=response.id,
-                    assigned_to_agency='BFP',
-                    assigned_by_id=coordinator.id,
-                    title=f'Pagination task {index}',
-                    description='Test task',
-                ))
-            db.session.commit()
-
-        with self.client.session_transaction() as session:
-            session['username'] = 'pagination_coord'
-            session['role'] = 'agency_coordinator'
-            session['agency'] = 'BFP'
-
-        first_page = self.client.get('/coordinator/tasks')
-        second_page = self.client.get('/coordinator/tasks?page=2')
-        self.assertEqual(first_page.status_code, 200)
-        self.assertEqual(second_page.status_code, 200)
-        self.assertIn(b'Page 2 of 2', second_page.data)
-        self.assertIn(b'Pagination task 0', second_page.data)
-
-    def test_coordinator_comms_page_renders_for_agency_coordinator(self):
-        with self.client.session_transaction() as session:
-            session['username'] = 'coordinator1'
-            session['role'] = 'agency_coordinator'
-            session['agency'] = 'DILG'
-
-        with self.app.app_context():
-            coordinator = User(
-                username='coordinator1',
-                email='coordinator@example.com',
-                password='secret',
-                role='agency_coordinator',
-                agency='DILG',
-                email_verified=True,
-            )
-            db.session.add(coordinator)
-            db.session.commit()
-
-            incident = Incident(
-                user_id=coordinator.id,
-                hazard_type='storm',
-                location='Region Test',
-                message='Storm forming',
-                level='moderate',
-                alert=False,
-                status='ACTIVE',
-                reported_by='system',
-            )
-            db.session.add(incident)
-            db.session.commit()
-
-            from models import IncidentResponse
-            response = IncidentResponse(
-                incident_id=incident.id,
-                commander_id=coordinator.id,
-                status='ACTIVE',
-                situation_summary='Summary',
-            )
-            db.session.add(response)
-            db.session.commit()
-
-        response = self.client.get('/coordinator/comms')
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b'Communication Center', response.data)
-
-    def test_coordinator_submit_report_creates_message(self):
-        with self.client.session_transaction() as session:
-            session['username'] = 'coordinator1'
-            session['role'] = 'agency_coordinator'
-            session['agency'] = 'DILG'
-
-        with self.app.app_context():
-            coordinator = User(
-                username='coordinator1',
-                email='coordinator@example.com',
-                password='secret',
-                role='agency_coordinator',
-                agency='DILG',
-                email_verified=True,
-            )
-            db.session.add(coordinator)
-            db.session.commit()
-            coordinator_id = coordinator.id
-
-            incident = Incident(
-                user_id=coordinator_id,
-                hazard_type='storm',
-                location='Region Test',
-                message='Storm forming',
-                level='moderate',
-                alert=False,
-                status='ACTIVE',
-                reported_by='system',
-            )
-            db.session.add(incident)
-            db.session.commit()
-
-            from models import IncidentResponse
-            incident_response = IncidentResponse(
-                incident_id=incident.id,
-                commander_id=coordinator_id,
-                status='ACTIVE',
-                situation_summary='Summary',
-            )
-            db.session.add(incident_response)
-            db.session.commit()
-            incident_response_id = incident_response.id
-
-            task = Task(
-                incident_response_id=incident_response_id,
-                assigned_to_agency='DILG',
-                assigned_by_id=coordinator_id,
-                title='Agency-owned task',
-                description='Supports coordinator report submission',
-                status='PENDING',
-                priority='MEDIUM',
-            )
-            db.session.add(task)
-            db.session.commit()
-
-        response = self.client.post('/coordinator/reports/submit', data={
-            'response_id': incident_response_id,
-            'title': 'Test Broadcast',
-            'content': 'This is a test broadcast message.',
-            'report_type': 'UPDATE',
-            'affected_areas': 'Region Test',
-            'evacuated': '0',
-            'casualties': '0',
-        }, follow_redirects=True)
-
-        self.assertEqual(response.status_code, 200)
-        with self.app.app_context():
-            from models import IncidentMessage
-            message = IncidentMessage.query.filter_by(title='Test Broadcast').first()
-            self.assertIsNotNone(message)
-            self.assertEqual(message.content, 'This is a test broadcast message.')
-            self.assertEqual(message.reporter_id, coordinator_id)
-            self.assertEqual(message.incident_response_id, incident_response_id)
-            self.assertEqual(message.source, 'coordinator')
+                self.assertEqual(self.client.get(path).status_code, 404)
 
 
 if __name__ == '__main__':

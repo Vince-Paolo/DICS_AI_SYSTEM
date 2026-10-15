@@ -14,6 +14,23 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
+msgid "Low"
+msgstr "Mababa"
+
+msgid "Moderate"
+msgstr "Katamtaman"
+
+msgid "High"
+msgstr "Mataas"
+
+msgid "Severe"
+msgstr "Malubha"
+
+msgid "%(days)s day ago"
+msgid_plural "%(days)s days ago"
+msgstr[0] "%(days)s araw na ang nakalipas"
+msgstr[1] "%(days)s araw na ang nakalipas"
+
 #: app.py:468 templates/pages/error_404.html:3 templates/pages/error_404.html:6
 msgid "Page Not Found"
 msgstr "Hindi Nahanap ang Pahina"
@@ -306,6 +323,114 @@ msgid "Online SOS is no longer available. Please call an emergency hotline."
 msgstr ""
 "Hindi na available ang online SOS. Mangyaring tumawag sa emergency "
 "hotline."
+
+msgid "DICS AI"
+msgstr "DICS AI"
+
+msgid "Digital Incident Command System"
+msgstr "Digital na Sistema ng Pamamahala ng Insidente"
+
+msgid "DICS AI home"
+msgstr "Pangunahing pahina ng DICS AI"
+
+msgid "Main navigation"
+msgstr "Pangunahing nabigasyon"
+
+msgid "Emergency assistance"
+msgstr "Tulong sa emerhensiya"
+
+msgid "SAN PABLO CITY · LAGUNA"
+msgstr "LUNGSOD NG SAN PABLO · LAGUNA"
+
+msgid "One city. One coordinated response."
+msgstr "Isang lungsod. Iisang pinag-ugnay na pagtugon."
+
+msgid "DICS AI brings incident information, response teams, and operational decisions together to help San Pablo City prepare, coordinate, and respond."
+msgstr "Pinagsasama ng DICS AI ang impormasyon tungkol sa mga insidente, mga pangkat ng pagtugon, at mga pasyang operasyonal upang tulungan ang Lungsod ng San Pablo na maghanda, mag-ugnayan, at tumugon."
+
+msgid "Get emergency contact information"
+msgstr "Kunin ang mga detalye ng emergency contact"
+
+msgid "Operations access is for authorized personnel."
+msgstr "Para lamang sa mga awtorisadong tauhan ang pag-access sa operasyon."
+
+msgid "Request an account"
+msgstr "Humiling ng account"
+
+msgid "Incident coordination overview"
+msgstr "Pangkalahatang-ideya ng koordinasyon sa insidente"
+
+msgid "CITY RESPONSE OVERVIEW"
+msgstr "PANGKALAHATANG-IDEYA NG PAGTUGON NG LUNGSOD"
+
+msgid "COORDINATED"
+msgstr "MAGKAKAUGNAY"
+
+msgid "Incident information"
+msgstr "Impormasyon ng insidente"
+
+msgid "Response teams"
+msgstr "Mga pangkat ng pagtugon"
+
+msgid "Evacuation support"
+msgstr "Suporta sa paglikas"
+
+msgid "Situational awareness"
+msgstr "Pag-unawa sa kasalukuyang sitwasyon"
+
+msgid "Shared operational picture"
+msgstr "Pinagsasaluhang larawan ng operasyon"
+
+msgid "Unified coordination"
+msgstr "Pinag-isang koordinasyon"
+
+msgid "Teams and dispatch aligned"
+msgstr "Magkakaugnay ang mga pangkat at dispatch"
+
+msgid "System capabilities"
+msgstr "Mga kakayahan ng sistema"
+
+msgid "See the situation"
+msgstr "Alamin ang sitwasyon"
+
+msgid "Bring incident reports and hazard information into a shared city operations picture."
+msgstr "Pagsamahin ang mga ulat ng insidente at impormasyon sa panganib sa iisang larawan ng operasyon ng lungsod."
+
+msgid "Coordinate the response"
+msgstr "Iugnay ang pagtugon"
+
+msgid "Connect dispatch, response teams, and incident oversight in one workflow."
+msgstr "Pagsamahin sa iisang daloy ng trabaho ang dispatch, mga pangkat ng pagtugon, at pangangasiwa sa insidente."
+
+msgid "Support the community"
+msgstr "Suportahan ang komunidad"
+
+msgid "Make emergency contacts and public assistance information easy to find."
+msgstr "Gawing madaling mahanap ang mga emergency contact at impormasyon tungkol sa tulong publiko."
+
+msgid "San Pablo City, Laguna"
+msgstr "Lungsod ng San Pablo, Laguna"
+
+msgid "Predictions and saved incidents are scoped to San Pablo City; regional hazard feeds provide context only."
+msgstr "Ang mga prediksyon at nai-save na insidente ay para lamang sa Lungsod ng San Pablo; konteksto lamang ang mga panrehiyong feed ng panganib."
+
+msgid "San Pablo City (default)"
+msgstr "Lungsod ng San Pablo (default)"
+
+msgid "Light mode"
+msgstr "Maliwanag na tema"
+
+msgid "Dark mode"
+msgstr "Madilim na tema"
+
+msgid "Switch to light mode"
+msgstr "Lumipat sa maliwanag na tema"
+
+msgid "Switch to dark mode"
+msgstr "Lumipat sa madilim na tema"
+
+msgid "Skip to main content"
+msgstr "Lumaktaw sa pangunahing nilalaman"
 
 #: blueprints/commander.py:16 blueprints/commander.py:332
 #: blueprints/commander.py:380 blueprints/commander.py:403
@@ -1643,7 +1768,7 @@ msgstr "Iba pa"
 
 #: templates/pages/login.html:3 templates/pages/login.html:6
 msgid "Login"
-msgstr "Pag-login"
+msgstr "Mag-login"
 
 #: templates/pages/login.html:19 templates/pages/register.html:25
 msgid "Username"

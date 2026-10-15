@@ -1,13 +1,19 @@
 # DICS-AI
 
 DICS-AI is a Flask-based Digital Incident Command System for multi-hazard
-incident management in CALABARZON. It combines citizen reports, incident
-verification, response tasking, agency coordination, EOC dashboards, and
-AI-assisted hazard prediction in a single web application.
+incident management in San Pablo City, Laguna. It combines citizen reports,
+incident verification, response tasking, dispatch coordination, EOC dashboards,
+and AI-assisted hazard prediction in a single web application.
+
+Operational site predictions and automatically generated weather incidents are
+scoped to San Pablo City. Broader regional weather, earthquake, flood, and
+volcano feeds remain available as situational context; they do not create
+out-of-city incidents.
 
 The current runtime is organized around a role-oriented Flask blueprint layout,
 SQLAlchemy models, a SQLite database, a schedulable monitoring job, and a
-provider-backed AI decision-support layer.
+provider-backed hazard-analysis layer plus transparent dispatcher response
+guidance.
 
 ---
 
@@ -17,7 +23,7 @@ The application is bootstrapped from [app.py](app.py):
 
 - It creates the Flask app, configures the database connection, uploads, CSRF,
   rate limiting, and the scheduler.
-- It registers the role blueprints for citizens, responders, coordinators,
+- It registers the role blueprints for citizens, responders,
   commanders, EOC staff, and the admin area.
 - It exposes backward-compatible URL aliases that older templates and legacy
   route links still depend on.
@@ -27,18 +33,47 @@ The main runtime layers are:
 - [models.py](models.py): the SQLAlchemy schema for users, incidents,
   incident responses, tasks, resources, citizen reports, geography, message
   records, and related domain objects.
-- [scheduler.py](scheduler.py): hazard monitoring / ingestion loop that reads
-  real-time weather and earthquake inputs and pushes a new incident record
-  when a risk threshold is exceeded.
+- [scheduler.py](scheduler.py): hazard monitoring loop that creates local
+  incidents from San Pablo weather risk and dispatcher-only alerts for
+  significant regional earthquakes, floods, and volcanic events near the city.
 - [services/realtime_data.py](services/realtime_data.py): adapters for
-  OpenWeather city observations, Open-Meteo rainfall, USGS earthquakes, GDACS
-  floods and tropical cyclones, NASA EONET volcano events, and NASA FIRMS
+  OpenWeather city observations, Open-Meteo San Pablo barangay rainfall, USGS
+  earthquakes, GDACS floods and tropical cyclones, NASA EONET volcano events, and NASA FIRMS
   thermal hotspots. Rainfall and typhoon map layers return no events/data when
   their live feeds are unavailable; they do not substitute demo readings.
+  Open-Meteo rainfall is shared-cache refreshed every 15 minutes (up to 80
+  location-equivalent calls per refresh, or about 7,680/day at continuous
+  maximum use). The free API is limited to non-commercial use and 10,000
+  calls/day; confirm eligibility with Open-Meteo before production use by a
+  government organization, since its published pricing page does not define
+  government-use eligibility. The map links to Open-Meteo for required
+  attribution. See [Open-Meteo pricing](https://open-meteo.com/en/pricing)
+  and [licence](https://open-meteo.com/en/licence).
+- Leaflet 1.9.4, MarkerCluster 1.5.3, and Leaflet.heat 0.2.0 are served from
+  the local `static/vendor/leaflet` assets with their license notices included.
+  This removes the map libraries' CDN dependency; live basemap tiles and
+  external data feeds still require an internet connection.
+- Chart.js 4.4.7 is served locally from `static/vendor/chartjs` with its MIT
+  license; dashboard and analytics charts no longer depend on a CDN.
 - [services/aftershock.py](services/aftershock.py): Omori-Utsu / Gutenberg-
   Richter aftershock probability logic and a calibrated proxy-region model.
 - [ai/decision_support.py](ai/decision_support.py): provider adapter layer
   for AI risk scoring, with JSON parsing and degradation-safe fallback logic.
+- [services/response_decision_support.py](services/response_decision_support.py):
+  deterministic response-need scoring for open dispatcher emergencies and
+  San Pablo scheduler-generated weather incidents. The dispatcher sees each
+  factor and records the final choice; the score is guidance, not a probability
+  or automatic dispatch. Ruleset `rules-v1` uses provisional
+  thresholds pending CDRRMO validation. Vulnerable-person counts, geocoded
+  unit locations, complete vehicle inventory, and mapped flood/landslide
+  exposure are not currently available and are labeled as limitations.
+  An outcome is withheld unless severity and location are identifiable;
+  missing factors add no points and any dispatcher choice without a suggestion
+  requires a reason.
+- `/analytics` and `/api/analytics-data`: role-restricted operational summaries
+  of incidents by year, month, hazard, barangay, and status; patient counts per
+  emergency; response durations; and control-number search. Patient analytics
+  expose aggregate counts only, not patient records.
 - [templates/pages/](templates/pages/): role-driven Jinja templates for UI
   surfaces and operator workflows.
 
@@ -53,9 +88,12 @@ that state as safe.
 
 ## AI Provider Setup
 
-The AI prediction entry point is [ai/decision_support.py](ai/decision_support.py).
-It loads provider defaults from environment variables and builds a JSON prompt
-payload for the selected model.
+Remaining AI-assisted hazard analysis uses
+[ai/decision_support.py](ai/decision_support.py). Manual dispatch guidance is
+rules-based and does not call an AI provider; the legacy `/ai-prediction` URL
+redirects to the dispatcher decision-support screen. Provider defaults are
+loaded from environment variables for the AI-assisted hazard-analysis flows
+that remain.
 
 Supported provider names:
 
@@ -68,7 +106,7 @@ Required runtime environment variables for the provider layer:
 
 | Variable | Required for | Notes |
 |---|---|---|
-| `AI_PROVIDER` | All AI prediction requests | Defaults to `anthropic` |
+| `AI_PROVIDER` | AI-assisted hazard analysis | Defaults to `anthropic` |
 | `ANTHROPIC_API_KEY` | Anthropic adapter | Must be present when `AI_PROVIDER=anthropic` |
 | `ANTHROPIC_MODEL` | Anthropic adapter | Optional override; defaults to a current model string |
 | `OPENAI_API_KEY` | OpenAI adapter | Must be present when `AI_PROVIDER=openai` |
@@ -219,8 +257,8 @@ Then open:
 
 http://127.0.0.1:5000
 
-The app will initialize the SQLAlchemy schema and seed the canonical agency
-and geography baseline as needed.
+The app will initialize the SQLAlchemy schema and seed the baseline geography
+data as needed.
 
 ---
 

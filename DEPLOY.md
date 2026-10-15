@@ -94,6 +94,9 @@ For local development, `FILE_STORAGE_BACKEND=local` stores files under
   manager. Never put them in source control or shell history.
 - Run `flask --app app db upgrade` after deploying revisions that add
   migrations.
+- Analytics-only application changes do not add database schema and require no
+  migration; continue to run the upgrade command whenever a release includes
+  an Alembic revision.
 - Verify the application health endpoint and log in after each production
   deployment.
 - Keep at least one verified backup outside Railway.

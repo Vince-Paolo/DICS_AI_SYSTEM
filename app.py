@@ -7,12 +7,13 @@ import threading
 import hmac
 import hashlib
 import secrets
+from contextlib import closing
 from html import escape as html_escape
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from flask import Flask, current_app, render_template, request, redirect, url_for, session, flash, send_from_directory, Response, has_request_context
+from flask import Flask, current_app, render_template, request, redirect, url_for, session, flash, send_from_directory, Response, has_request_context, make_response
 from flask_babel import Babel, get_locale, gettext as _
 import requests
 from sqlalchemy import case, or_, text
@@ -30,7 +31,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import LongTable, Paragraph, SimpleDocTemplate, Spacer, TableStyle
 
-from models import db, User, Incident, IncidentResponse, Resource, CitizenReport, Agency, PostIncidentReport, EvacuationCenter, Province, Municipality, Barangay
+from models import db, User, Incident, IncidentResponse, Resource, CitizenReport, PostIncidentReport, EvacuationCenter, Province, Municipality, Barangay, Alert
 from scheduler import monitor_hazards
 from services.realtime_data import (
     get_all_weather_data,
@@ -49,15 +50,17 @@ from seed.demo_data import seed_geography_data
 
 from blueprints.admin import admin_bp
 from blueprints.commander import commander_bp
-from blueprints.coordinator import coordinator_bp
 from blueprints.responder import responder_bp
 from blueprints.eoc import eoc_bp
 from blueprints.citizen import citizen_bp
 from blueprints.ai import ai_bp
 from blueprints.facilities import facilities_bp
+from blueprints.dispatcher import dispatcher_bp
 from services.file_storage import FileStorage
 
 app = Flask(__name__)
+STATIC_ASSET_VERSION = '2026-10-15-1'
+app.config['STATIC_ASSET_VERSION'] = STATIC_ASSET_VERSION
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
 base_dir = os.path.abspath(os.path.dirname(__file__))
 instance_dir = os.path.join(base_dir, 'instance')
@@ -434,6 +437,11 @@ def inject_locale():
 
 
 @app.context_processor
+def inject_static_asset_version():
+    return {'static_asset_version': current_app.config['STATIC_ASSET_VERSION']}
+
+
+@app.context_processor
 def inject_ai_provider():
     provider_name = (AI_PROVIDER or 'gemini').strip().lower() or 'gemini'
     provider_label = {
@@ -461,12 +469,12 @@ def set_language(locale):
 
 app.register_blueprint(admin_bp)
 app.register_blueprint(commander_bp)
-app.register_blueprint(coordinator_bp)
 app.register_blueprint(responder_bp)
 app.register_blueprint(eoc_bp)
 app.register_blueprint(citizen_bp)
 app.register_blueprint(ai_bp)
 app.register_blueprint(facilities_bp)
+app.register_blueprint(dispatcher_bp)
 
 # emergency_sos lives in blueprints/citizen.py, which is imported before
 # `limiter` exists (it's imported at the top of this file, before app =
@@ -545,6 +553,7 @@ def handle_server_error(error):
 @app.context_processor
 def inject_alert_count():
     alert_count = 0
+    dispatcher_alert_count = 0
     try:
         username = session.get('username')
         role = session.get('role')
@@ -557,7 +566,18 @@ def inject_alert_count():
             alert_count = Incident.query.filter(Incident.alert == True).count()
         except Exception:
             alert_count = 0
-    return {'alert_count': alert_count}
+    elif username and role == 'dispatcher':
+        try:
+            dispatcher_alert_count = Alert.query.filter_by(
+                audience='DISPATCHER',
+                status='ACTIVE',
+            ).count()
+        except Exception:
+            dispatcher_alert_count = 0
+    return {
+        'alert_count': alert_count,
+        'dispatcher_alert_count': dispatcher_alert_count,
+    }
 
 
 def migrate_user_table():
@@ -569,7 +589,7 @@ def migrate_user_table():
     db_path = _resolve_sqlite_db_path()
     if not db_path:
         return
-    with sqlite3.connect(db_path) as conn:
+    with closing(sqlite3.connect(db_path)) as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='user'")
         if cursor.fetchone():
@@ -623,13 +643,14 @@ def migrate_incident_commander_tables():
     db_path = _resolve_sqlite_db_path()
     if not db_path:
         return
-    with sqlite3.connect(db_path) as conn:
+    with closing(sqlite3.connect(db_path)) as conn:
         cursor = conn.cursor()
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS incident_response (
                 id INTEGER PRIMARY KEY,
                 incident_id INTEGER NOT NULL UNIQUE,
-                commander_id INTEGER NOT NULL,
+                commander_id INTEGER,
+                dispatched_by_id INTEGER,
                 status VARCHAR(20) DEFAULT 'ACTIVE',
                 situation_summary TEXT,
                 priority_level VARCHAR(20) DEFAULT 'MEDIUM',
@@ -637,33 +658,214 @@ def migrate_incident_commander_tables():
                 started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 resolved_at DATETIME,
                 closed_at DATETIME,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (incident_id) REFERENCES incident(id),
-                FOREIGN KEY (commander_id) REFERENCES user(id)
+                FOREIGN KEY (commander_id) REFERENCES user(id),
+                FOREIGN KEY (dispatched_by_id) REFERENCES user(id)
             )
         """)
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS task (
-                id INTEGER PRIMARY KEY,
-                incident_response_id INTEGER NOT NULL,
-                assigned_to_agency VARCHAR(150) NOT NULL,
+                CREATE TABLE IF NOT EXISTS task (
+                    id INTEGER PRIMARY KEY,
+                    incident_response_id INTEGER NOT NULL,
+                    assigned_to_user_id INTEGER,
+                assigned_to_team_id INTEGER,
                 assigned_by_id INTEGER NOT NULL,
                 title VARCHAR(200) NOT NULL,
                 description TEXT NOT NULL,
                 status VARCHAR(20) DEFAULT 'PENDING',
+                remarks TEXT,
                 priority VARCHAR(20) DEFAULT 'MEDIUM',
                 estimated_completion DATETIME,
                 completed_at DATETIME,
+                version_id INTEGER NOT NULL DEFAULT 1,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (incident_response_id) REFERENCES incident_response(id),
+                FOREIGN KEY (assigned_to_user_id) REFERENCES user(id),
+                FOREIGN KEY (assigned_to_team_id) REFERENCES response_team(id),
                 FOREIGN KEY (assigned_by_id) REFERENCES user(id)
             )
         """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS response_team (
+                id INTEGER PRIMARY KEY,
+                name VARCHAR(120) NOT NULL UNIQUE,
+                created_by_id INTEGER NOT NULL REFERENCES user(id),
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS response_team_members (
+                team_id INTEGER NOT NULL REFERENCES response_team(id) ON DELETE CASCADE,
+                user_id INTEGER NOT NULL REFERENCES user(id) ON DELETE CASCADE,
+                PRIMARY KEY (team_id, user_id)
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS barangay_response_unit (
+                id INTEGER PRIMARY KEY,
+                barangay_id INTEGER NOT NULL UNIQUE REFERENCES barangay(id) ON DELETE CASCADE,
+                contact_person VARCHAR(150),
+                contact_number VARCHAR(30),
+                team_size INTEGER,
+                equipment TEXT,
+                location VARCHAR(255),
+                updated_by_id INTEGER REFERENCES user(id),
+                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS barangay_contact_log (
+                id INTEGER PRIMARY KEY,
+                incident_id INTEGER NOT NULL REFERENCES incident(id) ON DELETE CASCADE,
+                response_unit_id INTEGER NOT NULL REFERENCES barangay_response_unit(id),
+                contacted_person VARCHAR(150),
+                contact_method VARCHAR(20) NOT NULL DEFAULT 'PHONE',
+                outcome VARCHAR(40) NOT NULL,
+                notes TEXT,
+                contacted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                logged_by_id INTEGER NOT NULL REFERENCES user(id)
+            )
+        """)
+
+        def rebuild_table(table_name, create_sql, target_columns, required_columns):
+            old_columns = {
+                row[1] for row in cursor.execute(f'PRAGMA table_info("{table_name}")').fetchall()
+            }
+            existing_rows = cursor.execute(f'SELECT COUNT(*) FROM "{table_name}"').fetchone()[0]
+            missing_required = required_columns - old_columns
+            if existing_rows and missing_required:
+                raise RuntimeError(
+                    f'Cannot upgrade populated SQLite {table_name} table; missing required columns: '
+                    f'{", ".join(sorted(missing_required))}.'
+                )
+            temp_table = f'{table_name}_phase3'
+            cursor.execute(f'DROP TABLE IF EXISTS "{temp_table}"')
+            cursor.execute(create_sql.format(table=temp_table))
+            shared_columns = [column for column in target_columns if column in old_columns]
+            if shared_columns:
+                column_sql = ', '.join(f'"{column}"' for column in shared_columns)
+                cursor.execute(
+                    f'INSERT INTO "{temp_table}" ({column_sql}) '
+                    f'SELECT {column_sql} FROM "{table_name}"'
+                )
+            cursor.execute(f'DROP TABLE "{table_name}"')
+            cursor.execute(f'ALTER TABLE "{temp_table}" RENAME TO "{table_name}"')
+
+        response_columns = cursor.execute(
+            'PRAGMA table_info("incident_response")'
+        ).fetchall()
+        response_column_by_name = {row[1]: row for row in response_columns}
+        response_target_columns = [
+            'id', 'incident_id', 'commander_id', 'dispatched_by_id', 'status',
+            'situation_summary', 'priority_level', 'affected_population',
+            'started_at', 'resolved_at', 'closed_at', 'updated_at',
+        ]
+        response_create_sql = """
+            CREATE TABLE "{table}" (
+                id INTEGER PRIMARY KEY,
+                incident_id INTEGER NOT NULL UNIQUE REFERENCES incident(id) ON DELETE CASCADE,
+                commander_id INTEGER REFERENCES user(id),
+                dispatched_by_id INTEGER REFERENCES user(id),
+                status VARCHAR(20) DEFAULT 'ACTIVE',
+                situation_summary TEXT,
+                priority_level VARCHAR(20) DEFAULT 'MEDIUM',
+                affected_population INTEGER,
+                started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                resolved_at DATETIME,
+                closed_at DATETIME,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """
+        if (
+            response_column_by_name.get('commander_id', [None, None, None, 0])[3]
+            or 'dispatched_by_id' not in response_column_by_name
+        ):
+            rebuild_table(
+                'incident_response',
+                response_create_sql,
+                response_target_columns,
+                {'id', 'incident_id', 'commander_id'},
+            )
+
+        cursor.execute("PRAGMA table_info(task)")
+        task_column_info = cursor.fetchall()
+        task_columns = [row[1] for row in task_column_info]
+        if 'remarks' not in task_columns:
+            cursor.execute("ALTER TABLE task ADD COLUMN remarks TEXT")
+        task_target_columns = [
+            'id', 'incident_response_id', 'assigned_to_user_id',
+            'assigned_to_team_id', 'assigned_by_id', 'title', 'description', 'status',
+            'remarks', 'priority', 'estimated_completion', 'completed_at',
+            'version_id', 'created_at', 'updated_at',
+        ]
+        task_column_by_name = {row[1]: row for row in task_column_info}
+        task_create_sql = """
+            CREATE TABLE "{table}" (
+                id INTEGER PRIMARY KEY,
+                incident_response_id INTEGER NOT NULL REFERENCES incident_response(id) ON DELETE CASCADE,
+                assigned_to_user_id INTEGER REFERENCES user(id),
+                assigned_to_team_id INTEGER REFERENCES response_team(id),
+                assigned_by_id INTEGER NOT NULL REFERENCES user(id),
+                title VARCHAR(200) NOT NULL,
+                description TEXT NOT NULL,
+                status VARCHAR(20) DEFAULT 'PENDING',
+                remarks TEXT,
+                priority VARCHAR(20) DEFAULT 'MEDIUM',
+                estimated_completion DATETIME,
+                completed_at DATETIME,
+                version_id INTEGER NOT NULL DEFAULT 1,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """
+        if (
+            'assigned_to_agency' in task_column_by_name
+            or 'assigned_to_user_id' not in task_column_by_name
+            or 'assigned_to_team_id' not in task_column_by_name
+            or 'version_id' not in task_column_by_name
+        ):
+            if 'assigned_to_agency' in task_column_by_name:
+                cursor.execute("""
+                    UPDATE task
+                    SET remarks = CASE
+                        WHEN remarks IS NULL OR remarks = '' THEN
+                            'Historical agency assignment: ' || assigned_to_agency
+                        ELSE remarks || char(10) || 'Historical agency assignment: ' || assigned_to_agency
+                    END
+                    WHERE assigned_to_agency IS NOT NULL AND assigned_to_agency <> ''
+                """)
+            rebuild_table(
+                'task',
+                task_create_sql,
+                task_target_columns,
+                {
+                    'id', 'incident_response_id', 'assigned_by_id',
+                    'title', 'description',
+                },
+            )
+        for table_name, index_name, column_name in (
+            ('incident_response', 'ix_incident_response_status', 'status'),
+            ('incident_response', 'ix_incident_response_started_at', 'started_at'),
+            ('incident_response', 'ix_incident_response_dispatched_by_id', 'dispatched_by_id'),
+            ('task', 'ix_task_assigned_to_user_id', 'assigned_to_user_id'),
+            ('task', 'ix_task_assigned_to_team_id', 'assigned_to_team_id'),
+            ('task', 'ix_task_incident_response_id', 'incident_response_id'),
+            ('task', 'ix_task_created_at', 'created_at'),
+            ('barangay_contact_log', 'ix_barangay_contact_log_incident_id', 'incident_id'),
+            ('barangay_contact_log', 'ix_barangay_contact_log_response_unit_id', 'response_unit_id'),
+            ('barangay_contact_log', 'ix_barangay_contact_log_contacted_at', 'contacted_at'),
+        ):
+            cursor.execute(
+                f'CREATE INDEX IF NOT EXISTS "{index_name}" ON "{table_name}" ("{column_name}")'
+            )
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS resource (
                 id INTEGER PRIMARY KEY,
                 incident_response_id INTEGER NOT NULL,
                 resource_type VARCHAR(100) NOT NULL,
-                agency VARCHAR(150) NOT NULL,
                 quantity INTEGER NOT NULL,
                 status VARCHAR(20) DEFAULT 'AVAILABLE',
                 location VARCHAR(255),
@@ -717,29 +919,112 @@ def migrate_incident_commander_tables():
         conn.commit()
 
 
-def migrate_legacy_sqlite_resource_columns():
-    """Backward-compatibility fix for older SQLite databases created before
-    the resource_request_id migration landed. Those DBs still power live apps
-    in dev environments and must be upgraded in-place before dashboard SQL
-    queries can run."""
+def migrate_emergency_log_sqlite():
     db_path = _resolve_sqlite_db_path()
     if not db_path:
         return
 
-    with sqlite3.connect(db_path) as conn:
+    with closing(sqlite3.connect(db_path)) as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='resource'")
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='incident'")
         if not cursor.fetchone():
             return
 
-        cursor.execute("PRAGMA table_info(resource)")
-        columns = [row[1] for row in cursor.fetchall()]
-        if 'resource_request_id' not in columns:
-            cursor.execute('ALTER TABLE resource ADD COLUMN resource_request_id INTEGER')
-        if 'updated_at' not in columns:
-            cursor.execute('ALTER TABLE resource ADD COLUMN updated_at DATETIME')
-        if 'version_id' not in columns:
-            cursor.execute('ALTER TABLE resource ADD COLUMN version_id INTEGER DEFAULT 1')
+        cursor.execute("PRAGMA table_info(incident)")
+        columns = {row[1] for row in cursor.fetchall()}
+        if 'control_number' not in columns:
+            cursor.execute("ALTER TABLE incident ADD COLUMN control_number VARCHAR(20)")
+        if 'patient_count' not in columns:
+            cursor.execute("ALTER TABLE incident ADD COLUMN patient_count INTEGER NOT NULL DEFAULT 0")
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS control_number_sequence (
+                year INTEGER PRIMARY KEY,
+                last_number INTEGER NOT NULL
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS patient_record (
+                id INTEGER PRIMARY KEY,
+                incident_id INTEGER NOT NULL,
+                condition VARCHAR(255) NOT NULL,
+                destination VARCHAR(255),
+                status VARCHAR(50) NOT NULL DEFAULT 'RECEIVING_CARE',
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (incident_id) REFERENCES incident(id) ON DELETE CASCADE
+            )
+        """)
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS ix_patient_record_incident_id "
+            "ON patient_record (incident_id)"
+        )
+
+        cursor.execute("""
+            SELECT id, control_number, created_at, event_time
+            FROM incident
+            ORDER BY created_at, id
+        """)
+        rows = cursor.fetchall()
+        next_by_year = {}
+        for _, control_number, _, _ in rows:
+            if not control_number:
+                continue
+            try:
+                year_text, sequence_text = control_number.split('-', 1)
+                year, sequence = int(year_text), int(sequence_text)
+            except (AttributeError, ValueError):
+                continue
+            next_by_year[year] = max(next_by_year.get(year, 0), sequence)
+
+        for incident_id, control_number, created_at, event_time in rows:
+            if control_number:
+                continue
+            incident_time = created_at or event_time
+            try:
+                parsed_incident_time = (
+                    datetime.fromisoformat(str(incident_time))
+                    if incident_time
+                    else datetime.now(timezone.utc)
+                )
+                if parsed_incident_time.tzinfo is None:
+                    parsed_incident_time = parsed_incident_time.replace(tzinfo=timezone.utc)
+                year = parsed_incident_time.astimezone(ZoneInfo('Asia/Manila')).year
+            except ValueError:
+                year = datetime.now(ZoneInfo('Asia/Manila')).year
+            sequence = next_by_year.get(year, 0) + 1
+            next_by_year[year] = sequence
+            cursor.execute(
+                "UPDATE incident SET control_number = ? WHERE id = ?",
+                (f'{year}-{sequence:05d}', incident_id),
+            )
+
+        for year, sequence in next_by_year.items():
+            cursor.execute(
+                """
+                INSERT INTO control_number_sequence (year, last_number)
+                VALUES (?, ?)
+                ON CONFLICT(year) DO UPDATE SET
+                    last_number = MAX(last_number, excluded.last_number)
+                """,
+                (year, sequence),
+            )
+
+        cursor.execute("PRAGMA index_list('incident')")
+        incident_indexes = cursor.fetchall()
+        has_unique_control_number = False
+        for index in incident_indexes:
+            if not index[2]:
+                continue
+            cursor.execute(f"PRAGMA index_info('{index[1]}')")
+            if [column[2] for column in cursor.fetchall()] == ['control_number']:
+                has_unique_control_number = True
+                break
+        if not has_unique_control_number:
+            cursor.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_incident_control_number "
+                "ON incident (control_number)"
+            )
         conn.commit()
 
 
@@ -754,6 +1039,38 @@ def migrate_external_event_id_constraint():
         'WHERE external_event_id IS NOT NULL'
     ))
     db.session.commit()
+
+
+def migrate_dispatcher_alerts_sqlite():
+    """Add dispatcher alert metadata to existing SQLite alert tables."""
+    db_path = _resolve_sqlite_db_path()
+    if not db_path:
+        return
+
+    with closing(sqlite3.connect(db_path)) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='alert'"
+        )
+        if not cursor.fetchone():
+            return
+
+        cursor.execute('PRAGMA table_info("alert")')
+        columns = {row[1] for row in cursor.fetchall()}
+        if 'audience' not in columns:
+            cursor.execute(
+                "ALTER TABLE alert ADD COLUMN audience VARCHAR(20) "
+                "NOT NULL DEFAULT 'PUBLIC'"
+            )
+        if 'external_event_id' not in columns:
+            cursor.execute(
+                'ALTER TABLE alert ADD COLUMN external_event_id VARCHAR(255)'
+            )
+        cursor.execute(
+            'CREATE UNIQUE INDEX IF NOT EXISTS uq_alert_external_event_id '
+            'ON alert (external_event_id) WHERE external_event_id IS NOT NULL'
+        )
+        conn.commit()
 
 
 def create_default_admin():
@@ -807,40 +1124,16 @@ def create_default_admin():
         raise
 
 
-def seed_agencies():
-    canonical_agencies = [
-        'BFP',
-        'PNP',
-        'DOH',
-        'DILG',
-        'MDRRMO',
-        'PAGASA',
-        'PHIVOLCS',
-        'CIVIL DEFENSE',
-        'RED CROSS',
-        'LOCAL GOVERNMENT',
-    ]
-    with app.app_context():
-        for name in canonical_agencies:
-            existing = Agency.query.filter_by(name=name).first()
-            if existing is None:
-                db.session.add(Agency(name=name))
-        try:
-            db.session.commit()
-        except Exception as exc:
-            db.session.rollback()
-            app.logger.error(f'Unable to seed agencies: {exc}')
-
-
 def create_tables():
     with app.app_context():
         try:
             db.create_all()
             migrate_user_table()
             migrate_incident_commander_tables()
+            migrate_emergency_log_sqlite()
+            migrate_dispatcher_alerts_sqlite()
             migrate_external_event_id_constraint()
             create_default_admin()
-            seed_agencies()
             seed_geography_data()
         except Exception:
             db.session.rollback()
@@ -892,10 +1185,10 @@ def lazy_init():
                 db.create_all()
                 migrate_user_table()
                 migrate_incident_commander_tables()
-                migrate_legacy_sqlite_resource_columns()
+                migrate_emergency_log_sqlite()
+                migrate_dispatcher_alerts_sqlite()
                 migrate_external_event_id_constraint()
                 create_default_admin()
-                seed_agencies()
                 seed_geography_data()
                 app.logger.info('Database initialized successfully')
                 _init_attempted = True
@@ -967,28 +1260,32 @@ def _resolve_session_user():
 
     if session.get('role') != user.role:
         session['role'] = user.role
-    if not session.get('agency'):
-        session['agency'] = user.agency or 'FIELD UNIT'
-
     return user
 
 
+@app.route('/', methods=['GET'])
+def landing():
+    response = make_response(render_template('pages/landing.html'))
+    response.headers['Cache-Control'] = (
+        'private, no-store' if session.get('username') else 'public, max-age=300'
+    )
+    return response
+
+
 @app.route('/login', methods=['GET', 'POST'])
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/', methods=['POST'], endpoint='legacy_login')
 @limiter.limit("10 per minute", methods=['POST'])
 def login():
     session_user = _resolve_session_user()
     if session_user:
         role = session_user.role
-        if role == 'incident_commander':
-            return redirect(url_for('commander.incident_commander_dashboard'))
-        elif role == 'agency_coordinator':
-            return redirect(url_for('coordinator.coordinator_dashboard'))
-        elif role == 'field_responder':
+        if permission_service.normalize_role(role) == 'RESPONDER':
             return redirect(url_for('responder.responder_dashboard'))
-        elif role == 'eoc_staff':
+        elif permission_service.normalize_role(role) == 'IMT':
             return redirect(url_for('eoc.eoc_dashboard'))
-        elif role == 'citizen':
+        elif permission_service.normalize_role(role) == 'DISPATCHER':
+            return redirect(url_for('dispatcher.dispatcher_dashboard'))
+        elif permission_service.normalize_role(role) == 'CITIZEN':
             return redirect(url_for('citizen.citizen_dashboard'))
         else:
             return redirect(url_for('dashboard'))
@@ -1008,20 +1305,17 @@ def login():
             elif user and verify_password(user, password):
                 session['username'] = user.username
                 session['role'] = user.role
-                session['agency'] = user.agency or 'FIELD UNIT'
                 session['must_change_password'] = bool(user.must_change_password)
                 flash(_('Welcome back, %(username)s!') % {'username': user.username}, 'success')
                 if user.must_change_password:
                     return redirect(url_for('change_password'))
-                if user.role == 'incident_commander':
-                    return redirect(url_for('commander.incident_commander_dashboard'))
-                elif user.role == 'agency_coordinator':
-                    return redirect(url_for('coordinator.coordinator_dashboard'))
-                elif user.role == 'field_responder':
+                if permission_service.normalize_role(user.role) == 'RESPONDER':
                     return redirect(url_for('responder.responder_dashboard'))
-                elif user.role == 'eoc_staff':
+                elif permission_service.normalize_role(user.role) == 'IMT':
                     return redirect(url_for('eoc.eoc_dashboard'))
-                elif user.role == 'citizen':
+                elif permission_service.normalize_role(user.role) == 'DISPATCHER':
+                    return redirect(url_for('dispatcher.dispatcher_dashboard'))
+                elif permission_service.normalize_role(user.role) == 'CITIZEN':
                     return redirect(url_for('citizen.citizen_dashboard'))
                 else:
                     return redirect(url_for('dashboard'))
@@ -1366,29 +1660,31 @@ def dashboard():
     if not user:
         return redirect(url_for('logout'))
 
-    if user.role == 'incident_commander':
-        return redirect(url_for('commander.incident_commander_dashboard'))
-    elif user.role == 'field_responder':
+    if permission_service.normalize_role(user.role) == 'RESPONDER':
         return redirect(url_for('responder.responder_dashboard'))
-    elif user.role == 'eoc_staff':
+    elif permission_service.normalize_role(user.role) == 'IMT':
         return redirect(url_for('eoc.eoc_dashboard'))
+    elif permission_service.normalize_role(user.role) == 'DISPATCHER':
+        return redirect(url_for('dispatcher.dispatcher_dashboard'))
     elif permission_service.user_has_any_role(user, 'CITIZEN'):
         return redirect(url_for('citizen.citizen_dashboard'))
-    elif user.role == 'agency_coordinator':
-        return redirect(url_for('coordinator.coordinator_dashboard'))
 
     # Only admins reach this point; every other role is redirected above.
     # Administration-focused view: account health and backup status only.
-    # Incident verification, commander assignment, and operations monitoring
-    # are owned by EOC staff; hazard/incident field operations live with
-    # EOC staff, incident commander, and coordinator roles.
+    # Incident verification and operations monitoring are owned by IMT staff.
     total_users = User.query.count()
     disabled_users = User.query.filter_by(is_disabled=True).count()
     active_users = total_users - disabled_users
 
     role_counts = {}
-    for role in ['admin', 'agency_coordinator', 'incident_commander', 'eoc_staff', 'field_responder', 'citizen']:
+    for role in ['admin', 'field_responder', 'citizen']:
         role_counts[role] = User.query.filter_by(role=role).count()
+    role_counts['imt_staff'] = User.query.filter(
+        db.func.lower(User.role).in_(['imt_staff', 'imt', 'eoc_staff', 'eoc'])
+    ).count()
+    role_counts['dispatcher'] = User.query.filter(
+        db.func.lower(User.role).in_(['dispatcher', 'dispatch'])
+    ).count()
 
     recent_users = User.query.order_by(User.created_at.desc()).limit(5).all()
 
@@ -1582,7 +1878,6 @@ def get_map_resources():
         pins.append({
             'id': resource.id,
             'resource_type': resource.resource_type,
-            'agency': resource.agency,
             'quantity': resource.quantity,
             'status': resource.status,
             'location': resource.location,
@@ -1649,6 +1944,13 @@ def service_worker():
         'service-worker.js',
         mimetype='application/javascript',
     )
+    response.direct_passthrough = False
+    response.set_data(
+        response.get_data(as_text=True).replace(
+            '__STATIC_ASSET_VERSION__',
+            current_app.config['STATIC_ASSET_VERSION'],
+        )
+    )
     response.headers['Service-Worker-Allowed'] = '/'
     response.headers['Cache-Control'] = 'no-cache'
     return response
@@ -1697,11 +1999,20 @@ def _parse_analytics_window():
     return selected_year, selected_month
 
 
-def _build_analytics_payload(year=None, month=None):
+def _build_analytics_payload(year=None, month=None, control_number_query=None):
     current_year = _manila_current_year()
     selected_year = year if year is not None else current_year
     selected_month = month
     start_utc, end_utc = _analytics_utc_bounds(selected_year, selected_month)
+
+    status_rows = db.session.query(
+        db.func.coalesce(Incident.status, 'Unknown'),
+        db.func.count(Incident.id),
+    ).filter(
+        Incident.created_at >= start_utc,
+        Incident.created_at < end_utc,
+    ).group_by(Incident.status).all()
+    status_counts = {status: count for status, count in status_rows}
 
     hazard_rows = db.session.query(
         db.func.coalesce(Incident.hazard_type, 'Unknown'),
@@ -1711,6 +2022,30 @@ def _build_analytics_payload(year=None, month=None):
         Incident.created_at < end_utc,
     ).group_by(Incident.hazard_type).all()
     incident_counts = {hazard_name: count for hazard_name, count in hazard_rows}
+
+    first_incident_at, last_incident_at = db.session.query(
+        db.func.min(Incident.created_at),
+        db.func.max(Incident.created_at),
+    ).filter(Incident.created_at.isnot(None)).one()
+    year_counts = []
+    if first_incident_at and last_incident_at:
+        first_year = _to_manila_datetime(first_incident_at).year
+        last_year = _to_manila_datetime(last_incident_at).year
+        year_count_columns = []
+        for year_idx in range(first_year, last_year + 1):
+            year_start_utc, year_end_utc = _analytics_utc_bounds(year_idx)
+            year_count_columns.append(db.func.sum(case((
+                (Incident.created_at >= year_start_utc) & (Incident.created_at < year_end_utc),
+                1,
+            ), else_=0)))
+        yearly_row = db.session.query(*year_count_columns).filter(
+            Incident.created_at >= _analytics_utc_bounds(first_year)[0],
+            Incident.created_at < _analytics_utc_bounds(last_year)[1],
+        ).one()
+        year_counts = [
+            {'year': first_year + idx, 'count': int(count or 0)}
+            for idx, count in enumerate(yearly_row)
+        ]
 
     year_start_utc, year_end_utc = _analytics_utc_bounds(selected_year)
     month_count_columns = []
@@ -1789,6 +2124,89 @@ def _build_analytics_payload(year=None, month=None):
         else:
             response_buckets['> 120 min'] += 1
 
+    matching_emergencies_query = Incident.query.filter(
+        Incident.hazard_type == 'EMERGENCY',
+    )
+    if control_number_query:
+        escaped_control_number_query = (
+            control_number_query
+            .replace('\\', '\\\\')
+            .replace('%', '\\%')
+            .replace('_', '\\_')
+        )
+        matching_emergencies_query = matching_emergencies_query.filter(
+            Incident.control_number.ilike(
+                f'%{escaped_control_number_query}%',
+                escape='\\',
+            )
+        )
+    else:
+        matching_emergencies_query = matching_emergencies_query.filter(
+            Incident.created_at >= start_utc,
+            Incident.created_at < end_utc,
+        )
+    matching_emergency_count = matching_emergencies_query.count()
+    patient_rows = matching_emergencies_query.outerjoin(
+        Municipality, Incident.municipality_id == Municipality.id,
+    ).outerjoin(
+        Barangay, Incident.barangay_id == Barangay.id,
+    ).order_by(
+        Incident.created_at.desc(), Incident.id.desc(),
+    ).limit(100).with_entities(
+        Incident.control_number,
+        Incident.created_at,
+        Incident.hazard_type,
+        Municipality.name,
+        Barangay.name,
+        Incident.status,
+        Incident.patient_count,
+    ).all()
+    total_patients, emergencies_with_patients = db.session.query(
+        db.func.coalesce(db.func.sum(Incident.patient_count), 0),
+        db.func.sum(case((Incident.patient_count > 0, 1), else_=0)),
+    ).filter(
+        Incident.hazard_type == 'EMERGENCY',
+        Incident.created_at >= start_utc,
+        Incident.created_at < end_utc,
+    ).one()
+    emergency_count = db.session.query(Incident.id).filter(
+        Incident.hazard_type == 'EMERGENCY',
+        Incident.created_at >= start_utc,
+        Incident.created_at < end_utc,
+    ).count()
+    patient_counts = {
+        'total_patients': int(total_patients or 0),
+        'emergencies_with_patients': int(emergencies_with_patients or 0),
+        'average_per_emergency': (
+            round(float(total_patients or 0) / emergency_count, 2)
+            if emergency_count else 0
+        ),
+        'matching_emergencies': matching_emergency_count,
+        'records': [
+            {
+                'control_number': control_number,
+                'created_at': (
+                    _to_manila_datetime(created_at).strftime('%Y-%m-%d %H:%M')
+                    if created_at else ''
+                ),
+                'hazard_type': hazard or 'Unknown',
+                'municipality': municipality or 'Unknown',
+                'barangay': barangay or 'Unknown',
+                'status': status or 'Unknown',
+                'patient_count': int(patient_count or 0),
+            }
+            for (
+                control_number,
+                created_at,
+                hazard,
+                municipality,
+                barangay,
+                status,
+                patient_count,
+            ) in patient_rows
+        ],
+    }
+
     status_totals = {}
     type_totals = {}
     resource_rows = db.session.query(
@@ -1816,9 +2234,13 @@ def _build_analytics_payload(year=None, month=None):
     return {
         'selected_year': selected_year,
         'selected_month': selected_month,
+        'control_number_query': control_number_query or '',
+        'year_counts': year_counts,
         'incident_counts': incident_counts,
+        'status_counts': status_counts,
         'monthly_counts': monthly_counts,
         'geo_counts': geo_counts,
+        'patient_counts': patient_counts,
         'response_time': {
             'average_minutes': average_minutes,
             'buckets': response_buckets,
@@ -1840,7 +2262,12 @@ def get_analytics_data():
         return {'error': 'Forbidden'}, 403
 
     selected_year, selected_month = _parse_analytics_window()
-    return _build_analytics_payload(selected_year, selected_month)
+    control_number_query = request.args.get('control_number', '').strip()[:32]
+    return _build_analytics_payload(
+        selected_year,
+        selected_month,
+        control_number_query or None,
+    )
 
 
 @app.route('/api/analytics-export')
@@ -2025,7 +2452,7 @@ def analytics():
         return redirect(url_for('login'))
 
     if not permission_service.can_view_analytics(User.query.filter_by(username=session['username']).first()):
-        flash('You do not have permission to access analytics. Only admins, coordinators, commanders, and EOC staff can view system analytics.', 'danger')
+        flash('You do not have permission to access analytics. Only admins, IMT staff, and dispatchers can view system analytics.', 'danger')
         return redirect(url_for('dashboard'))
 
     total_incidents = db.session.query(Incident).count()
@@ -2045,15 +2472,11 @@ def hazard_map():
     if 'username' not in session:
         return redirect(url_for('login'))
 
-    if not permission_service.has_any_role('ADMIN', 'COORDINATOR', 'COMMANDER', 'EOC', 'RESPONDER', 'CITIZEN'):
+    if not permission_service.has_any_role('ADMIN', 'IMT', 'DISPATCHER', 'RESPONDER', 'CITIZEN'):
         flash('You do not have permission to view the hazard map.', 'danger')
         return redirect(url_for('dashboard'))
 
-    # Provinces are rendered server-side (there are only ~5); municipalities
-    # are fetched on demand per selected province via the same
-    # /api/municipalities/<province_id> endpoint the citizen report form's
-    # cascade already uses, rather than duplicating that data here.
-    provinces = Province.query.order_by(Province.name).all()
+    provinces = Province.query.filter(Province.name == 'Laguna').order_by(Province.name).all()
     return render_template('pages/hazard_map.html', sidebar_variant='hazard', provinces=provinces)
 
 
@@ -2062,8 +2485,8 @@ def ics_page():
     if 'username' not in session:
         return redirect(url_for('login'))
 
-    if not permission_service.has_any_role('ADMIN', 'COMMANDER'):
-        flash('You do not have permission to access the Incident Command System. Only admins and incident commanders can view this.', 'danger')
+    if not permission_service.has_any_role('ADMIN', 'IMT'):
+        flash('You do not have permission to access the Incident Command System. Only admins and IMT staff can view this.', 'danger')
         return redirect(url_for('dashboard'))
 
     return render_template('pages/ics.html')
@@ -2074,8 +2497,8 @@ def protocols():
     if 'username' not in session:
         return redirect(url_for('login'))
 
-    if not permission_service.has_any_role('ADMIN', 'COMMANDER'):
-        flash('You do not have permission to access ICS protocols. Only admins and incident commanders can view this.', 'danger')
+    if not permission_service.has_any_role('ADMIN', 'IMT'):
+        flash('You do not have permission to access ICS protocols. Only admins and IMT staff can view this.', 'danger')
         return redirect(url_for('dashboard'))
 
     return render_template('pages/protocols.html')

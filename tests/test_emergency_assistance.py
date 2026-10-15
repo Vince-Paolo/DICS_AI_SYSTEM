@@ -7,7 +7,7 @@ os.environ.setdefault('SECRET_KEY', os.environ.get('SECRET_KEY') or 'development
 TEST_DB_PATH = os.path.abspath(os.path.join('instance', 'test_emergency_assistance.db'))
 os.environ['DATABASE_URL'] = f'sqlite:///{TEST_DB_PATH}'
 
-from app import app, db
+from app import STATIC_ASSET_VERSION, app, db
 from models import User
 from seed.demo_data import seed_geography_data
 from services.hotlines import normalize_number
@@ -60,6 +60,8 @@ class EmergencyAssistancePageTestCase(unittest.TestCase):
                      role='citizen', email_verified=True),
                 User(username='ea_eoc', email='ea-eoc@example.com', password='secret',
                      role='eoc_staff', email_verified=True),
+                User(username='ea_imt', email='ea-imt@example.com', password='secret',
+                     role='imt_staff', email_verified=True),
             ])
             db.session.commit()
 
@@ -80,7 +82,7 @@ class EmergencyAssistancePageTestCase(unittest.TestCase):
         self.assertIn('public', response.headers.get('Cache-Control', ''))
         html = response.get_data(as_text=True)
         self.assertIn('Need immediate help?', html)
-        self.assertIn('css/theme.css?v=2026-10-06-5', html)
+        self.assertIn(f'css/theme.css?v={STATIC_ASSET_VERSION}', html)
         self.assertIn('class="ea-card', html)
         theme_css = self.client.get('/static/css/theme.css')
         self.assertEqual(theme_css.status_code, 200)
@@ -99,8 +101,9 @@ class EmergencyAssistancePageTestCase(unittest.TestCase):
                 self.assertIn('aria-pressed="false"', html)
                 self.assertIn('data-show-label="Show password"', html)
                 self.assertIn('data-hide-label="Hide password"', html)
-                self.assertIn('css/style.css?v=2026-10-05-1', html)
-                self.assertIn('js/app.js?v=2026-10-05-1', html)
+                self.assertIn(f'css/style.css?v={STATIC_ASSET_VERSION}', html)
+                self.assertIn(f'css/theme.css?v={STATIC_ASSET_VERSION}', html)
+                self.assertIn(f'js/app.js?v={STATIC_ASSET_VERSION}', html)
 
         self.client.get('/language/tl')
         translated_html = self.client.get('/login').get_data(as_text=True)
@@ -225,7 +228,7 @@ class EmergencyAssistancePageTestCase(unittest.TestCase):
     def test_signed_out_visitor_gets_plain_layout_and_not_the_login_redirect(self):
         html = self.client.get('/emergency-assistance').get_data(as_text=True)
         self.assertNotIn('id="sidebarContainer"', html)
-        self.assertIn("const publicPages = ['citizen.emergency_assistance']", html)
+        self.assertIn("const publicPages = ['landing', 'citizen.emergency_assistance']", html)
         self.assertIn('Sign in to see active alerts', html)
 
     def test_signed_in_citizen_gets_the_sidebar(self):
@@ -255,12 +258,22 @@ class EmergencyAssistancePageTestCase(unittest.TestCase):
         self.assertNotIn('Admin notice', self.client.get('/emergency-assistance').get_data(as_text=True))
         self._login('ea_eoc', 'eoc_staff')
         self.assertIn('Admin notice', self.client.get('/emergency-assistance').get_data(as_text=True))
+        self._login('ea_imt', 'imt_staff')
+        self.assertIn('Admin notice', self.client.get('/emergency-assistance').get_data(as_text=True))
         with patch.dict(os.environ, {'HOTLINE_CDRRMO': '(049) 502-0000'}):
             self.assertNotIn('Admin notice', self.client.get('/emergency-assistance').get_data(as_text=True))
+
+    def test_imt_staff_gets_the_imt_sidebar(self):
+        self._login('ea_imt', 'imt_staff')
+        html = self.client.get('/emergency-assistance').get_data(as_text=True)
+        self.assertIn('href="/eoc/incidents?view=active"', html)
+        self.assertNotIn('EOC STAFF LINKS', html)
 
     def test_login_page_links_to_the_hotline_page(self):
         html = self.client.get('/login').get_data(as_text=True)
         self.assertIn('href="/emergency-assistance"', html)
+        self.assertIn('San Pablo City, Laguna', html)
+        self.assertNotIn('CALABARZON', html)
 
     # -- retired reporting -------------------------------------------------
 

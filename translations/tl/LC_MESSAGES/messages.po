@@ -481,3 +481,9 @@ msgstr "Hindi na ginagamit ang online na form ng ulat ng insidente. Mangyaring t
 
 msgid "Online SOS is no longer available. Please call an emergency hotline."
 msgstr "Hindi na available ang online SOS. Mangyaring tumawag sa emergency hotline."
+
+msgid "Predictions and saved incidents are scoped to San Pablo City; regional hazard feeds provide context only."
+msgstr "Ang mga prediksyon at nai-save na insidente ay para lamang sa Lungsod ng San Pablo; konteksto lamang ang mga panrehiyong feed ng panganib."
+
+msgid "San Pablo City (default)"
+msgstr "Lungsod ng San Pablo (default)"

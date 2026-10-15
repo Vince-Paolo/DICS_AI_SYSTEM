@@ -10,7 +10,6 @@ from app import app, db
 from models import (
     Alert,
     AIRecommendation,
-    Agency,
     EvacuationCenter,
     EvacuationRecord,
     Facility,
@@ -21,7 +20,6 @@ from models import (
     Municipality,
     Province,
     Report,
-    ResourceRequest,
     Resource,
     Task,
     User,
@@ -40,17 +38,16 @@ class OperationalDataFeaturesTestCase(unittest.TestCase):
             db.create_all()
             seed_geography_data()
 
-            for uname, role, agency in [
-                ('admin1', 'admin', None),
-                ('eoc1', 'eoc_staff', None),
-                ('coord1', 'agency_coordinator', 'BFP'),
-                ('cmd1', 'incident_commander', None),
-                ('cmd2', 'incident_commander', None),
-                ('cit1', 'citizen', None),
+            for uname, role in [
+                ('admin1', 'admin'),
+                ('eoc1', 'imt_staff'),
+                ('cmd1', 'imt_staff'),
+                ('cmd2', 'imt_staff'),
+                ('cit1', 'citizen'),
             ]:
                 db.session.add(User(
                     username=uname, email=f'{uname}@example.com', password='secret',
-                    role=role, agency=agency, email_verified=True,
+                    role=role, email_verified=True,
                 ))
             db.session.add(Incident(
                 hazard_type='flood', location='Test Barangay', level='High', score=70.0,
@@ -74,6 +71,9 @@ class OperationalDataFeaturesTestCase(unittest.TestCase):
         html = response.get_data(as_text=True)
 
         self.assertEqual(response.status_code, 200)
+        self.assertIn('href="/eoc/incidents?view=active"', html)
+        self.assertIn('href="/admin/alerts"', html)
+        self.assertIn('href="/eoc/incidents?view=closed"', html)
         self.assertIn('id="verificationSearch"', html)
         self.assertIn('data-search="flood test barangay test incident', html)
         self.assertIn('data-bs-target="#rejectIncidentModal1"', html)
@@ -129,16 +129,21 @@ class OperationalDataFeaturesTestCase(unittest.TestCase):
         self._login('eoc1', 'eoc_staff')
         with self.app.app_context():
             province = Province.query.first()
-            other_province = Province.query.filter(Province.id != province.id).first()
+            other_province = Province(name='Out-of-scope Province', code='9999')
+            db.session.add(other_province)
+            db.session.commit()
             municipality = Municipality.query.filter_by(province_id=province.id).first()
             barangay = Barangay.query.filter_by(municipality_id=municipality.id).first()
+            other_province_id = other_province.id
+            municipality_id = municipality.id
+            barangay_id = barangay.id
 
         response = self.client.post('/facilities/add', data={
             'name': 'Invalid Location Facility',
             'facility_type': 'Hospital',
-            'province_id': other_province.id,
-            'municipality_id': municipality.id,
-            'barangay_id': barangay.id,
+            'province_id': other_province_id,
+            'municipality_id': municipality_id,
+            'barangay_id': barangay_id,
         })
         self.assertEqual(response.status_code, 302)
         with self.app.app_context():
@@ -190,6 +195,7 @@ class OperationalDataFeaturesTestCase(unittest.TestCase):
     def test_incident_runs_through_task_resource_evacuation_alert_and_resolution(self):
         with self.app.app_context():
             incident = db.session.get(Incident, self.incident_id)
+            incident.hazard_type = 'EMERGENCY'
             db.session.add(AIRecommendation(
                 incident_id=incident.id,
                 provider='test',
@@ -197,7 +203,23 @@ class OperationalDataFeaturesTestCase(unittest.TestCase):
                 recommendation_type='hazard_prediction',
                 summary='High flood risk requires coordinated response.',
             ))
+            dispatcher = User(
+                username='dispatch1',
+                email='dispatch1@example.com',
+                password='secret',
+                role='dispatcher',
+                email_verified=True,
+            )
+            responder = User(
+                username='responder1',
+                email='responder1@example.com',
+                password='secret',
+                role='field_responder',
+                email_verified=True,
+            )
+            db.session.add_all([dispatcher, responder])
             db.session.commit()
+            responder_id = responder.id
 
         self._login('cmd1', 'incident_commander')
         activated = self.client.post(
@@ -208,34 +230,28 @@ class OperationalDataFeaturesTestCase(unittest.TestCase):
         with self.app.app_context():
             response = IncidentResponse.query.filter_by(incident_id=self.incident_id).one()
             response_id = response.id
-            if Agency.query.filter_by(name='BFP').first() is None:
-                db.session.add(Agency(name='BFP'))
-                db.session.commit()
 
-        assigned = self.client.post(f'/incident-response/{response_id}/assign-task', data={
-            'agency': 'BFP',
+        self._login('dispatch1', 'dispatcher')
+        assigned = self.client.post(f'/dispatcher/incidents/{self.incident_id}/dispatch', data={
+            'assignee': f'user:{responder_id}',
             'title': 'Secure evacuation route',
             'description': 'Keep the route clear for evacuees.',
             'priority': 'HIGH',
+            'vehicle_identifier': 'CDRRMO-RESCUE-01',
+            'vehicle_location': 'Evacuation route',
         })
         self.assertEqual(assigned.status_code, 302)
         with self.app.app_context():
             task_id = Task.query.filter_by(incident_response_id=response_id).one().id
+            resource_id = Resource.query.filter_by(incident_response_id=response_id).one().id
+
+        self._login('cmd1', 'incident_commander')
         completed = self.client.post(
             f'/incident-response/{response_id}/update-task/{task_id}',
             data={'status': 'COMPLETED'},
         )
         self.assertEqual(completed.status_code, 302)
 
-        allocated = self.client.post(f'/incident-response/{response_id}/allocate-resource', data={
-            'resource_type': 'Rescue Equipment',
-            'agency': 'BFP',
-            'quantity': '2',
-            'location': 'Evacuation route',
-        })
-        self.assertEqual(allocated.status_code, 302)
-        with self.app.app_context():
-            resource_id = Resource.query.filter_by(incident_response_id=response_id).one().id
         deployed = self.client.post(
             f'/incident-response/{response_id}/update-resource/{resource_id}',
             data={'status': 'DEPLOYED', 'location': 'Evacuation route'},
@@ -431,103 +447,23 @@ class OperationalDataFeaturesTestCase(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertIn(b'Public Center', resp.data)
 
-    # -- ResourceRequest --------------------------------------------------
-
-    def test_coordinator_submit_and_eoc_approve_resource_request(self):
-        self._login('coord1', 'agency_coordinator')
-        resp = self.client.post('/coordinator/resource-requests/submit', data={
-            'incident_id': str(self.incident_id), 'resource_type': 'Rescue Boats', 'quantity': '2',
-        })
-        self.assertEqual(resp.status_code, 302)
-
+    def test_incident_verification_assigns_imt_staff_as_response_lead(self):
         with self.app.app_context():
-            request_row = ResourceRequest.query.first()
-            self.assertIsNotNone(request_row)
-            self.assertEqual(request_row.status, 'OPEN')
-            self.assertEqual(request_row.agency, 'BFP')
-            request_id = request_row.id
+            imt_user = User.query.filter_by(username='cmd1').one()
+            imt_user_id = imt_user.id
 
-        self._login('eoc1', 'eoc_staff')
-        resp = self.client.post(f'/eoc/resource-requests/{request_id}/decide', data={
-            'decision': 'APPROVED', 'notes': 'go ahead',
-        })
-        self.assertEqual(resp.status_code, 302)
+        self._login('eoc1', 'imt_staff')
+        response = self.client.post(
+            f'/admin/incidents/{self.incident_id}/assign-commander',
+            data={'commander_id': str(imt_user_id)},
+        )
 
+        self.assertEqual(response.status_code, 302)
         with self.app.app_context():
-            updated = db.session.get(ResourceRequest, request_id)
-            self.assertEqual(updated.status, 'APPROVED')
-            self.assertEqual(updated.decision_notes, 'go ahead')
-
-    def test_coordinator_cannot_decide_resource_request(self):
-        with self.app.app_context():
-            resource_request = ResourceRequest(
-                incident_id=self.incident_id, resource_type='Ambulances', quantity=1,
-                agency='BFP', status='OPEN',
-            )
-            db.session.add(resource_request)
-            db.session.commit()
-            request_id = resource_request.id
-
-        self._login('coord1', 'agency_coordinator')
-        resp = self.client.post(f'/eoc/resource-requests/{request_id}/decide', data={'decision': 'FULFILLED'})
-        self.assertEqual(resp.status_code, 302)
-
-        with self.app.app_context():
-            unchanged = db.session.get(ResourceRequest, request_id)
-            self.assertEqual(unchanged.status, 'OPEN')
-
-    def test_fulfilling_resource_request_without_response_is_blocked(self):
-        """A request can't be marked FULFILLED with nothing behind it -- there
-        has to be an active response to actually commit the resource to."""
-        with self.app.app_context():
-            resource_request = ResourceRequest(
-                incident_id=self.incident_id, resource_type='Rescue Boats', quantity=2,
-                agency='BFP', status='OPEN',
-            )
-            db.session.add(resource_request)
-            db.session.commit()
-            request_id = resource_request.id
-
-        self._login('eoc1', 'eoc_staff')
-        resp = self.client.post(f'/eoc/resource-requests/{request_id}/decide', data={'decision': 'FULFILLED'})
-        self.assertEqual(resp.status_code, 302)
-
-        with self.app.app_context():
-            unchanged = db.session.get(ResourceRequest, request_id)
-            self.assertEqual(unchanged.status, 'OPEN')
-            self.assertEqual(Resource.query.count(), 0)
-
-    def test_fulfilling_resource_request_creates_linked_resource(self):
-        """This is the actual fix: FULFILLED has to create a real, traceable
-        Resource on the response -- not just flip a status label."""
-        with self.app.app_context():
-            commander = User.query.filter_by(username='cmd1').one()
-            response = IncidentResponse(incident_id=self.incident_id, commander_id=commander.id, status='ACTIVE')
-            db.session.add(response)
-            db.session.flush()
-            resource_request = ResourceRequest(
-                incident_id=self.incident_id, resource_type='Rescue Boats', quantity=2,
-                agency='BFP', status='OPEN',
-            )
-            db.session.add(resource_request)
-            db.session.commit()
-            request_id = resource_request.id
-            response_id = response.id
-
-        self._login('eoc1', 'eoc_staff')
-        resp = self.client.post(f'/eoc/resource-requests/{request_id}/decide', data={'decision': 'FULFILLED'})
-        self.assertEqual(resp.status_code, 302)
-
-        with self.app.app_context():
-            updated = db.session.get(ResourceRequest, request_id)
-            self.assertEqual(updated.status, 'FULFILLED')
-            resource = Resource.query.filter_by(resource_request_id=request_id).first()
-            self.assertIsNotNone(resource)
-            self.assertEqual(resource.incident_response_id, response_id)
-            self.assertEqual(resource.resource_type, 'Rescue Boats')
-            self.assertEqual(resource.quantity, 2)
-            self.assertEqual(resource.agency, 'BFP')
-            self.assertEqual(resource.status, 'DEPLOYED')
+            incident_response = IncidentResponse.query.filter_by(
+                incident_id=self.incident_id,
+            ).one()
+            self.assertEqual(incident_response.commander_id, imt_user_id)
 
     def test_assigned_commander_can_reopen_closed_response(self):
         with self.app.app_context():
@@ -560,7 +496,7 @@ class OperationalDataFeaturesTestCase(unittest.TestCase):
                 title='Incident Response Reopened',
             ).count())
 
-    def test_unassigned_commander_cannot_reopen_response(self):
+    def test_imt_staff_can_reopen_any_closed_response(self):
         with self.app.app_context():
             response = IncidentResponse(
                 incident_id=self.incident_id, commander_id=User.query.filter_by(username='cmd1').one().id,
@@ -572,40 +508,9 @@ class OperationalDataFeaturesTestCase(unittest.TestCase):
 
         self._login('cmd2', 'incident_commander')
         response = self.client.post(f'/incident-response/{response_id}/reopen')
-        self.assertEqual(response.status_code, 403)
-
-    def test_commander_cannot_decide_request_for_unowned_incident(self):
+        self.assertEqual(response.status_code, 302)
         with self.app.app_context():
-            other_commander = User(
-                username='cmd3', email='cmd3@example.com', password='secret',
-                role='incident_commander', email_verified=True,
-            )
-            db.session.add(other_commander)
-            db.session.flush()
-            response = IncidentResponse(
-                incident_id=self.incident_id, commander_id=other_commander.id,
-                status='ACTIVE',
-            )
-            db.session.add(response)
-            db.session.flush()
-            resource_request = ResourceRequest(
-                incident_id=self.incident_id, resource_type='Ambulances', quantity=1,
-                agency='BFP', status='OPEN',
-            )
-            db.session.add(resource_request)
-            db.session.commit()
-            request_id = resource_request.id
-
-        self._login('cmd1', 'incident_commander')
-        resp = self.client.post(
-            f'/eoc/resource-requests/{request_id}/decide',
-            data={'decision': 'APPROVED'},
-        )
-        self.assertEqual(resp.status_code, 403)
-
-        with self.app.app_context():
-            unchanged = db.session.get(ResourceRequest, request_id)
-            self.assertEqual(unchanged.status, 'OPEN')
+            self.assertEqual(db.session.get(IncidentResponse, response_id).status, 'ACTIVE')
 
     # -- Alert --------------------------------------------------------
 
@@ -659,14 +564,10 @@ class OperationalDataFeaturesTestCase(unittest.TestCase):
         resp = self.client.get('/eoc/alerts', follow_redirects=False)
         self.assertEqual(resp.status_code, 302)
 
-    def test_coordinator_can_still_view_official_alerts_page(self):
-        """Regression guard: only Admin's access was removed. Commander and
-        Coordinator keep their existing read access to official alerts
-        (they can view but, per test_coordinator_cannot_issue_alert above,
-        not issue/resolve them)."""
+    def test_retired_coordinator_cannot_view_official_alerts_page(self):
         self._login('coord1', 'agency_coordinator')
         resp = self.client.get('/eoc/alerts', follow_redirects=False)
-        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.status_code, 302)
 
     # -- Report (incident-level notes) ---------------------------------
 
