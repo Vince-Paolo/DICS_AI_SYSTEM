@@ -4,10 +4,28 @@ This project runs on Railway with Railway Postgres. Configure the service with
 the Railway Postgres `DATABASE_URL`, a strong `SECRET_KEY`, and the S3 storage
 variables documented below for durable uploaded photos.
 
-The application backup page exports Railway Postgres using `pg_dump`. The
-included `nixpacks.toml` installs the PostgreSQL client in the app runtime.
-Keep the Railway service on the Nixpacks builder for this configuration to be
-applied; if using another builder, install a compatible `pg_dump` client there.
+The application backup page exports Railway Postgres using `pg_dump`. Local
+SQLite backups use Python's built-in SQLite backup API, so a successful local
+export does not verify that the PostgreSQL client is installed in production.
+
+For the Railpack builder, the included `railpack.json` installs
+`postgresql-client` in the final runtime image while retaining Railpack's
+generated runtime packages. Commit this file and redeploy the application
+service. Alternatively, set `RAILPACK_DEPLOY_APT_PACKAGES` to
+`... postgresql-client` in that service's Railway variables and redeploy.
+See the [Railpack package configuration](https://railpack.com/guides/installing-packages/).
+The included `nixpacks.toml` supplies the client for deployments using Nixpacks.
+
+After deployment, run `pg_dump --version` in the application service's shell
+(not the Postgres service) and retry the backup export. If it still fails,
+inspect the application logs for `Failed to create backup`. The installed
+`pg_dump` major version must be at least the database server's major version;
+if necessary, install a compatible versioned client package available in the
+builder's Apt repositories. The generic `postgresql-client` package does not
+guarantee compatibility with every server version.
+
+The application already creates `instance/` at startup, including when using
+Postgres; that folder does not need to be committed to the repository.
 
 ## Railway Postgres backup and restore verification
 
