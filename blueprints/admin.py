@@ -378,6 +378,18 @@ def export_backup():
             download_name=backup_filename,
             mimetype='application/octet-stream'
         )
+    except subprocess.CalledProcessError as exc:
+        stderr = exc.stderr or ''
+        current_app.logger.error('Failed to create backup: pg_dump stderr: %s', stderr)
+        if 'server version mismatch' in stderr.lower():
+            flash(
+                'Backup could not be created: pg_dump is older than the database server. '
+                'Update the PostgreSQL client in the application deployment and try again.',
+                'error',
+            )
+        else:
+            flash('Backup could not be created. Please try again.', 'error')
+        return redirect(url_for('admin.manage_users'))
     except Exception:
         current_app.logger.exception('Failed to create backup')
         flash('Backup could not be created. Please try again.', 'error')
