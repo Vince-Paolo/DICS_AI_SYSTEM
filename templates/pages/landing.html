@@ -3,7 +3,7 @@
 {% block title %}{{ _('DICS AI') }} | {{ _('Digital Incident Command System') }}{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css', v='2026-10-12-2') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css', v='2026-10-18-1') }}">
 {% endblock %}
 
 {% block content %}
@@ -95,4 +95,8 @@
         <span>{{ _('San Pablo City, Laguna') }}</span>
     </footer>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/landing.js', v='2026-10-18-1') }}" defer></script>
 {% endblock %}
