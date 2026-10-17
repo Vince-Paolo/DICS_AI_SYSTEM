@@ -8,16 +8,30 @@ The application backup page exports Railway Postgres using `pg_dump`. Local
 SQLite backups use Python's built-in SQLite backup API, so a successful local
 export does not verify that the PostgreSQL client is installed in production.
 
-For the Railpack builder, the included `railpack.json` installs
-`postgresql-client` in the final runtime image while retaining Railpack's
-generated runtime packages. Commit this file and redeploy the application
-service. Alternatively, set `RAILPACK_DEPLOY_APT_PACKAGES` to
-`... postgresql-client` in that service's Railway variables and redeploy.
-See the [Railpack package configuration](https://railpack.com/guides/installing-packages/).
-The included `nixpacks.toml` supplies the client for deployments using Nixpacks.
+The root `Dockerfile` installs `postgresql-client-18` from the official
+PostgreSQL Apt repository on Python 3.13 / Debian Trixie. This supplies a
+compatible `pg_dump` for the PostgreSQL 18 server; Trixie's generic
+`postgresql-client` package supplies version 17 and cannot dump that server.
+Commit the `Dockerfile` and `.dockerignore`, then redeploy the application
+service using Railway's Dockerfile builder. The existing `railpack.json` and
+`nixpacks.toml` are legacy builder configurations and are not used for this
+Docker build.
+
+The container runs database migrations before starting Gunicorn, with two
+workers, four threads, and a 120-second timeout. It binds to Railway's `PORT`
+(defaulting to 8000 locally). `.dockerignore` excludes local environment files,
+databases, uploads, and development caches from the image.
 
 After deployment, run `pg_dump --version` in the application service's shell
-(not the Postgres service) and retry the backup export. If it still fails,
+(not the Postgres service), confirm it reports version 18, and retry the backup
+export. You can also verify the client directly in that shell:
+
+```sh
+psql "$DATABASE_URL" -c "show server_version;"
+pg_dump --format=custom --no-owner --no-privileges --file=/tmp/test.dump "$DATABASE_URL"
+```
+
+If it still fails,
 inspect the application logs for `Failed to create backup`. The installed
 `pg_dump` major version must be at least the database server's major version;
 if necessary, install a compatible versioned client package available in the
