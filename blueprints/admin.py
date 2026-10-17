@@ -69,7 +69,7 @@ def admin():
 @admin_bp.route('/admin/alerts')
 def eoc_verifications():
     if not is_eoc_staff():
-        flash('EOC staff access required.', 'danger')
+        flash('IMT Staff access required.', 'danger')
         return redirect(url_for('dashboard'))
 
     incidents = Incident.query.order_by(Incident.created_at.desc()).all()
@@ -276,7 +276,7 @@ def toggle_user_status(user_id):
 def eoc_operations():
     """EOC staff view of all active IncidentResponse records."""
     if not is_eoc_staff():
-        flash('EOC staff access required.', 'danger')
+        flash('IMT Staff access required.', 'danger')
         return redirect(url_for('dashboard'))
 
     active_responses = IncidentResponse.query.filter(

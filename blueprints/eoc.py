@@ -374,7 +374,7 @@ def delete_emergency_patient(incident_id, patient_id):
 @eoc_bp.route('/eoc-dashboard')
 def eoc_dashboard():
     if not is_eoc_staff():
-        flash('EOC Staff access required.', 'danger')
+        flash('IMT Staff access required.', 'danger')
         return redirect(url_for('dashboard'))
 
     active_responses = db.session.query(IncidentResponse).filter(
@@ -451,7 +451,7 @@ def pending_sos_incidents():
 @eoc_bp.route('/eoc/incidents')
 def eoc_incident_monitoring():
     if not is_eoc_staff():
-        flash('EOC Staff access required.', 'danger')
+        flash('IMT Staff access required.', 'danger')
         return redirect(url_for('dashboard'))
 
     view_filter = request.args.get('view', 'active').strip().lower()
@@ -551,7 +551,7 @@ def eoc_incident_monitoring():
 @eoc_bp.route('/eoc/resources')
 def eoc_resource_monitoring():
     if not is_eoc_staff():
-        flash('EOC Staff access required.', 'danger')
+        flash('IMT Staff access required.', 'danger')
         return redirect(url_for('dashboard'))
 
     status_filter = request.args.get('status', '').strip()
@@ -581,7 +581,7 @@ def eoc_resource_monitoring():
 def toggle_alert(incident_id):
     """Dispatch: toggle an incident's public alert status."""
     if not is_eoc_staff():
-        flash('EOC staff access required.', 'danger')
+        flash('IMT Staff access required.', 'danger')
         return redirect(url_for('dashboard'))
 
     incident = db.get_or_404(Incident, incident_id)
@@ -614,7 +614,7 @@ def toggle_alert(incident_id):
 def verify_incident(incident_id):
     """Dispatch: verify that a reported incident is legitimate."""
     if not is_eoc_staff():
-        flash('EOC staff access required.', 'danger')
+        flash('IMT Staff access required.', 'danger')
         return redirect(url_for('dashboard'))
 
     incident = db.get_or_404(Incident, incident_id)
@@ -696,7 +696,7 @@ def reject_incident(incident_id):
 def assign_commander(incident_id):
     """Dispatch: assign a commander to an unresponded incident, creating an IncidentResponse."""
     if not is_eoc_staff():
-        flash('EOC staff access required.', 'danger')
+        flash('IMT Staff access required.', 'danger')
         return redirect(url_for('admin.eoc_verifications'))
 
     incident = db.get_or_404(Incident, incident_id)
@@ -759,7 +759,7 @@ def assign_commander(incident_id):
 def transfer_commander(response_id):
     """Dispatch: transfer an active response to a different commander."""
     if not is_eoc_staff():
-        flash('EOC staff access required.', 'danger')
+        flash('IMT Staff access required.', 'danger')
         return redirect(url_for('admin.eoc_operations'))
 
     response = db.get_or_404(IncidentResponse, response_id)
@@ -919,7 +919,7 @@ def eoc_incident_detail(incident_id):
     useful during verification/triage, before any response is activated
     (IncidentMessage, by contrast, requires an active IncidentResponse)."""
     if not is_eoc_staff():
-        flash('EOC Staff access required.', 'danger')
+        flash('IMT Staff access required.', 'danger')
         return redirect(url_for('dashboard'))
 
     incident = db.get_or_404(Incident, incident_id)
