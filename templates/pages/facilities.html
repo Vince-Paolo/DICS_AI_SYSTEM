@@ -2,6 +2,10 @@
 {% import 'partials/empty_state.html' as es %}
 {% block title %}Facility Directory | DICS AI{% endblock %}
 
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/leaflet/leaflet.css', v=static_asset_version) }}">
+{% endblock %}
+
 {% block content %}
 <h1 class="visually-hidden">Facility Directory</h1>
 
@@ -68,7 +72,7 @@
                                 <td>
                                     {% if f.evacuation_center %}
                                         {% set ec = f.evacuation_center %}
-                                        <div class="d-flex align-items-center gap-2">
+                                        <div class="d-flex align-items-center gap-2 flex-wrap">
                                             {% if ec.status == 'OPEN' %}
                                                 <span class="badge-status-active" style="font-size:0.68rem;">OPEN</span>
                                             {% elif ec.status == 'FULL' %}
@@ -76,11 +80,17 @@
                                             {% else %}
                                                 <span style="padding:0.25em 0.55em;background:rgba(107,114,128,0.15);color:#9CA3AF;border:1px solid rgba(107,114,128,0.3);border-radius:5px;font-size:0.68rem;font-weight:700;">CLOSED</span>
                                             {% endif %}
-                                            <span class="text-info small">{{ ec.occupancy or 0 }}/{{ ec.capacity or '—' }}</span>
+                                            <span class="text-info small">{{ ec.occupancy or 0 }}/{{ ec.capacity if ec.capacity is not none else '—' }}</span>
                                             {% if can_manage %}
-                                            <form method="POST" action="{{ url_for('facilities.update_evacuation_center', center_id=ec.id) }}" class="d-flex align-items-center gap-1">
+                                            <form method="POST" action="{{ url_for('facilities.update_evacuation_center', center_id=ec.id) }}" class="d-flex align-items-center gap-2 flex-wrap">
                                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                <select name="status" class="form-select form-select-sm" style="width:90px;font-size:0.72rem;">
+                                                <label for="center-capacity-{{ ec.id }}" class="small mb-0">Capacity</label>
+                                                <input id="center-capacity-{{ ec.id }}" type="number" name="capacity"
+                                                       value="{{ ec.capacity if ec.capacity is not none else '' }}"
+                                                       min="{{ ec.occupancy or 0 }}" step="1" required
+                                                       class="form-control form-control-sm" style="width:100px;"
+                                                       aria-label="Capacity for {{ f.name }}">
+                                                <select name="status" aria-label="Status for {{ f.name }}" class="form-select form-select-sm" style="width:90px;font-size:0.72rem;">
                                                     <option value="OPEN" {% if ec.status=='OPEN' %}selected{% endif %}>Open</option>
                                                     <option value="FULL" {% if ec.status=='FULL' %}selected{% endif %}>Full</option>
                                                     <option value="CLOSED" {% if ec.status=='CLOSED' %}selected{% endif %}>Closed</option>
@@ -164,14 +174,19 @@
                                 </select>
                             </div>
                         </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="facility-location-map">Facility location <span class="text-danger">*</span></label>
+                            <p id="facility-location-hint" class="small text-muted" aria-live="polite">Select a barangay to start near its center, then click the map or drag the pin to the facility.</p>
+                            <div id="facility-location-map" role="region" aria-label="Facility location map" aria-describedby="facility-location-hint" style="height:260px;border-radius:8px;"></div>
+                        </div>
                         <div class="row g-2">
                             <div class="col-6">
                                 <label class="form-label" style="font-size:0.82rem;" for="latitude">Latitude</label>
-                                <input id="latitude" type="number" step="any" name="latitude" class="form-control form-control-sm">
+                                <input id="latitude" type="number" step="any" min="-90" max="90" name="latitude" required class="form-control form-control-sm">
                             </div>
                             <div class="col-6">
                                 <label class="form-label" style="font-size:0.82rem;" for="longitude">Longitude</label>
-                                <input id="longitude" type="number" step="any" name="longitude" class="form-control form-control-sm">
+                                <input id="longitude" type="number" step="any" min="-180" max="180" name="longitude" required class="form-control form-control-sm">
                             </div>
                         </div>
                     </div>
@@ -190,6 +205,9 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='vendor/leaflet/leaflet.js', v=static_asset_version) }}"></script>
+<script id="facility-barangay-coordinates" type="application/json">{{ barangay_coordinates|tojson }}</script>
+<script src="{{ url_for('static', filename='js/facility-location.js', v=static_asset_version) }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const provinceSelect = document.getElementById('facility_province_id');
@@ -198,6 +216,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!provinceSelect || !municipalitySelect || !barangaySelect) return;
 
     function resetSelect(select, label) {
+        if (select === barangaySelect) select.dispatchEvent(new Event('facility:location-reset'));
         select.innerHTML = '';
         const option = document.createElement('option');
         option.value = '';
