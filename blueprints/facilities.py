@@ -1,4 +1,6 @@
 
+from math import isfinite
+
 from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for
 from flask_babel import gettext as _
 from sqlalchemy.orm.exc import StaleDataError
@@ -14,6 +16,7 @@ from models import (
     db,
 )
 from services import permissions as permission_service
+from services.realtime_data import SAN_PABLO_BARANGAYS
 
 facilities_bp = Blueprint('facilities', __name__)
 
@@ -61,6 +64,12 @@ def list_facilities():
     facilities = query.order_by(Facility.name).all()
 
     provinces = Province.query.filter_by(name='Laguna').order_by(Province.name).all()
+    centroids_by_code = {b['code']: {'lat': b['lat'], 'lng': b['lon']} for b in SAN_PABLO_BARANGAYS}
+    barangay_coordinates = {
+        str(b.id): centroids_by_code[b.code]
+        for b in Barangay.query.join(Municipality).filter(Municipality.code == '043424').all()
+        if b.code in centroids_by_code
+    }
 
     return render_template(
         'pages/facilities.html',
@@ -68,6 +77,7 @@ def list_facilities():
         facility_types=FACILITY_TYPES,
         facility_type_filter=facility_type_filter,
         provinces=provinces,
+        barangay_coordinates=barangay_coordinates,
         can_manage=permission_service.can_manage_facilities(_current_user()),
     )
 
@@ -88,6 +98,14 @@ def add_facility():
     latitude = request.form.get('latitude', type=float)
     longitude = request.form.get('longitude', type=float)
     capacity = request.form.get('capacity', type=int) if facility_type == 'Evacuation Center' else None
+
+    if (
+        latitude is None or longitude is None
+        or not isfinite(latitude) or not isfinite(longitude)
+        or not -90 <= latitude <= 90 or not -180 <= longitude <= 180
+    ):
+        flash('Facility location is required. Select a location on the map or enter a valid latitude and longitude.', 'error')
+        return redirect(url_for('facilities.list_facilities'))
 
     if not name or not facility_type:
         flash('Facility name and type are required.', 'error')
@@ -163,7 +181,7 @@ def add_facility():
 
 @facilities_bp.route('/evacuation-centers/<int:center_id>/update', methods=['POST'])
 def update_evacuation_center(center_id):
-    """Update the public status of an evacuation center.
+    """Update the capacity and public status of an evacuation center.
 
     Occupancy is maintained by response-linked evacuation records so the
     displayed total always has an operational audit trail.
@@ -175,6 +193,16 @@ def update_evacuation_center(center_id):
 
     center = db.get_or_404(EvacuationCenter, center_id)
     status = request.form.get('status', '').strip().upper()
+
+    if 'capacity' in request.form:
+        capacity = request.form.get('capacity', type=int)
+        if capacity is None or capacity < 0:
+            flash('Enter a valid non-negative whole number for capacity.', 'error')
+            return redirect(url_for('facilities.list_facilities'))
+        if capacity < (center.occupancy or 0):
+            flash('Capacity cannot be lower than the current occupancy.', 'error')
+            return redirect(url_for('facilities.list_facilities'))
+        center.capacity = capacity
 
     if status in ('OPEN', 'FULL', 'CLOSED'):
         center.status = status
