@@ -84,6 +84,66 @@ class OperationalDataFeaturesTestCase(unittest.TestCase):
 
     # -- Facility / EvacuationCenter -----------------------------------
 
+    def _capacity_test_center(self, occupancy=25):
+        with self.app.app_context():
+            municipality = Municipality.query.filter_by(code='043424').one()
+            facility = Facility(name='Editable Shelter', facility_type='Evacuation Center',
+                                municipality_id=municipality.id)
+            db.session.add(facility)
+            db.session.flush()
+            center = EvacuationCenter(facility_id=facility.id, capacity=100,
+                                      occupancy=occupancy, status='OPEN')
+            db.session.add(center)
+            db.session.commit()
+            return center.id
+
+    def test_imt_can_edit_capacity_with_status_and_audit(self):
+        from models import AuditEvent
+
+        center_id = self._capacity_test_center()
+        self._login('eoc1', 'imt_staff')
+        html = self.client.get('/facilities').get_data(as_text=True)
+        self.assertIn(f'id="center-capacity-{center_id}"', html)
+        response = self.client.post(f'/evacuation-centers/{center_id}/update', data={
+            'capacity': '150', 'status': 'FULL', 'occupancy': '0',
+        })
+        self.assertEqual(response.status_code, 302)
+        with self.app.app_context():
+            center = db.session.get(EvacuationCenter, center_id)
+            self.assertEqual((center.capacity, center.occupancy, center.status), (150, 25, 'FULL'))
+            audit = AuditEvent.query.filter_by(entity_type='EvacuationCenter', entity_id=center_id).one()
+            self.assertIn('25/150', audit.details)
+
+    def test_invalid_capacity_does_not_change_capacity_or_status(self):
+        center_id = self._capacity_test_center()
+        self._login('eoc1', 'imt_staff')
+        for capacity in ('', 'abc', '1.5', '-1', '24'):
+            with self.subTest(capacity=capacity):
+                self.client.post(f'/evacuation-centers/{center_id}/update', data={
+                    'capacity': capacity, 'status': 'CLOSED',
+                })
+                with self.app.app_context():
+                    center = db.session.get(EvacuationCenter, center_id)
+                    self.assertEqual((center.capacity, center.status), (100, 'OPEN'))
+
+    def test_capacity_updates_require_imt_and_allow_zero_when_empty(self):
+        center_id = self._capacity_test_center(occupancy=0)
+        for username, role in (('admin1', 'admin'), ('cit1', 'citizen')):
+            self._login(username, role)
+            self.client.post(f'/evacuation-centers/{center_id}/update', data={'capacity': '200'})
+            with self.app.app_context():
+                self.assertEqual(db.session.get(EvacuationCenter, center_id).capacity, 100)
+        with self.client.session_transaction() as sess:
+            sess.clear()
+        self.client.post(f'/evacuation-centers/{center_id}/update', data={'capacity': '200'})
+        with self.app.app_context():
+            self.assertEqual(db.session.get(EvacuationCenter, center_id).capacity, 100)
+        self._login('eoc1', 'imt_staff')
+        self.client.post(f'/evacuation-centers/{center_id}/update', data={'capacity': '0'})
+        with self.app.app_context():
+            self.assertEqual(db.session.get(EvacuationCenter, center_id).capacity, 0)
+        self.assertIn('>0/0</span>', self.client.get('/facilities').get_data(as_text=True))
+
     def test_admin_cannot_add_facility(self):
         """Admin's role is pure administration, not incident operations --
         adding to the facility directory is now EOC-only (see
@@ -100,6 +160,7 @@ class OperationalDataFeaturesTestCase(unittest.TestCase):
         self._login('eoc1', 'eoc_staff')
         resp = self.client.post('/facilities/add', data={
             'name': 'Test Gym', 'facility_type': 'Evacuation Center', 'capacity': '200',
+            'latitude': '14.0693', 'longitude': '121.3256',
         })
         self.assertEqual(resp.status_code, 302)
 
@@ -125,6 +186,52 @@ class OperationalDataFeaturesTestCase(unittest.TestCase):
         self.assertIn("/api/barangays/", html)
         self.assertNotIn('name="municipality_id" class="form-select form-select-sm" disabled>\n                                <option value="">—</option>', html)
 
+    def test_facility_barangay_map_uses_coordinates_matched_by_code(self):
+        import json
+        import re
+        from services.realtime_data import SAN_PABLO_BARANGAYS
+
+        self._login('eoc1', 'imt_staff')
+        html = self.client.get('/facilities').get_data(as_text=True)
+        match = re.search(r'id="facility-barangay-coordinates" type="application/json">(.*?)</script>', html)
+        self.assertIsNotNone(match)
+        coordinates = json.loads(match.group(1))
+        self.assertEqual(len(coordinates), 80)
+        with self.app.app_context():
+            for point in SAN_PABLO_BARANGAYS:
+                barangay = Barangay.query.filter_by(code=point['code']).one()
+                self.assertEqual(coordinates[str(barangay.id)], {'lat': point['lat'], 'lng': point['lon']})
+        self.assertIn('id="facility-location-map"', html)
+        self.assertIn('js/facility-location.js', html)
+        for field in ('latitude', 'longitude'):
+            self.assertRegex(html, rf'<input id="{field}"[^>]*\brequired\b')
+
+    def test_facility_saves_adjusted_coordinates_and_rejects_invalid_pairs(self):
+        self._login('eoc1', 'imt_staff')
+        with self.app.app_context():
+            barangay = Barangay.query.filter_by(code='043424001').one()
+            barangay_id, municipality_id = barangay.id, barangay.municipality_id
+        base = {'facility_type': 'Hospital', 'barangay_id': barangay_id,
+                'municipality_id': municipality_id}
+        response = self.client.post('/facilities/add', data={**base, 'name': 'Missing Location'},
+                                    follow_redirects=True)
+        self.assertIn('Facility location is required.', response.get_data(as_text=True))
+        with self.app.app_context():
+            self.assertIsNone(Facility.query.filter_by(name='Missing Location').first())
+        self.client.post('/facilities/add', data={**base, 'name': 'Pinned Hospital',
+                                                 'latitude': '14.067123', 'longitude': '121.318456'})
+        with self.app.app_context():
+            facility = Facility.query.filter_by(name='Pinned Hospital').one()
+            self.assertAlmostEqual(facility.latitude, 14.067123)
+            self.assertAlmostEqual(facility.longitude, 121.318456)
+        for lat, lng in (('', ''), ('abc', '121'), ('14', ''), ('', '121'), ('nan', '121'),
+                         ('14', 'inf'), ('91', '121'), ('14', '181')):
+            with self.subTest(latitude=lat, longitude=lng):
+                self.client.post('/facilities/add', data={**base, 'name': 'Invalid Coordinates',
+                                                         'latitude': lat, 'longitude': lng})
+                with self.app.app_context():
+                    self.assertIsNone(Facility.query.filter_by(name='Invalid Coordinates').first())
+
     def test_facility_location_hierarchy_is_validated_on_submit(self):
         self._login('eoc1', 'eoc_staff')
         with self.app.app_context():
@@ -141,6 +248,7 @@ class OperationalDataFeaturesTestCase(unittest.TestCase):
         response = self.client.post('/facilities/add', data={
             'name': 'Invalid Location Facility',
             'facility_type': 'Hospital',
+            'latitude': '14.0693', 'longitude': '121.3256',
             'province_id': other_province_id,
             'municipality_id': municipality_id,
             'barangay_id': barangay_id,
@@ -263,6 +371,7 @@ class OperationalDataFeaturesTestCase(unittest.TestCase):
             'name': 'Incident Shelter',
             'facility_type': 'Evacuation Center',
             'capacity': '200',
+            'latitude': '14.0693', 'longitude': '121.3256',
         })
         self.assertEqual(created_center.status_code, 302)
         with self.app.app_context():
